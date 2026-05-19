@@ -36,6 +36,11 @@ interface BillingStats {
   upgrades:   { count: number; list: PlanChange[] }
   downgrades: { count: number; lostMRR: number; list: PlanChange[] }
   cancelled:  { count: number; lostMRR: number; list: { customer: string; plan: string; cancelledAt: string; reason: string | null; feedback: string | null; comment: string | null; lostMRR: number }[] }
+  reviews: {
+    allTime:   { count: number; revenueNZD: number }
+    thisMonth: { count: number; revenueNZD: number }
+    list: { tenant: string; customer: string; title: string; paidAt: string; amountNZD: number }[]
+  }
 }
 
 interface TenantHealth {
@@ -232,6 +237,26 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:4 }}>cancellations + downgrades</div>
             </div>
           )}
+          {/* Spec review payments — this month */}
+          <div style={{ flex:'1 1 180px', background: billing.reviews.thisMonth.count > 0 ? 'rgba(10,92,70,0.06)' : 'var(--white)', border:`1px solid ${billing.reviews.thisMonth.count > 0 ? 'rgba(10,92,70,0.2)' : 'var(--fog)'}`, borderRadius:12, padding:'16px 20px' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Spec reviews / month</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color: billing.reviews.thisMonth.count > 0 ? 'var(--forest)' : 'var(--ink)', lineHeight:1, marginBottom:2 }}>{billing.reviews.thisMonth.count}</div>
+            {billing.reviews.thisMonth.revenueNZD > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--forest)', fontWeight:600 }}>${billing.reviews.thisMonth.revenueNZD.toLocaleString()} NZD</div>}
+          </div>
+          {/* Spec review payments — all time */}
+          <div style={{ flex:'1 1 180px', background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Spec reviews (total)</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--ink)', lineHeight:1, marginBottom:2 }}>{billing.reviews.allTime.count}</div>
+            {billing.reviews.allTime.revenueNZD > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--slate)' }}>${billing.reviews.allTime.revenueNZD.toLocaleString()} NZD</div>}
+          </div>
+          {/* Combined platform revenue this month */}
+          <div style={{ flex:'1 1 200px', background:'rgba(10,92,70,0.05)', border:'1px solid rgba(10,92,70,0.18)', borderRadius:12, padding:'16px 20px' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Platform revenue / month</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--forest)', lineHeight:1, marginBottom:4 }}>${(billing.newMonth.valueNZD + billing.reviews.thisMonth.revenueNZD).toLocaleString()}</div>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', lineHeight:1.6 }}>
+              ${billing.newMonth.valueNZD.toLocaleString()} subs{billing.reviews.thisMonth.revenueNZD > 0 ? ` · $${billing.reviews.thisMonth.revenueNZD.toLocaleString()} reviews` : ''}
+            </div>
+          </div>
         </>)}
       </div>
 
@@ -296,6 +321,33 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
       ))}
 
       {/* ── Tenant connection status ─────────────────────────────────────── */}
+      {/* ── Spec review payments ────────────────────────────────────────── */}
+      {billing && billing.reviews.list.length > 0 && (<>
+        <SectionLabel>Specification review payments</SectionLabel>
+        <div style={{ background:'var(--white)', border:'1px solid rgba(10,92,70,0.18)', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid var(--fog)' }}>
+                {['Tenant','Customer','Requirement','Paid','Amount'].map(h => (
+                  <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--slate)', fontWeight:500 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {billing.reviews.list.map((r,i) => (
+                <tr key={i} style={{ borderBottom: i < billing.reviews.list.length-1 ? '1px solid var(--fog)' : 'none' }}>
+                  <td style={{ padding:'10px 14px', color:'var(--ink)', fontWeight:500 }}>{r.tenant}</td>
+                  <td style={{ padding:'10px 14px', color:'var(--slate)', fontFamily:'var(--font-mono)', fontSize:11 }}>{r.customer}</td>
+                  <td style={{ padding:'10px 14px', color:'var(--slate)', maxWidth:260, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.title}</td>
+                  <td style={{ padding:'10px 14px', color:'var(--slate)', fontFamily:'var(--font-mono)', fontSize:11 }}>{relativeTime(r.paidAt)}</td>
+                  <td style={{ padding:'10px 14px', color:'var(--forest)', fontFamily:'var(--font-mono)', fontSize:11, fontWeight:600 }}>${r.amountNZD}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>)}
+
       {/* ── New subscriptions this month ──────────────────────────────── */}
       {billing && billing.newMonth.list.length > 0 && (<>
         <SectionLabel>New subscriptions this month</SectionLabel>

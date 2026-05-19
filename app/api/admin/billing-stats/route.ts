@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { stripe } from '@/lib/stripe'
+import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,10 +65,19 @@ export async function GET() {
   const todayStartUnix = Math.floor(todayStart.getTime() / 1000)
 
   // ── Fetch data from Stripe in parallel ───────────────────────────────────
-  const [activeSubs, cancelledSubs, updateEvents] = await Promise.all([
+  const [activeSubs, cancelledSubs, updateEvents, paidReviews] = await Promise.all([
     stripe.subscriptions.list({ status: 'active',   limit: 100, expand: ['data.customer'] }),
     stripe.subscriptions.list({ status: 'canceled', limit: 100, expand: ['data.customer'] }),
     stripe.events.list({ type: 'customer.subscription.updated', created: { gte: monthStartUnix }, limit: 100 }),
+    prisma.requirement.findMany({
+      where: { reviewPaidAt: { not: null } },
+      orderBy: { reviewPaidAt: 'desc' },
+      select: {
+        id: true, title: true, reviewPaidAt: true,
+        tenant: { select: { name: true } },
+        user:   { select: { name: true, email: true } },
+      },
+    }),
   ])
 
   const activeList = activeSubs.data
@@ -165,6 +175,27 @@ export async function GET() {
     ...downgrades.map(d => d.mrrDelta),
   ].reduce((a, b) => a + b, 0)
 
+  // ── Spec review payments (from DB, $249 NZD each) ────────────────────────
+  const REVIEW_FEE = 249
+  const reviewsThisMonth = paidReviews.filter(r => new Date(r.reviewPaidAt!) >= monthStart)
+  const reviewStats = {
+    allTime: {
+      count:      paidReviews.length,
+      revenueNZD: paidReviews.length * REVIEW_FEE,
+    },
+    thisMonth: {
+      count:      reviewsThisMonth.length,
+      revenueNZD: reviewsThisMonth.length * REVIEW_FEE,
+    },
+    list: paidReviews.slice(0, 20).map(r => ({
+      tenant:    r.tenant.name,
+      customer:  r.user.name || r.user.email,
+      title:     r.title,
+      paidAt:    r.reviewPaidAt!.toISOString(),
+      amountNZD: REVIEW_FEE,
+    })),
+  }
+
   return NextResponse.json({
     mrr,
     active:    activeList.length,
@@ -184,5 +215,6 @@ export async function GET() {
     downgrades: { count: downgrades.length, list: downgrades, lostMRR: downgrades.reduce((s,d) => s+d.mrrDelta, 0) },
     cancelled:  { count: cancellations.length, lostMRR: cancellations.reduce((s,c) => s+c.lostMRR, 0), list: cancellations },
     totalLostMRR,
+    reviews: reviewStats,
   })
 }
