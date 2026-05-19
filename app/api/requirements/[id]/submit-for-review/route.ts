@@ -143,8 +143,8 @@ export async function POST(
         quantity: 1,
       },
     ],
-    success_url: `${origin}/dashboard?view=requirements&review=paid`,
-    cancel_url:  `${origin}/dashboard?view=requirements`,
+    success_url: `${origin}/dashboard?view=customisations&review=paid`,
+    cancel_url:  `${origin}/dashboard?view=customisations`,
     metadata: {
       paymentType:   'spec_review',
       requirementId,

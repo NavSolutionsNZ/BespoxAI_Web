@@ -345,7 +345,7 @@ function DashboardInner() {
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '0 10px' }}>
+        <nav style={{ flex: 1, padding: '0 10px', overflowY: 'auto', minHeight: 0 }}>
           {NAV_ITEMS.map(item => {
             const active = activeNav === item.id
             return (
@@ -390,6 +390,45 @@ function DashboardInner() {
               </button>
             )
           })}
+
+          {/* Query history — inside nav so it scrolls and never pushes the user footer off screen */}
+          {queryLogs.length > 0 && (
+            <div style={{ padding: '12px 0 0', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8 }}>
+              <div style={{ padding: '0 0 8px', fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.3)' }}>
+                Recent queries
+              </div>
+              {queryLogs.map(log => (
+                <button
+                  key={log.id}
+                  onClick={() => {
+                    setQuestion(log.question)
+                    setActiveNav('assistant')
+                    textareaRef.current?.focus()
+                  }}
+                  title={log.question}
+                  style={{
+                    width: '100%', display: 'flex', flexDirection: 'column', gap: 2,
+                    padding: '7px 0', borderRadius: 6, marginBottom: 1,
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                    textAlign: 'left', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{
+                    fontFamily: 'var(--font-body)', fontSize: 11,
+                    color: 'rgba(214,217,212,0.7)', whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
+                  }}>
+                    {log.question}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(214,217,212,0.25)', letterSpacing: '0.08em' }}>
+                    {log.entity ?? ''}{log.entity && log.recordCount ? ' · ' : ''}{log.recordCount ? `${log.recordCount} records` : ''} · {formatRelativeTime(new Date(log.createdAt))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </nav>
 
         {/* Admin link — superadmin only */}
@@ -428,46 +467,6 @@ function DashboardInner() {
           </div>
         )}
 
-        {/* Query history */}
-        {queryLogs.length > 0 && (
-          <div style={{ padding: '12px 10px 0', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8 }}>
-            <div style={{ padding: '0 10px 8px', fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.3)' }}>
-              Recent queries
-            </div>
-            <div style={{ overflowY: 'auto', maxHeight: 220 }}>
-              {queryLogs.map(log => (
-                <button
-                  key={log.id}
-                  onClick={() => {
-                    setQuestion(log.question)
-                    setActiveNav('assistant')
-                    textareaRef.current?.focus()
-                  }}
-                  title={log.question}
-                  style={{
-                    width: '100%', display: 'flex', flexDirection: 'column', gap: 2,
-                    padding: '7px 10px', borderRadius: 6, marginBottom: 1,
-                    border: 'none', background: 'transparent', cursor: 'pointer',
-                    textAlign: 'left', transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span style={{
-                    fontFamily: 'var(--font-body)', fontSize: 11,
-                    color: 'rgba(214,217,212,0.7)', whiteSpace: 'nowrap',
-                    overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
-                  }}>
-                    {log.question}
-                  </span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(214,217,212,0.25)', letterSpacing: '0.08em' }}>
-                    {log.entity ?? ''}{log.entity && log.recordCount ? ' · ' : ''}{log.recordCount ? `${log.recordCount} records` : ''} · {formatRelativeTime(new Date(log.createdAt))}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* User */}
         <div style={{
