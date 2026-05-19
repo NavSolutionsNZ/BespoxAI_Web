@@ -731,6 +731,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
       <div class="sb-nl">Workspace</div>
       <button class="sb-item on" onclick="ptab('dashboard',this)"><span class="sb-icon">⊞</span>Overview</button>
       <button class="sb-item" onclick="ptab('chat',this)"><span class="sb-icon">💬</span>CFO Assistant</button>
+      <button class="sb-item" id="sb-req-btn" onclick="ptab('requirements',this)"><span class="sb-icon">📋</span>Requirements</button>
       <div class="sb-nl">Tools</div>
       <button class="sb-item" onclick="ptab('scanner',this)"><span class="sb-icon">🔍</span>Health Scanner<span class="sb-badge">63</span></button>
       <button class="sb-item" onclick="ptab('cashflow',this)"><span class="sb-icon">📊</span>Cash Flow<span class="sb-badge soon">Soon</span></button>
@@ -844,6 +845,41 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
         <div class="cs-wrap"><div style="font-size:40px;margin-bottom:1.5rem;opacity:.35">🏗️</div><div class="cs-title">NAV Migration Analyser</div><p class="cs-sub">Full C/AL codebase scan, complexity scoring, and a board-ready migration business case. Available now as a fixed-fee project engagement.</p><div class="cs-pill">Available as Fixed-Fee Project</div></div>
       </div>
 
+      <!-- REQUIREMENTS TAB -->
+      <div class="ptab" id="pt-requirements">
+        <div id="req-paid-banner" style="display:none;align-items:center;gap:14px;background:rgba(10,92,70,.12);border:1px solid rgba(26,146,114,.3);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.75rem">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(26,146,114,.2);border:1px solid rgba(26,146,114,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:var(--forest)">✓</div>
+          <div>
+            <div style="font-size:14px;font-weight:500;color:var(--forest)">Payment confirmed</div>
+            <div style="font-size:12px;color:var(--slate);margin-top:2px">Your requirement review has been booked. We'll be in touch within 1 business day.</div>
+          </div>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--fog);border-radius:12px;padding:2rem;margin-bottom:1.25rem">
+          <div style="font-size:13px;font-weight:500;color:var(--ink);margin-bottom:1.5rem">What happens next</div>
+          <div style="display:flex;flex-direction:column;gap:1.25rem">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(26,146,114,.15);border:1px solid rgba(26,146,114,.25);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--forest);flex-shrink:0">1</div>
+              <div><div style="font-size:13px;font-weight:500;color:var(--ink)">Payment received</div><div style="font-size:12px;color:var(--slate);margin-top:3px">Stripe has confirmed your payment. A receipt has been sent to your email.</div></div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(26,146,114,.15);border:1px solid rgba(26,146,114,.25);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--forest);flex-shrink:0">2</div>
+              <div><div style="font-size:13px;font-weight:500;color:var(--ink)">Requirements review</div><div style="font-size:12px;color:var(--slate);margin-top:3px">A senior BespoxAI developer will review your requirements within 1 business day and may reach out to clarify scope.</div></div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(244,239,228,.06);border:1px solid var(--fog);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--slate);flex-shrink:0">3</div>
+              <div><div style="font-size:13px;font-weight:500;color:var(--slate)">Scoped proposal</div><div style="font-size:12px;color:var(--slate);margin-top:3px">You'll receive a fixed-price proposal with scope, timeline, and cost — no hidden extras.</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--fog);border-radius:12px;padding:2rem">
+          <div style="font-size:13px;font-weight:500;color:var(--ink);margin-bottom:.4rem">Add notes for the review team</div>
+          <div style="font-size:12px;color:var(--slate);margin-bottom:1rem">Optional — any additional context about your requirements, urgency, or constraints.</div>
+          <textarea id="req-notes" style="width:100%;background:var(--parchment);border:1px solid var(--fog);border-radius:8px;padding:.85rem 1rem;font-size:13px;color:var(--ink);font-family:'DM Sans',sans-serif;resize:vertical;min-height:120px;outline:none;transition:border-color .2s" placeholder="e.g. We need this before end of financial year. Main concern is custom dimension reporting…" onfocus="this.style.borderColor='rgba(10,92,70,.35)'" onblur="this.style.borderColor='var(--fog)'"></textarea>
+          <button onclick="submitReqNotes()" style="margin-top:.85rem;background:var(--forest);color:var(--cream);font-size:13px;padding:.75rem 1.75rem;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:background .2s" onmouseover="this.style.background='var(--emerald)'" onmouseout="this.style.background='var(--forest)'">Send to review team →</button>
+          <div id="req-sent-msg" style="display:none;margin-top:.85rem;font-size:12px;color:var(--forest);font-family:'DM Mono',monospace;letter-spacing:.06em">✓ Notes sent — thank you.</div>
+        </div>
+      </div>
+
     </div><!-- pcontent -->
   </div><!-- portal-main -->
 </div><!-- portal-view -->
@@ -874,9 +910,28 @@ function ptab(tab, btn) {
   document.getElementById('pt-' + tab).classList.add('on');
   document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
-  var titles = {dashboard:'Overview',chat:'CFO Assistant',scanner:'Data Health Scanner',cashflow:'Cash Flow Intelligence',close:'Month-End Close',migration:'NAV Migration Analyser'};
+  var titles = {dashboard:'Overview',chat:'CFO Assistant',scanner:'Data Health Scanner',cashflow:'Cash Flow Intelligence',close:'Month-End Close',migration:'NAV Migration Analyser',requirements:'Requirement Review'};
   document.getElementById('ptb-title').textContent = titles[tab] || tab;
 }
+
+function submitReqNotes() {
+  document.getElementById('req-sent-msg').style.display = 'block';
+}
+
+// Handle Stripe redirect: ?view=requirements&review=paid
+document.addEventListener('DOMContentLoaded', function() {
+  var params = new URLSearchParams(window.location.search);
+  var view = params.get('view');
+  var review = params.get('review');
+  if (view === 'requirements') {
+    gv('portal');
+    ptab('requirements', document.getElementById('sb-req-btn'));
+    if (review === 'paid') {
+      var banner = document.getElementById('req-paid-banner');
+      if (banner) banner.style.display = 'flex';
+    }
+  }
+});
 
 function ppTab(event, tabId) {
   var buttons = document.querySelectorAll('.pp-button');
