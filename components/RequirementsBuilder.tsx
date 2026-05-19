@@ -403,6 +403,25 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {spec&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--jade)'}}>✦ spec</span>}
                   {(spec?.questions?.length??0)>0&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#C8952A'}}>? {spec!.questions.length}q</span>}
                   {req.quote&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',fontWeight:600}}>${parseFloat(req.quote).toLocaleString()}</span>}
+                  {/* Review payment / action-step indicators */}
+                  {req.status==='draft'&&!spec&&(
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',background:'rgba(59,82,73,0.07)',border:'1px solid rgba(59,82,73,0.14)',padding:'1px 6px',borderRadius:4}}>step 1: generate spec</span>
+                  )}
+                  {req.status==='draft'&&spec&&!req.reviewPaidAt&&!req.reviewIncluded&&!req.reviewBypassed&&(
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#9A6A00',background:'rgba(200,149,42,0.1)',border:'1px solid rgba(200,149,42,0.28)',padding:'1px 6px',borderRadius:4}}>↑ review fee required</span>
+                  )}
+                  {req.status==='draft'&&spec&&(req.reviewPaidAt||req.reviewIncluded||req.reviewBypassed)&&(
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--forest)',background:'rgba(10,92,70,0.09)',border:'1px solid rgba(10,92,70,0.22)',padding:'1px 6px',borderRadius:4}}>✓ paid · submit to proceed</span>
+                  )}
+                  {req.status!=='draft'&&req.reviewPaidAt&&(
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--forest)',background:'rgba(10,92,70,0.08)',border:'1px solid rgba(10,92,70,0.18)',padding:'1px 6px',borderRadius:4}}>✓ review paid</span>
+                  )}
+                  {req.status!=='draft'&&req.reviewIncluded&&!req.reviewPaidAt&&(
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--jade)',background:'rgba(26,146,114,0.08)',border:'1px solid rgba(26,146,114,0.2)',padding:'1px 6px',borderRadius:4}}>✓ included in plan</span>
+                  )}
+                  {req.status!=='draft'&&req.reviewBypassed&&!req.reviewPaidAt&&!req.reviewIncluded&&(
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',background:'rgba(59,82,73,0.07)',border:'1px solid rgba(59,82,73,0.16)',padding:'1px 6px',borderRadius:4}}>✓ fee waived</span>
+                  )}
                 </div>
               </div>
             )
