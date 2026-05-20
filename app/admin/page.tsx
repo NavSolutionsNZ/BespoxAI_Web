@@ -1148,10 +1148,16 @@ function AdminRequirementsTab() {
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+        let errMsg = 'Request failed'
+        try {
+          const errData = await res.json()
+          errMsg = errData.error ?? errMsg
+        } catch {
+          try { errMsg = await res.text() } catch {}
+        }
         setDevHistory(prev => {
           const updated = [...prev]
-          updated[updated.length - 1] = { role: 'assistant', content: err.error ?? 'Request failed' }
+          updated[updated.length - 1] = { role: 'assistant', content: `Error: ${errMsg}` }
           return updated
         })
         return

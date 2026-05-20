@@ -218,6 +218,7 @@ GUIDELINES:
 
     if (!upstream.ok) {
       const err = await upstream.text()
+      console.error(`[dev-notes] Anthropic API error ${upstream.status} — model: ${AI_CONFIG.model} — ${err}`)
       return NextResponse.json({ error: `Anthropic error: ${upstream.status} — ${err}` }, { status: 502 })
     }
 
