@@ -201,6 +201,20 @@ function DashboardInner() {
       .catch(() => {})
   }, [])
 
+  // Refresh AI usage meter whenever billing or payment success params appear
+  // Covers: ?billing=success (tier upgrade), ?deposit=paid, ?review=paid
+  useEffect(() => {
+    const billing = searchParams.get('billing')
+    const deposit = searchParams.get('deposit')
+    const review  = searchParams.get('review')
+    if (billing === 'success' || deposit === 'paid' || review === 'paid') {
+      fetch('/api/ai-usage')
+        .then(r => r.json())
+        .then(d => { if (!d.error) setAiUsage(d) })
+        .catch(() => {})
+    }
+  }, [searchParams])
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef   = useRef<HTMLDivElement>(null)
 
