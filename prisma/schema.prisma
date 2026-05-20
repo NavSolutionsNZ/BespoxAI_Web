@@ -154,6 +154,7 @@ model Requirement {
   fullPaymentRequested    Boolean @default(false)  // customer requested to pay in full upfront
   fullPaymentApproved     Boolean @default(false)  // superadmin approved full upfront payment
   balanceStripeSessionId  String?          // Stripe Checkout Session ID for balance payment
+  poNumber                String?          // Customer PO number / reference, shown on invoice
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
