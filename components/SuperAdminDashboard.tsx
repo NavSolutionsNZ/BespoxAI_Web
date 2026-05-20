@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 interface Tenant {
   id: string; name: string; tunnelSubdomain: string; active: boolean
-  tier: string; createdAt: string
+  tier: string; createdAt: string; subscriptionStatus: string | null
   _count: { users: number; queryLogs: number; requirements: number }
   queryLogs: { createdAt: string }[]
 }
@@ -119,6 +119,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
   const [health,       setHealth]       = useState<Record<string, TenantHealth>>({})
   const [loading,      setLoading]      = useState(true)
   const [billing,      setBilling]      = useState<BillingStats | null>(null)
+  const [showTenantDrill, setShowTenantDrill] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -191,18 +192,107 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
           <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:'var(--forest)', lineHeight:1 }}>${((billing?.newMonth.valueNZD??0)+(billing?.reviews.thisMonth.revenueNZD??0)).toLocaleString()}</div>
           <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:6 }}>subscriptions + spec reviews</div>
         </div>
-        {/* Tenants + Users */}
-        <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'18px 20px', display:'flex', flexDirection:'column', gap:10 }}>
-          <div>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:4 }}>Active tenants</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:300, color:'var(--ink)', lineHeight:1 }}>{tenants.filter(t=>t.active).length}</div>
-          </div>
-          <div style={{ borderTop:'1px solid var(--fog)', paddingTop:10 }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:4 }}>Total users</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:300, color:'var(--ink)', lineHeight:1 }}>{tenants.reduce((s,t)=>s+t._count.users,0)}</div>
-          </div>
-        </div>
+        {/* Registered / Online — split card with drill-down */}
+        {(()=>{
+          const registered = tenants.filter(t=>t.active).length
+          const online     = Object.values(health).filter(h=>h.status==='ok').length
+          const checking   = Object.values(health).filter(h=>h.status==='checking').length
+          const offline    = registered - online - checking
+          return (
+            <button
+              onClick={()=>setShowTenantDrill(p=>!p)}
+              style={{ background:'var(--white)', border:`1px solid ${showTenantDrill?'rgba(10,92,70,0.35)':'var(--fog)'}`, borderRadius:12, padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, cursor:'pointer', textAlign:'left', transition:'border-color 0.15s' }}
+            >
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div>
+                  <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:4 }}>Registered</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:300, color:'var(--ink)', lineHeight:1 }}>{registered}</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:4 }}>Online</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:300, color:online>0?'var(--forest)':'#A32D2D', lineHeight:1 }}>{checking>0&&online===0?'…':online}</div>
+                </div>
+              </div>
+              <div style={{ borderTop:'1px solid var(--fog)', paddingTop:8, display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                {online>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--jade)', background:'rgba(26,146,114,0.1)', padding:'2px 7px', borderRadius:5 }}>● {online} live</span>}
+                {offline>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#E24B4A', background:'rgba(226,75,74,0.08)', padding:'2px 7px', borderRadius:5 }}>● {offline} offline</span>}
+                {checking>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', background:'rgba(59,82,73,0.08)', padding:'2px 7px', borderRadius:5 }}>↻ checking</span>}
+                <span style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginLeft:'auto' }}>{showTenantDrill?'▲':'▼'}</span>
+              </div>
+            </button>
+          )
+        })()}
       </div>
+
+      {/* ── Tenant drill-down panel ───────────────────────────────────────── */}
+      {showTenantDrill&&(
+        <div style={{ background:'var(--white)', border:'1px solid rgba(10,92,70,0.2)', borderRadius:12, overflow:'hidden', marginBottom:8 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid var(--fog)', background:'rgba(10,92,70,0.03)' }}>
+                {['Tenant','Plan','Connection','Users','Queries','Custom.','Last active',''].map(h=>(
+                  <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontFamily:'var(--font-mono)', fontSize:8, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--slate)', fontWeight:500, whiteSpace:'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tenants.map((tenant,i)=>{
+                const h = health[tenant.id]
+                const isOnline   = h?.status==='ok'
+                const isChecking = h?.status==='checking'
+                const isError    = h?.status==='error'
+                const isPaid     = tenant.subscriptionStatus==='active'
+                const isTrial    = tenant.tier==='trial'||tenant.tier==='free'
+                return (
+                  <tr key={tenant.id} style={{ borderBottom:i<tenants.length-1?'1px solid var(--fog)':'none', opacity:tenant.active?1:0.5 }}>
+                    {/* Tenant name */}
+                    <td style={{ padding:'11px 14px' }}>
+                      <div style={{ fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, color:'var(--ink)' }}>{tenant.name}</div>
+                      <div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', marginTop:2 }}>{tenant.tunnelSubdomain}</div>
+                    </td>
+                    {/* Plan / tier */}
+                    <td style={{ padding:'11px 14px' }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                        <TierBadge tier={tenant.tier} />
+                        {!isPaid&&!isTrial&&<span style={{ fontFamily:'var(--font-mono)', fontSize:7, color:'#A32D2D', letterSpacing:'0.1em', textTransform:'uppercase' }}>no active sub</span>}
+                        {isTrial&&<span style={{ fontFamily:'var(--font-mono)', fontSize:7, color:'var(--slate)', letterSpacing:'0.1em', textTransform:'uppercase' }}>trial</span>}
+                      </div>
+                    </td>
+                    {/* Connection status */}
+                    <td style={{ padding:'11px 14px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background:isOnline?'var(--jade)':isChecking?'var(--slate)':'#E24B4A' }} />
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:9, color:isOnline?'var(--jade)':isChecking?'var(--slate)':'#E24B4A' }}>
+                          {isOnline?`Live · ${h.latencyMs}ms`:isChecking?'Checking…':isError?(h.error??'Offline'):'Offline'}
+                        </span>
+                        <button onClick={e=>{e.stopPropagation();checkHealth(tenant.id)}} disabled={isChecking} title="Recheck" style={{ background:'none', border:'none', cursor:isChecking?'default':'pointer', color:'var(--slate)', fontSize:11, padding:'0 2px', lineHeight:1 }}>↻</button>
+                      </div>
+                      {isError&&h.error&&<div style={{ fontFamily:'var(--font-mono)', fontSize:7, color:'#A32D2D', marginTop:3, maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{h.error}</div>}
+                    </td>
+                    {/* Stats */}
+                    <td style={{ padding:'11px 14px', fontFamily:'var(--font-mono)', fontSize:12, color:'var(--ink)', textAlign:'center' }}>{tenant._count.users}</td>
+                    <td style={{ padding:'11px 14px', fontFamily:'var(--font-mono)', fontSize:12, color:'var(--ink)', textAlign:'center' }}>{tenant._count.queryLogs}</td>
+                    <td style={{ padding:'11px 14px', fontFamily:'var(--font-mono)', fontSize:12, color:tenant._count.requirements>0?'var(--forest)':'var(--slate)', textAlign:'center', fontWeight:tenant._count.requirements>0?600:400 }}>{tenant._count.requirements}</td>
+                    {/* Last active */}
+                    <td style={{ padding:'11px 14px', fontFamily:'var(--font-mono)', fontSize:10, color:'var(--slate)', whiteSpace:'nowrap' }}>
+                      {tenant.queryLogs?.[0] ? relativeTime(tenant.queryLogs[0].createdAt) : <span style={{ color:'var(--fog)' }}>never</span>}
+                    </td>
+                    {/* Upgrade nudge */}
+                    <td style={{ padding:'11px 14px' }}>
+                      {isTrial&&(
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:7, letterSpacing:'0.08em', textTransform:'uppercase', color:'#9A6A00', background:'rgba(200,149,42,0.1)', border:'1px solid rgba(200,149,42,0.25)', padding:'2px 7px', borderRadius:5, whiteSpace:'nowrap' }}>↑ upgrade opportunity</span>
+                      )}
+                      {!isOnline&&!isChecking&&!isTrial&&isPaid&&(
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:7, letterSpacing:'0.08em', textTransform:'uppercase', color:'#A32D2D', background:'rgba(163,45,45,0.06)', border:'1px solid rgba(163,45,45,0.18)', padding:'2px 7px', borderRadius:5, whiteSpace:'nowrap' }}>connection issue</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Revenue composition + Monthly activity ───────────────────────── */}
       {billing&&(()=>{
@@ -495,49 +585,6 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
           </table>
         </div>
       </>)}
-
-      <SectionLabel>Tenant connections</SectionLabel>
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
-        {tenants.map(tenant => {
-          const h = health[tenant.id]
-          const [statusColor, statusBg, statusLabel] = !h || h.status==='idle'
-            ? ['var(--slate)', 'rgba(59,82,73,0.08)', 'Not checked']
-            : h.status==='checking'
-            ? ['var(--slate)', 'rgba(59,82,73,0.08)', 'Checking…']
-            : h.status==='ok'
-            ? ['var(--jade)', 'rgba(26,146,114,0.08)', `Live · ${h.latencyMs}ms`]
-            : ['#E24B4A', 'rgba(226,75,74,0.08)', 'Offline']
-
-          return (
-            <div key={tenant.id} style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 18px', opacity:tenant.active?1:0.55 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-                <div>
-                  <div style={{ fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, color:'var(--ink)', marginBottom:4 }}>{tenant.name}</div>
-                  <TierBadge tier={tenant.tier} />
-                </div>
-                {!tenant.active && <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#A32D2D', letterSpacing:'0.1em', textTransform:'uppercase' }}>Inactive</span>}
-              </div>
-
-              <div style={{ display:'flex', alignItems:'center', gap:8, background:statusBg, borderRadius:8, padding:'7px 10px', marginBottom:10 }}>
-                <div style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background:statusColor, animation:h?.status==='checking'?'pulse 1s infinite':'none' }} />
-                <span style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.08em', color:statusColor, flex:1 }}>{statusLabel}</span>
-                <button onClick={() => checkHealth(tenant.id)} disabled={h?.status==='checking'} style={{ background:'none', border:'none', cursor:h?.status==='checking'?'default':'pointer', fontFamily:'var(--font-mono)', fontSize:12, color:'var(--slate)', padding:0 }}>↻</button>
-              </div>
-
-              <div style={{ display:'flex', gap:16, marginBottom:8 }}>
-                {[['Users',tenant._count.users],['Queries',tenant._count.queryLogs],['Custom.',(tenant._count as any).requirements ?? 0]].map(([l,v]) => (
-                  <div key={String(l)}>
-                    <div style={{ fontFamily:'var(--font-mono)', fontSize:8, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--slate)', marginBottom:2 }}>{l}</div>
-                    <div style={{ fontFamily:'var(--font-mono)', fontSize:13, color:'var(--ink)' }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)' }}>Last query: {(tenant.queryLogs ?? [])[0] ? relativeTime(tenant.queryLogs[0].createdAt) : 'never'}</div>
-            </div>
-          )
-        })}
-      </div>
 
       {/* ── All migration enquiries table ───────────────────────────────── */}
       {enquiries.length > 0 && (
