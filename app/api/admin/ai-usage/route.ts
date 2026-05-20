@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       inputTokens:  r._sum.inputTokens  ?? 0,
       outputTokens: r._sum.outputTokens ?? 0,
       requests:     r._count,
-      estimatedUsd: estimateCost('claude-sonnet-4-20250514', r._sum.inputTokens ?? 0, r._sum.outputTokens ?? 0),
+      estimatedUsd: estimateCost('claude-sonnet-4-5', r._sum.inputTokens ?? 0, r._sum.outputTokens ?? 0),
     }))
 
     // Per-feature breakdown this month
@@ -101,18 +101,18 @@ export async function GET(req: NextRequest) {
       allTime: {
         inputTokens:  allTimeIn,
         outputTokens: allTimeOut,
-        estimatedUsd: estimateCost('claude-sonnet-4-20250514', allTimeIn, allTimeOut),
+        estimatedUsd: estimateCost('claude-sonnet-4-5', allTimeIn, allTimeOut),
       },
       thisMonth: {
         inputTokens:  thisMonthIn,
         outputTokens: thisMonthOut,
         requests:     thisMonth._count,
-        estimatedUsd: estimateCost('claude-sonnet-4-20250514', thisMonthIn, thisMonthOut),
+        estimatedUsd: estimateCost('claude-sonnet-4-5', thisMonthIn, thisMonthOut),
       },
       lastMonth: {
         inputTokens:  lastMonthIn,
         outputTokens: lastMonthOut,
-        estimatedUsd: estimateCost('claude-sonnet-4-20250514', lastMonthIn, lastMonthOut),
+        estimatedUsd: estimateCost('claude-sonnet-4-5', lastMonthIn, lastMonthOut),
       },
       byTenant,
       byFeature,
