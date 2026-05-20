@@ -43,8 +43,10 @@ function BillingPageInner() {
     {
       id: 'starter', name: 'Starter', monthlyNZD: 59, annualNZD: 649,
       description: 'Unlimited scoping + full feasibility output',
+      tokens: '50,000',
       features: [
         'Everything in Free',
+        '50,000 AI tokens per month',
         'Unlimited AI spec generation',
         'Full feasibility output with cost range',
         'Data health scanner (BC connection required)',
@@ -55,8 +57,10 @@ function BillingPageInner() {
     {
       id: 'assistant', name: 'Assistant', monthlyNZD: 299, annualNZD: 3289,
       description: 'CFO Assistant with live BC data queries',
+      tokens: '300,000',
       features: [
         'Everything in Starter',
+        '300,000 AI tokens per month',
         'CFO Assistant — ask questions in plain English, get live BC answers',
         'Query history & data visualisation',
         '1 included spec review per month',
@@ -67,8 +71,10 @@ function BillingPageInner() {
     {
       id: 'manager', name: 'Manager', monthlyNZD: 499, annualNZD: 5489,
       description: 'Everything in Assistant + One Day Close',
+      tokens: '750,000',
       features: [
         'Everything in Assistant',
+        '750,000 AI tokens per month',
         '2 included spec reviews per month',
         'One Day Close Assistant (coming soon)',
         'Advanced reporting',
@@ -79,8 +85,10 @@ function BillingPageInner() {
     {
       id: 'executive', name: 'Executive', monthlyNZD: 999, annualNZD: 10989,
       description: 'Everything included + 10% off all paid services',
+      tokens: '3,000,000',
       features: [
         'Everything in Manager',
+        '3,000,000 AI tokens per month',
         '2 included spec reviews per month',
         '10% discount on all customisation work',
         '10% discount on Migration Analyser',
@@ -267,7 +275,15 @@ function BillingPageInner() {
                   <div style={{ fontSize: 12, color: isPopular ? 'rgba(244,239,228,0.6)' : 'var(--slate)', marginBottom: 2 }}>/mo{interval === 'year' ? ' · billed annually' : ''}</div>
                   <div style={{ fontSize: 10, color: isPopular ? 'rgba(244,239,228,0.5)' : 'var(--slate)', marginBottom: 6, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>excl. GST</div>
                 </div>
-                <div style={{ fontSize: 12, color: isPopular ? 'rgba(244,239,228,0.5)' : 'var(--slate)', marginBottom: 20 }}>{plan.description}</div>
+                <div style={{ fontSize: 12, color: isPopular ? 'rgba(244,239,228,0.5)' : 'var(--slate)', marginBottom: 12 }}>{plan.description}</div>
+
+                {/* Token allowance badge */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isPopular ? 'rgba(200,149,42,0.15)' : 'rgba(10,92,70,0.06)', border: `1px solid ${isPopular ? 'rgba(200,149,42,0.3)' : 'rgba(10,92,70,0.15)'}`, borderRadius: 8, padding: '5px 10px', marginBottom: 20, alignSelf: 'flex-start' }}>
+                  <span style={{ fontSize: 10 }}>✦</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: isPopular ? 'rgba(200,149,42,0.9)' : 'var(--forest)', fontWeight: 600 }}>
+                    {(plan as any).tokens} AI tokens / month
+                  </span>
+                </div>
 
                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', flex: 1 }}>
                   {plan.features.map(f => (
