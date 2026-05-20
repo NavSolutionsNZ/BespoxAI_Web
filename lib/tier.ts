@@ -4,11 +4,55 @@ export type TierStatus =
   | { allowed: true }
   | { allowed: false; reason: 'no_plan' | 'trial_expired' | 'no_tenant' | 'unknown'; trialEndsAt?: string | null }
 
-/**
- * Check whether a tenant has access to the CFO Assistant feature.
- * Tiers with access: trial (not expired), assistant, manager, executive
- * Tier without access: free
- */
+// ── Monthly token allowances per tier ────────────────────────────────────────
+
+export const TOKEN_LIMITS: Record<string, number> = {
+  free:      0,
+  trial:     50_000,
+  starter:   50_000,
+  assistant: 300_000,
+  manager:   750_000,
+  executive: 3_000_000,
+  paid:      300_000,   // legacy
+  enterprise:3_000_000, // legacy
+}
+
+export interface TokenLimitStatus {
+  allowed:    boolean
+  used:       number
+  limit:      number
+  tier:       string
+  percentUsed: number
+  warning:    boolean   // true when >= 80%
+}
+
+export async function getMonthlyTokenUsage(tenantId: string): Promise<number> {
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  const result = await (prisma as any).aiUsageLog.aggregate({
+    where: { tenantId, createdAt: { gte: monthStart } },
+    _sum:  { inputTokens: true, outputTokens: true },
+  })
+  return (result._sum.inputTokens ?? 0) + (result._sum.outputTokens ?? 0)
+}
+
+export async function checkTokenLimit(tenantId: string): Promise<TokenLimitStatus> {
+  const tenant = await prisma.tenant.findUnique({
+    where:  { id: tenantId },
+    select: { tier: true },
+  })
+  const tier  = tenant?.tier ?? 'free'
+  const limit = TOKEN_LIMITS[tier] ?? 0
+
+  if (limit === 0) return { allowed: false, used: 0, limit: 0, tier, percentUsed: 100, warning: true }
+
+  const used       = await getMonthlyTokenUsage(tenantId)
+  const percentUsed = Math.min(100, Math.round((used / limit) * 100))
+  return { allowed: used < limit, used, limit, tier, percentUsed, warning: percentUsed >= 80 }
+}
+
+
 export async function checkTierAccess(tenantId: string): Promise<TierStatus> {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },

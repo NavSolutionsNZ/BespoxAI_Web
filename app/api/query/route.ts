@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { getEntitiesSummary } from '@/lib/bc-entities'
 import { prisma } from '@/lib/db'
-import { checkTierAccess } from '@/lib/tier'
+import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -64,6 +64,15 @@ export async function POST(req: NextRequest) {
         trialEndsAt: 'trialEndsAt' in tierStatus ? tierStatus.trialEndsAt : null,
       },
       { status: 402 }
+    )
+  }
+
+  // 2b. Token limit gate — block if monthly allowance exhausted
+  const tokenStatus = await checkTokenLimit(session.user.tenantId)
+  if (!tokenStatus.allowed) {
+    return NextResponse.json(
+      { error: 'token_limit_reached', used: tokenStatus.used, limit: tokenStatus.limit, tier: tokenStatus.tier },
+      { status: 429 }
     )
   }
 

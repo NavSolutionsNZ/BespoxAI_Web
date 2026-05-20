@@ -183,12 +183,21 @@ function DashboardInner() {
   const [pwError, setPwError]             = useState('')
   const [pwSuccess, setPwSuccess]         = useState(false)
   const [tierBlocked, setTierBlocked]     = useState<null | { reason: string; trialEndsAt?: string | null }>(null)
+  const [aiUsage, setAiUsage]             = useState<{ used: number; limit: number; percentUsed: number; warning: boolean; tier: string } | null>(null)
 
   // Load query history on mount
   useEffect(() => {
     fetch('/api/history')
       .then(r => r.json())
       .then(d => setQueryLogs(d.logs ?? []))
+      .catch(() => {})
+  }, [])
+
+  // Load AI token usage on mount
+  useEffect(() => {
+    fetch('/api/ai-usage')
+      .then(r => r.json())
+      .then(d => { if (!d.error) setAiUsage(d) })
       .catch(() => {})
   }, [])
 
@@ -252,6 +261,14 @@ function DashboardInner() {
         setHistory(prev => prev.filter(item => item.id !== id))
         return
       }
+      if (res.status === 429 && data.error === 'token_limit_reached') {
+        setAiUsage(prev => prev ? { ...prev, percentUsed: 100, warning: true, allowed: false } as any : prev)
+        setHistory(prev => prev.map(item => item.id !== id ? item : {
+          ...item, loading: false, error: 'token_limit_reached',
+          answer: `You've used all ${(data.limit / 1000).toFixed(0)}k AI tokens for this month. Upgrade your plan to continue.`,
+        }))
+        return
+      }
       setHistory(prev => prev.map(item => item.id !== id ? item : {
         ...item, loading: false,
         answer: data.answer ?? '', displayHint: data.displayHint,
@@ -263,6 +280,7 @@ function DashboardInner() {
       if (!data.error) {
         setTimeout(() => {
           fetch('/api/history').then(r => r.json()).then(d => setQueryLogs(d.logs ?? [])).catch(() => {})
+          fetch('/api/ai-usage').then(r => r.json()).then(d => { if (!d.error) setAiUsage(d) }).catch(() => {})
         }, 1000)
       }
     } catch {
@@ -467,6 +485,32 @@ function DashboardInner() {
           </div>
         )}
 
+
+        {/* Token usage meter */}
+        {aiUsage && aiUsage.limit > 0 && (
+          <div style={{ padding: '10px 20px 4px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: aiUsage.warning ? 'rgba(200,149,42,0.8)' : 'rgba(214,217,212,0.35)' }}>
+                {aiUsage.warning ? '⚠ ' : ''}AI Tokens
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(214,217,212,0.35)' }}>
+                {(aiUsage.used / 1000).toFixed(0)}k / {(aiUsage.limit / 1000).toFixed(0)}k
+              </span>
+            </div>
+            <div style={{ height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 2, transition: 'width 0.4s',
+                width: `${aiUsage.percentUsed}%`,
+                background: aiUsage.percentUsed >= 100 ? '#A32D2D' : aiUsage.warning ? 'rgba(200,149,42,0.8)' : 'rgba(10,92,70,0.7)',
+              }} />
+            </div>
+            {aiUsage.percentUsed >= 100 && (
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#A32D2D', marginTop: 4, letterSpacing: '0.06em' }}>
+                Monthly limit reached — <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span>
+              </p>
+            )}
+          </div>
+        )}
 
         {/* User */}
         <div style={{

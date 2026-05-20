@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import OpenAI from 'openai'
 import { buildObjectContextSection } from '@/lib/bc-object-parser'
+import { checkTokenLimit } from '@/lib/tier'
 
 export const dynamic   = 'force-dynamic'
 export const maxDuration = 60
@@ -176,6 +177,16 @@ export async function POST(
   if (!req_data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (user.role !== 'superadmin' && req_data.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Token limit check — skip for superadmin
+  if (user.role !== 'superadmin') {
+    const tokenStatus = await checkTokenLimit(req_data.tenantId)
+    if (!tokenStatus.allowed)
+      return NextResponse.json(
+        { error: 'token_limit_reached', used: tokenStatus.used, limit: tokenStatus.limit, tier: tokenStatus.tier },
+        { status: 429 }
+      )
+  }
 
   // ── BC version — prefer onboarding fields, fall back to signup request ────
   let signupBcVersion: string | null = null
