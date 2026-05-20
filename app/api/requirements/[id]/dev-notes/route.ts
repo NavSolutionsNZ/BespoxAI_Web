@@ -1,23 +1,22 @@
 /**
  * POST /api/requirements/[id]/dev-notes
  *
- * AI assistant for the superadmin quoting workflow.
- * Accepts a question + optional pasted doc content and returns a developer-
- * focused answer grounded in the requirement, dev plan, and BC extension
- * knowledge base. Used to justify effort estimates and draft consultant notes.
+ * Streaming AI developer assistant for the superadmin quoting workflow.
+ * Provider, model, and feature flags are driven by AI_CONFIG (lib/ai-config.ts).
+ * Accepts { question, history, docContent } — history is the full prior conversation
+ * so the AI can answer follow-up questions with full context.
+ * Superadmin only.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import OpenAI from 'openai'
+import { AI_CONFIG } from '@/lib/ai-config'
 
 export const dynamic    = 'force-dynamic'
 export const maxDuration = 60
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-// ── Known BC extension knowledge base ────────────────────────────────────────
+// ── BC / NAV Extension Knowledge Base ────────────────────────────────────────
 
 const EXTENSION_KB = `
 ## Known BC / NAV Extension Complexity Guide
@@ -84,6 +83,36 @@ const EXTENSION_KB = `
 - Jet/SSRS report conversion: 8–20h per report
 `
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildSpecText(aiSpec: string | null): string {
+  if (!aiSpec) return ''
+  try {
+    const spec = JSON.parse(aiSpec)
+    const lines: string[] = []
+    if (spec.userStory)                   lines.push(`User Story: ${spec.userStory}`)
+    if (spec.complexity)                  lines.push(`Complexity: ${spec.complexity} (est. ${spec.estimatedDays} days)`)
+    if (spec.acceptanceCriteria?.length)  lines.push(`Acceptance criteria:\n${spec.acceptanceCriteria.map((c: string) => `  - ${c}`).join('\n')}`)
+    if (spec.bcObjects?.length)           lines.push(`BC objects involved: ${spec.bcObjects.join(', ')}`)
+    if (spec.assumptions?.length)         lines.push(`Assumptions: ${spec.assumptions.join('; ')}`)
+    return lines.join('\n')
+  } catch { return '' }
+}
+
+function buildDevPlanText(devPlan: string | null): string {
+  if (!devPlan) return ''
+  try {
+    const dp = JSON.parse(devPlan)
+    const lines: string[] = []
+    if (dp.summary)             lines.push(`Summary: ${dp.summary}`)
+    if (dp.totalEstimatedHours) lines.push(`Estimated hours: ${dp.totalEstimatedHours}h`)
+    if (dp.tasks?.length)       lines.push(`Tasks:\n${dp.tasks.map((t: any) => `  - ${t.name}: ${t.hours}h — ${t.notes ?? ''}`).join('\n')}`)
+    return lines.join('\n')
+  } catch { return '' }
+}
+
+// ── Route ─────────────────────────────────────────────────────────────────────
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -92,9 +121,23 @@ export async function POST(
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { question, docContent } = await req.json()
+  if (!AI_CONFIG.enabled || !AI_CONFIG.features.devAssistant)
+    return NextResponse.json({ error: 'AI Dev Assistant is currently disabled' }, { status: 503 })
+
+  const apiKey = AI_CONFIG.provider === 'anthropic'
+    ? process.env.ANTHROPIC_API_KEY
+    : process.env.OPENAI_API_KEY
+
+  if (!apiKey)
+    return NextResponse.json({ error: `No API key set for provider "${AI_CONFIG.provider}"` }, { status: 503 })
+
+  const { question, history = [], docContent } = await req.json()
   if (!question?.trim())
     return NextResponse.json({ error: 'Question is required' }, { status: 400 })
+
+  // Names
+  const adminName  = (session.user as any).name  ?? 'Admin'
+  const adminEmail = (session.user as any).email ?? ''
 
   const requirement = await (prisma as any).requirement.findUnique({
     where: { id: params.id },
@@ -103,71 +146,126 @@ export async function POST(
       user:   { select: { name: true, email: true } },
     },
   })
-
   if (!requirement)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Parse dev plan if available
-  let devPlanText = ''
-  if (requirement.devPlan) {
-    try {
-      const dp = JSON.parse(requirement.devPlan)
-      if (dp.summary)             devPlanText += `Summary: ${dp.summary}\n`
-      if (dp.totalEstimatedHours) devPlanText += `Estimated hours: ${dp.totalEstimatedHours}h\n`
-      if (dp.tasks?.length)       devPlanText += `Tasks:\n${dp.tasks.map((t: any) => `  - ${t.name}: ${t.hours}h — ${t.notes ?? ''}`).join('\n')}\n`
-    } catch { /* ignore */ }
-  }
+  const customerName  = requirement.user?.name  ?? 'Customer'
+  const customerEmail = requirement.user?.email ?? ''
+  const tenantName    = requirement.tenant?.name ?? 'Unknown Tenant'
+  const bcVersion     = requirement.tenant?.navVersion ?? 'unknown'
 
-  // Parse AI spec if available
-  let specText = ''
-  if (requirement.aiSpec) {
-    try {
-      const spec = JSON.parse(requirement.aiSpec)
-      if (spec.userStory)             specText += `User Story: ${spec.userStory}\n`
-      if (spec.complexity)            specText += `Complexity: ${spec.complexity} (est. ${spec.estimatedDays} days)\n`
-      if (spec.acceptanceCriteria?.length) specText += `Acceptance criteria:\n${spec.acceptanceCriteria.map((c: string) => `  - ${c}`).join('\n')}\n`
-      if (spec.bcObjects?.length)     specText += `BC objects involved: ${spec.bcObjects.join(', ')}\n`
-      if (spec.assumptions?.length)   specText += `Assumptions: ${spec.assumptions.join('; ')}\n`
-    } catch { /* ignore */ }
-  }
+  const specText    = buildSpecText(requirement.aiSpec)
+  const devPlanText = buildDevPlanText(requirement.devPlan)
 
   const systemPrompt = `You are a senior Microsoft Dynamics 365 Business Central developer and consultant at BespoxAI.
-Your role is to help draft pricing justifications and effort estimates for BC/NAV customisation projects.
-You give precise, professional answers that can be used directly in customer-facing quote notes.
+You are currently assisting ${adminName} (${adminEmail}) with quoting and reviewing a customisation request.
+
+CUSTOMER: ${customerName} (${customerEmail}) at ${tenantName}
+BC VERSION: ${bcVersion}
 
 REQUIREMENT:
 Title: ${requirement.title}
 Area: ${requirement.bcArea}
 Priority: ${requirement.priority}
 Description: ${requirement.description}
-
-${specText ? `AI SPECIFICATION:\n${specText}` : ''}
-${devPlanText ? `DEVELOPER PLAN:\n${devPlanText}` : ''}
-${requirement.feasibility ? `FEASIBILITY: ${requirement.feasibility} — ${requirement.feasibilityNotes ?? ''}` : ''}
+${specText    ? `\nAI SPECIFICATION:\n${specText}`    : ''}
+${devPlanText ? `\nDEVELOPER PLAN:\n${devPlanText}`   : ''}
+${requirement.feasibility ? `\nFEASIBILITY: ${requirement.feasibility} — ${requirement.feasibilityNotes ?? ''}` : ''}
+${requirement.feasibilityCostRange ? `COST RANGE: ${requirement.feasibilityCostRange}` : ''}
 ${requirement.quote ? `QUOTE AMOUNT: $${requirement.quote} NZD` : ''}
-
-TENANT: ${requirement.tenant.name} (BC version: ${requirement.tenant.navVersion ?? 'unknown'})
+${docContent ? `\nUPLOADED DOCUMENTATION:\n${docContent}` : ''}
 
 ${EXTENSION_KB}
 
-${docContent ? `UPLOADED DOCUMENTATION:\n${docContent}\n` : ''}
+GUIDELINES:
+- Be specific. Reference hours, risks, assumptions, and dependencies from the context above.
+- For internal developer notes: be technical and precise.
+- When drafting customer-facing consultant notes:
+  • Address the customer as ${customerName}
+  • Sign off as ${adminName} from BespoxAI
+  • Keep language professional and value-focused — avoid implementation jargon
+- When estimating effort, use the extension knowledge base and dev plan if available.
+- Do not fabricate specific integration details you are uncertain about — say so explicitly.`
 
-Guidelines:
-- Be specific. Mention hours, risks, assumptions, and dependencies.
-- When drafting a consultant note for the customer, keep it professional and non-technical — explain value, not code.
-- When estimating effort, use the extension knowledge base above and the dev plan if available.
-- Do not fabricate specific integration details you are uncertain about — say so.`
+  // Build message array including full conversation history
+  const messages = [
+    ...history.map((h: { role: string; content: string }) => ({
+      role:    h.role === 'assistant' ? 'assistant' : 'user',
+      content: h.content,
+    })),
+    { role: 'user', content: question },
+  ]
 
-  const completion = await openai.chat.completions.create({
-    model:       'gpt-4o',
-    max_tokens:  800,
-    temperature: 0.4,
+  // ── Anthropic streaming ───────────────────────────────────────────────────
+  if (AI_CONFIG.provider === 'anthropic') {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model:       AI_CONFIG.model,
+        max_tokens:  AI_CONFIG.maxTokens,
+        temperature: AI_CONFIG.temperature,
+        stream:      true,
+        system:      systemPrompt,
+        messages,
+      }),
+    })
+
+    if (!upstream.ok) {
+      const err = await upstream.text()
+      return NextResponse.json({ error: `Anthropic error: ${upstream.status} — ${err}` }, { status: 502 })
+    }
+
+    // Pass the SSE stream straight through
+    return new Response(upstream.body, {
+      headers: {
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-AI-Provider': 'anthropic',
+      },
+    })
+  }
+
+  // ── OpenAI streaming (normalised to same SSE format) ─────────────────────
+  const OpenAI = (await import('openai')).default
+  const openai  = new OpenAI({ apiKey })
+
+  const stream = await openai.chat.completions.create({
+    model:       AI_CONFIG.model,
+    max_tokens:  AI_CONFIG.maxTokens,
+    temperature: AI_CONFIG.temperature,
+    stream:      true,
     messages: [
-      { role: 'system',  content: systemPrompt },
-      { role: 'user',    content: question },
+      { role: 'system', content: systemPrompt },
+      ...messages as any,
     ],
   })
 
-  const answer = completion.choices[0]?.message?.content ?? 'No response generated.'
-  return NextResponse.json({ answer })
+  const encoder = new TextEncoder()
+  const readable = new ReadableStream({
+    async start(controller) {
+      for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content ?? ''
+        if (text) {
+          // Emit in the same SSE shape as Anthropic so the frontend is provider-agnostic
+          const event = { type: 'content_block_delta', delta: { type: 'text_delta', text } }
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        }
+      }
+      controller.enqueue(encoder.encode('data: {"type":"message_stop"}\n\n'))
+      controller.close()
+    },
+  })
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type':  'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'X-AI-Provider': 'openai',
+    },
+  })
 }

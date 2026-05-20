@@ -29,7 +29,7 @@ interface Stats {
   tenants: any[]; topEntities: { entity: string; _count: { entity: number } }[]
 }
 
-type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements'
+type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -311,7 +311,7 @@ function AdminPageInner() {
         </div>
 
         <nav style={{ flex: 1, padding: '12px 10px' }}>
-          {([['overview', 'Overview'], ['tenants', 'Tenants'], ['users', 'Users'], ['entities', 'Entities'], ['signups', 'Signups'], ['requirements', 'Customisations']] as [Tab, string][]).map(([id, label]) => (
+          {([['overview', 'Overview'], ['tenants', 'Tenants'], ['users', 'Users'], ['entities', 'Entities'], ['signups', 'Signups'], ['requirements', 'Customisations'], ['settings', '⚙ AI Setup']] as [Tab, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 10px', borderRadius: 8, marginBottom: 2, border: 'none',
@@ -360,7 +360,7 @@ function AdminPageInner() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--cream)' }}>
         <header style={{ padding: '0 32px', height: 60, flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--fog)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20, color: 'var(--ink)' }}>
-            {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : 'Entities'}
+            {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : 'Entities'}
           </h1>
           <div style={{ display: 'flex', gap: 10 }}>
             {tab === 'tenants' && (
@@ -691,7 +691,12 @@ function AdminPageInner() {
           <AdminRequirementsTab />
         )}
 
-        {tab === 'entities' && (
+        {/* ── AI Setup tab ──────────────────────────────────────────────────── */}
+        {tab === 'settings' && (
+          <AISettingsTab />
+        )}
+
+
             <div style={{ maxWidth: 860 }}>
               {/* Tenant selector */}
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
@@ -1025,6 +1030,9 @@ interface AdminReq {
 }
 
 function AdminRequirementsTab() {
+  const { data: session } = useSession()
+  const adminName  = (session?.user as any)?.name  ?? 'Admin'
+  const adminEmail = (session?.user as any)?.email ?? ''
   const [reqs, setReqs]           = useState<AdminReq[]>([])
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
@@ -1035,12 +1043,12 @@ function AdminRequirementsTab() {
   const [quoteNote, setQuoteNote] = useState('')
   const [showQF, setShowQF]       = useState(false)
 
-  // AI dev-notes panel
-  const [showAiPanel, setShowAiPanel]   = useState(false)
-  const [devQuestion, setDevQuestion]   = useState('')
-  const [devAnswer, setDevAnswer]       = useState('')
-  const [devLoading, setDevLoading]     = useState(false)
-  const [devDocName, setDevDocName]     = useState('')
+  // AI dev-notes panel — conversation history + streaming
+  const [showAiPanel, setShowAiPanel]     = useState(false)
+  const [devQuestion, setDevQuestion]     = useState('')
+  const [devHistory, setDevHistory]       = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [devStreaming, setDevStreaming]    = useState(false)
+  const [devDocName, setDevDocName]       = useState('')
   const [devDocContent, setDevDocContent] = useState('')
   const [showSB, setShowSB]       = useState(false)
   const [sendBackText, setSBT]    = useState('')
@@ -1115,6 +1123,80 @@ function AdminRequirementsTab() {
     finally { setGenPlan(false) }
   }
 
+  // ── AI Dev Assistant — streaming fetch with conversation history ─────────
+  async function askDevAssistant() {
+    if (!selected || !devQuestion.trim() || devStreaming) return
+    const question = devQuestion.trim()
+    setDevQuestion('')
+    setDevStreaming(true)
+
+    // Snapshot history to send (excludes the in-progress assistant message)
+    const historyToSend = devHistory.map(h => ({ role: h.role, content: h.content }))
+
+    // Append user turn + empty assistant placeholder immediately
+    setDevHistory(prev => [
+      ...prev,
+      { role: 'user', content: question },
+      { role: 'assistant', content: '' },
+    ])
+
+    try {
+      const res = await fetch(`/api/requirements/${selected.id}/dev-notes`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ question, history: historyToSend, docContent: devDocContent || undefined }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+        setDevHistory(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { role: 'assistant', content: err.error ?? 'Request failed' }
+          return updated
+        })
+        return
+      }
+
+      const reader  = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let   answer  = ''
+      let   buffer  = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? '' // keep incomplete last line
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const raw = line.slice(6).trim()
+          if (!raw || raw === '[DONE]') continue
+          try {
+            const data = JSON.parse(raw)
+            // Anthropic: content_block_delta / text_delta
+            if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
+              answer += data.delta.text ?? ''
+              setDevHistory(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1] = { role: 'assistant', content: answer }
+                return updated
+              })
+            }
+          } catch { /* malformed chunk — skip */ }
+        }
+      }
+    } catch {
+      setDevHistory(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { role: 'assistant', content: 'Error contacting AI — please try again.' }
+        return updated
+      })
+    } finally {
+      setDevStreaming(false)
+    }
+  }
+
   const filtered = filterStatus === 'all' ? reqs : reqs.filter(r => r.status === filterStatus)
 
   const statusCounts = reqs.reduce((acc: Record<string, number>, r) => {
@@ -1165,6 +1247,8 @@ function AdminRequirementsTab() {
                 setSelected(req)
                 setShowQF(false); setShowSB(false); setPlanErr('')
                 setShowObjectEditor(false); setNewObjectText('')
+                // Reset AI conversation when switching requirements
+                setDevHistory([]); setDevQuestion(''); setShowAiPanel(false)
                 try { setDevPlanData(req.devPlan ? JSON.parse(req.devPlan) : null) } catch { setDevPlanData(null) }
                 try {
                   const s = req.aiSpec ? JSON.parse(req.aiSpec) : null
@@ -1210,7 +1294,7 @@ function AdminRequirementsTab() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             {/* Back to list */}
             <button
-              onClick={() => { setSelected(null); setShowQF(false); setShowSB(false); setShowAiPanel(false); setDevAnswer(''); setDevQuestion('') }}
+              onClick={() => { setSelected(null); setShowQF(false); setShowSB(false); setShowAiPanel(false); setDevHistory([]); setDevQuestion('') }}
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', marginBottom: 14, padding: 0, width: 'fit-content' }}
             >
               ← Back to list
@@ -1587,7 +1671,7 @@ function AdminRequirementsTab() {
             {['in_review', 'quote_rejected', 'submitted'].includes(selected.status) && (
               <div style={{ background: 'rgba(200,149,42,0.05)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 8, overflow: 'hidden' }}>
                 <button
-                  onClick={() => { setShowAiPanel(p => !p); if (showAiPanel) { setDevAnswer(''); setDevQuestion('') } }}
+                  onClick={() => { setShowAiPanel(p => !p); if (showAiPanel) { setDevHistory([]); setDevQuestion('') } }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1601,57 +1685,85 @@ function AdminRequirementsTab() {
                 {showAiPanel && (
                   <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid rgba(200,149,42,0.15)' }}>
 
-                    {/* Quick prompts */}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10 }}>
-                      {[
-                        'Summarise effort and justify a quote for this requirement',
-                        'What are the key risks and dependencies?',
-                        'Draft a professional consultant note for the customer',
-                        'What installation or setup steps are needed?',
-                        'What BC objects will be affected?',
-                      ].map(q => (
-                        <button key={q} onClick={() => setDevQuestion(q)} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: 6, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.2)', color: '#9A6A00', cursor: 'pointer' }}>{q}</button>
-                      ))}
-                    </div>
+                    {/* Quick prompts — only show when no conversation yet */}
+                    {devHistory.length === 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10 }}>
+                        {[
+                          'Summarise effort and justify a quote for this requirement',
+                          'What are the key risks and dependencies?',
+                          `Draft a professional consultant note addressed to ${selected.user?.name ?? 'the customer'}`,
+                          'What installation or setup steps are needed?',
+                          'What BC objects will be affected?',
+                        ].map(q => (
+                          <button key={q} onClick={() => setDevQuestion(q)} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: 6, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.2)', color: '#9A6A00', cursor: 'pointer' }}>{q}</button>
+                        ))}
+                      </div>
+                    )}
 
-                    {/* Question + send */}
+                    {/* Conversation thread */}
+                    {devHistory.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, maxHeight: 420, overflowY: 'auto' }}>
+                        {devHistory.map((msg, i) => (
+                          <div key={i} style={{
+                            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                            maxWidth: '90%',
+                          }}>
+                            {msg.role === 'user' ? (
+                              <div style={{ background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: '10px 10px 2px 10px', padding: '8px 12px' }}>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#7A5000', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
+                              </div>
+                            ) : (
+                              <div style={{ background: 'var(--ink)', borderRadius: '10px 10px 10px 2px', padding: '10px 14px' }}>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  {msg.content}{devStreaming && i === devHistory.length - 1 && msg.content === '' ? <span style={{ opacity: 0.5 }}>▌</span> : devStreaming && i === devHistory.length - 1 ? <span style={{ opacity: 0.5 }}>▌</span> : null}
+                                </p>
+                                {/* Actions on last completed assistant message */}
+                                {msg.role === 'assistant' && !devStreaming && i === devHistory.length - 1 && msg.content && (
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                    <button
+                                      onClick={() => { setQuoteNote(msg.content); setShowQF(true); setShowAiPanel(false) }}
+                                      style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--amber)', background: 'none', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
+                                    >↓ Use as consultant note</button>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(msg.content)}
+                                      style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
+                                    >Copy</button>
+                                    <button
+                                      onClick={() => setDevHistory([])}
+                                      style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', marginLeft: 'auto' }}
+                                    >✕ Clear</button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Question input + send */}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         value={devQuestion}
                         onChange={e => setDevQuestion(e.target.value)}
                         onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey && devQuestion.trim()) {
+                          if (e.key === 'Enter' && !e.shiftKey && devQuestion.trim() && !devStreaming) {
                             e.preventDefault()
-                            ;(async () => {
-                              setDevLoading(true)
-                              try {
-                                const r = await fetch(`/api/requirements/${selected.id}/dev-notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: devQuestion, docContent: devDocContent || undefined }) })
-                                const d = await r.json()
-                                setDevAnswer(d.answer ?? d.error ?? 'No response')
-                              } catch { setDevAnswer('Error contacting AI') }
-                              finally { setDevLoading(false) }
-                            })()
+                            askDevAssistant()
                           }
                         }}
-                        placeholder="Ask about complexity, integrations, risks, or pricing justification…"
+                        placeholder={devHistory.length > 0 ? 'Ask a follow-up…' : 'Ask about complexity, integrations, risks, or pricing justification…'}
                         style={{ ...inputStyle, flex: 1 }}
                         onFocus={e => (e.target.style.borderColor = 'rgba(200,149,42,0.5)')}
                         onBlur={e => (e.target.style.borderColor = 'var(--fog)')}
+                        disabled={devStreaming}
                       />
                       <button
-                        disabled={devLoading || !devQuestion.trim()}
-                        onClick={async () => {
-                          setDevLoading(true)
-                          try {
-                            const r = await fetch(`/api/requirements/${selected.id}/dev-notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: devQuestion, docContent: devDocContent || undefined }) })
-                            const d = await r.json()
-                            setDevAnswer(d.answer ?? d.error ?? 'No response')
-                          } catch { setDevAnswer('Error contacting AI') }
-                          finally { setDevLoading(false) }
-                        }}
-                        style={{ ...btnStyle, background: '#9A6A00', opacity: (devLoading || !devQuestion.trim()) ? 0.6 : 1, whiteSpace: 'nowrap', padding: '9px 14px' }}
+                        disabled={devStreaming || !devQuestion.trim()}
+                        onClick={askDevAssistant}
+                        style={{ ...btnStyle, background: '#9A6A00', opacity: (devStreaming || !devQuestion.trim()) ? 0.6 : 1, whiteSpace: 'nowrap', padding: '9px 14px' }}
                       >
-                        {devLoading ? '…' : 'Ask →'}
+                        {devStreaming ? '…' : 'Ask →'}
                       </button>
                     </div>
 
@@ -1671,27 +1783,6 @@ function AdminRequirementsTab() {
                       {devDocName && <button onClick={() => { setDevDocName(''); setDevDocContent('') }} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>}
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>API docs, spec sheets, integration guides (.txt .md .csv .json)</span>
                     </div>
-
-                    {/* Answer */}
-                    {devAnswer && (
-                      <div style={{ background: 'var(--ink)', borderRadius: 8, padding: '12px 14px' }}>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.85)', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 10 }}>{devAnswer}</p>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            onClick={() => { setQuoteNote(devAnswer); setShowQF(true); setShowAiPanel(false) }}
-                            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--amber)', background: 'none', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
-                          >
-                            ↓ Use as consultant note
-                          </button>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(devAnswer)}
-                            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
-                          >
-                            Copy
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1786,7 +1877,7 @@ function AdminRequirementsTab() {
                     onClick={async () => {
                       await patch(selected.id, { status: 'quoted', quote: quoteAmt, consultantNote: quoteNote || undefined })
                       setShowQF(false); setQuoteAmt(''); setQuoteNote('')
-                      setShowAiPanel(false); setDevAnswer(''); setDevQuestion(''); setDevDocName(''); setDevDocContent('')
+                      setShowAiPanel(false); setDevHistory([]); setDevQuestion(''); setDevDocName(''); setDevDocContent('')
                     }}
                     disabled={!quoteAmt || actionLoading}
                     style={{ ...btnStyle, opacity: (!quoteAmt || actionLoading) ? 0.6 : 1 }}
@@ -1794,7 +1885,7 @@ function AdminRequirementsTab() {
                     Send Quote →
                   </button>
                   <button
-                    onClick={() => { setShowQF(false); setShowAiPanel(false); setDevAnswer(''); setDevQuestion('') }}
+                    onClick={() => { setShowQF(false); setShowAiPanel(false); setDevHistory([]); setDevQuestion('') }}
                     style={{ ...btnStyle, background: 'var(--fog)', color: 'var(--ink)' }}
                   >
                     Cancel
@@ -1806,6 +1897,109 @@ function AdminRequirementsTab() {
           </div>
         )
       })()}
+    </div>
+  )
+}
+
+// ─── AI Settings Tab ─────────────────────────────────────────────────────────
+
+function AISettingsTab() {
+  const [config, setConfig]   = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/ai-config')
+      .then(r => r.json())
+      .then(d => { setConfig(d); setLoading(false) })
+      .catch(() => { setError('Failed to load AI config'); setLoading(false) })
+  }, [])
+
+  const badge = (on: boolean) => (
+    <span style={{
+      fontFamily: 'var(--font-mono)', fontSize: 8, padding: '2px 8px', borderRadius: 6,
+      background: on ? 'rgba(10,92,70,0.08)' : 'rgba(163,45,45,0.08)',
+      border: `1px solid ${on ? 'rgba(10,92,70,0.2)' : 'rgba(163,45,45,0.2)'}`,
+      color: on ? 'var(--forest)' : '#A32D2D', textTransform: 'uppercase' as const, letterSpacing: '0.08em',
+    }}>{on ? 'enabled' : 'disabled'}</span>
+  )
+
+  const row = (label: string, value: React.ReactNode) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--fog)' }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)' }}>{value}</span>
+    </div>
+  )
+
+  if (loading) return <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--slate)' }}>Loading…</p>
+  if (error)   return <p style={{ color: '#A32D2D' }}>{error}</p>
+
+  return (
+    <div style={{ maxWidth: 700, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Status banner */}
+      <div style={{ background: config.enabled ? 'rgba(10,92,70,0.05)' : 'rgba(163,45,45,0.05)', border: `1px solid ${config.enabled ? 'rgba(10,92,70,0.2)' : 'rgba(163,45,45,0.2)'}`, borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 20 }}>{config.enabled ? '✦' : '○'}</span>
+        <div>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: config.enabled ? 'var(--forest)' : '#A32D2D', margin: 0 }}>
+            AI {config.enabled ? 'Active' : 'Disabled'}
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', margin: '2px 0 0' }}>
+            Provider: <strong>{config.provider}</strong> · Model: <strong>{config.model}</strong>
+            {config.provider === 'anthropic' && !config.anthropicKeySet && <span style={{ color: '#A32D2D' }}> · ⚠ ANTHROPIC_API_KEY not set</span>}
+            {config.provider === 'openai' && !config.openaiKeySet && <span style={{ color: '#A32D2D' }}> · ⚠ OPENAI_API_KEY not set</span>}
+          </p>
+        </div>
+      </div>
+
+      {/* Current config */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Current Configuration</p>
+        {row('Master switch',    badge(config.enabled))}
+        {row('Provider',         config.provider)}
+        {row('Model',            config.model)}
+        {row('Max tokens',       config.maxTokens)}
+        {row('Temperature',      config.temperature)}
+        {row('Anthropic API key', badge(config.anthropicKeySet))}
+        {row('OpenAI API key',    badge(config.openaiKeySet))}
+      </div>
+
+      {/* Feature flags */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Feature Flags</p>
+        {config.features && Object.entries(config.features).map(([key, val]) => (
+          row(key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), badge(!!val))
+        ))}
+      </div>
+
+      {/* Env var reference */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>Environment Variables</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 12 }}>
+          Set these in <strong>Vercel Dashboard → Project → Settings → Environment Variables</strong>. Changes take effect on next deployment.
+        </p>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>
+              {['Variable', 'Default', 'Description'].map(h => (
+                <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {config.envVars?.map((v: any) => (
+              <tr key={v.key}>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink)', padding: '7px 8px', borderBottom: '1px solid var(--fog)', verticalAlign: 'top' }}>
+                  {v.key}
+                  {v.sensitive && <span style={{ marginLeft: 6, fontSize: 8, color: 'var(--slate)' }}>🔒</span>}
+                </td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--jade)', padding: '7px 8px', borderBottom: '1px solid var(--fog)', verticalAlign: 'top' }}>{v.default ?? '—'}</td>
+                <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', padding: '7px 8px', borderBottom: '1px solid var(--fog)', verticalAlign: 'top' }}>{v.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
