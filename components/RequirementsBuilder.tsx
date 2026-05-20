@@ -22,6 +22,12 @@ function isIntlCountry(country: string | null | undefined) {
   return (country ?? 'NZ').toUpperCase() !== 'NZ'
 }
 
+function getPaymentDueDate(): string {
+  const now = new Date()
+  const due = new Date(now.getFullYear(), now.getMonth() + 1, 20)
+  return due.toLocaleDateString('en-NZ', { dateStyle: 'long' })
+}
+
 // ── Business config type (mirrors lib/business-config.ts) ────────────────────
 
 export interface Requirement {
