@@ -445,9 +445,9 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                         <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'#1A9272', fontWeight:600 }}>{devRev>0?`$${devRev.toLocaleString()}`:'—'}</span>
                       </div>
                       <div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', display:'flex', gap:12 }}>
-                        {(billing.dev?.thisMonth.deposits.count??0)>0&&<span>Deposits: ${billing.dev.thisMonth.deposits.revenueNZD.toLocaleString()}</span>}
-                        {(billing.dev?.thisMonth.balances.count??0)>0&&<span>Balances: ${billing.dev.thisMonth.balances.revenueNZD.toLocaleString()}</span>}
-                        {(billing.dev?.allTime.totalNZD??0)>0&&<span style={{marginLeft:'auto'}}>All-time: ${billing.dev.allTime.totalNZD.toLocaleString()} NZD</span>}
+                        {(billing.dev?.thisMonth.deposits.count??0)>0&&<span>Deposits: ${billing.dev?.thisMonth.deposits.revenueNZD.toLocaleString()}</span>}
+                        {(billing.dev?.thisMonth.balances.count??0)>0&&<span>Balances: ${billing.dev?.thisMonth.balances.revenueNZD.toLocaleString()}</span>}
+                        {(billing.dev?.allTime.totalNZD??0)>0&&<span style={{marginLeft:'auto'}}>All-time: ${billing.dev?.allTime.totalNZD.toLocaleString()} NZD</span>}
                       </div>
                     </div>
                   )}

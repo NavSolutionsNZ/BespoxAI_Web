@@ -462,7 +462,7 @@ function AdminPageInner() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 700 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--fog)' }}>
-                      {['Tenant', 'Subdomain', 'BC Instance', 'Users', 'Queries', 'Status', 'Terms', ''].map(h => (
+                      {['Tenant', 'Subdomain', 'BC Instance', 'Users', 'Queries', 'Status', 'Tier', 'Terms', ''].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -477,10 +477,6 @@ function AdminPageInner() {
                         <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t._count.queryLogs}</td>
                         <td style={tdStyle}><StatusPill active={t.active} /></td>
                         <td style={tdStyle}>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                          {(t as any).tunnelId && (
-                            <button onClick={() => { setInstallerTenantId(t.id); setInstallerError('') }} style={{ ...ghostBtn, color: 'var(--forest)' }}>↓ Installer</button>
-                          )}
                           <select
                             value={(t as any).tier ?? 'trial'}
                             onChange={e => setTenantTier(t.id, e.target.value)}
@@ -490,20 +486,22 @@ function AdminPageInner() {
                             <option value="paid">Paid</option>
                             <option value="enterprise">Enterprise</option>
                           </select>
+                        </td>
+                        <td style={tdStyle}>
                           <select
                             value={(t as any).paymentTermsKey ?? 'terms1'}
                             onChange={e => setTenantTerms(t.id, e.target.value)}
-                            title="Payment terms"
                             style={{ background: 'var(--cream)', color: 'var(--ink)', border: '1px solid var(--fog)', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
                           >
                             <option value="terms1">T1 · Standard</option>
                             <option value="terms2">T2 · Deposit + Monthly</option>
                             <option value="terms3">T3 · Account (no deposit)</option>
                           </select>
+                        </td>
+                        <td style={tdStyle}>
                           <button onClick={() => toggleTenant(t.id, t.active)} style={{ ...ghostBtn, color: t.active ? '#A32D2D' : 'var(--forest)' }}>
                             {t.active ? 'Deactivate' : 'Activate'}
                           </button>
-                        </div>
                         </td>
                       </tr>
                     ))}
