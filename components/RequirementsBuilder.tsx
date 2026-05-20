@@ -1429,7 +1429,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       {showPayModal && payingReq && payingReq.quote && (()=>{
         const req      = payingReq
         const isDeposit = payFlow === 'deposit'
-        const quote    = parseFloat(req.quote)
+        const quote    = parseFloat(req.quote ?? '0')
         const baseAmt  = isDeposit
           ? Math.round(quote * 0.2 * 100) / 100
           : Math.round((quote - parseFloat(req.depositAmount ?? '0')) * 100) / 100
