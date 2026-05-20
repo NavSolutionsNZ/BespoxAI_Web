@@ -13,6 +13,7 @@ interface Tenant {
   tunnelId: string | null; createdAt: string
   navProduct: string | null; navVersion: string | null; lastCU: string | null
   bcPort: number; agentPort: number
+  _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
   id: string; name: string | null; email: string; role: string; active: boolean; createdAt: string
@@ -190,6 +191,15 @@ export default function SettingsPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
 
+      {/* ── DEBUG BANNER — remove when SETTINGS_DEBUG env var is removed ── */}
+      {tenant?._debug && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#C8952A', color: '#fff', padding: '6px 16px', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>🧪 DEBUG MODE — SETTINGS_DEBUG=true — mock data only — remove env var before production</span>
+          <span style={{ marginLeft: 'auto', opacity: 0.7 }}>API routes return mock responses · DB not touched · installer generates dummy zip</span>
+        </div>
+      )}
+      {/* ── END DEBUG BANNER ── */}
+
       {toast && <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: toast.ok ? 'var(--forest)' : '#A32D2D', color: '#fff', padding: '10px 18px', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,0.25)' }}>{toast.msg}</div>}
 
       {/* ── Sidebar ── */}
@@ -253,7 +263,7 @@ export default function SettingsPage() {
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)' }}>
+      <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)', paddingTop: tenant?._debug ? 32 : 0 }}>
         <div style={{ maxWidth: 820, margin: '0 auto', padding: '40px 32px' }}>
 
           {/* Overview */}

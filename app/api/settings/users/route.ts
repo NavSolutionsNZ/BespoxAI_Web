@@ -3,70 +3,68 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-function isTenantAdmin(role: string) {
-  return role === 'tenant_admin' || role === 'superadmin'
-}
+function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
-function generateTempPassword() {
-  return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!'
-}
+// ── DEBUG MODE ────────────────────────────────────────────────────────────────
+const DEBUG = process.env.SETTINGS_DEBUG === 'true'
+const DEBUG_USERS = [
+  { id: 'debug-u1', name: 'Jane Smith',  email: 'jane@demo.com',  role: 'tenant_admin', active: true,  createdAt: '2026-01-15T00:00:00Z' },
+  { id: 'debug-u2', name: 'Bob Jones',   email: 'bob@demo.com',   role: 'user',         active: true,  createdAt: '2026-02-01T00:00:00Z' },
+  { id: 'debug-u3', name: 'Alice Brown', email: 'alice@demo.com', role: 'user',         active: false, createdAt: '2026-03-10T00:00:00Z' },
+]
+// ── END DEBUG ─────────────────────────────────────────────────────────────────
 
+// GET /api/settings/users — list users for this tenant
 export async function GET() {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  const tenantId = (session.user as any).tenantId
-  const isSuperadmin = role === 'superadmin'
+  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // ── DEBUG ──
+  if (DEBUG) return NextResponse.json({ users: DEBUG_USERS })
+  // ── END DEBUG ──
+
+  const tenantId = (session.user as any).tenantId
   const users = await prisma.user.findMany({
-    where: {
-      tenantId,
-      // tenant_admin: never expose superadmin accounts
-      ...(isSuperadmin ? {} : { role: { not: 'superadmin' } }),
-    },
+    where: { tenantId },
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
   })
   return NextResponse.json({ users })
 }
 
+// POST /api/settings/users — invite a new user
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  const tenantId = (session.user as any).tenantId
+  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const body = await req.json().catch(() => ({}))
   const { email, name, userRole = 'user' } = body
+  if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
+  if (!['user', 'tenant_admin'].includes(userRole)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
 
-  if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 })
+  // ── DEBUG ──
+  if (DEBUG) return NextResponse.json({
+    user: { id: `debug-u${Date.now()}`, name: name || null, email, role: userRole, active: true, createdAt: new Date().toISOString() },
+    tempPassword: 'debug-pass-1234',
+    _debug: true,
+  })
+  // ── END DEBUG ──
 
-  // tenant_admin can only create regular users; superadmin can create tenant_admin too
-  const allowedRoles = role === 'superadmin' ? ['user', 'tenant_admin'] : ['user']
-  if (!allowedRoles.includes(userRole)) {
-    return NextResponse.json({ error: `Cannot create user with role '${userRole}'` }, { status: 403 })
-  }
+  const tenantId = (session.user as any).tenantId
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) return NextResponse.json({ error: 'A user with this email already exists' }, { status: 409 })
 
-  const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
-  if (existing) return NextResponse.json({ error: 'Email already in use' }, { status: 409 })
-
-  const tempPassword = generateTempPassword()
+  const tempPassword = crypto.randomBytes(5).toString('hex')
   const hashed = await bcrypt.hash(tempPassword, 12)
 
   const user = await prisma.user.create({
-    data: {
-      email: email.toLowerCase().trim(),
-      name: name?.trim() || email,
-      password: hashed,
-      role: userRole,
-      tenantId,
-    },
+    data: { email, name: name || null, password: hashed, role: userRole, tenantId, active: true, onboardingDone: true },
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
   })
 

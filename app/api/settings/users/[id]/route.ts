@@ -3,81 +3,75 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-function isTenantAdmin(role: string) {
-  return role === 'tenant_admin' || role === 'superadmin'
-}
+function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
-function generateTempPassword() {
-  return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!'
-}
+// ── DEBUG MODE ────────────────────────────────────────────────────────────────
+const DEBUG = process.env.SETTINGS_DEBUG === 'true'
+// ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-async function getTarget(id: string, tenantId: string) {
-  return prisma.user.findFirst({ where: { id, tenantId } })
-}
-
+// PATCH /api/settings/users/[id] — promote | demote | enable | disable | reset
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  const tenantId = (session.user as any).tenantId
-  const target = await getTarget(params.id, tenantId)
-  if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  if (target.role === 'superadmin')
-    return NextResponse.json({ error: 'Cannot modify a superadmin account' }, { status: 403 })
+  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const { action } = body
+  const action = body.action as string
+  if (!['promote', 'demote', 'enable', 'disable', 'reset'].includes(action))
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
-  if (action === 'disable') {
-    await prisma.user.update({ where: { id: params.id }, data: { active: false } })
-    return NextResponse.json({ ok: true })
+  // ── DEBUG ──
+  if (DEBUG) {
+    if (action === 'reset') return NextResponse.json({ ok: true, tempPassword: 'debug-reset-5678', _debug: true })
+    return NextResponse.json({ ok: true, _debug: true })
   }
-  if (action === 'enable') {
-    await prisma.user.update({ where: { id: params.id }, data: { active: true } })
-    return NextResponse.json({ ok: true })
-  }
-  if (action === 'promote') {
-    // Elevate user → tenant_admin (only tenant_admin or superadmin can do this)
-    await prisma.user.update({ where: { id: params.id }, data: { role: 'tenant_admin' } })
-    return NextResponse.json({ ok: true, role: 'tenant_admin' })
-  }
-  if (action === 'demote') {
-    // Demote tenant_admin → user
-    await prisma.user.update({ where: { id: params.id }, data: { role: 'user' } })
-    return NextResponse.json({ ok: true, role: 'user' })
-  }
+  // ── END DEBUG ──
+
+  const tenantId = (session.user as any).tenantId
+  const selfId   = (session.user as any).id
+
+  // Verify target user belongs to same tenant
+  const target = await prisma.user.findFirst({ where: { id: params.id, tenantId } })
+  if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  if (target.id === selfId && ['disable', 'demote'].includes(action))
+    return NextResponse.json({ error: 'Cannot demote or disable yourself' }, { status: 400 })
+
+  const data: Record<string, any> = {}
+  let tempPassword: string | undefined
+
+  if (action === 'promote') data.role   = 'tenant_admin'
+  if (action === 'demote')  data.role   = 'user'
+  if (action === 'enable')  data.active = true
+  if (action === 'disable') data.active = false
   if (action === 'reset') {
-    const tempPassword = generateTempPassword()
-    const hashed = await bcrypt.hash(tempPassword, 12)
-    await prisma.user.update({ where: { id: params.id }, data: { password: hashed } })
-    return NextResponse.json({ ok: true, tempPassword })
+    tempPassword = crypto.randomBytes(5).toString('hex')
+    data.password = await bcrypt.hash(tempPassword, 12)
   }
 
-  return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+  await prisma.user.update({ where: { id: params.id }, data })
+  return NextResponse.json({ ok: true, ...(tempPassword ? { tempPassword } : {}) })
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+// DELETE /api/settings/users/[id]
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  const tenantId = (session.user as any).tenantId
-  const selfId = (session.user as any).id
+  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Cannot delete yourself
-  if (params.id === selfId) {
-    return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })
-  }
-  const target = await getTarget(params.id, tenantId)
+  // ── DEBUG ──
+  if (DEBUG) return NextResponse.json({ ok: true, _debug: true })
+  // ── END DEBUG ──
+
+  const tenantId = (session.user as any).tenantId
+  const selfId   = (session.user as any).id
+  if (params.id === selfId) return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })
+
+  const target = await prisma.user.findFirst({ where: { id: params.id, tenantId } })
   if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  if (target.role === 'superadmin')
-    return NextResponse.json({ error: 'Cannot delete a superadmin account' }, { status: 403 })
 
   await prisma.user.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })

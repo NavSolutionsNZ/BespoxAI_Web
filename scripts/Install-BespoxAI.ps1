@@ -10,7 +10,7 @@
     This script:
       1. Creates C:\BespoxAI\ directory structure
       2. Downloads cloudflared.exe (Cloudflare Tunnel client)
-      3. Installs BCAgent v2.1 (local NTLM proxy for BC OData)
+      3. Installs BCAgent v2.2 (local NTLM proxy for BC OData)
       4. Writes agent.config.json with your credentials
       5. Installs cloudflared as a Windows service (auto-start)
       6. Installs BCAgent as a scheduled task (auto-start, runs as SYSTEM)
@@ -179,12 +179,12 @@ Write-OK "cloudflared version: $cfVersion"
 
 # ── Step 4: Write BCAgent.ps1 ──────────────────────────────────────────────────
 
-Write-Step 'Installing BCAgent v2.1'
+Write-Step 'Installing BCAgent v2.2'
 
 $AgentCode = @'
 #Requires -Version 5.1
 <#
-  BCAgent v2.1 — BespoxAI local proxy for Business Central OData
+  BCAgent v2.2 — BespoxAI local proxy for Business Central OData
   Validates X-BespoxAI-Key, forwards requests to BC with NTLM auth.
   v2.1 fix: sets Accept-Encoding: identity to prevent gzip issues.
 #>
@@ -215,7 +215,7 @@ $Listener.Prefixes.Add("http://+:$ListenPort/")
 
 try {
     $Listener.Start()
-    Write-Log "BCAgent v2.1 started — listening on port $ListenPort"
+    Write-Log "BCAgent v2.2 started — listening on port $ListenPort"
 } catch {
     Write-Log "FATAL: Could not start listener on port ${ListenPort}: $_"
     exit 1
@@ -280,6 +280,18 @@ while ($Listener.IsListening) {
         $fwdReq.Headers.TryAddWithoutValidation('Accept', 'application/json') | Out-Null
         $fwdReq.Headers.TryAddWithoutValidation('Accept-Encoding', 'identity') | Out-Null  # v2.1 gzip fix
 
+        # v2.2: Forward request body for POST/PATCH/PUT (enables BC management/automation APIs)
+        if ($req.HttpMethod -notin @('GET','HEAD','OPTIONS')) {
+            if ($req.ContentLength64 -gt 0) {
+                $bodyBytes = New-Object byte[] $req.ContentLength64
+                [void]$req.InputStream.Read($bodyBytes, 0, $bodyBytes.Length)
+                $bodyContent = [System.Net.Http.ByteArrayContent]::new($bodyBytes)
+                $ctHeader = if ($req.ContentType) { $req.ContentType } else { 'application/json' }
+                $bodyContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse($ctHeader)
+                $fwdReq.Content = $bodyContent
+            }
+        }
+
         $fwdRes  = $client.SendAsync($fwdReq).GetAwaiter().GetResult()
         $bytes   = $fwdRes.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
         $ct      = if ($fwdRes.Content.Headers.ContentType) { $fwdRes.Content.Headers.ContentType.ToString() } else { 'application/json' }
@@ -323,7 +335,7 @@ $Config = [ordered]@{
     bcPassword = $BCPassword
     bcInstance = $BCInstance
     bcCompany  = $BCCompany
-    version    = '2.1'
+    version    = '2.2'
     installedAt= (Get-Date -Format 'o')
 }
 
@@ -448,7 +460,7 @@ Write-Host '  ╚═════════════════════
 Write-Host ''
 Write-Host '  Services installed:' -ForegroundColor White
 Write-Host "    • cloudflared    — Windows Service  (auto-start)"
-Write-Host "    • BCAgent v2.1   — Scheduled Task   (auto-start at boot)"
+Write-Host "    • BCAgent v2.2   — Scheduled Task   (auto-start at boot)"
 Write-Host ''
 Write-Host '  Files:' -ForegroundColor White
 Write-Host "    • $AgentScript"
