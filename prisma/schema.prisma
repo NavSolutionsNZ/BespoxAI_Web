@@ -33,6 +33,7 @@ model Tenant {
   cancelledAt          DateTime?
   cancellationReason   String?   // billing_error | cancellation_requested | payment_disputed
   cancellationFeedback String?   // feedback + comment from Stripe portal survey
+  paymentTermsKey      String   @default("terms1") // terms1 | terms2 | terms3
   createdAt            DateTime @default(now())
   updatedAt       DateTime @updatedAt
   users               User[]
@@ -250,4 +251,26 @@ model AiConfig {
   cfoChatQuery   Boolean  @default(true)
   updatedAt      DateTime @updatedAt
   updatedBy      String?
+}
+
+model BusinessConfig {
+  id              String   @id @default("default")
+  companyName     String   @default("Nav Solutions NZ")
+  gstNumber       String?
+  email           String   @default("auckland@bespoxai.com")
+  phone           String?
+  website         String   @default("bespoxai.com")
+  address         String?
+  bankName        String?
+  bankAccount     String?
+  bankAccountName String?
+  invoiceFooter   String   @default("Thank you for choosing BespoxAI")
+  terms1Label     String   @default("Standard")
+  terms1Text      String   @default("20% deposit on acceptance; 80% on delivery")
+  terms2Label     String   @default("Deposit + Monthly")
+  terms2Text      String   @default("20% deposit on acceptance; balance due 20th of following month")
+  terms3Label     String   @default("Account")
+  terms3Text      String   @default("Full amount due 20th of the following month")
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
 }

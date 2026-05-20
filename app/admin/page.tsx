@@ -29,7 +29,7 @@ interface Stats {
   tenants: any[]; topEntities: { entity: string; _count: { entity: number } }[]
 }
 
-type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings'
+type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'business'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -158,6 +158,15 @@ function AdminPageInner() {
       ...t, tier,
       trialEndsAt: (tier === 'paid' || tier === 'enterprise') ? null : t.trialEndsAt
     } : t))
+  }
+
+  async function setTenantTerms(id: string, paymentTermsKey: string) {
+    await fetch(`/api/admin/tenants/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentTermsKey }),
+    })
+    setTenants(prev => prev.map(t => t.id === id ? { ...t, paymentTermsKey } as any : t))
   }
 
   async function downloadInstaller(tenantId: string) {
@@ -311,7 +320,7 @@ function AdminPageInner() {
         </div>
 
         <nav style={{ flex: 1, padding: '12px 10px' }}>
-          {([['overview', 'Overview'], ['tenants', 'Tenants'], ['users', 'Users'], ['entities', 'Entities'], ['signups', 'Signups'], ['requirements', 'Customisations'], ['settings', '⚙ AI Setup']] as [Tab, string][]).map(([id, label]) => (
+          {([['overview', 'Overview'], ['tenants', 'Tenants'], ['users', 'Users'], ['entities', 'Entities'], ['signups', 'Signups'], ['requirements', 'Customisations'], ['settings', '⚙ AI Setup'], ['business', '🏢 Business']] as [Tab, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 10px', borderRadius: 8, marginBottom: 2, border: 'none',
@@ -360,7 +369,7 @@ function AdminPageInner() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--cream)' }}>
         <header style={{ padding: '0 32px', height: 60, flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--fog)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20, color: 'var(--ink)' }}>
-            {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : 'Entities'}
+            {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : tab === 'business' ? 'Business Settings' : 'Entities'}
           </h1>
           <div style={{ display: 'flex', gap: 10 }}>
             {tab === 'tenants' && (
@@ -475,16 +484,35 @@ function AdminPageInner() {
                           <select
                             value={(t as any).tier ?? 'trial'}
                             onChange={e => setTenantTier(t.id, e.target.value)}
-                            style={{
-                              background: 'var(--cream)', color: 'var(--ink)',
-                              border: '1px solid var(--fog)', borderRadius: 6,
-                              padding: '3px 8px', fontSize: 11,
-                              fontFamily: 'var(--font-mono)', cursor: 'pointer',
-                            }}
+                            style={{ background: 'var(--cream)', color: 'var(--ink)', border: '1px solid var(--fog)', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
                           >
                             <option value="trial">Trial</option>
                             <option value="paid">Paid</option>
                             <option value="enterprise">Enterprise</option>
+                          </select>
+                          <select
+                            value={(t as any).paymentTermsKey ?? 'terms1'}
+                            onChange={e => setTenantTerms(t.id, e.target.value)}
+                            title="Payment terms"
+                            style={{ background: 'var(--cream)', color: 'var(--ink)', border: '1px solid var(--fog)', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
+                          >
+                            <option value="terms1">T1 Standard</option>
+                            <option value="terms2">T2 Deposit+Monthly</option>
+                            <option value="terms3">T3 Account</option>
+                          </select>
+                          <select
+                            value={(t as any).paymentTermsKey ?? 'terms1'}
+                            onChange={async e => {
+                              const key = e.target.value
+                              await fetch(`/api/admin/tenants/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentTermsKey: key }) })
+                              setTenants(prev => prev.map(x => x.id === t.id ? { ...x, paymentTermsKey: key } as any : x))
+                            }}
+                            title="Payment terms"
+                            style={{ background: 'var(--cream)', color: 'var(--ink)', border: '1px solid var(--fog)', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
+                          >
+                            <option value="terms1">T1 · Standard</option>
+                            <option value="terms2">T2 · Deposit + Monthly</option>
+                            <option value="terms3">T3 · Account (no deposit)</option>
                           </select>
                           <button onClick={() => toggleTenant(t.id, t.active)} style={{ ...ghostBtn, color: t.active ? '#A32D2D' : 'var(--forest)' }}>
                             {t.active ? 'Deactivate' : 'Activate'}
@@ -694,6 +722,11 @@ function AdminPageInner() {
         {/* ── AI Setup tab ──────────────────────────────────────────────────── */}
         {tab === 'settings' && (
           <AISettingsTab />
+        )}
+
+        {/* ── Business Settings tab ─────────────────────────────────────────── */}
+        {tab === 'business' && (
+          <BusinessSettingsTab />
         )}
 
         {tab === 'entities' && (
@@ -2240,6 +2273,127 @@ function AISettingsTab() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Business Settings Tab ────────────────────────────────────────────────────
+
+function BusinessSettingsTab() {
+  const [form, setForm]     = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+  const [error, setError]   = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/business-config').then(r => r.json()).then(d => { setForm(d); setLoading(false) })
+      .catch(() => { setError('Failed to load'); setLoading(false) })
+  }, [])
+
+  async function handleSave() {
+    setSaving(true); setSaved(false); setError('')
+    try {
+      const res = await fetch('/api/admin/business-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const d   = await res.json()
+      if (!res.ok) { setError(d.error ?? 'Save failed'); return }
+      setForm(d); setSaved(true); setTimeout(() => setSaved(false), 3000)
+    } catch { setError('Network error') }
+    finally { setSaving(false) }
+  }
+
+  function field(label: string, key: string, placeholder?: string, hint?: string) {
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>{label}</label>
+        <input
+          value={form?.[key] ?? ''}
+          onChange={e => setForm((f: any) => ({ ...f, [key]: e.target.value }))}
+          placeholder={placeholder ?? ''}
+          style={{ width: '100%', background: 'var(--cream)', border: '1px solid var(--fog)', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' as const }}
+        />
+        {hint && <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{hint}</p>}
+      </div>
+    )
+  }
+
+  function termsField(key: 'terms1' | 'terms2' | 'terms3', labelKey: string, textKey: string, hint: string) {
+    return (
+      <div style={{ background: 'var(--cream)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          <div style={{ flex: '0 0 160px' }}>
+            <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 4 }}>{key.toUpperCase()} Label</label>
+            <input value={form?.[labelKey] ?? ''} onChange={e => setForm((f: any) => ({ ...f, [labelKey]: e.target.value }))}
+              style={{ width: '100%', background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 7, padding: '7px 10px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--ink)', outline: 'none' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 4 }}>Terms Text (shown on invoices)</label>
+            <input value={form?.[textKey] ?? ''} onChange={e => setForm((f: any) => ({ ...f, [textKey]: e.target.value }))}
+              style={{ width: '100%', background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 7, padding: '7px 10px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--ink)', outline: 'none' }} />
+          </div>
+        </div>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', margin: 0 }}>{hint}</p>
+      </div>
+    )
+  }
+
+  if (loading) return <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--slate)' }}>Loading…</p>
+  if (!form)   return <p style={{ color: '#A32D2D' }}>{error}</p>
+
+  return (
+    <div style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Save bar */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+        {saved  && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+        {error  && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D' }}>{error}</span>}
+        <button onClick={handleSave} disabled={saving} style={{ background: 'var(--forest)', color: 'var(--white)', border: 'none', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, opacity: saving ? 0.7 : 1 }}>
+          {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Company details */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 14 }}>Company Details</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <div>{field('Company Name', 'companyName', 'Nav Solutions NZ')}</div>
+          <div>{field('GST Number', 'gstNumber', 'e.g. 123-456-789')}</div>
+          <div>{field('Invoice Email', 'email', 'auckland@bespoxai.com')}</div>
+          <div>{field('Phone', 'phone', 'e.g. +64 9 000 0000')}</div>
+          <div>{field('Website', 'website', 'bespoxai.com')}</div>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Address</label>
+          <textarea value={form?.address ?? ''} onChange={e => setForm((f: any) => ({ ...f, address: e.target.value }))}
+            placeholder="e.g. Level 1, 1 Queen Street, Auckland 1010"
+            rows={2}
+            style={{ width: '100%', background: 'var(--cream)', border: '1px solid var(--fog)', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--ink)', outline: 'none', resize: 'vertical', boxSizing: 'border-box' as const }} />
+        </div>
+        <div style={{ marginTop: 14 }}>
+          {field('Invoice Footer', 'invoiceFooter', 'Thank you for choosing BespoxAI')}
+        </div>
+      </div>
+
+      {/* Bank details */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>Bank Details</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 14 }}>Shown only on bank transfer invoices.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
+          <div>{field('Bank Name', 'bankName', 'e.g. ANZ')}</div>
+          <div>{field('Account Name', 'bankAccountName', 'e.g. Nav Solutions NZ Ltd')}</div>
+          <div>{field('Account Number', 'bankAccount', 'e.g. 01-1234-5678901-00')}</div>
+        </div>
+      </div>
+
+      {/* Payment terms */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>Payment Terms</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 14 }}>Assign terms to each tenant in the Tenants tab. Terms text appears on invoices.</p>
+        {termsField('terms1', 'terms1Label', 'terms1Text', 'T1 · Default. 20% deposit on acceptance, 80% on completion. Stripe and bank transfer available for both.')}
+        {termsField('terms2', 'terms2Label', 'terms2Text', 'T2 · Deposit required upfront. Balance due 20th of following month via bank transfer only.')}
+        {termsField('terms3', 'terms3Label', 'terms3Text', 'T3 · No upfront payment. Full amount due 20th of following month via bank transfer only.')}
+      </div>
+
     </div>
   )
 }

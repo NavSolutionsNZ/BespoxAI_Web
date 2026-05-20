@@ -1,24 +1,22 @@
 /**
  * POST /api/requirements/[id]/pay-deposit
  *
- * Creates a Stripe Checkout session for the 20% deposit on an accepted quote.
- * Accepts { withSurcharge: boolean } — when true, the Stripe processing fee is
- * added as a separate line item so the merchant receives the full deposit amount.
- * Tenant country determines domestic vs international rate.
+ * Handles deposit payment on quote acceptance.
+ * - Terms 1/2: Stripe checkout (with optional surcharge) or bank transfer invoice flag
+ * - Terms 3:   Auto-advances to deposit_paid (no payment required)
+ * GST (15%) is added to all Stripe charges. Merchant receives the base amount.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { stripe } from '@/lib/stripe'
-import { prisma } from '@/lib/db'
+import { getServerSession }          from 'next-auth'
+import { authOptions }               from '@/lib/auth'
+import { stripe }                    from '@/lib/stripe'
+import { prisma }                    from '@/lib/db'
 import { calcSurcharge, surchargeDescription, isInternationalCountry } from '@/lib/stripe-fees'
+import { requiresDeposit, GST_RATE } from '@/lib/business-config'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -29,10 +27,7 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:   { id: requirementId },
-    include: {
-      user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true, country: true, stripeCustomerId: true } },
-    },
+    include: { tenant: { select: { name: true, country: true, stripeCustomerId: true, paymentTermsKey: true } } },
   })
 
   if (!requirement)
@@ -44,50 +39,56 @@ export async function POST(
   if (!requirement.quote)
     return NextResponse.json({ error: 'No quote amount set' }, { status: 400 })
 
-  const quoteAmount   = parseFloat(requirement.quote.toString())
-  const depositBase   = Math.round(quoteAmount * 0.2 * 100) / 100
-  const isIntl        = isInternationalCountry(requirement.tenant?.country)
-  const fees          = calcSurcharge(depositBase, isIntl)
+  const termsKey    = requirement.tenant?.paymentTermsKey ?? 'terms1'
+  const quoteAmount = parseFloat(requirement.quote.toString())
+  const depositBase = Math.round(quoteAmount * 0.2 * 100) / 100
 
-  // Mark quote as accepted and record deposit amount
+  // ── Terms 3: no deposit required — auto-advance ───────────────────────────
+  if (!requiresDeposit(termsKey)) {
+    await (prisma as any).requirement.update({
+      where: { id: requirementId },
+      data: {
+        quoteApprovedAt: new Date(),
+        depositAmount:   '0.00',
+        depositPaidAt:   new Date(),
+        depositBypassed: true,
+        status:          'deposit_paid',
+      },
+    })
+    return NextResponse.json({ autoAdvanced: true, termsKey })
+  }
+
+  // ── Terms 1/2: Stripe checkout ────────────────────────────────────────────
+  const isIntl    = isInternationalCountry(requirement.tenant?.country)
+  const depositWithGst = Math.round(depositBase * (1 + GST_RATE) * 100) / 100
+  const fees      = calcSurcharge(depositWithGst, isIntl)
+
+  // Record quote acceptance and deposit amount (excl. GST)
   await (prisma as any).requirement.update({
     where: { id: requirementId },
-    data: {
-      quoteApprovedAt: new Date(),
-      depositAmount:   depositBase.toFixed(2),
-    },
+    data: { quoteApprovedAt: new Date(), depositAmount: depositBase.toFixed(2) },
   })
 
   // Ensure Stripe customer record
   let customerId = requirement.tenant?.stripeCustomerId as string | null
   if (!customerId) {
     const customer = await stripe.customers.create({
-      email:    user.email,
-      name:     requirement.tenant?.name ?? '',
+      email: user.email, name: requirement.tenant?.name ?? '',
       metadata: { tenantId: user.tenantId },
     })
     customerId = customer.id
-    await (prisma as any).tenant.update({
-      where: { id: user.tenantId },
-      data:  { stripeCustomerId: customerId },
-    })
+    await (prisma as any).tenant.update({ where: { id: user.tenantId }, data: { stripeCustomerId: customerId } })
   }
 
   const origin = req.headers.get('origin') ?? 'https://bespoxai.com'
-
-  const lineItems: any[] = [
-    {
-      price_data: {
-        currency:     'nzd',
-        product_data: {
-          name:        `Development Deposit — ${requirement.title}`,
-          description: `20% deposit on $${quoteAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })} NZD quote. Balance due on completion.`,
-        },
-        unit_amount: Math.round(depositBase * 100),
-      },
-      quantity: 1,
+  const lineItems: any[] = [{
+    price_data: {
+      currency:     'nzd',
+      product_data: { name: `Development Deposit — ${requirement.title}`, description: `20% deposit incl. GST on $${quoteAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })} NZD quote.` },
+      unit_amount:  Math.round(depositWithGst * 100),
     },
-  ]
+    quantity: 1,
+  }]
 
   if (withSurcharge) {
     lineItems.push({
@@ -101,23 +102,15 @@ export async function POST(
   }
 
   const checkoutSession = await stripe.checkout.sessions.create({
-    customer:    customerId,
-    mode:        'payment',
-    line_items:  lineItems,
+    customer: customerId, mode: 'payment', line_items: lineItems,
     success_url: `${origin}/dashboard?view=customisations&deposit=paid`,
     cancel_url:  `${origin}/dashboard?view=customisations`,
-    metadata: {
-      paymentType:   'requirement_deposit',
-      requirementId,
-      tenantId:      user.tenantId,
-    },
+    metadata: { paymentType: 'requirement_deposit', requirementId, tenantId: user.tenantId },
   })
 
   return NextResponse.json({
-    checkoutUrl:  checkoutSession.url,
-    depositBase,
-    surcharge:    fees.surcharge,
-    totalCharged: fees.totalCharged,
-    isIntl,
+    checkoutUrl: checkoutSession.url,
+    depositBase, depositWithGst,
+    surcharge: fees.surcharge, totalCharged: fees.totalCharged, isIntl,
   })
 }
