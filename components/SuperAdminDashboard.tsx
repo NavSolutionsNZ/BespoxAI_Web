@@ -41,6 +41,12 @@ interface BillingStats {
     thisMonth: { count: number; revenueNZD: number }
     list: { tenant: string; customer: string; title: string; paidAt: string; amountNZD: number }[]
   }
+  dev?: {
+    allTime:   { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
+    thisMonth: { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
+    recentDeposits: { tenant: string; title: string; paidAt: string; amountNZD: number }[]
+    recentBalances: { tenant: string; title: string; paidAt: string; amountNZD: number }[]
+  }
 }
 
 interface TenantHealth {
@@ -249,7 +255,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
         {/* Revenue this month */}
         <div style={{ background:'rgba(10,92,70,0.05)', border:'1px solid rgba(10,92,70,0.18)', borderRadius:12, padding:'18px 20px' }}>
           <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>Revenue / month</div>
-          <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:'var(--forest)', lineHeight:1 }}>${((billing?.newMonth.valueNZD??0)+(billing?.reviews.thisMonth.revenueNZD??0)).toLocaleString()}</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:'var(--forest)', lineHeight:1 }}>${((billing?.newMonth.valueNZD??0)+(billing?.reviews.thisMonth.revenueNZD??0)+(billing?.dev?.thisMonth.totalNZD??0)).toLocaleString()}</div>
           <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:6 }}>subscriptions + spec reviews</div>
         </div>
         {/* Registered / Online — split card with drill-down */}
