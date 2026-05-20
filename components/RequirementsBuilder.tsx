@@ -427,9 +427,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     const hasReviewCredit  = isDeposit && !!(req.reviewPaidAt)
     const invoiceTitle     = isDeposit ? '20% Deposit — Due Now' : 'Balance Payment — Due Now'
     const invoiceSubtitle  = isDeposit ? '20% deposit on acceptance; 80% on delivery' : 'Balance payment on completion'
-    const paymentNote      = isDeposit
-      ? \`Please pay by bank transfer and reference <strong>\${invoiceNum}</strong>\${po ? \` and PO <strong>\${po.replace(/</g,'&lt;')}</strong>\` : ''} on your payment. Email <strong>auckland@bespoxai.com</strong> to confirm receipt and we will begin development scheduling.\${hasReviewCredit ? ' Your $249 specification review fee has been credited against the project total.' : ''}\`
-      : \`Please arrange balance payment by bank transfer, referencing <strong>\${invoiceNum}</strong>\${po ? \` and PO <strong>\${po.replace(/</g,'&lt;')}</strong>\` : ''}. Email <strong>auckland@bespoxai.com</strong> to confirm — delivery of your customisation will follow.\`
+    const depositNote = `Please pay by bank transfer and reference <strong>${invoiceNum}</strong>${po ? ` and PO <strong>${po.replace(/</g,'&lt;')}</strong>` : ''} on your payment. Email <strong>auckland@bespoxai.com</strong> to confirm receipt and we will begin development scheduling.${hasReviewCredit ? ' Your $249 specification review fee has been credited against the project total.' : ''}`
+    const balanceNote = `Please arrange balance payment by bank transfer, referencing <strong>${invoiceNum}</strong>${po ? ` and PO <strong>${po.replace(/</g,'&lt;')}</strong>` : ''}. Email <strong>auckland@bespoxai.com</strong> to confirm — delivery of your customisation will follow.`
+    const paymentNote = isDeposit ? depositNote : balanceNote
 
     const w = window.open('', '_blank')!
     w.document.write(`<!DOCTYPE html>
