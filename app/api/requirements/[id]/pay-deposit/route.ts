@@ -41,7 +41,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const termsKey    = requirement.tenant?.paymentTermsKey ?? 'terms1'
   const quoteAmount = parseFloat(requirement.quote.toString())
-  const depositBase = Math.round(quoteAmount * 0.2 * 100) / 100
+  const reviewCredit = requirement.reviewPaidAt ? 249 : 0
+  const depositBase = Math.max(0, Math.round((quoteAmount * 0.2 - reviewCredit) * 100) / 100)
 
   // ── Terms 3: no deposit required — auto-advance ───────────────────────────
   if (!requiresDeposit(termsKey)) {

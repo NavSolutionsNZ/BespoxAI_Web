@@ -455,16 +455,16 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     paymentMethod: 'stripe' | 'bank_transfer' = 'bank_transfer',
     paidAt?: string | null
   ) {
-    const biz           = bizConfig ?? {}
-    const companyName   = biz.companyName   ?? 'Nav Solutions NZ'
-    const gstNumber     = biz.gstNumber     ?? null
-    const bizEmail      = biz.email         ?? 'auckland@bespoxai.com'
-    const bizWebsite    = biz.website       ?? 'bespoxai.com'
-    const bizAddress    = biz.address       ?? ''
-    const bankName      = biz.bankName      ?? ''
-    const bankAccount   = biz.bankAccount   ?? ''
-    const bankAccName   = biz.bankAccountName ?? ''
-    const footer        = biz.invoiceFooter ?? 'Thank you for choosing BespoxAI'
+    const biz           = bizConfig
+    const companyName   = biz?.companyName   ?? 'Nav Solutions NZ'
+    const gstNumber     = biz?.gstNumber     ?? null
+    const bizEmail      = biz?.email         ?? 'auckland@bespoxai.com'
+    const bizWebsite    = biz?.website       ?? 'bespoxai.com'
+    const bizAddress    = biz?.address       ?? ''
+    const bankName      = biz?.bankName      ?? ''
+    const bankAccount   = biz?.bankAccount   ?? ''
+    const bankAccName   = biz?.bankAccountName ?? ''
+    const footer        = biz?.invoiceFooter ?? 'Thank you for choosing BespoxAI'
 
     // Terms text
     const termsKey      = req.tenant.paymentTermsKey ?? 'terms1'
@@ -478,12 +478,17 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     const invoiceNum    = `BX-${new Date().getFullYear()}-${req.id.slice(0, 6).toUpperCase()}`
     const dateStr       = new Date().toLocaleDateString('en-NZ', { dateStyle: 'long' })
     const quote         = parseFloat(req.quote ?? '0')
-    const paymentAmt    = parseFloat(amtStr)
-    const gstAmt        = Math.round(paymentAmt * 0.15 * 100) / 100
-    const totalInclGST  = paymentAmt + gstAmt
-    const depositPd     = isDeposit ? paymentAmt : parseFloat(req.depositAmount ?? '0')
-    const balanceExcl   = quote - depositPd
     const hasReviewCredit = isDeposit && !!(req.reviewPaidAt)
+    const reviewCredit  = hasReviewCredit ? 249 : 0
+    // amtStr is passed in — for deposit invoices it should already reflect the credit
+    // but we recalculate here to be safe
+    const paymentAmt    = isDeposit
+      ? Math.max(0, Math.round((quote * 0.2 - reviewCredit) * 100) / 100)
+      : parseFloat(amtStr)
+    const gstAmt        = Math.round(paymentAmt * 0.15 * 100) / 100
+    const totalInclGST  = Math.round((paymentAmt + gstAmt) * 100) / 100
+    const depositPd     = isDeposit ? paymentAmt : parseFloat(req.depositAmount ?? '0')
+    const balanceExcl   = quote - (isDeposit ? quote * 0.2 : depositPd)
 
     const invoiceTitle  = isDeposit ? (monthly ? 'Amount Due' : '20% Deposit — Due Now') : 'Balance — Due Now'
     const dueLine       = dueDate ? `Payment due: ${dueDate}` : (isDeposit ? '' : 'Due on completion')
@@ -1537,8 +1542,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
         const isDeposit = payFlow === 'deposit'
         const termsKey  = req.tenant.paymentTermsKey
         const quote     = parseFloat(req.quote ?? '0')
+        const reviewCredit = isDeposit && req.reviewPaidAt ? 249 : 0
         const baseAmt   = isDeposit
-          ? Math.round(quote * 0.2 * 100) / 100
+          ? Math.max(0, Math.round((quote * 0.2 - reviewCredit) * 100) / 100)
           : Math.round((quote - parseFloat(req.depositAmount ?? '0')) * 100) / 100
         const gstAmt    = Math.round(baseAmt * GST_RATE * 100) / 100
         const totalInclGst = Math.round((baseAmt + gstAmt) * 100) / 100
@@ -1570,20 +1576,21 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Amount summary */}
               <div style={{background:accentBg,border:`1px solid ${accentBdr}`,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
                 {(isDeposit ? [
-                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'20% deposit (excl. GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'Total deposit incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
+                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  ...(reviewCredit ? [{label:'Spec review fee — credited', amt:`− $249.00 NZD`, bold:false, credit:true}] : []),
+                  {label:'20% deposit (excl. GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Total deposit incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true, credit:false},
                 ] : [
-                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'Deposit paid', amt:`$${parseFloat(req.depositAmount??'0').toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'Balance (excl. GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                  {label:'Total balance incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
+                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Deposit paid', amt:`$${parseFloat(req.depositAmount??'0').toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Balance (excl. GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Total balance incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true, credit:false},
                 ]).map((r,i,arr)=>(
                   <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<arr.length-1?`1px solid ${accentBdr}`:'none'}}>
-                    <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)'}}>{r.label}</span>
-                    <span style={{fontFamily:'var(--font-mono)',fontSize:r.bold?14:12,fontWeight:r.bold?700:400,color:r.bold?accentColor:'var(--ink)'}}>{r.amt}</span>
+                    <span style={{fontFamily:'var(--font-body)',fontSize:12,color:r.credit?'var(--forest)':'var(--slate)'}}>{r.label}</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:r.bold?14:12,fontWeight:r.bold?700:400,color:r.bold?accentColor:r.credit?'var(--forest)':'var(--ink)'}}>{r.amt}</span>
                   </div>
                 ))}
                 {isBankOnly && (
@@ -1596,11 +1603,20 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
               {/* Terms 3 deposit — accept only, no payment */}
               {isAutoAdvance && (
-                <div style={{background:'rgba(10,92,70,0.05)',border:'1px solid rgba(10,92,70,0.18)',borderRadius:10,padding:'14px 16px',marginBottom:20}}>
-                  <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.65,margin:0}}>
-                    By accepting, you agree to the payment terms: <strong>{termsText}</strong>.
-                    Development will begin immediately upon acceptance.
-                  </p>
+                <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:20}}>
+                  <div style={{background:'rgba(10,92,70,0.05)',border:'1px solid rgba(10,92,70,0.18)',borderRadius:10,padding:'14px 16px'}}>
+                    <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.65,margin:0}}>
+                      Development will begin immediately upon acceptance, under your account payment terms: <strong>{termsText}</strong>.
+                    </p>
+                  </div>
+                  <div style={{background:'rgba(163,45,45,0.05)',border:'1px solid rgba(163,45,45,0.2)',borderRadius:10,padding:'14px 16px'}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'#A32D2D',marginBottom:8,fontWeight:600}}>⚠ Important — Please Read</p>
+                    <ul style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',lineHeight:1.75,paddingLeft:16,margin:0}}>
+                      <li>By proceeding, you accept full liability for the <strong>20% deposit ({reviewCredit ? `$${Math.max(0,quote*0.2-249).toLocaleString('en-NZ',{minimumFractionDigits:2})}` : `$${(quote*0.2).toLocaleString('en-NZ',{minimumFractionDigits:2})}`} NZD)</strong> even if you cancel before work is complete.</li>
+                      <li style={{marginTop:6}}>If you cancel <strong>after 24 hours</strong> from acceptance, you are liable for the <strong>full development cost (${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD excl. GST)</strong>.</li>
+                      <li style={{marginTop:6}}>An invoice will be issued for the balance due on the 20th of the following month.</li>
+                    </ul>
+                  </div>
                 </div>
               )}
 
