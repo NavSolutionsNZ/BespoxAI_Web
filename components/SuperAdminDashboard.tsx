@@ -120,6 +120,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
   const [loading,      setLoading]      = useState(true)
   const [billing,      setBilling]      = useState<BillingStats | null>(null)
   const [showTenantDrill, setShowTenantDrill] = useState(false)
+  const [showAttentionDrill, setShowAttentionDrill] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -175,10 +176,69 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
       {/* ── Primary KPIs ─────────────────────────────────────────────────── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:14 }}>
         {/* Needs Attention */}
-        <div style={{ background:totalAttention>0?'rgba(163,45,45,0.06)':'var(--white)', border:`1px solid ${totalAttention>0?'rgba(163,45,45,0.2)':'var(--fog)'}`, borderRadius:12, padding:'18px 20px' }}>
-          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>Needs attention</div>
-          <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:totalAttention>0?'#A32D2D':'var(--ink)', lineHeight:1 }}>{totalAttention}</div>
-          {totalAttention>0&&<div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#A32D2D', marginTop:6, letterSpacing:'0.1em', textTransform:'uppercase' }}>action required</div>}
+        <div
+          onClick={() => totalAttention > 0 && setShowAttentionDrill(d => !d)}
+          style={{ background:totalAttention>0?'rgba(163,45,45,0.06)':'var(--white)', border:`1px solid ${totalAttention>0?'rgba(163,45,45,0.2)':'var(--fog)'}`, borderRadius:12, padding:'18px 20px', cursor: totalAttention > 0 ? 'pointer' : 'default', transition: 'box-shadow 0.15s', gridColumn: showAttentionDrill ? '1 / -1' : undefined }}
+          onMouseEnter={e => { if (totalAttention > 0) e.currentTarget.style.boxShadow = '0 2px 12px rgba(163,45,45,0.12)' }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>Needs attention</div>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:totalAttention>0?'#A32D2D':'var(--ink)', lineHeight:1 }}>{totalAttention}</div>
+              {totalAttention>0&&<div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#A32D2D', marginTop:6, letterSpacing:'0.1em', textTransform:'uppercase' }}>action required · click to {showAttentionDrill ? 'collapse' : 'expand'}</div>}
+            </div>
+            {totalAttention > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                {Object.entries(
+                  attentionReqs.reduce((acc: Record<string, number>, r) => { acc[ATTENTION[r.status]?.label ?? r.status] = (acc[ATTENTION[r.status]?.label ?? r.status] ?? 0) + 1; return acc }, {})
+                ).map(([label, count]) => (
+                  <span key={label} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#A32D2D', background: 'rgba(163,45,45,0.08)', border: '1px solid rgba(163,45,45,0.15)', borderRadius: 5, padding: '2px 8px' }}>
+                    {count} {label}
+                  </span>
+                ))}
+                {newEnquiries.length > 0 && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#1A9272', background: 'rgba(26,146,114,0.08)', border: '1px solid rgba(26,146,114,0.2)', borderRadius: 5, padding: '2px 8px' }}>{newEnquiries.length} Migration Enquiry</span>}
+                {signups.length > 0 && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', background: 'var(--cream)', border: '1px solid var(--fog)', borderRadius: 5, padding: '2px 8px' }}>{signups.length} Signup Request</span>}
+              </div>
+            )}
+          </div>
+
+          {/* Inline drill-down */}
+          {showAttentionDrill && totalAttention > 0 && (
+            <div style={{ marginTop: 16, borderTop: '1px solid rgba(163,45,45,0.15)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {attentionReqs.map(req => {
+                const s = ATTENTION[req.status]
+                return (
+                  <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'rgba(255,255,255,0.6)', borderRadius: 8, border: `1px solid ${s.border}` }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, fontWeight: 600 }}>{s.label}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>· {req.tenant.name}</span>
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{req.title}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', marginTop: 2 }}>{req.user.name || req.user.email} · updated {relativeTime(req.updatedAt)}</div>
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); onNavigate('requirements') }} style={{ flexShrink: 0, background: 'none', border: `1px solid ${s.border}`, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, color: s.color, whiteSpace: 'nowrap' }}>
+                      {s.action} →
+                    </button>
+                  </div>
+                )
+              })}
+              {newEnquiries.length > 0 && newEnquiries.map(enq => (
+                <div key={enq.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'rgba(255,255,255,0.6)', borderRadius: 8, border: '1px solid rgba(26,146,114,0.2)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', color: '#1A9272', fontWeight: 600 }}>Migration Enquiry</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>· {enq.tenant.name}</span>
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{enq.version} · {enq.users} users</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', marginTop: 2 }}>{enq.contactName || enq.user.email} · {enq.phone} · {relativeTime(enq.createdAt)}</div>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); updateEnquiryStatus(enq.id, 'contacted') }} style={{ flexShrink: 0, background: '#1A9272', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9 }}>Mark contacted</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {/* MRR */}
         <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'18px 20px' }}>

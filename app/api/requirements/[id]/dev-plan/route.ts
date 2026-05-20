@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import OpenAI from 'openai'
+import { getAiConfig } from '@/lib/ai-config'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -318,20 +319,33 @@ export async function POST(
 
   let plan: object
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      temperature: 0.2,
-      max_tokens: 4096,
-      messages: [
-        { role: 'system', content: DEV_PLAN_SYSTEM },
-        { role: 'user',   content: prompt },
-      ],
-    })
-    const raw     = completion.choices[0]?.message?.content ?? ''
+    const cfg = await getAiConfig()
+    const apiKey = cfg.provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error(`No API key for provider "${cfg.provider}"`)
+
+    let raw = ''
+    if (cfg.provider === 'anthropic') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: cfg.model, max_tokens: cfg.maxTokens, temperature: cfg.temperature, system: DEV_PLAN_SYSTEM, messages: [{ role: 'user', content: prompt }] }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error?.message ?? `Anthropic error ${res.status}`)
+      raw = d.content?.[0]?.text ?? ''
+      const { logAiUsage } = await import('@/lib/ai-usage')
+      logAiUsage({ tenantId: req_data.tenant.id, requirementId: params.id, feature: 'dev_plan', model: cfg.model, inputTokens: d.usage?.input_tokens ?? 0, outputTokens: d.usage?.output_tokens ?? 0 })
+    } else {
+      const openai = new OpenAI({ apiKey })
+      const completion = await openai.chat.completions.create({
+        model: cfg.model, temperature: cfg.temperature, max_tokens: cfg.maxTokens,
+        messages: [{ role: 'system', content: DEV_PLAN_SYSTEM }, { role: 'user', content: prompt }],
+      })
+      raw = completion.choices[0]?.message?.content ?? ''
+      const { logAiUsage } = await import('@/lib/ai-usage')
+      logAiUsage({ tenantId: req_data.tenant.id, requirementId: params.id, feature: 'dev_plan', model: cfg.model, inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 })
+    }
     if (!raw) throw new Error('Empty response from AI')
-    // Log usage (fire and forget)
-    const { logAiUsage } = await import('@/lib/ai-usage')
-    logAiUsage({ tenantId: req_data.tenant.id, requirementId: params.id, feature: 'dev_plan', model: 'gpt-4o', inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 })
     const cleaned = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim()
     try {
       plan = JSON.parse(cleaned)

@@ -2228,7 +2228,7 @@ function AISettingsTab() {
                 {usage.byFeature.map((f: any) => (
                   <div key={f.feature} style={{ background: 'var(--cream)', borderRadius: 8, padding: '8px 12px', flex: '1 1 140px' }}>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--jade)', margin: 0 }}>{f.feature.replace(/_/g, ' ')}</p>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--ink)', margin: '3px 0 0' }}>{f.requests} req</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--ink)', margin: '3px 0 0' }}>{f.requests} requests</p>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '2px 0 0' }}>{(f.inputTokens + f.outputTokens).toLocaleString()} tokens</p>
                   </div>
                 ))}

@@ -6,11 +6,11 @@ import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { getEntitiesSummary } from '@/lib/bc-entities'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
+import { getAiConfig } from '@/lib/ai-config'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,7 +76,35 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // 3. Parse body
+  // 2c. Load AI config from DB
+  const cfg    = await getAiConfig()
+  const apiKey = cfg.provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY
+  if (!apiKey) return NextResponse.json({ error: `No API key configured for provider "${cfg.provider}"` }, { status: 503 })
+  const openaiClient = cfg.provider === 'openai' ? new OpenAI({ apiKey }) : null
+
+  // Unified AI call — works for both Anthropic and OpenAI, returns { content, usage }
+  async function callAI(messages: { role: string; content: string }[], opts: { maxTokens?: number; jsonMode?: boolean } = {}) {
+    const maxTok = opts.maxTokens ?? cfg.maxTokens
+    if (cfg.provider === 'anthropic') {
+      const sys  = messages.find(m => m.role === 'system')?.content
+      const msgs = messages.filter(m => m.role !== 'system').map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      const res  = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: cfg.model, max_tokens: maxTok, temperature: cfg.temperature, ...(sys ? { system: sys } : {}), messages: msgs }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error?.message ?? `Anthropic ${res.status}`)
+      return { content: d.content?.[0]?.text ?? '', usage: { prompt_tokens: d.usage?.input_tokens ?? 0, completion_tokens: d.usage?.output_tokens ?? 0 } }
+    } else {
+      const res = await openaiClient!.chat.completions.create({
+        model: cfg.model, max_tokens: maxTok, temperature: cfg.temperature,
+        ...(opts.jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
+        messages: messages as any,
+      })
+      return { content: res.choices[0]?.message?.content ?? '', usage: { prompt_tokens: res.usage?.prompt_tokens ?? 0, completion_tokens: res.usage?.completion_tokens ?? 0 } }
+    }
+  }
   const body = await req.json().catch(() => ({}))
   const question: string = body.question?.trim() ?? ''
   if (!question) {
@@ -96,10 +124,7 @@ export async function POST(req: NextRequest) {
 
   if (conversationHistory.length >= 2 && FOLLOWUP_PATTERN.test(question)) {
     try {
-      const rewriteRes = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: 120,
-        messages: [
+      const rewriteRes = await callAI([
           {
             role: 'system',
             content: 'You are a query resolver for a Business Central CFO assistant. Given a conversation and a follow-up question containing pronouns or references to previous results, rewrite it as a complete standalone question with all necessary context. Output ONLY the rewritten question — nothing else. If already standalone, output it unchanged.',
@@ -107,8 +132,8 @@ export async function POST(req: NextRequest) {
           ...conversationHistory,
           { role: 'user', content: 'Follow-up to rewrite: "' + question + '"' },
         ],
-      })
-      const rewritten = rewriteRes.choices[0].message.content?.trim() ?? question
+      )
+      const rewritten = rewriteRes.content.trim() || question
       if (rewritten && rewritten.length > 3) resolvedQuestion = rewritten
     } catch { /* fall back to original */ }
   }
@@ -184,11 +209,7 @@ CRITICAL: when filtering records by date, always use the EXACT date range above.
   let _answerResUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined
 
   try {
-    const routeRes = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      max_tokens: 600,
-      response_format: { type: 'json_object' },
-      messages: [
+    const routeRes = await callAI([
         {
           role: 'system',
           content: `${PERSONA}
@@ -210,10 +231,10 @@ needsData=false for: accounting concepts, BC how-to questions, ratio definitions
         ...conversationHistory,
         { role: 'user', content: resolvedQuestion },
       ],
-    })
+    )
 
-    const routeRaw  = routeRes.choices[0].message.content ?? '{}'
-    _routeResUsage  = routeRes.usage as any
+    const routeRaw  = routeRes.content || '{}'
+    _routeResUsage  = routeRes.usage
     const routeClean = routeRaw.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
     const routeData  = JSON.parse(routeClean)
 
@@ -253,11 +274,7 @@ needsData=false for: accounting concepts, BC how-to questions, ratio definitions
 
   let plan: QueryPlan
   try {
-    const planRes = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      max_tokens: 600,
-      response_format: { type: 'json_object' },
-      messages: [
+    const planRes = await callAI([
         {
           role: 'system',
           content: `You are a Microsoft Business Central OData query planner.
@@ -326,9 +343,9 @@ For time-series / "by month" / "over last N months" / trend questions:
         ...conversationHistory,
         { role: 'user', content: resolvedQuestion },
       ],
-    })
+    )
 
-    const planText = planRes.choices[0].message.content ?? ''
+    const planText = planRes.content
     const clean = planText.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
     plan = JSON.parse(clean)
   } catch (err: any) {
@@ -386,11 +403,7 @@ For time-series / "by month" / "over last N months" / trend questions:
       let recoverySuggestions: string[] = []
 
       try {
-        const recoveryRes = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          max_tokens: 600,
-          response_format: { type: 'json_object' },
-          messages: [
+        const recoveryRes = await callAI([
             {
               role: 'system',
               content: `${PERSONA}
@@ -414,9 +427,9 @@ Return JSON:
               content: `User question: "${question}"\nOData URL attempted: ${odataUrl}\nBC error: ${errText.slice(0, 300)}`,
             },
           ],
-        })
+        )
 
-        const raw = recoveryRes.choices[0].message.content ?? '{}'
+        const raw = recoveryRes.content || '{}'
         const clean = raw.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
         const parsed = JSON.parse(clean)
         recoveryAnswer    = parsed.reason           ?? recoveryAnswer
@@ -522,11 +535,7 @@ Return JSON:
 
   let payload: AnswerPayload
   try {
-    const answerRes = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-      messages: [
+    const answerRes = await callAI([
         {
           role: 'system',
           content: `${PERSONA}
@@ -573,10 +582,10 @@ Numbers in rows must be raw numeric — no $ signs or commas.`,
           content: `Question: ${question}\n\nBC data (${recordsForClaude.length} records from ${plan.entity}):\n${JSON.stringify(recordsForClaude, null, 2)}`,
         },
       ],
-    })
+    )
 
-    const raw = answerRes.choices[0].message.content ?? ''
-    _answerResUsage = answerRes.usage as any
+    const raw = answerRes.content
+    _answerResUsage = answerRes.usage
     const clean = raw.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
     payload = JSON.parse(clean)
 
@@ -618,7 +627,7 @@ Numbers in rows must be raw numeric — no $ signs or commas.`,
     const totalIn  = (_routeResUsage?.prompt_tokens     ?? 0) + (_answerResUsage?.prompt_tokens     ?? 0)
     const totalOut = (_routeResUsage?.completion_tokens ?? 0) + (_answerResUsage?.completion_tokens ?? 0)
     if (totalIn + totalOut > 0) {
-      logAiUsage({ tenantId: tenant.tenantId, feature: 'cfo_query', model: 'gpt-4o', inputTokens: totalIn, outputTokens: totalOut })
+      logAiUsage({ tenantId: tenant.tenantId, feature: 'cfo_query', model: cfg.model, inputTokens: totalIn, outputTokens: totalOut })
     }
   } catch { /* non-fatal */ }
 

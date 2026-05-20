@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getAiConfig } from '@/lib/ai-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,35 +95,39 @@ Customer description:
 ${requirement.description}`
 
   try {
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model:       'gpt-4o',
-        max_tokens:  600,
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user',   content: userPrompt   },
-        ],
-      }),
-    })
+    const cfg    = await getAiConfig()
+    const apiKey = cfg.provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error(`No API key for provider "${cfg.provider}"`)
 
-    if (!openaiRes.ok) {
-      const err = await openaiRes.json()
-      throw new Error(err.error?.message ?? 'OpenAI error')
+    let raw = ''
+    let inputTokens = 0, outputTokens = 0
+
+    if (cfg.provider === 'anthropic') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: cfg.model, max_tokens: 600, temperature: 0.2, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error?.message ?? `Anthropic error ${res.status}`)
+      raw = d.content?.[0]?.text ?? ''
+      inputTokens = d.usage?.input_tokens ?? 0; outputTokens = d.usage?.output_tokens ?? 0
+    } else {
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: cfg.model, max_tokens: 600, temperature: 0.2, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
+      })
+      if (!openaiRes.ok) { const err = await openaiRes.json(); throw new Error(err.error?.message ?? 'OpenAI error') }
+      const d = await openaiRes.json()
+      raw = d.choices?.[0]?.message?.content ?? ''
+      inputTokens = d.usage?.prompt_tokens ?? 0; outputTokens = d.usage?.completion_tokens ?? 0
     }
 
-    const data  = await openaiRes.json()
-    const raw   = data.choices?.[0]?.message?.content ?? ''
     const clean = raw.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(repairJSON(clean))
-    // Log usage (fire and forget)
     const { logAiUsage } = await import('@/lib/ai-usage')
-    logAiUsage({ tenantId: requirement.tenantId, requirementId: params.id, feature: 'feasibility', model: 'gpt-4o', inputTokens: data.usage?.prompt_tokens ?? 0, outputTokens: data.usage?.completion_tokens ?? 0 })
+    logAiUsage({ tenantId: requirement.tenantId, requirementId: params.id, feature: 'feasibility', model: cfg.model, inputTokens, outputTokens })
 
     const { feasibility, feasibilityCostRange, feasibilityNotes } = parsed
 
