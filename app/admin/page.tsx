@@ -215,6 +215,17 @@ function AdminPageInner() {
     setUserAction('')
   }
 
+  async function toggleUserRole(userId: string, currentRole: string) {
+    const newRole = currentRole === 'tenant_admin' ? 'user' : 'tenant_admin'
+    setUserAction(userId)
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: newRole }),
+    })
+    if (res.ok) setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+    setUserAction('')
+  }
+
   async function resetUserPassword(userId: string, email: string) {
     setUserAction(userId)
     const res = await fetch(`/api/admin/users/${userId}`, {
@@ -538,10 +549,10 @@ function AdminPageInner() {
               )}
 
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 700 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 620 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--fog)' }}>
-                      {['User', 'Email', 'Tenant', 'Role', 'Queries', 'Joined', 'Status', ''].map(h => (
+                      {['User', 'Email', 'Tenant', 'Role', 'Joined', 'Status', 'Actions'].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -549,43 +560,50 @@ function AdminPageInner() {
                   <tbody>
                     {users.map(u => (
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--fog)' }}>
-                        <td style={tdStyle}><span style={{ fontWeight: 500 }}>{u.name || '—'}</span></td>
-                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 11 }}>{u.email}</td>
-                        <td style={tdStyle}>{u.tenant.name}</td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ fontWeight: 500 }}>{u.name || '—'}</span></td>
+                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant.name}</td>
                         <td style={tdStyle}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : 'rgba(26,146,114,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : 'var(--forest)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : 'rgba(26,146,114,0.2)'}` }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
                             {u.role === 'superadmin' ? 'Super Admin' : u.role === 'tenant_admin' ? 'Admin' : 'User'}
                           </span>
                         </td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{u._count.queryLogs}</td>
-                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>
+                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
                           {new Date(u.createdAt).toLocaleDateString([], { dateStyle: 'short' })}
                         </td>
                         <td style={tdStyle}><StatusPill active={u.active} /></td>
                         <td style={tdStyle}>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                             {u.role === 'superadmin' ? (
-                              <span style={{ fontSize: 10, color: 'var(--slate)', fontStyle: 'italic' }}>🔒 protected</span>
+                              <span style={{ fontSize: 10, color: 'var(--slate)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>🔒 protected</span>
                             ) : (
                               <>
                                 <button
                                   disabled={userAction === u.id}
+                                  onClick={() => toggleUserRole(u.id, u.role)}
+                                  style={{ ...ghostBtn, color: u.role === 'tenant_admin' ? 'var(--slate)' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
+                                  title={u.role === 'tenant_admin' ? 'Demote to User' : 'Promote to Admin'}
+                                >
+                                  {userAction === u.id ? '…' : u.role === 'tenant_admin' ? '↓ User' : '↑ Admin'}
+                                </button>
+                                <button
+                                  disabled={userAction === u.id}
                                   onClick={() => toggleUserActive(u.id, u.active)}
-                                  style={{ ...ghostBtn, color: u.active ? '#A32D2D' : 'var(--forest)', fontSize: 10 }}
+                                  style={{ ...ghostBtn, color: u.active ? '#A32D2D' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
                                 >
                                   {userAction === u.id ? '…' : u.active ? 'Disable' : 'Enable'}
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => resetUserPassword(u.id, u.email)}
-                                  style={{ ...ghostBtn, color: 'var(--slate)', fontSize: 10 }}
+                                  style={{ ...ghostBtn, color: 'var(--slate)', fontSize: 10, whiteSpace: 'nowrap' }}
                                 >
                                   Reset pw
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => setConfirmDelete(u.id)}
-                                  style={{ ...ghostBtn, color: '#A32D2D', fontSize: 10 }}
+                                  style={{ ...ghostBtn, color: '#A32D2D', fontSize: 10, whiteSpace: 'nowrap' }}
                                 >
                                   Delete
                                 </button>
