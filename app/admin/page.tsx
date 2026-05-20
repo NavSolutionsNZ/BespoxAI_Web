@@ -1128,8 +1128,8 @@ function AdminRequirementsTab() {
 
   return (
     <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-      {/* List */}
-      <div style={{ flex: '0 0 480px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* List — hidden when a requirement is selected */}
+      <div style={{ flex: selected ? '0 0 0px' : '0 0 480px', overflow: 'hidden', display: selected ? 'none' : 'flex', flexDirection: 'column', gap: 12, transition: 'flex 0.2s' }}>
         {/* Stats */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
           {['submitted','in_review','quoted','approved','in_development'].map(s => {
@@ -1207,7 +1207,15 @@ function AdminRequirementsTab() {
         } catch { savedText = selected.customerAnswers ?? '' }
 
         return (
-          <div style={{ flex: 1, background: 'var(--cream)', borderRadius: 12, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0, maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            {/* Back to list */}
+            <button
+              onClick={() => { setSelected(null); setShowQF(false); setShowSB(false); setShowAiPanel(false); setDevAnswer(''); setDevQuestion('') }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', marginBottom: 14, padding: 0, width: 'fit-content' }}
+            >
+              ← Back to list
+            </button>
+          <div style={{ flex: 1, background: 'var(--cream)', borderRadius: 12, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -1223,7 +1231,6 @@ function AdminRequirementsTab() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{selected.user.name ?? selected.user.email}</span>
                 </div>
               </div>
-              <button onClick={() => { setSelected(null); setShowQF(false); setShowSB(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontSize: 18, flexShrink: 0 }}>✕</button>
             </div>
 
             {/* Quote rejection banner */}
@@ -1795,6 +1802,7 @@ function AdminRequirementsTab() {
                 </div>
               </div>
             )}
+          </div>
           </div>
         )
       })()}
