@@ -109,7 +109,13 @@ function parseAnswers(raw:string|null): QAPair[]|string|null {
   return raw
 }
 
-interface Props { userRole:string; tenantId:string; bcConnected?:boolean }
+interface Props {
+  userRole:string
+  tenantId:string
+  bcConnected?:boolean
+  paymentSuccess?: 'deposit' | 'review' | 'balance' | null
+  onPaymentSuccessDismiss?: () => void
+}
 
 // ── Business config type (mirrors lib/business-config.ts) ────────────────────
 interface BizConfig {
@@ -130,7 +136,7 @@ function getTermsText(cfg:BizConfig, k:string|null|undefined){
   return cfg.terms1Text
 }
 
-export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false }:Props) {
+export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const [reqs, setReqs]             = useState<Requirement[]>([])
   const [loading, setLoading]       = useState(true)
@@ -197,6 +203,16 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   // Keep old names as aliases so nothing else breaks
   const showAcceptModal = showPayModal
   const acceptingReq    = payingReq
+
+  // ── Payment success banner ───────────────────────────────────────────────────
+  const [bannerVisible, setBannerVisible] = useState(false)
+  useEffect(() => {
+    if (paymentSuccess) {
+      setBannerVisible(true)
+      const t = setTimeout(() => { setBannerVisible(false); onPaymentSuccessDismiss?.() }, 8000)
+      return () => clearTimeout(t)
+    }
+  }, [paymentSuccess])
 
   async function load() {
     setLoading(true); setError('')
@@ -791,8 +807,63 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   }
   if (error)   return <div style={{padding:40,textAlign:'center'}}><p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p><button onClick={load} style={sBTN}>Retry</button></div>
 
+  // ── Banner config ─────────────────────────────────────────────────────────
+  const BANNER_CONFIG = {
+    review: {
+      icon: '🔍',
+      title: 'Review request received — thank you!',
+      body: "Our senior developer will review your requirements and get back to you with a quote. The $249 review fee will be credited against your development deposit.",
+      color: '#0A5C46',
+      bg: 'rgba(10,92,70,0.06)',
+      border: 'rgba(10,92,70,0.2)',
+    },
+    deposit: {
+      icon: '✅',
+      title: 'Deposit confirmed — development is underway!',
+      body: "Your deposit has been received and your project is now in the development queue. We'll keep you updated as work progresses.",
+      color: '#0F6E56',
+      bg: 'rgba(26,146,114,0.07)',
+      border: 'rgba(26,146,114,0.25)',
+    },
+    balance: {
+      icon: '🎉',
+      title: 'Final payment received — project complete!',
+      body: "Thank you for your payment. Your customisation is fully paid and complete. Download your balance invoice from the requirement below.",
+      color: '#0A5C46',
+      bg: 'rgba(10,92,70,0.06)',
+      border: 'rgba(10,92,70,0.2)',
+    },
+  } as const
+
   return (
-    <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+
+      {/* ── Payment success banner ─────────────────────────────────────────── */}
+      {bannerVisible && paymentSuccess && (() => {
+        const cfg = BANNER_CONFIG[paymentSuccess]
+        return (
+          <div style={{
+            display:'flex',alignItems:'flex-start',gap:12,
+            padding:'14px 20px',
+            background: cfg.bg,
+            borderBottom: `1px solid ${cfg.border}`,
+            flexShrink: 0,
+          }}>
+            <span style={{fontSize:20,lineHeight:'1.4'}}>{cfg.icon}</span>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:'var(--font-body)',fontWeight:600,fontSize:14,color:cfg.color,marginBottom:2}}>{cfg.title}</div>
+              <div style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',opacity:0.8,lineHeight:'1.5'}}>{cfg.body}</div>
+            </div>
+            <button
+              onClick={()=>{ setBannerVisible(false); onPaymentSuccessDismiss?.() }}
+              style={{background:'none',border:'none',cursor:'pointer',color:cfg.color,fontSize:18,lineHeight:1,padding:'0 4px',opacity:0.7,flexShrink:0}}
+              aria-label="Dismiss"
+            >×</button>
+          </div>
+        )
+      })()}
+
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
 
       {/* ── Left list ─────────────────────────────────────────────────────── */}
       <div style={{width:panelOpen?360:'100%',flexShrink:0,display:'flex',flexDirection:'column',borderRight:panelOpen?'1px solid var(--fog)':'none',overflow:'hidden',transition:'width 0.2s'}}>
@@ -1951,6 +2022,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
         </div>
       )}
 
+    </div>
     </div>
   )
 }

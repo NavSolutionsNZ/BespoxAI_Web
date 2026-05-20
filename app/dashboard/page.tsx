@@ -184,6 +184,7 @@ function DashboardInner() {
   const [pwSuccess, setPwSuccess]         = useState(false)
   const [tierBlocked, setTierBlocked]     = useState<null | { reason: string; trialEndsAt?: string | null }>(null)
   const [aiUsage, setAiUsage]             = useState<{ used: number; limit: number; percentUsed: number; warning: boolean; tier: string } | null>(null)
+  const [paymentSuccess, setPaymentSuccess] = useState<'deposit' | 'review' | 'balance' | null>(null)
 
   // Load query history on mount
   useEffect(() => {
@@ -202,7 +203,7 @@ function DashboardInner() {
   }, [])
 
   // Refresh AI usage meter whenever billing or payment success params appear
-  // Covers: ?billing=success (tier upgrade), ?deposit=paid, ?review=paid
+  // Covers: ?billing=success (tier upgrade), ?deposit=paid, ?review=paid, ?balance=paid
   useEffect(() => {
     const billing = searchParams.get('billing')
     const deposit = searchParams.get('deposit')
@@ -213,6 +214,17 @@ function DashboardInner() {
         .then(r => r.json())
         .then(d => { if (!d.error) setAiUsage(d) })
         .catch(() => {})
+    }
+    // Set success banner type and navigate to customisations tab
+    if (deposit === 'paid') { setPaymentSuccess('deposit'); setActiveNavState('customisations') }
+    else if (review === 'paid')  { setPaymentSuccess('review');  setActiveNavState('customisations') }
+    else if (balance === 'paid') { setPaymentSuccess('balance'); setActiveNavState('customisations') }
+    // Clear params from URL after reading
+    if (deposit === 'paid' || review === 'paid' || balance === 'paid') {
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('deposit'); params.delete('review'); params.delete('balance')
+      params.set('view', 'customisations')
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     }
   }, [searchParams])
 
@@ -976,6 +988,8 @@ function DashboardInner() {
           <RequirementsBuilder
             userRole={user?.role ?? 'user'}
             tenantId={user?.tenantId ?? ''}
+            paymentSuccess={paymentSuccess}
+            onPaymentSuccessDismiss={() => setPaymentSuccess(null)}
           />
         )}
 
