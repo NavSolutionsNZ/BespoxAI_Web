@@ -436,7 +436,7 @@ function AdminPageInner() {
           )}
           {/* ── Tenants tab ───────────────────────────────────────────────── */}
           {tab === 'tenants' && (
-            <div style={{ maxWidth: 860 }}>
+            <div style={{ maxWidth: '100%', overflowX: 'auto' }}>
               {showNewTenant && (
                 <FormCard title={provisionMode ? 'Provision new tenant' : 'Add tenant manually'} onCancel={() => setShowNewTenant(false)} onSave={createTenant} saving={saving} error={error}>
                   {/* Mode toggle */}
@@ -1791,7 +1791,15 @@ function AdminRequirementsTab() {
                                 {msg.role === 'assistant' && !devStreaming && i === devHistory.length - 1 && msg.content && (
                                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                     <button
-                                      onClick={() => { setQuoteNote(msg.content); setShowQF(true); setShowAiPanel(false) }}
+                                      onClick={() => {
+                                        // Strip markdown for plain-text consultant note
+                                        const stripped = msg.content
+                                          .replace(/^#{1,3} /gm, '')
+                                          .replace(/\*\*(.+?)\*\*/g, '$1')
+                                          .replace(/^[-–] /gm, '• ')
+                                        setQuoteNote(stripped)
+                                        setShowQF(true); setShowAiPanel(false)
+                                      }}
                                       style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--amber)', background: 'none', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
                                     >↓ Use as consultant note</button>
                                     <button
