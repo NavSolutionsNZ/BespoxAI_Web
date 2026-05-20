@@ -19,7 +19,7 @@ export const AI_CONFIG = {
   /** Model name. Defaults per provider if not set. */
   get model() {
     if (process.env.AI_MODEL) return process.env.AI_MODEL
-    return this.provider === 'anthropic' ? 'claude-sonnet-4-20250514' : 'gpt-4o'
+    return this.provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4o'
   },
 
   /** Max tokens per response */

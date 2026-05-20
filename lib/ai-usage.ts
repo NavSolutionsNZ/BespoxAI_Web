@@ -30,8 +30,10 @@ export interface AiUsageParams {
 /** Approximate USD cost based on known model pricing */
 export function estimateCost(model: string, inputTokens: number, outputTokens: number): number {
   const rates: Record<string, { in: number; out: number }> = {
-    'claude-sonnet-4-20250514': { in: 3.00,  out: 15.00 },
-    'claude-opus-4-20250514':   { in: 15.00, out: 75.00 },
+    'claude-sonnet-4-5':        { in: 3.00,  out: 15.00 },
+    'claude-sonnet-4-6':        { in: 3.00,  out: 15.00 },
+    'claude-opus-4-5':          { in: 15.00, out: 75.00 },
+    'claude-opus-4-6':          { in: 15.00, out: 75.00 },
     'claude-haiku-4-5-20251001':{ in: 0.80,  out: 4.00  },
     'gpt-4o':                   { in: 2.50,  out: 10.00 },
     'gpt-4o-mini':              { in: 0.15,  out: 0.60  },
