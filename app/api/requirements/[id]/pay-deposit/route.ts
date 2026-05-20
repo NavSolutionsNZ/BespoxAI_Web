@@ -34,8 +34,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (user.role !== 'superadmin' && requirement.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  if (requirement.status !== 'quoted')
-    return NextResponse.json({ error: 'Requirement is not in quoted status' }, { status: 400 })
+  if (requirement.status !== 'quoted' && requirement.status !== 'deposit_required')
+    return NextResponse.json({ error: 'Requirement is not awaiting deposit payment' }, { status: 400 })
   if (!requirement.quote)
     return NextResponse.json({ error: 'No quote amount set' }, { status: 400 })
 
@@ -64,11 +64,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const depositWithGst = Math.round(depositBase * (1 + GST_RATE) * 100) / 100
   const fees      = calcSurcharge(depositWithGst, isIntl)
 
-  // Record quote acceptance and deposit amount (excl. GST)
-  await (prisma as any).requirement.update({
-    where: { id: requirementId },
-    data: { quoteApprovedAt: new Date(), depositAmount: depositBase.toFixed(2) },
-  })
+  // Record quote acceptance if not already done
+  if (requirement.status === 'quoted') {
+    await (prisma as any).requirement.update({
+      where: { id: requirementId },
+      data: { quoteApprovedAt: new Date(), depositAmount: depositBase.toFixed(2) },
+    })
+  }
 
   // Ensure Stripe customer record
   let customerId = requirement.tenant?.stripeCustomerId as string | null

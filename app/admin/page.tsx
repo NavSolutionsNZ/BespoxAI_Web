@@ -462,7 +462,7 @@ function AdminPageInner() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 700 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--fog)' }}>
-                      {['Tenant', 'Subdomain', 'BC Instance', 'Users', 'Queries', 'Status', ''].map(h => (
+                      {['Tenant', 'Subdomain', 'BC Instance', 'Users', 'Queries', 'Status', 'Terms', ''].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -493,20 +493,6 @@ function AdminPageInner() {
                           <select
                             value={(t as any).paymentTermsKey ?? 'terms1'}
                             onChange={e => setTenantTerms(t.id, e.target.value)}
-                            title="Payment terms"
-                            style={{ background: 'var(--cream)', color: 'var(--ink)', border: '1px solid var(--fog)', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
-                          >
-                            <option value="terms1">T1 Standard</option>
-                            <option value="terms2">T2 Deposit+Monthly</option>
-                            <option value="terms3">T3 Account</option>
-                          </select>
-                          <select
-                            value={(t as any).paymentTermsKey ?? 'terms1'}
-                            onChange={async e => {
-                              const key = e.target.value
-                              await fetch(`/api/admin/tenants/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentTermsKey: key }) })
-                              setTenants(prev => prev.map(x => x.id === t.id ? { ...x, paymentTermsKey: key } as any : x))
-                            }}
                             title="Payment terms"
                             style={{ background: 'var(--cream)', color: 'var(--ink)', border: '1px solid var(--fog)', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
                           >

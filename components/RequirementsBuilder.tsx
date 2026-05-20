@@ -192,6 +192,8 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [paymentMode, setPaymentMode]         = useState<'stripe'|'invoice'|null>(null)
   const [poNumber, setPoNumber]               = useState('')
   const [payLoading, setPayLoading]           = useState(false)
+  const [reviewPoReq, setReviewPoReq]         = useState<Requirement|null>(null)
+  const [reviewPo, setReviewPo]               = useState('')
   // Keep old names as aliases so nothing else breaks
   const showAcceptModal = showPayModal
   const acceptingReq    = payingReq
@@ -558,7 +560,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   <div class="header">
     <div>
       <div class="logo">Bespox<span class="logo-ai">AI</span></div>
-      <div class="tagline">Bespoke AI. Built for the ERP Microsoft left behind.</div>
+      <div class="tagline">Your Business Central. One portal. Complete control.</div>
     </div>
     <div class="company-details">
       <strong>${companyName}</strong><br>
@@ -652,7 +654,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     setTimeout(() => { w.focus(); w.print() }, 450)
   }
 
-  function generateReviewInvoicePDF(req: Requirement) {
+  function generateReviewInvoicePDF(req: Requirement, po: string = '') {
     const biz            = bizConfig
     const companyName    = biz?.companyName    ?? 'Nav Solutions NZ'
     const gstNumber      = biz?.gstNumber      ?? null
@@ -715,7 +717,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   <div class="header">
     <div>
       <div class="logo">Bespox<span class="logo-ai">AI</span></div>
-      <div class="tagline">Bespoke AI. Built for the ERP Microsoft left behind.</div>
+      <div class="tagline">Your Business Central. One portal. Complete control.</div>
     </div>
     <div class="company-details">
       <strong>${companyName}</strong><br>
@@ -741,6 +743,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       <div class="meta-value" style="font-size:12px;line-height:1.85">
         <strong>Invoice No:</strong>&nbsp; ${invoiceNum}<br>
         <strong>Date:</strong>&nbsp; ${dateStr}<br>
+        ${po ? `<strong>PO / Reference:</strong>&nbsp; ${po.replace(/</g,'&lt;')}<br>` : ''}
         <strong>Type:</strong>&nbsp; Specification Review Fee
       </div>
     </div>
@@ -1575,7 +1578,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 )}
                 {!isSuperadmin && req.reviewPaidAt && (
                   <button
-                    onClick={()=>generateReviewInvoicePDF(req)}
+                    onClick={()=>{ setReviewPoReq(req); setReviewPo('') }}
                     style={{background:'none',border:'1px solid var(--fog)',color:'var(--slate)',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
                   >
                     📄 Review Invoice
@@ -1911,7 +1914,37 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
         )
       })()}
 
-      {/* ── Customer invoice download (all statuses post-acceptance) ─────────── */}
+      {/* ── Review Invoice PO Modal ─────────────────────────────────────── */}
+      {reviewPoReq && (
+        <div style={{position:'fixed',inset:0,background:'rgba(4,14,9,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:24}}>
+          <div style={{background:'var(--white)',borderRadius:14,padding:'24px 28px',width:400,maxWidth:'100%',boxShadow:'0 8px 40px rgba(4,14,9,0.22)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <h3 style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:500,color:'var(--ink)',margin:0}}>Review Invoice</h3>
+              <button onClick={()=>setReviewPoReq(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--slate)',fontSize:20}}>✕</button>
+            </div>
+            <label style={{display:'block',fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:6}}>
+              PO Number / Reference <span style={{fontWeight:400,textTransform:'none',letterSpacing:0}}>(optional)</span>
+            </label>
+            <input
+              value={reviewPo}
+              onChange={e=>setReviewPo(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter'){ generateReviewInvoicePDF(reviewPoReq,reviewPo); setReviewPoReq(null) }}}
+              placeholder="e.g. PO-2026-0042"
+              autoFocus
+              style={{width:'100%',background:'var(--cream)',border:'1px solid var(--fog)',borderRadius:8,padding:'9px 12px',fontSize:13,fontFamily:'var(--font-body)',color:'var(--ink)',outline:'none',boxSizing:'border-box'}}
+              onFocus={e=>(e.target.style.borderColor='var(--forest)')}
+              onBlur={e=>(e.target.style.borderColor='var(--fog)')}
+            />
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:16}}>
+              <button onClick={()=>setReviewPoReq(null)} style={sBTN}>Cancel</button>
+              <button onClick={()=>{ generateReviewInvoicePDF(reviewPoReq,reviewPo); setReviewPoReq(null) }} style={{...pBTN,background:'var(--forest)'}}>
+                ↓ Download Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
