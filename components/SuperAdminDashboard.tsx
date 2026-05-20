@@ -256,7 +256,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
         <div style={{ background:'rgba(10,92,70,0.05)', border:'1px solid rgba(10,92,70,0.18)', borderRadius:12, padding:'18px 20px' }}>
           <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>Revenue / month</div>
           <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:'var(--forest)', lineHeight:1 }}>${((billing?.newMonth.valueNZD??0)+(billing?.reviews.thisMonth.revenueNZD??0)+(billing?.dev?.thisMonth.totalNZD??0)).toLocaleString()}</div>
-          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:6 }}>subscriptions + spec reviews</div>
+          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:6 }}>subscriptions + spec reviews + development</div>
         </div>
         {/* Registered / Online — split card with drill-down */}
         {(()=>{
