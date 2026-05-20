@@ -171,94 +171,142 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
   return (
     <div style={{ maxWidth: 1000 }}>
 
-      {/* ── KPI bar ─────────────────────────────────────────────────────── */}
-      <div style={{ display:'flex', gap:14, marginBottom:8, flexWrap:'wrap' }}>
-        {[
-          { label:'Needs attention',  value:totalAttention, hi: totalAttention > 0 },
-          { label:'Active tenants',   value:tenants.filter(t=>t.active).length, hi:false },
-          { label:'Total users',      value:tenants.reduce((s,t)=>s+t._count.users,0), hi:false },
-          { label:'Pending signups',  value:signups.length, hi: signups.length > 0 },
-        ].map(k => (
-          <div key={k.label} style={{ flex:'1 1 160px', background: k.hi ? (totalAttention>0 ? 'rgba(163,45,45,0.06)' : 'rgba(10,92,70,0.06)') : 'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>{k.label}</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color: k.hi && k.value>0 ? '#A32D2D' : 'var(--ink)', lineHeight:1 }}>{k.value}</div>
+      {/* ── Primary KPIs ─────────────────────────────────────────────────── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:14 }}>
+        {/* Needs Attention */}
+        <div style={{ background:totalAttention>0?'rgba(163,45,45,0.06)':'var(--white)', border:`1px solid ${totalAttention>0?'rgba(163,45,45,0.2)':'var(--fog)'}`, borderRadius:12, padding:'18px 20px' }}>
+          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>Needs attention</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:totalAttention>0?'#A32D2D':'var(--ink)', lineHeight:1 }}>{totalAttention}</div>
+          {totalAttention>0&&<div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#A32D2D', marginTop:6, letterSpacing:'0.1em', textTransform:'uppercase' }}>action required</div>}
+        </div>
+        {/* MRR */}
+        <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'18px 20px' }}>
+          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>MRR (NZD)</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:'var(--forest)', lineHeight:1, marginBottom:8 }}>${(billing?.mrr??0).toLocaleString()}</div>
+          {billing&&<TierBreakdown byTier={billing.byTier} />}
+        </div>
+        {/* Revenue this month */}
+        <div style={{ background:'rgba(10,92,70,0.05)', border:'1px solid rgba(10,92,70,0.18)', borderRadius:12, padding:'18px 20px' }}>
+          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:8 }}>Revenue / month</div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:42, fontWeight:300, color:'var(--forest)', lineHeight:1 }}>${((billing?.newMonth.valueNZD??0)+(billing?.reviews.thisMonth.revenueNZD??0)).toLocaleString()}</div>
+          <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:6 }}>subscriptions + spec reviews</div>
+        </div>
+        {/* Tenants + Users */}
+        <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'18px 20px', display:'flex', flexDirection:'column', gap:10 }}>
+          <div>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:4 }}>Active tenants</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:300, color:'var(--ink)', lineHeight:1 }}>{tenants.filter(t=>t.active).length}</div>
           </div>
-        ))}
-
-        {/* Billing KPIs */}
-        {billing && (<>
-          {/* MRR */}
-          <div style={{ flex:'1 1 160px', background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>MRR (NZD)</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--forest)', lineHeight:1 }}>${billing.mrr.toLocaleString()}</div>
+          <div style={{ borderTop:'1px solid var(--fog)', paddingTop:10 }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:4 }}>Total users</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:300, color:'var(--ink)', lineHeight:1 }}>{tenants.reduce((s,t)=>s+t._count.users,0)}</div>
           </div>
-          {/* Active subs by tier */}
-          <div style={{ flex:'1 1 180px', background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Active subs</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--forest)', lineHeight:1, marginBottom:6 }}>{billing.active}</div>
-            <TierBreakdown byTier={billing.byTier} />
-          </div>
-          {/* New subs today */}
-          <div style={{ flex:'1 1 180px', background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>New subs today</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--forest)', lineHeight:1, marginBottom:2 }}>{billing.newToday.count}</div>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--slate)', marginBottom:6 }}>${billing.newToday.valueNZD.toLocaleString()}</div>
-            <TierBreakdown byTier={billing.newToday.byTier} />
-          </div>
-          {/* New subs this month */}
-          <div style={{ flex:'1 1 180px', background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>New subs this month</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--forest)', lineHeight:1, marginBottom:2 }}>{billing.newMonth.count}</div>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--slate)', marginBottom:6 }}>${billing.newMonth.valueNZD.toLocaleString()}</div>
-            <TierBreakdown byTier={billing.newMonth.byTier} />
-          </div>
-          {/* Upgrades */}
-          <div style={{ flex:'1 1 160px', background: billing.upgrades.count > 0 ? 'rgba(10,92,70,0.06)' : 'var(--white)', border:`1px solid ${billing.upgrades.count > 0 ? 'rgba(10,92,70,0.2)' : 'var(--fog)'}`, borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Upgrades / month</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color: billing.upgrades.count > 0 ? 'var(--forest)' : 'var(--ink)', lineHeight:1 }}>{billing.upgrades.count}</div>
-          </div>
-          {/* Downgrades */}
-          <div style={{ flex:'1 1 160px', background: billing.downgrades.count > 0 ? 'rgba(163,45,45,0.06)' : 'var(--white)', border:`1px solid ${billing.downgrades.count > 0 ? 'rgba(163,45,45,0.2)' : 'var(--fog)'}`, borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Downgrades / month</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color: billing.downgrades.count > 0 ? '#A32D2D' : 'var(--ink)', lineHeight:1 }}>{billing.downgrades.count}</div>
-            {billing.downgrades.lostMRR > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'#A32D2D', marginTop:4 }}>−${billing.downgrades.lostMRR.toLocaleString()} MRR</div>}
-          </div>
-          {/* Cancellations */}
-          <div style={{ flex:'1 1 160px', background: billing.cancelled.count > 0 ? 'rgba(163,45,45,0.06)' : 'var(--white)', border:`1px solid ${billing.cancelled.count > 0 ? 'rgba(163,45,45,0.2)' : 'var(--fog)'}`, borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Cancelled / month</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color: billing.cancelled.count > 0 ? '#A32D2D' : 'var(--ink)', lineHeight:1 }}>{billing.cancelled.count}</div>
-            {billing.cancelled.lostMRR > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'#A32D2D', marginTop:4 }}>−${billing.cancelled.lostMRR.toLocaleString()} MRR</div>}
-          </div>
-          {/* Total lost MRR */}
-          {billing.totalLostMRR > 0 && (
-            <div style={{ flex:'1 1 160px', background:'rgba(163,45,45,0.06)', border:'1px solid rgba(163,45,45,0.2)', borderRadius:12, padding:'16px 20px' }}>
-              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Total lost MRR</div>
-              <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'#A32D2D', lineHeight:1 }}>−${billing.totalLostMRR.toLocaleString()}</div>
-              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', marginTop:4 }}>cancellations + downgrades</div>
-            </div>
-          )}
-          {/* Spec review payments — this month */}
-          <div style={{ flex:'1 1 180px', background: billing.reviews.thisMonth.count > 0 ? 'rgba(10,92,70,0.06)' : 'var(--white)', border:`1px solid ${billing.reviews.thisMonth.count > 0 ? 'rgba(10,92,70,0.2)' : 'var(--fog)'}`, borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Spec reviews / month</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color: billing.reviews.thisMonth.count > 0 ? 'var(--forest)' : 'var(--ink)', lineHeight:1, marginBottom:2 }}>{billing.reviews.thisMonth.count}</div>
-            {billing.reviews.thisMonth.revenueNZD > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--forest)', fontWeight:600 }}>${billing.reviews.thisMonth.revenueNZD.toLocaleString()} NZD</div>}
-          </div>
-          {/* Spec review payments — all time */}
-          <div style={{ flex:'1 1 180px', background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Spec reviews (total)</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--ink)', lineHeight:1, marginBottom:2 }}>{billing.reviews.allTime.count}</div>
-            {billing.reviews.allTime.revenueNZD > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--slate)' }}>${billing.reviews.allTime.revenueNZD.toLocaleString()} NZD</div>}
-          </div>
-          {/* Combined platform revenue this month */}
-          <div style={{ flex:'1 1 200px', background:'rgba(10,92,70,0.05)', border:'1px solid rgba(10,92,70,0.18)', borderRadius:12, padding:'16px 20px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--slate)', marginBottom:6 }}>Platform revenue / month</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:36, fontWeight:300, color:'var(--forest)', lineHeight:1, marginBottom:4 }}>${(billing.newMonth.valueNZD + billing.reviews.thisMonth.revenueNZD).toLocaleString()}</div>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', lineHeight:1.6 }}>
-              ${billing.newMonth.valueNZD.toLocaleString()} subs{billing.reviews.thisMonth.revenueNZD > 0 ? ` · $${billing.reviews.thisMonth.revenueNZD.toLocaleString()} reviews` : ''}
-            </div>
-          </div>
-        </>)}
+        </div>
       </div>
+
+      {/* ── Revenue composition + Monthly activity ───────────────────────── */}
+      {billing&&(()=>{
+        const subRev      = billing.newMonth.valueNZD
+        const revFees     = billing.reviews.thisMonth.revenueNZD
+        const totalMoRev  = subRev + revFees
+        const subPct      = totalMoRev>0 ? (subRev/totalMoRev)*100 : (billing.mrr>0?100:0)
+        const revPct      = totalMoRev>0 ? (revFees/totalMoRev)*100 : 0
+        const TMRR: Record<string,number> = {assistant:299,manager:499,executive:999}
+        const TC:   Record<string,string> = {assistant:'#0A5C46',manager:'#1A9272',executive:'#C8952A'}
+        const activeTiers = ['assistant','manager','executive'].filter(t=>(billing.byTier[t]??0)>0)
+        const netMRRChange = (billing.newMonth.count * (billing.newMonth.valueNZD / Math.max(billing.newMonth.count,1)))
+          - billing.totalLostMRR
+
+        return (
+          <div style={{ display:'grid', gridTemplateColumns:'1.3fr 1fr', gap:14, marginBottom:24 }}>
+
+            {/* Revenue composition */}
+            <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'20px 24px' }}>
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--slate)', marginBottom:18 }}>Revenue composition</div>
+              <div style={{ display:'flex', gap:24, alignItems:'center' }}>
+                {/* Donut */}
+                <div style={{ width:104, height:104, borderRadius:'50%', flexShrink:0,
+                  background:`conic-gradient(#0A5C46 0% ${subPct}%, #C8952A ${subPct}% ${subPct+revPct}%, var(--fog) ${subPct+revPct}% 100%)`,
+                  display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:68, height:68, borderRadius:'50%', background:'var(--white)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:1 }}>
+                    <span style={{ fontFamily:'var(--font-display)', fontSize:16, color:'var(--forest)', lineHeight:1 }}>${totalMoRev.toLocaleString()}</span>
+                    <span style={{ fontFamily:'var(--font-mono)', fontSize:6, color:'var(--slate)', letterSpacing:'0.12em', textTransform:'uppercase' }}>this month</span>
+                  </div>
+                </div>
+                {/* Breakdown */}
+                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:12 }}>
+                  {/* Subscriptions */}
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:8, height:8, borderRadius:2, background:'#0A5C46' }} />
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)' }}>Subscriptions</span>
+                      </div>
+                      <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--forest)', fontWeight:600 }}>${subRev.toLocaleString()}</span>
+                    </div>
+                    {activeTiers.map(t=>{
+                      const val=(billing.byTier[t]??0)*TMRR[t]
+                      const pct=billing.mrr>0?(val/billing.mrr)*100:0
+                      return (
+                        <div key={t} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', width:72, flexShrink:0, textTransform:'capitalize' }}>{t} ×{billing.byTier[t]}</span>
+                          <div style={{ flex:1, height:4, background:'var(--fog)', borderRadius:2 }}>
+                            <div style={{ height:'100%', width:`${pct}%`, background:TC[t], borderRadius:2 }} />
+                          </div>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', width:36, textAlign:'right' }}>${val}</span>
+                        </div>
+                      )
+                    })}
+                    {activeTiers.length===0&&<div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--fog)' }}>No active subscriptions</div>}
+                  </div>
+                  {/* Spec reviews */}
+                  {(revFees>0||billing.reviews.allTime.count>0)&&(
+                    <div style={{ borderTop:'1px solid var(--fog)', paddingTop:10 }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <div style={{ width:8, height:8, borderRadius:2, background:'#C8952A' }} />
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)' }}>Spec reviews ({billing.reviews.thisMonth.count} this mo · {billing.reviews.allTime.count} total)</span>
+                        </div>
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'#9A6A00', fontWeight:600 }}>{revFees>0?`$${revFees.toLocaleString()}`:'—'}</span>
+                      </div>
+                      {billing.reviews.allTime.revenueNZD>0&&(
+                        <div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)' }}>All-time: ${billing.reviews.allTime.revenueNZD.toLocaleString()} NZD</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Monthly activity */}
+            <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'20px 24px' }}>
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--slate)', marginBottom:18 }}>This month</div>
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                {([
+                  {label:'New subscriptions', count:billing.newMonth.count,      value:billing.newMonth.valueNZD>0?`+$${billing.newMonth.valueNZD.toLocaleString()}`:null, pos:true},
+                  {label:'Upgrades',          count:billing.upgrades.count,      value:null, pos:true},
+                  {label:'Spec reviews paid', count:billing.reviews.thisMonth.count, value:billing.reviews.thisMonth.revenueNZD>0?`+$${billing.reviews.thisMonth.revenueNZD.toLocaleString()}`:null, pos:true},
+                  {label:'Downgrades',        count:billing.downgrades.count,    value:billing.downgrades.lostMRR>0?`−$${billing.downgrades.lostMRR.toLocaleString()} MRR`:null, pos:false},
+                  {label:'Cancellations',     count:billing.cancelled.count,     value:billing.cancelled.lostMRR>0?`−$${billing.cancelled.lostMRR.toLocaleString()} MRR`:null, pos:false},
+                ] as {label:string;count:number;value:string|null;pos:boolean}[]).map((row,i,arr)=>(
+                  <div key={row.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 0', borderBottom:i<arr.length-1?'1px solid var(--fog)':'none' }}>
+                    <span style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--slate)' }}>{row.label}</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      {row.value&&<span style={{ fontFamily:'var(--font-mono)', fontSize:9, color:row.pos?'var(--forest)':'#A32D2D' }}>{row.value}</span>}
+                      <span style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:300, lineHeight:1, color:row.count===0?'var(--fog)':row.pos?'var(--forest)':'#A32D2D', minWidth:22, textAlign:'right' }}>{row.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {billing.totalLostMRR>0&&(
+                <div style={{ marginTop:12, padding:'8px 12px', background:'rgba(163,45,45,0.05)', border:'1px solid rgba(163,45,45,0.15)', borderRadius:8, fontFamily:'var(--font-mono)', fontSize:9, color:'#A32D2D' }}>
+                  Net lost MRR this month: −${billing.totalLostMRR.toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Needs attention ─────────────────────────────────────────────── */}
       <SectionLabel>Needs attention</SectionLabel>
