@@ -240,8 +240,13 @@ function AdminPageInner() {
   async function deleteUser(userId: string) {
     setUserAction(userId)
     const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' })
-    if (res.ok) setUsers(prev => prev.filter(u => u.id !== userId))
-    setConfirmDelete(null)
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) {
+      setUsers(prev => prev.filter(u => u.id !== userId))
+      setConfirmDelete(null)
+    } else {
+      setError(data.error ?? 'Delete failed — the user may have linked records.')
+    }
     setUserAction('')
   }
 
@@ -602,7 +607,7 @@ function AdminPageInner() {
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
-                                  onClick={() => setConfirmDelete(u.id)}
+                                  onClick={() => { setError(''); setConfirmDelete(u.id) }}
                                   style={{ ...ghostBtn, color: '#A32D2D', fontSize: 10, whiteSpace: 'nowrap' }}
                                 >
                                   Delete
@@ -856,6 +861,11 @@ function AdminPageInner() {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 24, lineHeight: 1.6 }}>
               This will permanently delete the user and all their query history. This cannot be undone.
             </p>
+            {error && (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A32D2D', background: 'rgba(163,45,45,0.06)', border: '1px solid rgba(163,45,45,0.2)', borderRadius: 8, padding: '8px 12px', marginBottom: 16 }}>
+                {error}
+              </p>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => deleteUser(confirmDelete)} style={{ background: '#A32D2D', color: 'var(--white)', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500 }}>
                 Delete permanently

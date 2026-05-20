@@ -70,11 +70,41 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Cannot delete a superadmin account' }, { status: 403 })
 
   try {
-    // Delete query logs first (FK constraint)
+    // Must delete in FK-safe order — child records first
+    // 1. Get requirement IDs for this user (needed to clean up requirement children)
+    const reqIds = (await prisma.requirement.findMany({
+      where: { userId: params.id }, select: { id: true },
+    })).map(r => r.id)
+
+    // 2. AI usage logs linked to those requirements
+    if (reqIds.length > 0) {
+      await prisma.aiUsageLog.deleteMany({ where: { requirementId: { in: reqIds } } })
+    }
+
+    // 3. Object files uploaded by this user or linked to their requirements
+    await (prisma as any).tenantObjectFile.deleteMany({
+      where: { OR: [{ uploadedById: params.id }, ...(reqIds.length > 0 ? [{ requirementId: { in: reqIds } }] : [])] },
+    })
+
+    // 4. Requirements
+    await prisma.requirement.deleteMany({ where: { userId: params.id } })
+
+    // 5. Migration enquiries
+    await prisma.migrationEnquiry.deleteMany({ where: { userId: params.id } })
+
+    // 6. Query logs
     await prisma.queryLog.deleteMany({ where: { userId: params.id } })
+
+    // 7. NextAuth accounts + sessions
+    await prisma.account.deleteMany({ where: { userId: params.id } })
+    await prisma.session.deleteMany({ where: { userId: params.id } })
+
+    // 8. User
     await prisma.user.delete({ where: { id: params.id } })
+
     return NextResponse.json({ ok: true })
   } catch (e: any) {
+    console.error('[deleteUser]', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
