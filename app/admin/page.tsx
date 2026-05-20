@@ -696,7 +696,7 @@ function AdminPageInner() {
           <AISettingsTab />
         )}
 
-
+        {tab === 'entities' && (
             <div style={{ maxWidth: 860 }}>
               {/* Tenant selector */}
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
