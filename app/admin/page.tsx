@@ -1576,6 +1576,120 @@ function AdminRequirementsTab() {
               </div>
             )}
 
+            {/* ── AI Developer Assistant — visible during review & quoting ── */}
+            {['in_review', 'quote_rejected', 'submitted'].includes(selected.status) && (
+              <div style={{ background: 'rgba(200,149,42,0.05)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => { setShowAiPanel(p => !p); if (showAiPanel) { setDevAnswer(''); setDevQuestion('') } }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13 }}>✦</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00' }}>AI Developer Assistant</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)' }}>— effort, pricing, integration notes</span>
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#9A6A00' }}>{showAiPanel ? '▲' : '▼'}</span>
+                </button>
+
+                {showAiPanel && (
+                  <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid rgba(200,149,42,0.15)' }}>
+
+                    {/* Quick prompts */}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10 }}>
+                      {[
+                        'Summarise effort and justify a quote for this requirement',
+                        'What are the key risks and dependencies?',
+                        'Draft a professional consultant note for the customer',
+                        'What installation or setup steps are needed?',
+                        'What BC objects will be affected?',
+                      ].map(q => (
+                        <button key={q} onClick={() => setDevQuestion(q)} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: 6, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.2)', color: '#9A6A00', cursor: 'pointer' }}>{q}</button>
+                      ))}
+                    </div>
+
+                    {/* Question + send */}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        value={devQuestion}
+                        onChange={e => setDevQuestion(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey && devQuestion.trim()) {
+                            e.preventDefault()
+                            ;(async () => {
+                              setDevLoading(true)
+                              try {
+                                const r = await fetch(`/api/requirements/${selected.id}/dev-notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: devQuestion, docContent: devDocContent || undefined }) })
+                                const d = await r.json()
+                                setDevAnswer(d.answer ?? d.error ?? 'No response')
+                              } catch { setDevAnswer('Error contacting AI') }
+                              finally { setDevLoading(false) }
+                            })()
+                          }
+                        }}
+                        placeholder="Ask about complexity, integrations, risks, or pricing justification…"
+                        style={{ ...inputStyle, flex: 1 }}
+                        onFocus={e => (e.target.style.borderColor = 'rgba(200,149,42,0.5)')}
+                        onBlur={e => (e.target.style.borderColor = 'var(--fog)')}
+                      />
+                      <button
+                        disabled={devLoading || !devQuestion.trim()}
+                        onClick={async () => {
+                          setDevLoading(true)
+                          try {
+                            const r = await fetch(`/api/requirements/${selected.id}/dev-notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: devQuestion, docContent: devDocContent || undefined }) })
+                            const d = await r.json()
+                            setDevAnswer(d.answer ?? d.error ?? 'No response')
+                          } catch { setDevAnswer('Error contacting AI') }
+                          finally { setDevLoading(false) }
+                        }}
+                        style={{ ...btnStyle, background: '#9A6A00', opacity: (devLoading || !devQuestion.trim()) ? 0.6 : 1, whiteSpace: 'nowrap', padding: '9px 14px' }}
+                      >
+                        {devLoading ? '…' : 'Ask →'}
+                      </button>
+                    </div>
+
+                    {/* Doc upload */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', cursor: 'pointer', padding: '4px 10px', border: '1px solid var(--fog)', borderRadius: 6, background: 'var(--cream)' }}>
+                        📎 {devDocName || 'Attach doc'}
+                        <input type="file" accept=".txt,.md,.csv,.json" style={{ display: 'none' }} onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          setDevDocName(file.name)
+                          const reader = new FileReader()
+                          reader.onload = ev => setDevDocContent(ev.target?.result as string ?? '')
+                          reader.readAsText(file)
+                        }} />
+                      </label>
+                      {devDocName && <button onClick={() => { setDevDocName(''); setDevDocContent('') }} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>API docs, spec sheets, integration guides (.txt .md .csv .json)</span>
+                    </div>
+
+                    {/* Answer */}
+                    {devAnswer && (
+                      <div style={{ background: 'var(--ink)', borderRadius: 8, padding: '12px 14px' }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.85)', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 10 }}>{devAnswer}</p>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => { setQuoteNote(devAnswer); setShowQF(true); setShowAiPanel(false) }}
+                            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--amber)', background: 'none', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
+                          >
+                            ↓ Use as consultant note
+                          </button>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(devAnswer)}
+                            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Admin actions */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {selected.status === 'submitted' && <>
@@ -1636,95 +1750,6 @@ function AdminRequirementsTab() {
             {/* Quote form */}
             {showQF && (
               <div style={{ background: 'var(--white)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-                {/* ── AI Pricing Assistant ── */}
-                <div style={{ background: 'rgba(200,149,42,0.05)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 8, overflow: 'hidden' }}>
-                  <button
-                    onClick={() => { setShowAiPanel(p => !p); setDevAnswer(''); setDevQuestion('') }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00' }}>✦ AI Pricing Assistant</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#9A6A00' }}>{showAiPanel ? '▲' : '▼'}</span>
-                  </button>
-
-                  {showAiPanel && (
-                    <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', lineHeight: 1.55 }}>
-                        Ask about effort, extensions, or integrations — or click <strong>Draft pricing note</strong> to generate the consultant note automatically.
-                      </p>
-
-                      {/* Question input */}
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          value={devQuestion}
-                          onChange={e => setDevQuestion(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && devQuestion.trim()) { e.preventDefault(); (async () => { setDevLoading(true); try { const r = await fetch(`/api/requirements/${selected.id}/dev-notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: devQuestion, docContent: devDocContent || undefined }) }); const d = await r.json(); setDevAnswer(d.answer ?? d.error ?? 'No response') } catch { setDevAnswer('Error contacting AI') } finally { setDevLoading(false) } })() }}}
-                          placeholder="e.g. How complex is a Continia Document Capture integration? What effort justifies this quote?"
-                          style={{ ...inputStyle, flex: 1 }}
-                          onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                          onBlur={e => (e.target.style.borderColor = 'var(--fog)')}
-                        />
-                        <button
-                          disabled={devLoading || !devQuestion.trim()}
-                          onClick={async () => {
-                            setDevLoading(true)
-                            try {
-                              const r = await fetch(`/api/requirements/${selected.id}/dev-notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: devQuestion, docContent: devDocContent || undefined }) })
-                              const d = await r.json()
-                              setDevAnswer(d.answer ?? d.error ?? 'No response')
-                            } catch { setDevAnswer('Error contacting AI') }
-                            finally { setDevLoading(false) }
-                          }}
-                          style={{ ...btnStyle, background: '#9A6A00', opacity: (devLoading || !devQuestion.trim()) ? 0.6 : 1, whiteSpace: 'nowrap', padding: '9px 14px' }}
-                        >
-                          {devLoading ? '…' : 'Ask →'}
-                        </button>
-                      </div>
-
-                      {/* Quick-action buttons */}
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {[
-                          'Summarise effort and justify this quote amount',
-                          'What are the key risks and dependencies?',
-                          'Draft a professional consultant note for the customer',
-                          'What installation steps are needed for this extension?',
-                        ].map(q => (
-                          <button key={q} onClick={() => setDevQuestion(q)} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: 6, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.2)', color: '#9A6A00', cursor: 'pointer' }}>{q}</button>
-                        ))}
-                      </div>
-
-                      {/* Doc upload */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', cursor: 'pointer', padding: '4px 10px', border: '1px solid var(--fog)', borderRadius: 6, background: 'var(--cream)' }}>
-                          📎 {devDocName || 'Upload doc'}
-                          <input type="file" accept=".txt,.md,.csv,.json" style={{ display: 'none' }} onChange={e => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            setDevDocName(file.name)
-                            const reader = new FileReader()
-                            reader.onload = ev => setDevDocContent(ev.target?.result as string ?? '')
-                            reader.readAsText(file)
-                          }} />
-                        </label>
-                        {devDocName && <button onClick={() => { setDevDocName(''); setDevDocContent('') }} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', background: 'none', border: 'none', cursor: 'pointer' }}>✕ Clear</button>}
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>Attach API docs, spec sheets, or integration guides (.txt, .md, .csv, .json)</span>
-                      </div>
-
-                      {/* AI answer */}
-                      {devAnswer && (
-                        <div style={{ background: 'var(--ink)', borderRadius: 8, padding: '12px 14px' }}>
-                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.85)', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 10 }}>{devAnswer}</p>
-                          <button
-                            onClick={() => setQuoteNote(devAnswer)}
-                            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--amber)', background: 'none', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}
-                          >
-                            ↓ Use as consultant note
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
 
                 {/* ── Quote amount ── */}
                 <div>
