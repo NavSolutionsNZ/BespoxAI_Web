@@ -24,8 +24,24 @@ export async function GET() {
   })
 
   // Price IDs are server-only env vars — expose them here so the client billing page can use them
+  // Also resolve the actual plan name from Stripe if the tenant has an active subscription
+  let planName: string | null = null
+  try {
+    const { stripe } = await import('@/lib/stripe')
+    const { prisma: db } = await import('@/lib/db')
+    const t = await (db as any).tenant.findUnique({ where: { id: tenantId }, select: { stripeCustomerId: true } })
+    if (t?.stripeCustomerId) {
+      const subs = await stripe.subscriptions.list({ customer: t.stripeCustomerId, status: 'active', limit: 1, expand: ['data.items.data.price.product'] })
+      if (subs.data.length > 0) {
+        const product = subs.data[0].items.data[0]?.price?.product
+        planName = typeof product === 'object' && product !== null ? (product as any).name : null
+      }
+    }
+  } catch { /* non-fatal */ }
+
   return NextResponse.json({
     tier: tenant?.tier ?? 'free',
+    planName,
     subscriptionStatus: tenantFull?.subscriptionStatus ?? null,
     trialEndsAt: tenant?.trialEndsAt ?? null,
     prices: {

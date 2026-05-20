@@ -14,6 +14,7 @@ function BillingPageInner() {
   const [error, setError]   = useState<string | null>(null)
   const [toast, setToast]   = useState<string | null>(null)
   const [currentTier, setCurrentTier] = useState<string>('free')
+  const [planName, setPlanName]       = useState<string | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [prices, setPrices] = useState<Record<string, string | null>>({})
 
@@ -29,6 +30,7 @@ function BillingPageInner() {
       .then(r => r.json())
       .then(d => {
         if (d.tier) setCurrentTier(d.tier)
+        if (d.planName) setPlanName(d.planName)
         if (d.subscriptionStatus) setSubscriptionStatus(d.subscriptionStatus)
         if (d.prices) setPrices(d.prices)
         // starter prices may be null until configured
@@ -161,7 +163,7 @@ function BillingPageInner() {
           BespokAI Billing
         </div>
         <div style={{ fontSize: 12, color: 'var(--slate)', fontFamily: 'var(--font-mono)' }}>
-          Current plan: <strong style={{ color: 'var(--forest)' }}>{tierLabel[currentTier] ?? currentTier}</strong>
+          Current plan: <strong style={{ color: 'var(--forest)' }}>{planName ?? tierLabel[currentTier] ?? currentTier}</strong>
         </div>
       </div>
 
