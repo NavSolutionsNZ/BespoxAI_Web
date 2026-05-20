@@ -207,7 +207,8 @@ function DashboardInner() {
     const billing = searchParams.get('billing')
     const deposit = searchParams.get('deposit')
     const review  = searchParams.get('review')
-    if (billing === 'success' || deposit === 'paid' || review === 'paid') {
+    const balance = searchParams.get('balance')
+    if (billing === 'success' || deposit === 'paid' || review === 'paid' || balance === 'paid') {
       fetch('/api/ai-usage')
         .then(r => r.json())
         .then(d => { if (!d.error) setAiUsage(d) })

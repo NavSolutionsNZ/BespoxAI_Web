@@ -26,7 +26,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
       include: {
         user:   { select: { name: true, email: true } },
-        tenant: { select: { name: true } },
+        tenant: { select: { name: true, country: true } },
       },
     })
 
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     },
     include: {
       user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true } },
+      tenant: { select: { name: true, country: true } },
     },
   })
 

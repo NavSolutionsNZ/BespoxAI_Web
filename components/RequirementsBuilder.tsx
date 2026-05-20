@@ -2,6 +2,26 @@
 
 import { useState, useEffect, useRef } from 'react'
 
+// ── Stripe surcharge helpers (mirrors lib/stripe-fees.ts for client-side preview) ──
+const STRIPE_DOMESTIC_PCT   = 0.0265
+const STRIPE_INTL_PCT       = 0.035
+const STRIPE_FIXED_FEE      = 0.30
+
+function calcSurcharge(baseAmount: number, isIntl: boolean) {
+  const pct     = isIntl ? STRIPE_INTL_PCT : STRIPE_DOMESTIC_PCT
+  const charged = baseAmount / (1 - pct) + STRIPE_FIXED_FEE
+  const fee     = charged - baseAmount
+  return {
+    fee:          Math.round(fee * 100) / 100,
+    total:        Math.round(charged * 100) / 100,
+    pctLabel:     `${(pct * 100).toFixed(2)}%`,
+  }
+}
+
+function isIntlCountry(country: string | null | undefined) {
+  return (country ?? 'NZ').toUpperCase() !== 'NZ'
+}
+
 export interface Requirement {
   id: string; tenantId: string; userId: string; title: string; description: string
   bcArea: string; priority: string; aiSpec: string | null; status: string
@@ -15,7 +35,7 @@ export interface Requirement {
   reviewBypassed: boolean; reviewIncluded: boolean; reviewSubmittedAt: string | null
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
-  tenant: { name: string }
+  tenant: { name: string; country: string | null }
 }
 
 interface AiSpec {
@@ -132,12 +152,16 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
 
-  // Accept quote modal
-  const [showAcceptModal, setShowAcceptModal] = useState(false)
-  const [acceptingReq, setAcceptingReq]       = useState<Requirement|null>(null)
+  // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
+  const [showPayModal, setShowPayModal]       = useState(false)
+  const [payingReq, setPayingReq]             = useState<Requirement|null>(null)
+  const [payFlow, setPayFlow]                 = useState<'deposit'|'balance'>('deposit')
   const [paymentMode, setPaymentMode]         = useState<'stripe'|'invoice'|null>(null)
   const [poNumber, setPoNumber]               = useState('')
-  const [depositLoading, setDepositLoading]   = useState(false)
+  const [payLoading, setPayLoading]           = useState(false)
+  // Keep old names as aliases so nothing else breaks
+  const showAcceptModal = showPayModal
+  const acceptingReq    = payingReq
 
   async function load() {
     setLoading(true); setError('')
@@ -335,53 +359,77 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const bl = (e:any) => e.target.style.borderColor='var(--fog)'
 
 
-  // ── Accept quote handlers ───────────────────────────────────────────────
+  // ── Payment handlers ────────────────────────────────────────────────────
 
-  async function handleStripeDeposit(req: Requirement) {
-    setDepositLoading(true)
+  function openDepositModal(req: Requirement) {
+    setPayingReq(req); setPayFlow('deposit')
+    setPaymentMode(null); setPoNumber(''); setShowPayModal(true)
+  }
+
+  function openBalanceModal(req: Requirement) {
+    setPayingReq(req); setPayFlow('balance')
+    setPaymentMode(null); setPoNumber(''); setShowPayModal(true)
+  }
+
+  function closePayModal() {
+    setShowPayModal(false); setPayingReq(null)
+    setPaymentMode(null); setPoNumber('')
+  }
+
+  async function handleStripePayment(req: Requirement, withSurcharge: boolean) {
+    setPayLoading(true)
     try {
-      const res = await fetch(`/api/requirements/${req.id}/pay-deposit`, { method: 'POST' })
-      const d   = await res.json()
-      if (d.checkoutUrl) {
-        window.location.href = d.checkoutUrl
-      } else {
-        alert(d.error ?? 'Failed to create payment session')
-        setDepositLoading(false)
-      }
-    } catch {
-      alert('Network error — please try again')
-      setDepositLoading(false)
-    }
+      const endpoint = payFlow === 'deposit'
+        ? `/api/requirements/${req.id}/pay-deposit`
+        : `/api/requirements/${req.id}/pay-balance`
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ withSurcharge }),
+      })
+      const d = await res.json()
+      if (!res.ok || !d.checkoutUrl) { alert(d.error ?? 'Failed to create payment session'); return }
+      window.location.href = d.checkoutUrl
+    } catch { alert('Network error — please try again') }
+    finally { setPayLoading(false) }
   }
 
   async function handleInvoiceDownload(req: Requirement, po: string) {
-    setDepositLoading(true)
+    setPayLoading(true)
     try {
-      const depositAmt = (parseFloat(req.quote!) * 0.2).toFixed(2)
-      await patch(req.id, {
-        status: 'deposit_required',
-        quoteApprovedAt: new Date().toISOString(),
-        depositAmount: depositAmt,
-        ...(po ? { poNumber: po } : {}),
-      })
-      generateInvoicePDF(req, po, depositAmt)
-      setShowAcceptModal(false)
-      setPaymentMode(null)
-      setPoNumber('')
-    } catch {
-      alert('Error generating invoice')
-    } finally {
-      setDepositLoading(false)
-    }
+      const quoteNum   = parseFloat(req.quote!)
+      const isDeposit  = payFlow === 'deposit'
+      const depositAmt = (quoteNum * 0.2).toFixed(2)
+      const balanceAmt = (quoteNum - parseFloat(req.depositAmount ?? '0')).toFixed(2)
+      const amt        = isDeposit ? depositAmt : balanceAmt
+      if (isDeposit) {
+        await patch(req.id, {
+          status: 'deposit_required',
+          quoteApprovedAt: new Date().toISOString(),
+          depositAmount: depositAmt,
+          ...(po ? { poNumber: po } : {}),
+        })
+      }
+      generateInvoicePDF(req, po, amt, isDeposit)
+      closePayModal()
+      await load()
+    } catch { alert('Error generating invoice') }
+    finally { setPayLoading(false) }
   }
 
-  function generateInvoicePDF(req: Requirement, po: string, depositAmtStr: string) {
-    const invoiceNum  = `BX-${new Date().getFullYear()}-${req.id.slice(0, 6).toUpperCase()}`
-    const dateStr     = new Date().toLocaleDateString('en-NZ', { dateStyle: 'long' })
-    const quote       = parseFloat(req.quote!)
-    const deposit     = parseFloat(depositAmtStr)
-    const balance     = quote - deposit
-    const hasReviewCredit = !!(req.reviewPaidAt)
+  function generateInvoicePDF(req: Requirement, po: string, amtStr: string, isDeposit: boolean = true) {
+    const invoiceNum       = `BX-${new Date().getFullYear()}-${req.id.slice(0, 6).toUpperCase()}`
+    const dateStr          = new Date().toLocaleDateString('en-NZ', { dateStyle: 'long' })
+    const quote            = parseFloat(req.quote!)
+    const paymentAmt       = parseFloat(amtStr)
+    const deposit          = isDeposit ? paymentAmt : parseFloat(req.depositAmount ?? '0')
+    const balance          = quote - deposit
+    const hasReviewCredit  = isDeposit && !!(req.reviewPaidAt)
+    const invoiceTitle     = isDeposit ? '20% Deposit — Due Now' : 'Balance Payment — Due Now'
+    const invoiceSubtitle  = isDeposit ? '20% deposit on acceptance; 80% on delivery' : 'Balance payment on completion'
+    const paymentNote      = isDeposit
+      ? \`Please pay by bank transfer and reference <strong>\${invoiceNum}</strong>\${po ? \` and PO <strong>\${po.replace(/</g,'&lt;')}</strong>\` : ''} on your payment. Email <strong>auckland@bespoxai.com</strong> to confirm receipt and we will begin development scheduling.\${hasReviewCredit ? ' Your $249 specification review fee has been credited against the project total.' : ''}\`
+      : \`Please arrange balance payment by bank transfer, referencing <strong>\${invoiceNum}</strong>\${po ? \` and PO <strong>\${po.replace(/</g,'&lt;')}</strong>\` : ''}. Email <strong>auckland@bespoxai.com</strong> to confirm — delivery of your customisation will follow.\`
 
     const w = window.open('', '_blank')!
     w.document.write(`<!DOCTYPE html>
@@ -448,7 +496,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
         <strong>Invoice No:</strong>&nbsp; ${invoiceNum}<br>
         <strong>Date:</strong>&nbsp; ${dateStr}<br>
         ${po ? `<strong>PO / Reference:</strong>&nbsp; ${po.replace(/</g,'&lt;')}<br>` : ''}
-        <strong>Terms:</strong>&nbsp; 20% deposit on acceptance; 80% on delivery
+        <strong>Terms:</strong>&nbsp; \${invoiceSubtitle}
       </div>
     </div>
   </div>
@@ -478,15 +526,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   </div>
 
   <div class="deposit-due">
-    <div class="lbl">20% Deposit &mdash; Due Now</div>
-    <div class="amt">$${deposit.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</div>
+    <div class="lbl">\${invoiceTitle}</div>
+    <div class="amt">$\${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</div>
   </div>
 
-  <div class="note">
-    Please pay by bank transfer and reference <strong>${invoiceNum}</strong>${po ? ` and PO <strong>${po.replace(/</g,'&lt;')}</strong>` : ''} on your payment.
-    Email <strong>auckland@bespoxai.com</strong> to confirm receipt and we will begin development scheduling.
-    ${hasReviewCredit ? 'Your $249 specification review fee has been credited against the project total.' : ''}
-  </div>
+  <div class="note">\${paymentNote}</div>
 
   <div class="footer">
     <span style="font-style:italic">Thank you for choosing BespoxAI</span>
@@ -1223,7 +1267,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   )}
                 </>}
                 {!isSuperadmin&&req.status==='quoted'&&<>
-                  <button onClick={()=>{setAcceptingReq(req);setPaymentMode(null);setPoNumber('');setShowAcceptModal(true)}} style={{...pBTN,background:'#085040'}}>✓ Accept Quote & Proceed</button>
+                  <button onClick={()=>openDepositModal(req)} style={{...pBTN,background:'#085040'}}>✓ Accept Quote & Proceed</button>
                   <button onClick={()=>{setShowRQ(true)}} style={{background:'rgba(163,45,45,0.08)',border:'1px solid rgba(163,45,45,0.2)',color:'#A32D2D',borderRadius:8,padding:'9px 16px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:13}}>
                     ✕ Reject Quote
                   </button>
@@ -1243,6 +1287,16 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 </>}
                 {isSuperadmin&&req.status==='quote_rejected'&&(
                   <button onClick={()=>{setShowQF(true);setShowSB(false)}} disabled={actLoading} style={pBTN}>$ Revise Quote</button>
+                )}
+                {!isSuperadmin&&req.status==='deposit_required'&&(
+                  <button onClick={()=>openDepositModal(req)} style={{...pBTN,background:'#085040'}}>
+                    💳 Pay Deposit Now
+                  </button>
+                )}
+                {!isSuperadmin&&req.status==='complete_pending_payment'&&(
+                  <button onClick={()=>openBalanceModal(req)} style={{...pBTN,background:'#7A5200'}}>
+                    💳 Pay Balance Now
+                  </button>
                 )}
                 {isSuperadmin&&req.status==='deposit_required'&&(
                   <button onClick={()=>patch(req.id,{status:'deposit_paid'})} disabled={actLoading} style={{...pBTN,background:'#0F6E56'}}>✓ Confirm Deposit Received</button>
@@ -1311,15 +1365,20 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Balance due banner (customer) */}
               {!isSuperadmin&&req.status==='complete_pending_payment'&&(
                 <div style={{background:'rgba(200,149,42,0.07)',border:'1px solid rgba(200,149,42,0.3)',borderRadius:10,padding:'16px 18px'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                    <span style={{fontSize:16}}>💳</span>
-                    <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:'#7A5200',fontWeight:600}}>Balance payment due</span>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                    <span style={{fontSize:16}}>🎉</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:'#7A5200',fontWeight:600}}>Your customisation is complete</span>
                   </div>
-                  <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.65,marginBottom:6}}>
-                    Your customisation is complete. Please arrange payment of the remaining balance
-                    {req.depositAmount&&req.quote ? ` ($${(parseFloat(req.quote)-parseFloat(req.depositAmount)).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD)` : ''} to receive delivery.
+                  <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.65,marginBottom:14}}>
+                    Please pay the remaining balance
+                    {req.depositAmount&&req.quote ? <strong> ${(parseFloat(req.quote)-parseFloat(req.depositAmount)).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</strong> : ''}
+                    {' '}to receive delivery of your customisation.
                   </p>
-                  <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.5}}>Contact BespoxAI to arrange payment — delivery will follow confirmation.</p>
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                    <button onClick={()=>openBalanceModal(req)} style={{...pBTN,background:'#7A5200',display:'flex',alignItems:'center',gap:8}}>
+                      💳 Pay Balance Now
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1366,80 +1425,142 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
         </div>
       )}
 
-      {/* ── Accept Quote Modal ─────────────────────────────────────────── */}
-      {showAcceptModal && acceptingReq && acceptingReq.quote && (
-        <div style={{position:'fixed',inset:0,background:'rgba(4,14,9,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:24}}>
-          <div style={{background:'var(--white)',borderRadius:16,padding:'28px 32px',width:540,maxWidth:'100%',boxShadow:'0 8px 40px rgba(4,14,9,0.22)'}}>
+      {/* ── Payment Modal (deposit + balance) ────────────────────────────── */}
+      {showPayModal && payingReq && payingReq.quote && (()=>{
+        const req      = payingReq
+        const isDeposit = payFlow === 'deposit'
+        const quote    = parseFloat(req.quote)
+        const baseAmt  = isDeposit
+          ? Math.round(quote * 0.2 * 100) / 100
+          : Math.round((quote - parseFloat(req.depositAmount ?? '0')) * 100) / 100
+        const isIntl   = isIntlCountry(req.tenant.country)
+        const fees     = calcSurcharge(baseAmt, isIntl)
+        const accentColor = isDeposit ? '#085040' : '#7A5200'
+        const accentBg    = isDeposit ? 'rgba(10,92,70,0.05)' : 'rgba(200,149,42,0.05)'
+        const accentBdr   = isDeposit ? 'rgba(10,92,70,0.18)' : 'rgba(200,149,42,0.25)'
+        return (
+          <div style={{position:'fixed',inset:0,background:'rgba(4,14,9,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:24}}>
+            <div style={{background:'var(--white)',borderRadius:16,padding:'28px 32px',width:560,maxWidth:'100%',boxShadow:'0 8px 40px rgba(4,14,9,0.22)'}}>
 
-            {/* Header */}
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-              <h2 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:500,color:'var(--ink)',margin:0}}>Accept Quote</h2>
-              <button onClick={()=>{setShowAcceptModal(false);setPaymentMode(null);setPoNumber('')}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--slate)',fontSize:20,lineHeight:1}}>✕</button>
-            </div>
-
-            {/* Quote summary */}
-            <div style={{background:'rgba(10,92,70,0.05)',border:'1px solid rgba(10,92,70,0.18)',borderRadius:10,padding:'14px 16px',marginBottom:22}}>
-              {[
-                {label:'Total project quote (excl. GST)', amt:`$${parseFloat(acceptingReq.quote).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-                {label:'20% deposit — due now', amt:`$${(parseFloat(acceptingReq.quote)*0.2).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
-                {label:'80% balance — due on completion', amt:`$${(parseFloat(acceptingReq.quote)*0.8).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
-              ].map((r,i)=>(
-                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<2?'1px solid rgba(10,92,70,0.1)':'none'}}>
-                  <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)'}}>{r.label}</span>
-                  <span style={{fontFamily:'var(--font-mono)',fontSize:r.bold?14:12,fontWeight:r.bold?700:400,color:r.bold?'var(--forest)':'var(--ink)'}}>{r.amt}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Payment method */}
-            <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--slate)',marginBottom:12}}>How would you like to pay the deposit?</p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-              {([
-                {mode:'stripe' as const, icon:'💳', title:'Pay via Stripe', sub:'Instant, secure card payment'},
-                {mode:'invoice' as const, icon:'📄', title:'Download Invoice', sub:'Pay by bank transfer'},
-              ]).map(opt=>(
-                <button key={opt.mode} onClick={()=>setPaymentMode(opt.mode)} style={{padding:'14px',borderRadius:10,border:`2px solid ${paymentMode===opt.mode?'var(--forest)':'var(--fog)'}`,background:paymentMode===opt.mode?'rgba(10,92,70,0.05)':'var(--white)',cursor:'pointer',textAlign:'left',transition:'border-color 0.15s'}}>
-                  <div style={{fontSize:22,marginBottom:6}}>{opt.icon}</div>
-                  <div style={{fontFamily:'var(--font-body)',fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:3}}>{opt.title}</div>
-                  <div style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)'}}>{opt.sub}</div>
-                </button>
-              ))}
-            </div>
-
-            {/* PO number field — invoice only */}
-            {paymentMode==='invoice'&&(
-              <div style={{marginBottom:20}}>
-                <label style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',display:'block',marginBottom:6}}>PO Number / Reference <span style={{fontWeight:400,textTransform:'none',letterSpacing:0}}>(optional)</span></label>
-                <input
-                  value={poNumber}
-                  onChange={e=>setPoNumber(e.target.value)}
-                  placeholder="e.g. PO-2026-0042 or internal project code"
-                  style={{width:'100%',background:'var(--cream)',border:'1px solid var(--fog)',borderRadius:8,padding:'9px 12px',fontSize:13,fontFamily:'var(--font-body)',color:'var(--ink)',outline:'none',boxSizing:'border-box'}}
-                  onFocus={e=>(e.target.style.borderColor='var(--forest)')}
-                  onBlur={e=>(e.target.style.borderColor='var(--fog)')}
-                />
-                <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginTop:5,lineHeight:1.5}}>The invoice will be generated as a PDF — open your browser&apos;s print dialog to save it. Your acceptance will be recorded and we&apos;ll be in touch to schedule development once deposit is received.</p>
+              {/* Header */}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+                <h2 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:500,color:'var(--ink)',margin:0}}>
+                  {isDeposit ? 'Accept Quote & Pay Deposit' : 'Pay Balance'}
+                </h2>
+                <button onClick={closePayModal} style={{background:'none',border:'none',cursor:'pointer',color:'var(--slate)',fontSize:20,lineHeight:1}}>✕</button>
               </div>
-            )}
 
-            {/* Actions */}
-            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
-              <button onClick={()=>{setShowAcceptModal(false);setPaymentMode(null);setPoNumber('')}} style={sBTN}>Cancel</button>
-              {paymentMode==='stripe'&&(
-                <button onClick={()=>handleStripeDeposit(acceptingReq!)} disabled={depositLoading} style={{...pBTN,background:'#085040',opacity:depositLoading?0.7:1}}>
-                  {depositLoading?'Redirecting…':'Pay deposit via Stripe →'}
+              {/* Amount summary */}
+              <div style={{background:accentBg,border:`1px solid ${accentBdr}`,borderRadius:10,padding:'14px 16px',marginBottom:22}}>
+                {isDeposit ? [
+                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
+                  {label:'20% deposit — due now', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
+                  {label:'80% balance — due on completion', amt:`$${(quote-baseAmt).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
+                ] : [
+                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
+                  {label:'Deposit already paid', amt:`$${parseFloat(req.depositAmount??'0').toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
+                  {label:'Balance due now', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
+                ].map((r,i,arr)=>(
+                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<arr.length-1?`1px solid ${accentBdr}`:'none'}}>
+                    <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)'}}>{r.label}</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:r.bold?14:12,fontWeight:r.bold?700:400,color:r.bold?accentColor:'var(--ink)'}}>{r.amt}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Payment method selector */}
+              <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--slate)',marginBottom:12}}>How would you like to pay?</p>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+
+                {/* Stripe card */}
+                <button onClick={()=>setPaymentMode('stripe')} style={{padding:'14px',borderRadius:10,border:`2px solid ${paymentMode==='stripe'?accentColor:'var(--fog)'}`,background:paymentMode==='stripe'?accentBg:'var(--white)',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
+                  <div style={{fontSize:22,marginBottom:6}}>💳</div>
+                  <div style={{fontFamily:'var(--font-body)',fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:3}}>Pay by Card</div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',letterSpacing:'0.04em'}}>
+                    Instant · {isIntl?'3.50%':'2.65%'} + NZ$0.30 fee
+                  </div>
+                  {paymentMode==='stripe'&&(
+                    <div style={{marginTop:8,padding:'8px 10px',background:'rgba(0,0,0,0.04)',borderRadius:7}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:10}}>
+                        <span style={{color:'var(--slate)'}}>Amount due</span>
+                        <span style={{color:'var(--ink)'}}>${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})}</span>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:10,marginTop:3}}>
+                        <span style={{color:'var(--slate)'}}>Card processing fee</span>
+                        <span style={{color:'var(--slate)'}}>${fees.fee.toFixed(2)}</span>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,marginTop:5,paddingTop:5,borderTop:'1px solid rgba(0,0,0,0.08)'}}>
+                        <span style={{color:'var(--ink)'}}>Total you pay</span>
+                        <span style={{color:accentColor}}>${fees.total.toFixed(2)} NZD</span>
+                      </div>
+                    </div>
+                  )}
                 </button>
-              )}
+
+                {/* Bank transfer / invoice card */}
+                <button onClick={()=>setPaymentMode('invoice')} style={{padding:'14px',borderRadius:10,border:`2px solid ${paymentMode==='invoice'?accentColor:'var(--fog)'}`,background:paymentMode==='invoice'?accentBg:'var(--white)',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
+                  <div style={{fontSize:22,marginBottom:6}}>📄</div>
+                  <div style={{fontFamily:'var(--font-body)',fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:3}}>Bank Transfer</div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',letterSpacing:'0.04em'}}>
+                    Download invoice · No card fee
+                  </div>
+                  {paymentMode==='invoice'&&(
+                    <div style={{marginTop:8,padding:'8px 10px',background:'rgba(0,0,0,0.04)',borderRadius:7}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:10}}>
+                        <span style={{color:'var(--slate)'}}>Amount due</span>
+                        <span style={{color:'var(--ink)'}}>${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})}</span>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:10,marginTop:3}}>
+                        <span style={{color:'var(--slate)'}}>Processing fee</span>
+                        <span style={{color:'var(--slate)'}}>None</span>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,marginTop:5,paddingTop:5,borderTop:'1px solid rgba(0,0,0,0.08)'}}>
+                        <span style={{color:'var(--ink)'}}>Total you pay</span>
+                        <span style={{color:accentColor}}>${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              {/* PO number — invoice only */}
               {paymentMode==='invoice'&&(
-                <button onClick={()=>handleInvoiceDownload(acceptingReq!,poNumber)} disabled={depositLoading} style={{...pBTN,background:'#085040',opacity:depositLoading?0.7:1}}>
-                  {depositLoading?'Generating…':'↓ Download Invoice PDF'}
-                </button>
+                <div style={{marginBottom:16}}>
+                  <label style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',display:'block',marginBottom:6}}>
+                    PO Number / Reference <span style={{fontWeight:400,textTransform:'none',letterSpacing:0}}>(optional)</span>
+                  </label>
+                  <input value={poNumber} onChange={e=>setPoNumber(e.target.value)}
+                    placeholder="e.g. PO-2026-0042"
+                    style={{width:'100%',background:'var(--cream)',border:'1px solid var(--fog)',borderRadius:8,padding:'9px 12px',fontSize:13,fontFamily:'var(--font-body)',color:'var(--ink)',outline:'none',boxSizing:'border-box'}}
+                    onFocus={e=>(e.target.style.borderColor=accentColor)}
+                    onBlur={e=>(e.target.style.borderColor='var(--fog)')}
+                  />
+                  <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginTop:5,lineHeight:1.5}}>
+                    An invoice PDF will open — use your browser&apos;s print dialog to save it.
+                    {isDeposit ? " We'll be in touch to schedule development once payment is received." : " Delivery of your customisation will follow payment confirmation."}
+                  </p>
+                </div>
               )}
-            </div>
 
+              {/* Actions */}
+              <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+                <button onClick={closePayModal} style={sBTN}>Cancel</button>
+                {paymentMode==='stripe'&&(
+                  <button onClick={()=>handleStripePayment(req,true)} disabled={payLoading} style={{...pBTN,background:accentColor,opacity:payLoading?0.7:1}}>
+                    {payLoading?'Redirecting…':`Pay $${fees.total.toFixed(2)} NZD →`}
+                  </button>
+                )}
+                {paymentMode==='invoice'&&(
+                  <button onClick={()=>handleInvoiceDownload(req,poNumber)} disabled={payLoading} style={{...pBTN,background:accentColor,opacity:payLoading?0.7:1}}>
+                    {payLoading?'Generating…':'↓ Download Invoice PDF'}
+                  </button>
+                )}
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

@@ -1,10 +1,9 @@
 /**
- * POST /api/requirements/[id]/pay-deposit
+ * POST /api/requirements/[id]/pay-balance
  *
- * Creates a Stripe Checkout session for the 20% deposit on an accepted quote.
- * Accepts { withSurcharge: boolean } — when true, the Stripe processing fee is
- * added as a separate line item so the merchant receives the full deposit amount.
- * Tenant country determines domestic vs international rate.
+ * Creates a Stripe Checkout session for the 80% balance payment on completion.
+ * Accepts { withSurcharge: boolean } — same surcharge logic as pay-deposit.
+ * Webhook sets balancePaidAt and status → fully_paid on success.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
@@ -39,24 +38,16 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (user.role !== 'superadmin' && requirement.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  if (requirement.status !== 'quoted')
-    return NextResponse.json({ error: 'Requirement is not in quoted status' }, { status: 400 })
+  if (requirement.status !== 'complete_pending_payment')
+    return NextResponse.json({ error: 'Requirement is not awaiting balance payment' }, { status: 400 })
   if (!requirement.quote)
     return NextResponse.json({ error: 'No quote amount set' }, { status: 400 })
 
-  const quoteAmount   = parseFloat(requirement.quote.toString())
-  const depositBase   = Math.round(quoteAmount * 0.2 * 100) / 100
-  const isIntl        = isInternationalCountry(requirement.tenant?.country)
-  const fees          = calcSurcharge(depositBase, isIntl)
-
-  // Mark quote as accepted and record deposit amount
-  await (prisma as any).requirement.update({
-    where: { id: requirementId },
-    data: {
-      quoteApprovedAt: new Date(),
-      depositAmount:   depositBase.toFixed(2),
-    },
-  })
+  const quoteAmount  = parseFloat(requirement.quote.toString())
+  const depositPaid  = parseFloat(requirement.depositAmount?.toString() ?? '0')
+  const balanceBase  = Math.round((quoteAmount - depositPaid) * 100) / 100
+  const isIntl       = isInternationalCountry(requirement.tenant?.country)
+  const fees         = calcSurcharge(balanceBase, isIntl)
 
   // Ensure Stripe customer record
   let customerId = requirement.tenant?.stripeCustomerId as string | null
@@ -80,10 +71,10 @@ export async function POST(
       price_data: {
         currency:     'nzd',
         product_data: {
-          name:        `Development Deposit — ${requirement.title}`,
-          description: `20% deposit on $${quoteAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })} NZD quote. Balance due on completion.`,
+          name:        `Development Balance — ${requirement.title}`,
+          description: `80% balance payment on $${quoteAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })} NZD quote. Delivery follows payment confirmation.`,
         },
-        unit_amount: Math.round(depositBase * 100),
+        unit_amount: Math.round(balanceBase * 100),
       },
       quantity: 1,
     },
@@ -104,10 +95,10 @@ export async function POST(
     customer:    customerId,
     mode:        'payment',
     line_items:  lineItems,
-    success_url: `${origin}/dashboard?view=customisations&deposit=paid`,
+    success_url: `${origin}/dashboard?view=customisations&balance=paid`,
     cancel_url:  `${origin}/dashboard?view=customisations`,
     metadata: {
-      paymentType:   'requirement_deposit',
+      paymentType:   'requirement_balance',
       requirementId,
       tenantId:      user.tenantId,
     },
@@ -115,7 +106,7 @@ export async function POST(
 
   return NextResponse.json({
     checkoutUrl:  checkoutSession.url,
-    depositBase,
+    balanceBase,
     surcharge:    fees.surcharge,
     totalCharged: fees.totalCharged,
     isIntl,
