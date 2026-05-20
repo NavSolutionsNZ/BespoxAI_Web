@@ -59,10 +59,10 @@ export async function GET(req: NextRequest) {
     })
 
     // Fetch tenant names (union of both sets)
-    const tenantIds = [...new Set([
+    const tenantIds = Array.from(new Set([
       ...byTenantRaw.map((r: any) => r.tenantId),
       ...byTenantAllTimeRaw.map((r: any) => r.tenantId),
-    ])]
+    ]))
     const tenants = await (prisma as any).tenant.findMany({
       where: { id: { in: tenantIds } },
       select: { id: true, name: true },
