@@ -1452,7 +1452,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
               {/* Amount summary */}
               <div style={{background:accentBg,border:`1px solid ${accentBdr}`,borderRadius:10,padding:'14px 16px',marginBottom:22}}>
-                {isDeposit ? [
+                {(isDeposit ? [
                   {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
                   {label:'20% deposit — due now', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
                   {label:'80% balance — due on completion', amt:`$${(quote-baseAmt).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
@@ -1460,7 +1460,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
                   {label:'Deposit already paid', amt:`$${parseFloat(req.depositAmount??'0').toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false},
                   {label:'Balance due now', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true},
-                ].map((r,i,arr)=>(
+                ]).map((r,i,arr)=>(
                   <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<arr.length-1?`1px solid ${accentBdr}`:'none'}}>
                     <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)'}}>{r.label}</span>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:r.bold?14:12,fontWeight:r.bold?700:400,color:r.bold?accentColor:'var(--ink)'}}>{r.amt}</span>
