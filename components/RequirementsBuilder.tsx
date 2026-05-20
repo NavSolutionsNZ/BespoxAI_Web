@@ -468,9 +468,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
     // Terms text
     const termsKey      = req.tenant.paymentTermsKey ?? 'terms1'
-    let   termsText     = biz.terms1Text ?? '20% deposit on acceptance; 80% on delivery'
-    if (termsKey === 'terms2') termsText = biz.terms2Text ?? '20% deposit on acceptance; balance due 20th of following month'
-    if (termsKey === 'terms3') termsText = biz.terms3Text ?? 'Full amount due 20th of the following month'
+    let   termsText     = biz?.terms1Text ?? '20% deposit on acceptance; 80% on delivery'
+    if (termsKey === 'terms2') termsText = biz?.terms2Text ?? '20% deposit on acceptance; balance due 20th of following month'
+    if (termsKey === 'terms3') termsText = biz?.terms3Text ?? 'Full amount due 20th of the following month'
 
     const monthly       = isMonthlyBilling(termsKey)
     const dueDate       = monthly ? getPaymentDueDate() : null
@@ -627,7 +627,133 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     setTimeout(() => { w.focus(); w.print() }, 450)
   }
 
-  if (loading) return <div style={{padding:40,textAlign:'center',color:'var(--slate)',fontFamily:'var(--font-mono)',fontSize:12}}>Loading requirements…</div>
+  function generateReviewInvoicePDF(req: Requirement) {
+    const biz            = bizConfig
+    const companyName    = biz?.companyName    ?? 'Nav Solutions NZ'
+    const gstNumber      = biz?.gstNumber      ?? null
+    const bizEmail       = biz?.email          ?? 'auckland@bespoxai.com'
+    const bizWebsite     = biz?.website        ?? 'bespoxai.com'
+    const bizAddress     = biz?.address        ?? ''
+    const footer         = biz?.invoiceFooter  ?? 'Thank you for choosing BespoxAI'
+
+    const invoiceNum     = `BX-REV-${new Date().getFullYear()}-${req.id.slice(0, 6).toUpperCase()}`
+    const dateStr        = new Date(req.reviewPaidAt!).toLocaleDateString('en-NZ', { dateStyle: 'long' })
+    const feeExcl        = 249
+    const gstAmt         = Math.round(feeExcl * 0.15 * 100) / 100
+    const totalInclGST   = feeExcl + gstAmt
+
+    const w = window.open('', '_blank')!
+    w.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Invoice ${invoiceNum} — ${companyName}</title>
+  <meta charset="UTF-8"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;color:#040E09;padding:48px;max-width:760px;margin:0 auto;font-size:14px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:2px solid #0A5C46}
+    .logo{font-size:26px;font-weight:700;color:#040E09;letter-spacing:-0.5px}
+    .logo-ai{color:#C8952A;font-family:monospace;font-size:17px;letter-spacing:0.04em}
+    .tagline{font-size:10px;color:#3B5249;font-style:italic;margin-top:4px}
+    .company-details{font-size:11px;color:#3B5249;line-height:1.8;text-align:right}
+    h1{font-size:38px;font-weight:300;color:#0A5C46;margin-bottom:28px}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px}
+    .meta-label{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:#3B5249;margin-bottom:6px;font-family:monospace}
+    .meta-value{font-size:13px;color:#040E09;line-height:1.6}
+    .section-label{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#3B5249;font-family:monospace;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #D6D9D4}
+    .service-block{margin-bottom:28px}
+    .service-name{font-size:16px;font-weight:600;color:#040E09;margin-bottom:5px}
+    .service-desc{font-size:12px;color:#3B5249;line-height:1.65;font-style:italic;margin-top:4px}
+    .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #EDE8DC;font-size:13px}
+    .row .lbl{color:#3B5249}
+    .row .amt{font-family:monospace;color:#040E09}
+    .row.gst{background:rgba(10,92,70,0.03)}
+    .row.total{border-bottom:none;font-weight:600}
+    .amount-due{display:flex;justify-content:space-between;align-items:center;background:rgba(10,92,70,0.06);border:1px solid rgba(10,92,70,0.2);border-radius:10px;padding:14px 18px;margin:16px 0 28px}
+    .amount-due .lbl{font-size:13px;font-weight:600;color:#040E09}
+    .amount-due .amt{font-family:monospace;font-size:22px;font-weight:700;color:#0A5C46}
+    .paid-stamp{display:inline-block;border:2px solid #0A5C46;color:#0A5C46;font-family:monospace;font-size:11px;letter-spacing:0.15em;padding:3px 10px;border-radius:4px;transform:rotate(-2deg);margin-bottom:8px}
+    .note{background:#F4EFE4;border-left:3px solid #0A5C46;padding:12px 16px;font-size:12px;color:#3B5249;line-height:1.7;margin-bottom:32px;border-radius:0 8px 8px 0}
+    .credit-note{background:rgba(10,92,70,0.04);border:1px solid rgba(10,92,70,0.15);border-radius:8px;padding:10px 14px;font-size:12px;color:#0A5C46;line-height:1.6;margin-bottom:28px}
+    .footer{padding-top:20px;border-top:1px solid #D6D9D4;display:flex;justify-content:space-between;font-size:11px;color:#3B5249}
+    @media print{body{padding:24px}@page{margin:1.5cm}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">Bespox<span class="logo-ai">AI</span></div>
+      <div class="tagline">Bespoke AI. Built for the ERP Microsoft left behind.</div>
+    </div>
+    <div class="company-details">
+      <strong>${companyName}</strong><br>
+      ${bizAddress ? bizAddress.replace(/\n/g,'<br>') + '<br>' : ''}
+      ${bizEmail}<br>${bizWebsite}
+      ${gstNumber ? '<br>GST No: ' + gstNumber : ''}
+    </div>
+  </div>
+
+  <h1>Invoice</h1>
+
+  <div class="meta-grid">
+    <div>
+      <div class="meta-label">Invoice To</div>
+      <div class="meta-value">
+        <strong>${req.tenant.name.replace(/</g,'&lt;')}</strong><br>
+        ${req.user.name ? req.user.name.replace(/</g,'&lt;') + '<br>' : ''}
+        <span style="font-size:11px;color:#3B5249">${req.user.email}</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-label">Invoice Details</div>
+      <div class="meta-value" style="font-size:12px;line-height:1.85">
+        <strong>Invoice No:</strong>&nbsp; ${invoiceNum}<br>
+        <strong>Date:</strong>&nbsp; ${dateStr}<br>
+        <strong>Type:</strong>&nbsp; Specification Review Fee
+      </div>
+    </div>
+  </div>
+
+  <div class="service-block">
+    <div class="section-label">Services</div>
+    <div class="service-name">Senior BC Developer Specification Review</div>
+    <div class="service-desc">${req.title.replace(/</g,'&lt;')}</div>
+    <div class="service-desc" style="margin-top:6px">Business Central area: ${req.bcArea}</div>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <div class="section-label">Payment</div>
+    <div class="row"><span class="lbl">Specification review fee (excl. GST)</span><span class="amt">$${feeExcl.toFixed(2)} NZD</span></div>
+    <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toFixed(2)} NZD</span></div>
+    <div class="row total"><span class="lbl">Total incl. GST</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toFixed(2)} NZD</span></div>
+  </div>
+
+  <div class="amount-due">
+    <div>
+      <div class="paid-stamp">PAID</div><br>
+      <div class="lbl">Specification Review Fee</div>
+    </div>
+    <div class="amt">$${totalInclGST.toFixed(2)} NZD</div>
+  </div>
+
+  <div class="credit-note">
+    ✦ This $${feeExcl.toFixed(2)} NZD (excl. GST) review fee will be credited in full against your development deposit if you proceed with this customisation.
+  </div>
+
+  <div class="note">
+    Paid by card on ${dateStr}. Thank you — your specification is now in review with our senior BC development team.
+    We will be in touch with a quote and development plan.
+  </div>
+
+  <div class="footer">
+    <span style="font-style:italic">${footer}</span>
+    <span style="font-family:monospace">${bizWebsite}</span>
+  </div>
+</body>
+</html>`)
+    w.document.close()
+    setTimeout(() => { w.focus(); w.print() }, 450)
+  }
   if (error)   return <div style={{padding:40,textAlign:'center'}}><p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p><button onClick={load} style={sBTN}>Retry</button></div>
 
   return (
@@ -1387,13 +1513,21 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {!isSuperadmin && req.quote && ['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(req.status) && (
                   <button
                     onClick={()=>{
-                      const depositAmt = (parseFloat(req.quote!)*0.2).toFixed(2)
+                      const depositAmt = Math.max(0, (parseFloat(req.quote!)*0.2) - (req.reviewPaidAt ? 249 : 0))
                       const paidViaStripe = !!(req.depositStripeSessionId)
-                      generateInvoicePDF(req, '', depositAmt, true, paidViaStripe ? 'stripe' : 'bank_transfer', req.depositPaidAt)
+                      generateInvoicePDF(req, '', depositAmt.toFixed(2), true, paidViaStripe ? 'stripe' : 'bank_transfer', req.depositPaidAt)
                     }}
                     style={{background:'none',border:'1px solid var(--fog)',color:'var(--slate)',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
                   >
                     📄 Deposit Invoice
+                  </button>
+                )}
+                {!isSuperadmin && req.reviewPaidAt && (
+                  <button
+                    onClick={()=>generateReviewInvoicePDF(req)}
+                    style={{background:'none',border:'1px solid var(--fog)',color:'var(--slate)',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
+                  >
+                    📄 Review Invoice
                   </button>
                 )}
                 {!isSuperadmin && req.balancePaidAt && req.status === 'fully_paid' && (
