@@ -20,21 +20,25 @@ export async function GET() {
   const user = session!.user as any
   const isSuperadmin = user.role === 'superadmin'
 
-  const requirements = await prisma.requirement.findMany({
-    where: isSuperadmin ? {} : { tenantId: user.tenantId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true } },
-    },
-  })
+  try {
+    const requirements = await prisma.requirement.findMany({
+      where: isSuperadmin ? {} : { tenantId: user.tenantId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user:   { select: { name: true, email: true } },
+        tenant: { select: { name: true } },
+      },
+    })
 
-  // devPlan is internal superadmin-only — strip it from non-superadmin responses
-  const sanitised = isSuperadmin
-    ? requirements
-    : requirements.map(({ devPlan, ...rest }: any) => rest)
+    const sanitised = isSuperadmin
+      ? requirements
+      : requirements.map(({ devPlan, ...rest }: any) => rest)
 
-  return NextResponse.json({ requirements: sanitised })
+    return NextResponse.json({ requirements: sanitised })
+  } catch (err: any) {
+    console.error('[requirements GET] DB error:', err?.message)
+    return NextResponse.json({ error: 'Database error — run npx prisma db push', details: err?.message }, { status: 500 })
+  }
 }
 
 // POST /api/requirements — create a new requirement

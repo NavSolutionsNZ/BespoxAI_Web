@@ -17,19 +17,23 @@ export async function GET() {
   const guard = superadminGuard(session)
   if (guard) return guard
 
-  const requirements = await prisma.requirement.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true } },
-    },
-  })
+  try {
+    const requirements = await prisma.requirement.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user:   { select: { name: true, email: true } },
+        tenant: { select: { name: true } },
+      },
+    })
 
-  // Count by status for dashboard stats
-  const statusCounts = requirements.reduce((acc: Record<string, number>, r) => {
-    acc[r.status] = (acc[r.status] ?? 0) + 1
-    return acc
-  }, {})
+    const statusCounts = requirements.reduce((acc: Record<string, number>, r) => {
+      acc[r.status] = (acc[r.status] ?? 0) + 1
+      return acc
+    }, {})
 
-  return NextResponse.json({ requirements, statusCounts })
+    return NextResponse.json({ requirements, statusCounts })
+  } catch (err: any) {
+    console.error('[admin/requirements] DB error:', err?.message)
+    return NextResponse.json({ error: 'Database error — schema may need migration. Run: npx prisma db push', details: err?.message }, { status: 500 })
+  }
 }

@@ -77,7 +77,7 @@ export async function GET() {
         tenant: { select: { name: true } },
         user:   { select: { name: true, email: true } },
       },
-    }),
+    }).catch(() => [] as any[]),
   ])
 
   const activeList = activeSubs.data
