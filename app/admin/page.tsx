@@ -1905,14 +1905,19 @@ function AdminRequirementsTab() {
 
 function AISettingsTab() {
   const [config, setConfig]   = useState<any>(null)
+  const [usage, setUsage]     = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/ai-config')
-      .then(r => r.json())
-      .then(d => { setConfig(d); setLoading(false) })
-      .catch(() => { setError('Failed to load AI config'); setLoading(false) })
+    Promise.all([
+      fetch('/api/admin/ai-config').then(r => r.json()),
+      fetch('/api/admin/ai-usage').then(r => r.json()),
+    ]).then(([cfg, usg]) => {
+      setConfig(cfg)
+      setUsage(usg)
+      setLoading(false)
+    }).catch(() => { setError('Failed to load AI config'); setLoading(false) })
   }, [])
 
   const badge = (on: boolean) => (
@@ -1971,6 +1976,73 @@ function AISettingsTab() {
           row(key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), badge(!!val))
         ))}
       </div>
+
+      {/* Usage this month */}
+      {usage && !usage.error && (
+        <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Token Usage — This Month</p>
+
+          {/* KPI row */}
+          <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Requests',      value: usage.thisMonth.requests.toLocaleString() },
+              { label: 'Input tokens',  value: (usage.thisMonth.inputTokens  ?? 0).toLocaleString() },
+              { label: 'Output tokens', value: (usage.thisMonth.outputTokens ?? 0).toLocaleString() },
+              { label: 'Est. cost',     value: `$${(usage.thisMonth.estimatedUsd ?? 0).toFixed(4)} USD` },
+            ].map(k => (
+              <div key={k.label} style={{ flex: '1 1 120px', background: 'var(--cream)', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>{k.label}</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 600, color: 'var(--ink)', margin: '4px 0 0' }}>{k.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* By tenant */}
+          {usage.byTenant?.length > 0 && (
+            <>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Tenant</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
+                <thead>
+                  <tr>{['Tenant', 'Requests', 'In tokens', 'Out tokens', 'Est. cost'].map(h => (
+                    <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '5px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {usage.byTenant.map((t: any) => (
+                    <tr key={t.tenantId}>
+                      <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--ink)' }}>{t.tenantName}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{t.requests}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens  ?? 0).toLocaleString()}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.outputTokens ?? 0).toLocaleString()}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 600 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* By feature */}
+          {usage.byFeature?.length > 0 && (
+            <>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Feature</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {usage.byFeature.map((f: any) => (
+                  <div key={f.feature} style={{ background: 'var(--cream)', borderRadius: 8, padding: '8px 12px', flex: '1 1 140px' }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--jade)', margin: 0 }}>{f.feature.replace(/_/g, ' ')}</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--ink)', margin: '3px 0 0' }}>{f.requests} req</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '2px 0 0' }}>{((f.inputTokens + f.outputTokens) ?? 0).toLocaleString()} tokens</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {usage.thisMonth.requests === 0 && (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', textAlign: 'center', padding: '20px 0' }}>No AI usage recorded yet this month.</p>
+          )}
+        </div>
+      )}
 
       {/* Env var reference */}
       <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>

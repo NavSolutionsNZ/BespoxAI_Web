@@ -120,6 +120,9 @@ ${requirement.description}`
     const raw   = data.choices?.[0]?.message?.content ?? ''
     const clean = raw.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(repairJSON(clean))
+    // Log usage (fire and forget)
+    const { logAiUsage } = await import('@/lib/ai-usage')
+    logAiUsage({ tenantId: requirement.tenantId, requirementId: params.id, feature: 'feasibility', model: 'gpt-4o', inputTokens: data.usage?.prompt_tokens ?? 0, outputTokens: data.usage?.completion_tokens ?? 0 })
 
     const { feasibility, feasibilityCostRange, feasibilityNotes } = parsed
 

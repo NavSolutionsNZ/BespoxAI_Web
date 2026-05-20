@@ -171,6 +171,8 @@ CRITICAL: when filtering records by date, always use the EXACT date range above.
 
   let queryMode: QueryMode = 'data'
   let genericAnswer: { answer: string; suggestedQueries: string[] } | null = null
+  let _routeResUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined
+  let _answerResUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined
 
   try {
     const routeRes = await openai.chat.completions.create({
@@ -202,6 +204,7 @@ needsData=false for: accounting concepts, BC how-to questions, ratio definitions
     })
 
     const routeRaw  = routeRes.choices[0].message.content ?? '{}'
+    _routeResUsage  = routeRes.usage as any
     const routeClean = routeRaw.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
     const routeData  = JSON.parse(routeClean)
 
@@ -564,6 +567,7 @@ Numbers in rows must be raw numeric — no $ signs or commas.`,
     })
 
     const raw = answerRes.choices[0].message.content ?? ''
+    _answerResUsage = answerRes.usage as any
     const clean = raw.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
     payload = JSON.parse(clean)
 
@@ -596,6 +600,18 @@ Numbers in rows must be raw numeric — no $ signs or commas.`,
   } catch (e) {
     console.error('[QueryLog save failed]', e)
   }
+
+  // ── Log AI token usage ────────────────────────────────────────────────────
+
+  try {
+    const { logAiUsage } = await import('@/lib/ai-usage')
+    // Sum tokens across all AI calls in this request (route + answer; rewrite is minor)
+    const totalIn  = (_routeResUsage?.prompt_tokens     ?? 0) + (_answerResUsage?.prompt_tokens     ?? 0)
+    const totalOut = (_routeResUsage?.completion_tokens ?? 0) + (_answerResUsage?.completion_tokens ?? 0)
+    if (totalIn + totalOut > 0) {
+      logAiUsage({ tenantId: tenant.tenantId, feature: 'cfo_query', model: 'gpt-4o', inputTokens: totalIn, outputTokens: totalOut })
+    }
+  } catch { /* non-fatal */ }
 
   // ── Return ───────────────────────────────────────────────────────────────
 

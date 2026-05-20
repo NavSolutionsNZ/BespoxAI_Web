@@ -12,6 +12,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { AI_CONFIG } from '@/lib/ai-config'
+import { logAiUsage } from '@/lib/ai-usage'
 
 export const dynamic    = 'force-dynamic'
 export const maxDuration = 60
@@ -220,8 +221,37 @@ GUIDELINES:
       return NextResponse.json({ error: `Anthropic error: ${upstream.status} — ${err}` }, { status: 502 })
     }
 
-    // Pass the SSE stream straight through
-    return new Response(upstream.body, {
+    // Intercept SSE to capture token counts, pass everything through unchanged
+    let inputTokens  = 0
+    let outputTokens = 0
+    let sseBuffer    = ''
+    const tenantId   = requirement.tenantId
+    const reqId      = params.id
+    const model      = AI_CONFIG.model
+
+    const transform = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        controller.enqueue(chunk) // pass through untouched
+        sseBuffer += new TextDecoder().decode(chunk)
+        const lines = sseBuffer.split('\n')
+        sseBuffer   = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'message_start')
+              inputTokens  = data.message?.usage?.input_tokens  ?? inputTokens
+            if (data.type === 'message_delta')
+              outputTokens = data.usage?.output_tokens ?? outputTokens
+          } catch { /* skip malformed */ }
+        }
+      },
+      async flush() {
+        await logAiUsage({ tenantId, requirementId: reqId, feature: 'dev_assistant', model, inputTokens, outputTokens })
+      },
+    })
+
+    return new Response(upstream.body!.pipeThrough(transform), {
       headers: {
         'Content-Type':  'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -248,16 +278,22 @@ GUIDELINES:
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
     async start(controller) {
+      let inputTokens = 0, outputTokens = 0
       for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content ?? ''
         if (text) {
-          // Emit in the same SSE shape as Anthropic so the frontend is provider-agnostic
           const event = { type: 'content_block_delta', delta: { type: 'text_delta', text } }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        }
+        // OpenAI includes usage on the final chunk when stream_options.include_usage is set
+        if (chunk.usage) {
+          inputTokens  = chunk.usage.prompt_tokens     ?? 0
+          outputTokens = chunk.usage.completion_tokens ?? 0
         }
       }
       controller.enqueue(encoder.encode('data: {"type":"message_stop"}\n\n'))
       controller.close()
+      await logAiUsage({ tenantId: requirement.tenantId, requirementId: params.id, feature: 'dev_assistant', model: AI_CONFIG.model, inputTokens, outputTokens })
     },
   })
 

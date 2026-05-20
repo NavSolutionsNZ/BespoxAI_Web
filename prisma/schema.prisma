@@ -217,3 +217,20 @@ model TenantObjectFile {
   @@index([tenantId])
   @@index([requirementId])
 }
+
+model AiUsageLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  requirementId String?
+  feature       String   // dev_assistant | spec_gen | dev_plan | feasibility | cfo_query
+  model         String
+  inputTokens   Int      @default(0)
+  outputTokens  Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId],      references: [id])
+  requirement Requirement? @relation(fields: [requirementId], references: [id])
+
+  @@index([tenantId])
+  @@index([createdAt])
+}

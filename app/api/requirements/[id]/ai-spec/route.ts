@@ -342,6 +342,9 @@ export async function POST(
     })
     const raw     = completion.choices[0]?.message?.content ?? ''
     if (!raw) throw new Error('Empty response from AI')
+    // Log usage (fire and forget)
+    const { logAiUsage } = await import('@/lib/ai-usage')
+    logAiUsage({ tenantId: req_data.tenantId, requirementId: params.id, feature: 'spec_gen', model: 'gpt-4o', inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 })
     const cleaned = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim()
     let parsed: any = null
     try {
