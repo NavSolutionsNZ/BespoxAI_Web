@@ -65,18 +65,24 @@ export async function GET() {
   const todayStartUnix = Math.floor(todayStart.getTime() / 1000)
 
   // ── Fetch data from Stripe in parallel ───────────────────────────────────
-  const [activeSubs, cancelledSubs, updateEvents, paidReviews] = await Promise.all([
+  const [activeSubs, cancelledSubs, updateEvents, paidReviews, paidDeposits, paidBalances] = await Promise.all([
     stripe.subscriptions.list({ status: 'active',   limit: 100, expand: ['data.customer'] }),
     stripe.subscriptions.list({ status: 'canceled', limit: 100, expand: ['data.customer'] }),
     stripe.events.list({ type: 'customer.subscription.updated', created: { gte: monthStartUnix }, limit: 100 }),
     prisma.requirement.findMany({
       where: { reviewPaidAt: { not: null } },
       orderBy: { reviewPaidAt: 'desc' },
-      select: {
-        id: true, title: true, reviewPaidAt: true,
-        tenant: { select: { name: true } },
-        user:   { select: { name: true, email: true } },
-      },
+      select: { id: true, title: true, reviewPaidAt: true, tenant: { select: { name: true } }, user: { select: { name: true, email: true } } },
+    }).catch(() => [] as any[]),
+    prisma.requirement.findMany({
+      where: { depositPaidAt: { not: null } },
+      orderBy: { depositPaidAt: 'desc' },
+      select: { id: true, title: true, depositPaidAt: true, depositAmount: true, quote: true, depositBypassed: true, tenant: { select: { name: true } } },
+    }).catch(() => [] as any[]),
+    prisma.requirement.findMany({
+      where: { balancePaidAt: { not: null } },
+      orderBy: { balancePaidAt: 'desc' },
+      select: { id: true, title: true, balancePaidAt: true, depositAmount: true, quote: true, tenant: { select: { name: true } } },
     }).catch(() => [] as any[]),
   ])
 
@@ -196,6 +202,50 @@ export async function GET() {
     })),
   }
 
+  // ── Development payments (deposit + balance) ──────────────────────────────
+  function reqDepositAmt(r: any): number {
+    // depositAmount is the pre-GST amount stored; we report excl. GST for consistency
+    return parseFloat(r.depositAmount ?? '0') || 0
+  }
+  function reqBalanceAmt(r: any): number {
+    const quote   = parseFloat(r.quote ?? '0') || 0
+    const deposit = parseFloat(r.depositAmount ?? '0') || 0
+    return Math.max(0, quote - deposit)
+  }
+
+  const depositsThisMonth  = paidDeposits.filter((r: any) => !r.depositBypassed && new Date(r.depositPaidAt!) >= monthStart)
+  const balancesThisMonth  = paidBalances.filter((r: any) => new Date(r.balancePaidAt!) >= monthStart)
+
+  const allDepositRev  = paidDeposits.filter((r: any) => !r.depositBypassed).reduce((s: number, r: any) => s + reqDepositAmt(r), 0)
+  const allBalanceRev  = paidBalances.reduce((s: number, r: any) => s + reqBalanceAmt(r), 0)
+  const moDepositRev   = depositsThisMonth.reduce((s: number, r: any) => s + reqDepositAmt(r), 0)
+  const moBalanceRev   = balancesThisMonth.reduce((s: number, r: any) => s + reqBalanceAmt(r), 0)
+
+  const devStats = {
+    allTime: {
+      deposits:   { count: paidDeposits.filter((r: any) => !r.depositBypassed).length, revenueNZD: Math.round(allDepositRev) },
+      balances:   { count: paidBalances.length, revenueNZD: Math.round(allBalanceRev) },
+      totalNZD:   Math.round(allDepositRev + allBalanceRev),
+    },
+    thisMonth: {
+      deposits:   { count: depositsThisMonth.length,  revenueNZD: Math.round(moDepositRev) },
+      balances:   { count: balancesThisMonth.length,  revenueNZD: Math.round(moBalanceRev) },
+      totalNZD:   Math.round(moDepositRev + moBalanceRev),
+    },
+    recentDeposits: paidDeposits.slice(0, 10).map((r: any) => ({
+      tenant:    r.tenant.name,
+      title:     r.title,
+      paidAt:    r.depositPaidAt!.toISOString(),
+      amountNZD: Math.round(reqDepositAmt(r)),
+    })),
+    recentBalances: paidBalances.slice(0, 10).map((r: any) => ({
+      tenant:    r.tenant.name,
+      title:     r.title,
+      paidAt:    r.balancePaidAt!.toISOString(),
+      amountNZD: Math.round(reqBalanceAmt(r)),
+    })),
+  }
+
   return NextResponse.json({
     mrr,
     active:    activeList.length,
@@ -216,5 +266,6 @@ export async function GET() {
     cancelled:  { count: cancellations.length, lostMRR: cancellations.reduce((s,c) => s+c.lostMRR, 0), list: cancellations },
     totalLostMRR,
     reviews: reviewStats,
+    dev:     devStats,
   })
 }

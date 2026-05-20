@@ -358,9 +358,11 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
       {billing&&(()=>{
         const subRev      = billing.newMonth.valueNZD
         const revFees     = billing.reviews.thisMonth.revenueNZD
-        const totalMoRev  = subRev + revFees
+        const devRev      = billing.dev?.thisMonth.totalNZD ?? 0
+        const totalMoRev  = subRev + revFees + devRev
         const subPct      = totalMoRev>0 ? (subRev/totalMoRev)*100 : (billing.mrr>0?100:0)
         const revPct      = totalMoRev>0 ? (revFees/totalMoRev)*100 : 0
+        const devPct      = totalMoRev>0 ? (devRev/totalMoRev)*100 : 0
         const TMRR: Record<string,number> = {assistant:299,manager:499,executive:999}
         const TC:   Record<string,string> = {assistant:'#0A5C46',manager:'#1A9272',executive:'#C8952A'}
         const activeTiers = ['assistant','manager','executive'].filter(t=>(billing.byTier[t]??0)>0)
@@ -376,7 +378,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               <div style={{ display:'flex', gap:24, alignItems:'center' }}>
                 {/* Donut */}
                 <div style={{ width:104, height:104, borderRadius:'50%', flexShrink:0,
-                  background:`conic-gradient(#0A5C46 0% ${subPct}%, #C8952A ${subPct}% ${subPct+revPct}%, var(--fog) ${subPct+revPct}% 100%)`,
+                  background:`conic-gradient(#0A5C46 0% ${subPct}%, #C8952A ${subPct}% ${subPct+revPct}%, #1A9272 ${subPct+revPct}% ${subPct+revPct+devPct}%, var(--fog) ${subPct+revPct+devPct}% 100%)`,
                   display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <div style={{ width:68, height:68, borderRadius:'50%', background:'var(--white)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:1 }}>
                     <span style={{ fontFamily:'var(--font-display)', fontSize:16, color:'var(--forest)', lineHeight:1 }}>${totalMoRev.toLocaleString()}</span>
@@ -424,6 +426,25 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                       )}
                     </div>
                   )}
+                  {/* Development payments */}
+                  {(devRev>0||(billing.dev?.allTime.totalNZD??0)>0)&&(
+                    <div style={{ borderTop:'1px solid var(--fog)', paddingTop:10 }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <div style={{ width:8, height:8, borderRadius:2, background:'#1A9272' }} />
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)' }}>
+                            Development ({(billing.dev?.thisMonth.deposits.count??0)+(billing.dev?.thisMonth.balances.count??0)} payments this mo)
+                          </span>
+                        </div>
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'#1A9272', fontWeight:600 }}>{devRev>0?`$${devRev.toLocaleString()}`:'—'}</span>
+                      </div>
+                      <div style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', display:'flex', gap:12 }}>
+                        {(billing.dev?.thisMonth.deposits.count??0)>0&&<span>Deposits: ${billing.dev.thisMonth.deposits.revenueNZD.toLocaleString()}</span>}
+                        {(billing.dev?.thisMonth.balances.count??0)>0&&<span>Balances: ${billing.dev.thisMonth.balances.revenueNZD.toLocaleString()}</span>}
+                        {(billing.dev?.allTime.totalNZD??0)>0&&<span style={{marginLeft:'auto'}}>All-time: ${billing.dev.allTime.totalNZD.toLocaleString()} NZD</span>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -433,11 +454,13 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--slate)', marginBottom:18 }}>This month</div>
               <div style={{ display:'flex', flexDirection:'column' }}>
                 {([
-                  {label:'New subscriptions', count:billing.newMonth.count,      value:billing.newMonth.valueNZD>0?`+$${billing.newMonth.valueNZD.toLocaleString()}`:null, pos:true},
-                  {label:'Upgrades',          count:billing.upgrades.count,      value:null, pos:true},
-                  {label:'Spec reviews paid', count:billing.reviews.thisMonth.count, value:billing.reviews.thisMonth.revenueNZD>0?`+$${billing.reviews.thisMonth.revenueNZD.toLocaleString()}`:null, pos:true},
-                  {label:'Downgrades',        count:billing.downgrades.count,    value:billing.downgrades.lostMRR>0?`−$${billing.downgrades.lostMRR.toLocaleString()} MRR`:null, pos:false},
-                  {label:'Cancellations',     count:billing.cancelled.count,     value:billing.cancelled.lostMRR>0?`−$${billing.cancelled.lostMRR.toLocaleString()} MRR`:null, pos:false},
+                  {label:'New subscriptions',   count:billing.newMonth.count,                         value:billing.newMonth.valueNZD>0?`+$${billing.newMonth.valueNZD.toLocaleString()}`:null,                                   pos:true},
+                  {label:'Upgrades',            count:billing.upgrades.count,                         value:null,                                                                                                                   pos:true},
+                  {label:'Spec reviews paid',   count:billing.reviews.thisMonth.count,                value:billing.reviews.thisMonth.revenueNZD>0?`+$${billing.reviews.thisMonth.revenueNZD.toLocaleString()}`:null,               pos:true},
+                  {label:'Dev deposits',        count:billing.dev?.thisMonth.deposits.count??0,       value:(billing.dev?.thisMonth.deposits.revenueNZD??0)>0?`+$${billing.dev.thisMonth.deposits.revenueNZD.toLocaleString()}`:null, pos:true},
+                  {label:'Dev balances',        count:billing.dev?.thisMonth.balances.count??0,       value:(billing.dev?.thisMonth.balances.revenueNZD??0)>0?`+$${billing.dev.thisMonth.balances.revenueNZD.toLocaleString()}`:null, pos:true},
+                  {label:'Downgrades',          count:billing.downgrades.count,                       value:billing.downgrades.lostMRR>0?`−$${billing.downgrades.lostMRR.toLocaleString()} MRR`:null,                              pos:false},
+                  {label:'Cancellations',       count:billing.cancelled.count,                        value:billing.cancelled.lostMRR>0?`−$${billing.cancelled.lostMRR.toLocaleString()} MRR`:null,                                pos:false},
                 ] as {label:string;count:number;value:string|null;pos:boolean}[]).map((row,i,arr)=>(
                   <div key={row.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 0', borderBottom:i<arr.length-1?'1px solid var(--fog)':'none' }}>
                     <span style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--slate)' }}>{row.label}</span>
