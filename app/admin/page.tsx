@@ -997,6 +997,36 @@ function CredentialBanner({ title, label, value, onDismiss }: { title: string; l
   )
 }
 
+// ─── Markdown helpers for AI response bubbles ────────────────────────────────
+
+function mdInline(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} style={{ fontWeight: 600, color: 'rgba(244,239,228,1)' }}>{part.slice(2, -2)}</strong>
+      : part
+  )
+}
+
+function renderMd(text: string): React.ReactNode {
+  const lines = text.split('\n')
+  return lines.map((line, i) => {
+    if (/^#{1,2} /.test(line))
+      return <p key={i} style={{ fontWeight: 700, fontSize: 13, color: 'rgba(244,239,228,0.98)', margin: '12px 0 3px', lineHeight: 1.3 }}>{mdInline(line.replace(/^#+\s/, ''))}</p>
+    if (/^### /.test(line))
+      return <p key={i} style={{ fontWeight: 600, fontSize: 12, color: 'rgba(244,239,228,0.92)', margin: '8px 0 2px', lineHeight: 1.3 }}>{mdInline(line.slice(4))}</p>
+    if (line === '---' || line === '––––')
+      return <hr key={i} style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.12)', margin: '10px 0' }} />
+    if (/^[-–] /.test(line))
+      return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start' }}><span style={{ color: 'rgba(200,149,42,0.7)', flexShrink: 0, marginTop: 1 }}>–</span><span style={{ lineHeight: 1.6 }}>{mdInline(line.replace(/^[-–] /, ''))}</span></div>
+    if (/^\d+\. /.test(line)) {
+      const num = line.match(/^(\d+)/)?.[1]
+      return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start' }}><span style={{ color: 'rgba(200,149,42,0.7)', flexShrink: 0, minWidth: 18, marginTop: 1 }}>{num}.</span><span style={{ lineHeight: 1.6 }}>{mdInline(line.replace(/^\d+\.\s/, ''))}</span></div>
+    }
+    if (line === '') return <div key={i} style={{ height: 5 }} />
+    return <p key={i} style={{ margin: '2px 0', lineHeight: 1.7 }}>{mdInline(line)}</p>
+  })
+}
+
 // ─── Admin Requirements Tab ────────────────────────────────────────────────────
 
 const STATUS_PIPELINE_ADMIN = ['draft','submitted','needs_clarification','in_review','quoted','quote_rejected','deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid','rejected']
@@ -1720,9 +1750,10 @@ function AdminRequirementsTab() {
                               </div>
                             ) : (
                               <div style={{ background: 'var(--ink)', borderRadius: '10px 10px 10px 2px', padding: '10px 14px' }}>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
-                                  {msg.content}{devStreaming && i === devHistory.length - 1 && msg.content === '' ? <span style={{ opacity: 0.5 }}>▌</span> : devStreaming && i === devHistory.length - 1 ? <span style={{ opacity: 0.5 }}>▌</span> : null}
-                                </p>
+                                <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.9)', lineHeight: 1.7, margin: 0 }}>
+                                  {renderMd(msg.content)}
+                                  {devStreaming && i === devHistory.length - 1 ? <span style={{ opacity: 0.5 }}>▌</span> : null}
+                                </div>
                                 {/* Actions on last completed assistant message */}
                                 {msg.role === 'assistant' && !devStreaming && i === devHistory.length - 1 && msg.content && (
                                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
@@ -2003,10 +2034,10 @@ function AISettingsTab() {
             ))}
           </div>
 
-          {/* By tenant */}
+          {/* By tenant — this month */}
           {usage.byTenant?.length > 0 && (
             <>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Tenant</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Tenant — This Month</p>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
                 <thead>
                   <tr>{['Tenant', 'Requests', 'In tokens', 'Out tokens', 'Est. cost'].map(h => (
@@ -2021,6 +2052,30 @@ function AISettingsTab() {
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens  ?? 0).toLocaleString()}</td>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.outputTokens ?? 0).toLocaleString()}</td>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 600 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* By tenant — all time (cumulative cost basis) */}
+          {usage.byTenantAllTime?.length > 0 && (
+            <>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6, marginTop: 4 }}>By Tenant — All Time (Cost Basis)</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
+                <thead>
+                  <tr>{['Tenant', 'Total Requests', 'Total Tokens', 'Est. Cost (USD)'].map(h => (
+                    <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '5px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {usage.byTenantAllTime.map((t: any) => (
+                    <tr key={t.tenantId}>
+                      <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--ink)', fontWeight: 500 }}>{t.tenantName}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{t.requests}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens + t.outputTokens).toLocaleString()}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 700 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
                     </tr>
                   ))}
                 </tbody>

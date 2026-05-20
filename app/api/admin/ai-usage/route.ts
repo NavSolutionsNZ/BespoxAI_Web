@@ -50,9 +50,20 @@ export async function GET(req: NextRequest) {
       orderBy: { _sum: { outputTokens: 'desc' } },
     })
 
-    // Fetch tenant names
-    const tenantIds = byTenantRaw.map((r: any) => r.tenantId)
-    const tenants   = await (prisma as any).tenant.findMany({
+    // All-time per-tenant (for cumulative cost reconciliation)
+    const byTenantAllTimeRaw = await (prisma as any).aiUsageLog.groupBy({
+      by: ['tenantId'],
+      _sum: { inputTokens: true, outputTokens: true },
+      _count: true,
+      orderBy: { _sum: { outputTokens: 'desc' } },
+    })
+
+    // Fetch tenant names (union of both sets)
+    const tenantIds = [...new Set([
+      ...byTenantRaw.map((r: any) => r.tenantId),
+      ...byTenantAllTimeRaw.map((r: any) => r.tenantId),
+    ])]
+    const tenants = await (prisma as any).tenant.findMany({
       where: { id: { in: tenantIds } },
       select: { id: true, name: true },
     })
@@ -60,6 +71,15 @@ export async function GET(req: NextRequest) {
     tenants.forEach((t: any) => { tenantMap[t.id] = t.name })
 
     const byTenant = byTenantRaw.map((r: any) => ({
+      tenantId:     r.tenantId,
+      tenantName:   tenantMap[r.tenantId] ?? r.tenantId,
+      inputTokens:  r._sum.inputTokens  ?? 0,
+      outputTokens: r._sum.outputTokens ?? 0,
+      requests:     r._count,
+      estimatedUsd: estimateCost('claude-sonnet-4-5', r._sum.inputTokens ?? 0, r._sum.outputTokens ?? 0),
+    }))
+
+    const byTenantAllTime = byTenantAllTimeRaw.map((r: any) => ({
       tenantId:     r.tenantId,
       tenantName:   tenantMap[r.tenantId] ?? r.tenantId,
       inputTokens:  r._sum.inputTokens  ?? 0,
@@ -115,6 +135,7 @@ export async function GET(req: NextRequest) {
         estimatedUsd: estimateCost('claude-sonnet-4-5', lastMonthIn, lastMonthOut),
       },
       byTenant,
+      byTenantAllTime,
       byFeature,
       recent: recent.map((r: any) => ({
         id:            r.id,
