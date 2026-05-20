@@ -101,6 +101,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (existing.quote) {
         updateData.depositAmount = parseFloat(existing.quote.toString()) * 0.2
       }
+      // Persist PO number from invoice path
+      if (body.poNumber !== undefined) updateData.poNumber = body.poNumber || null
     }
 
     // Reject quote
