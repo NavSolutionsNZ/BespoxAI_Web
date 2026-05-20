@@ -1432,6 +1432,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         <span style={{fontFamily:'var(--font-mono)',fontSize:12,...r.style}}>{r.val}</span>
                       </div>
                     ))}
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',marginTop:8,paddingTop:8,borderTop:'1px solid rgba(200,149,42,0.12)',letterSpacing:'0.04em'}}>
+                      All prices exclude GST (15%). GST is added at payment and shown on your invoice.
+                    </p>
                   </div>
                 )
               })()}
@@ -1486,7 +1489,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         ?'A senior developer will review this specification before a quote is issued.'
                         :req.reviewIncluded
                           ?'Covered by your plan. A senior developer will review this specification before a quote is issued.'
-                          :'$249 NZD review fee paid. This will be credited against development costs. A senior developer will review before a quote is issued.'}
+                          :'$249 NZD (excl. GST) review fee paid. This will be credited against development costs. A senior developer will review before a quote is issued.'}
                     </p>
                   </div>
                 </div>
@@ -1509,7 +1512,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {spec ? (
                     <div style={{display:'flex',flexDirection:'column',gap:10,flex:'0 0 auto'}}>
                       <div style={{background:'rgba(10,92,70,0.04)',border:'1px solid rgba(10,92,70,0.15)',borderRadius:8,padding:'12px 14px'}}>
-                        <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--forest)',marginBottom:5}}>Senior Developer Review — {reviewAllowance&&reviewAllowance.remaining>0?'Included with your plan':'$249 NZD'}</p>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--forest)',marginBottom:5}}>Senior Developer Review — {reviewAllowance&&reviewAllowance.remaining>0?'Included with your plan':'$249 NZD excl. GST'}</p>
                         <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6,margin:0}}>
                           Every specification is reviewed by a senior BC developer before a quote is issued.
                           {reviewAllowance&&reviewAllowance.remaining>0
@@ -1519,8 +1522,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       </div>
                       <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
                         <button onClick={()=>submitForReview(req)} disabled={reviewLoading} style={{...pBTN,opacity:reviewLoading?0.7:1}}>
-                          {reviewLoading?'Processing…':reviewAllowance&&reviewAllowance.remaining>0?'Submit for Senior Review (included) →':'Submit for Senior Review — $249 NZD →'}
+                          {reviewLoading?'Processing…':reviewAllowance&&reviewAllowance.remaining>0?'Submit for Senior Review (included) →':'Submit for Senior Review — $249 + GST →'}
                         </button>
+                        {(!reviewAllowance||reviewAllowance.remaining===0)&&(
+                          <p style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',marginTop:4}}>$249.00 excl. GST · 15% GST ($37.35) added at checkout · credited against development deposit</p>
+                        )}
                         <button onClick={()=>deleteReq(req.id)} style={{...sBTN,color:'#A32D2D'}}>Delete Draft</button>
                       </div>
                     </div>

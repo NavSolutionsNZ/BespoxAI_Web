@@ -173,7 +173,7 @@ function BillingPageInner() {
             Simple, transparent pricing
           </h1>
           <p style={{ fontSize: 15, color: 'var(--slate)', margin: '0 0 28px' }}>
-            All prices in NZD. International customers pay in their local currency.
+            All prices in NZD, excl. GST (15%). GST is added at checkout. International customers pay in their local currency.
           </p>
 
           {/* Monthly / Annual toggle */}
@@ -262,7 +262,8 @@ function BillingPageInner() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: isPopular ? 'rgba(244,239,228,0.6)' : 'var(--slate)', marginBottom: 8 }}>{plan.name}</div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 4 }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700, color: isPopular ? 'var(--cream)' : 'var(--ink)', lineHeight: 1 }}>${displayPrice}</div>
-                  <div style={{ fontSize: 12, color: isPopular ? 'rgba(244,239,228,0.6)' : 'var(--slate)', marginBottom: 6 }}>/mo{interval === 'year' ? ' · billed annually' : ''}</div>
+                  <div style={{ fontSize: 12, color: isPopular ? 'rgba(244,239,228,0.6)' : 'var(--slate)', marginBottom: 2 }}>/mo{interval === 'year' ? ' · billed annually' : ''}</div>
+                  <div style={{ fontSize: 10, color: isPopular ? 'rgba(244,239,228,0.5)' : 'var(--slate)', marginBottom: 6, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>excl. GST</div>
                 </div>
                 <div style={{ fontSize: 12, color: isPopular ? 'rgba(244,239,228,0.5)' : 'var(--slate)', marginBottom: 20 }}>{plan.description}</div>
 
@@ -311,7 +312,7 @@ function BillingPageInner() {
 
         {/* Review fee note */}
         <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px', marginBottom: 32, maxWidth: 600, margin: '0 auto 32px' }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--forest)', marginBottom: 8 }}>Senior Developer Review — $249 NZD</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--forest)', marginBottom: 8 }}>Senior Developer Review — $249 NZD excl. GST</p>
           <p style={{ fontSize: 13, color: 'var(--slate)', lineHeight: 1.65, margin: 0 }}>
             Every specification is reviewed by a senior BC developer before a quote is issued — so every quote you receive has been validated by a human, not generated directly from AI output.
             The $249 review fee applies to all plans and is <strong style={{ color: 'var(--ink)' }}>credited in full against development costs</strong> if you proceed.
