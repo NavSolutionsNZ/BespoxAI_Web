@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { AI_CONFIG } from '@/lib/ai-config'
+import { getAiConfig } from '@/lib/ai-config'
 import { logAiUsage } from '@/lib/ai-usage'
 
 export const dynamic    = 'force-dynamic'
@@ -122,15 +122,17 @@ export async function POST(
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  if (!AI_CONFIG.enabled || !AI_CONFIG.features.devAssistant)
+  const cfg = await getAiConfig()
+
+  if (!cfg.features.devAssistant)
     return NextResponse.json({ error: 'AI Dev Assistant is currently disabled' }, { status: 503 })
 
-  const apiKey = AI_CONFIG.provider === 'anthropic'
+  const apiKey = cfg.provider === 'anthropic'
     ? process.env.ANTHROPIC_API_KEY
     : process.env.OPENAI_API_KEY
 
   if (!apiKey)
-    return NextResponse.json({ error: `No API key set for provider "${AI_CONFIG.provider}"` }, { status: 503 })
+    return NextResponse.json({ error: `No API key set for provider "${cfg.provider}"` }, { status: 503 })
 
   const { question, history = [], docContent } = await req.json()
   if (!question?.trim())
@@ -198,7 +200,7 @@ GUIDELINES:
   ]
 
   // ── Anthropic streaming ───────────────────────────────────────────────────
-  if (AI_CONFIG.provider === 'anthropic') {
+  if (cfg.provider === 'anthropic') {
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -207,9 +209,9 @@ GUIDELINES:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model:       AI_CONFIG.model,
-        max_tokens:  AI_CONFIG.maxTokens,
-        temperature: AI_CONFIG.temperature,
+        model:       cfg.model,
+        max_tokens:  cfg.maxTokens,
+        temperature: cfg.temperature,
         stream:      true,
         system:      systemPrompt,
         messages,
@@ -218,7 +220,7 @@ GUIDELINES:
 
     if (!upstream.ok) {
       const err = await upstream.text()
-      console.error(`[dev-notes] Anthropic API error ${upstream.status} — model: ${AI_CONFIG.model} — ${err}`)
+      console.error(`[dev-notes] Anthropic API error ${upstream.status} — model: ${cfg.model} — ${err}`)
       return NextResponse.json({ error: `Anthropic error: ${upstream.status} — ${err}` }, { status: 502 })
     }
 
@@ -228,7 +230,7 @@ GUIDELINES:
     let sseBuffer    = ''
     const tenantId   = requirement.tenantId
     const reqId      = params.id
-    const model      = AI_CONFIG.model
+    const model      = cfg.model
 
     const transform = new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller) {
@@ -266,9 +268,9 @@ GUIDELINES:
   const openai  = new OpenAI({ apiKey })
 
   const stream = await openai.chat.completions.create({
-    model:       AI_CONFIG.model,
-    max_tokens:  AI_CONFIG.maxTokens,
-    temperature: AI_CONFIG.temperature,
+    model:       cfg.model,
+    max_tokens:  cfg.maxTokens,
+    temperature: cfg.temperature,
     stream:      true,
     messages: [
       { role: 'system', content: systemPrompt },
@@ -294,7 +296,7 @@ GUIDELINES:
       }
       controller.enqueue(encoder.encode('data: {"type":"message_stop"}\n\n'))
       controller.close()
-      await logAiUsage({ tenantId: requirement.tenantId, requirementId: params.id, feature: 'dev_assistant', model: AI_CONFIG.model, inputTokens, outputTokens })
+      await logAiUsage({ tenantId: requirement.tenantId, requirementId: params.id, feature: 'dev_assistant', model: cfg.model, inputTokens, outputTokens })
     },
   })
 

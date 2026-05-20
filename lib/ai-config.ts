@@ -1,68 +1,120 @@
 /**
  * lib/ai-config.ts
  *
- * Central AI configuration for BespoxAI.
- * All values are driven by Vercel environment variables — no code changes needed
- * to switch provider, model, or toggle features. Configure in:
- * Vercel Dashboard → Project → Settings → Environment Variables
+ * AI configuration — read from the AiConfig DB table (managed by superadmin
+ * via the admin AI Setup tab). Falls back to safe defaults if the table row
+ * doesn't exist yet. API keys remain in Vercel env vars (secrets).
  *
- * The admin Settings tab surfaces these variables and their current resolved values.
+ * Results are cached for 60 seconds so every AI call isn't a DB round-trip.
  */
+import { prisma } from '@/lib/db'
 
-export const AI_CONFIG = {
-  /** Master on/off. Set AI_ENABLED=false to disable all AI across the app. */
-  enabled: process.env.AI_ENABLED !== 'false',
+export interface AiConfigValues {
+  provider:       'anthropic' | 'openai'
+  model:          string
+  maxTokens:      number
+  temperature:    number
+  features: {
+    devAssistant:   boolean
+    specGeneration: boolean
+    devPlan:        boolean
+    feasibility:    boolean
+    cfoChatQuery:   boolean
+  }
+  anthropicKeySet: boolean
+  openaiKeySet:    boolean
+  updatedAt?:      Date | null
+  updatedBy?:      string | null
+}
 
-  /** Provider: 'anthropic' (default) | 'openai' */
-  provider: (process.env.AI_PROVIDER ?? 'anthropic') as 'anthropic' | 'openai',
-
-  /** Model name. Defaults per provider if not set. */
-  get model() {
-    if (process.env.AI_MODEL) return process.env.AI_MODEL
-    return this.provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4o'
+const DEFAULTS: AiConfigValues = {
+  provider:    'anthropic',
+  model:       'claude-sonnet-4-5',
+  maxTokens:   1000,
+  temperature: 0.4,
+  features: {
+    devAssistant:   true,
+    specGeneration: true,
+    devPlan:        true,
+    feasibility:    true,
+    cfoChatQuery:   true,
   },
+  anthropicKeySet: false,
+  openaiKeySet:    false,
+}
 
-  /** Max tokens per response */
-  maxTokens: parseInt(process.env.AI_MAX_TOKENS ?? '1000', 10),
+// ── 60-second in-process cache ────────────────────────────────────────────────
+let _cache: AiConfigValues | null = null
+let _cacheAt = 0
+const CACHE_TTL_MS = 60_000
 
-  /** Temperature 0–1. Lower = more consistent. */
-  temperature: parseFloat(process.env.AI_TEMPERATURE ?? '0.4'),
+export async function getAiConfig(): Promise<AiConfigValues> {
+  if (_cache && Date.now() - _cacheAt < CACHE_TTL_MS) return _cache
 
-  /** Whether API keys are present (does not expose the key value) */
+  try {
+    const row = await (prisma as any).aiConfig.findUnique({ where: { id: 'default' } })
+    const cfg: AiConfigValues = row ? {
+      provider:    row.provider as 'anthropic' | 'openai',
+      model:       row.model,
+      maxTokens:   row.maxTokens,
+      temperature: row.temperature,
+      features: {
+        devAssistant:   row.devAssistant,
+        specGeneration: row.specGeneration,
+        devPlan:        row.devPlan,
+        feasibility:    row.feasibility,
+        cfoChatQuery:   row.cfoChatQuery,
+      },
+      anthropicKeySet: !!process.env.ANTHROPIC_API_KEY,
+      openaiKeySet:    !!process.env.OPENAI_API_KEY,
+      updatedAt:       row.updatedAt,
+      updatedBy:       row.updatedBy,
+    } : { ...DEFAULTS, anthropicKeySet: !!process.env.ANTHROPIC_API_KEY, openaiKeySet: !!process.env.OPENAI_API_KEY }
+
+    _cache   = cfg
+    _cacheAt = Date.now()
+    return cfg
+  } catch {
+    return { ...DEFAULTS, anthropicKeySet: !!process.env.ANTHROPIC_API_KEY, openaiKeySet: !!process.env.OPENAI_API_KEY }
+  }
+}
+
+/** Invalidate cache immediately after a save */
+export function invalidateAiConfigCache() {
+  _cache   = null
+  _cacheAt = 0
+}
+
+/** Available models per provider shown in the UI */
+export const AVAILABLE_MODELS: Record<string, { id: string; label: string; costHint: string }[]> = {
+  anthropic: [
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5',   costHint: 'Fastest · $0.80/M in · $4/M out' },
+    { id: 'claude-sonnet-4-5',         label: 'Claude Sonnet 4.5',  costHint: 'Balanced · $3/M in · $15/M out' },
+    { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6',  costHint: 'Latest · $3/M in · $15/M out' },
+    { id: 'claude-opus-4-5',           label: 'Claude Opus 4.5',    costHint: 'Most capable · $15/M in · $75/M out' },
+  ],
+  openai: [
+    { id: 'gpt-4o-mini', label: 'GPT-4o Mini', costHint: 'Fastest · $0.15/M in · $0.60/M out' },
+    { id: 'gpt-4o',      label: 'GPT-4o',      costHint: 'Balanced · $2.50/M in · $10/M out' },
+    { id: 'o3-mini',     label: 'o3 Mini',     costHint: 'Reasoning · $1.10/M in · $4.40/M out' },
+  ],
+}
+
+// Legacy export — keep existing callers working during transition
+// Routes that haven't been updated yet can still import AI_CONFIG but get a warning
+export const AI_CONFIG = {
+  get enabled()     { return true },
+  get provider()    { return (process.env.AI_PROVIDER ?? 'anthropic') as 'anthropic' | 'openai' },
+  get model()       { return process.env.AI_MODEL ?? 'claude-sonnet-4-5' },
+  get maxTokens()   { return parseInt(process.env.AI_MAX_TOKENS ?? '1000', 10) },
+  get temperature() { return parseFloat(process.env.AI_TEMPERATURE ?? '0.4') },
   get anthropicKeySet() { return !!process.env.ANTHROPIC_API_KEY },
   get openaiKeySet()    { return !!process.env.OPENAI_API_KEY },
-
-  /** Per-feature flags */
   features: {
-    devAssistant:   process.env.AI_FEATURE_DEV_ASSISTANT   !== 'false',
-    specGeneration: process.env.AI_FEATURE_SPEC_GEN        !== 'false',
-    devPlan:        process.env.AI_FEATURE_DEV_PLAN        !== 'false',
-    feasibility:    process.env.AI_FEATURE_FEASIBILITY     !== 'false',
-    cfoChatQuery:   process.env.AI_FEATURE_CFO_QUERY       !== 'false',
+    devAssistant:   true,
+    specGeneration: true,
+    devPlan:        true,
+    feasibility:    true,
+    cfoChatQuery:   true,
   },
-} as const
-
-/**
- * Env var reference — used by the admin Settings UI.
- * Only non-sensitive variables and descriptions are listed here.
- */
-export const AI_ENV_VARS: {
-  key: string
-  label: string
-  description: string
-  sensitive?: boolean
-  default?: string
-}[] = [
-  { key: 'AI_ENABLED',                label: 'Master switch',       description: 'Set to false to disable all AI features',                           default: 'true' },
-  { key: 'AI_PROVIDER',               label: 'Provider',            description: 'anthropic (default) or openai',                                     default: 'anthropic' },
-  { key: 'AI_MODEL',                  label: 'Model',               description: 'claude-sonnet-4-20250514 (Anthropic) or gpt-4o (OpenAI)',            default: 'claude-sonnet-4-20250514' },
-  { key: 'AI_MAX_TOKENS',            label: 'Max tokens',          description: 'Response length cap per request',                                   default: '1000' },
-  { key: 'AI_TEMPERATURE',           label: 'Temperature',         description: '0.0–1.0, lower = more consistent, higher = more creative',          default: '0.4' },
-  { key: 'ANTHROPIC_API_KEY',        label: 'Anthropic API key',   description: 'Required when AI_PROVIDER=anthropic',   sensitive: true },
-  { key: 'OPENAI_API_KEY',           label: 'OpenAI API key',      description: 'Required when AI_PROVIDER=openai',      sensitive: true },
-  { key: 'AI_FEATURE_DEV_ASSISTANT', label: 'Dev Assistant',       description: 'AI panel in admin requirements review',                             default: 'true' },
-  { key: 'AI_FEATURE_SPEC_GEN',      label: 'Spec Generation',     description: 'AI requirement spec generation for customers',                      default: 'true' },
-  { key: 'AI_FEATURE_DEV_PLAN',      label: 'Dev Plan',            description: 'AI internal dev plan generation',                                   default: 'true' },
-  { key: 'AI_FEATURE_FEASIBILITY',   label: 'Feasibility Check',   description: 'AI feasibility analysis on requirements',                           default: 'true' },
-  { key: 'AI_FEATURE_CFO_QUERY',     label: 'CFO Assistant',       description: 'AI responses to CFO chat queries',                                  default: 'true' },
-]
+}

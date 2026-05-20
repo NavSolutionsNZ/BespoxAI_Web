@@ -1940,11 +1940,17 @@ function AdminRequirementsTab() {
 
 // ─── AI Settings Tab ─────────────────────────────────────────────────────────
 
+// ─── AI Settings Tab ─────────────────────────────────────────────────────────
+
 function AISettingsTab() {
   const [config, setConfig]   = useState<any>(null)
   const [usage, setUsage]     = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
+  const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
+  // Editable form state
+  const [form, setForm] = useState<any>(null)
 
   useEffect(() => {
     Promise.all([
@@ -1952,10 +1958,48 @@ function AISettingsTab() {
       fetch('/api/admin/ai-usage').then(r => r.json()),
     ]).then(([cfg, usg]) => {
       setConfig(cfg)
+      setForm({
+        provider:    cfg.provider,
+        model:       cfg.model,
+        maxTokens:   cfg.maxTokens,
+        temperature: cfg.temperature,
+        features:    { ...cfg.features },
+      })
       setUsage(usg)
       setLoading(false)
     }).catch(() => { setError('Failed to load AI config'); setLoading(false) })
   }, [])
+
+  async function handleSave() {
+    setSaving(true); setSaved(false); setError('')
+    try {
+      const res = await fetch('/api/admin/ai-config', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Save failed'); return }
+      setConfig(data)
+      setForm({
+        provider:    data.provider,
+        model:       data.model,
+        maxTokens:   data.maxTokens,
+        temperature: data.temperature,
+        features:    { ...data.features },
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch { setError('Network error') }
+    finally { setSaving(false) }
+  }
+
+  if (loading) return <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--slate)' }}>Loading…</p>
+  if (error && !config) return <p style={{ color: '#A32D2D' }}>{error}</p>
+  if (!form) return null
+
+  const models = config?.availableModels?.[form.provider] ?? []
+  const selectedModel = models.find((m: any) => m.id === form.model)
 
   const badge = (on: boolean) => (
     <span style={{
@@ -1966,60 +2010,167 @@ function AISettingsTab() {
     }}>{on ? 'enabled' : 'disabled'}</span>
   )
 
-  const row = (label: string, value: React.ReactNode) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--fog)' }}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)' }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)' }}>{value}</span>
-    </div>
+  const label = (text: string) => (
+    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', margin: '0 0 6px' }}>{text}</p>
   )
-
-  if (loading) return <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--slate)' }}>Loading…</p>
-  if (error)   return <p style={{ color: '#A32D2D' }}>{error}</p>
 
   return (
     <div style={{ maxWidth: 700, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Status banner */}
-      <div style={{ background: config.enabled ? 'rgba(10,92,70,0.05)' : 'rgba(163,45,45,0.05)', border: `1px solid ${config.enabled ? 'rgba(10,92,70,0.2)' : 'rgba(163,45,45,0.2)'}`, borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontSize: 20 }}>{config.enabled ? '✦' : '○'}</span>
-        <div>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: config.enabled ? 'var(--forest)' : '#A32D2D', margin: 0 }}>
-            AI {config.enabled ? 'Active' : 'Disabled'}
-          </p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', margin: '2px 0 0' }}>
-            Provider: <strong>{config.provider}</strong> · Model: <strong>{config.model}</strong>
-            {config.provider === 'anthropic' && !config.anthropicKeySet && <span style={{ color: '#A32D2D' }}> · ⚠ ANTHROPIC_API_KEY not set</span>}
-            {config.provider === 'openai' && !config.openaiKeySet && <span style={{ color: '#A32D2D' }}> · ⚠ OPENAI_API_KEY not set</span>}
-          </p>
+      <div style={{ background: 'rgba(10,92,70,0.05)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 18 }}>✦</span>
+          <div>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--forest)', margin: 0 }}>AI Active</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', margin: '2px 0 0' }}>
+              {config.provider} · {config.model}
+              {config.provider === 'anthropic' && !config.anthropicKeySet && <span style={{ color: '#A32D2D' }}> · ⚠ ANTHROPIC_API_KEY missing</span>}
+              {config.provider === 'openai'    && !config.openaiKeySet    && <span style={{ color: '#A32D2D' }}> · ⚠ OPENAI_API_KEY missing</span>}
+            </p>
+            {config.updatedBy && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(0,0,0,0.3)', margin: '3px 0 0' }}>Last saved by {config.updatedBy}</p>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+          {error && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D' }}>{error}</span>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{ ...btnStyle, padding: '8px 18px', opacity: saving ? 0.7 : 1 }}
+          >{saving ? 'Saving…' : 'Save Changes'}</button>
         </div>
       </div>
 
-      {/* Current config */}
-      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Current Configuration</p>
-        {row('Master switch',    badge(config.enabled))}
-        {row('Provider',         config.provider)}
-        {row('Model',            config.model)}
-        {row('Max tokens',       config.maxTokens)}
-        {row('Temperature',      config.temperature)}
-        {row('Anthropic API key', badge(config.anthropicKeySet))}
-        {row('OpenAI API key',    badge(config.openaiKeySet))}
+      {/* Provider + Model */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>Provider & Model</p>
+
+        {/* Provider toggle */}
+        <div>
+          {label('AI Provider')}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['anthropic', 'openai'] as const).map(p => (
+              <button key={p} onClick={() => {
+                const defaultModel = config.availableModels?.[p]?.[1]?.id ?? config.availableModels?.[p]?.[0]?.id
+                setForm((f: any) => ({ ...f, provider: p, model: defaultModel }))
+              }} style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11, padding: '8px 18px', borderRadius: 8,
+                border: `1px solid ${form.provider === p ? 'var(--forest)' : 'var(--fog)'}`,
+                background: form.provider === p ? 'rgba(10,92,70,0.08)' : 'var(--cream)',
+                color: form.provider === p ? 'var(--forest)' : 'var(--slate)',
+                cursor: 'pointer', fontWeight: form.provider === p ? 600 : 400,
+                textTransform: 'capitalize',
+              }}>{p}</button>
+            ))}
+          </div>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', margin: '6px 0 0' }}>
+            {form.provider === 'anthropic' ? '🔒 Requires ANTHROPIC_API_KEY in Vercel env vars' : '🔒 Requires OPENAI_API_KEY in Vercel env vars'}
+          </p>
+        </div>
+
+        {/* Model selector */}
+        <div>
+          {label('Model')}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {models.map((m: any) => (
+              <div key={m.id} onClick={() => setForm((f: any) => ({ ...f, model: m.id }))} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${form.model === m.id ? 'var(--forest)' : 'var(--fog)'}`,
+                background: form.model === m.id ? 'rgba(10,92,70,0.05)' : 'var(--cream)',
+                transition: 'all 0.1s',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {form.model === m.id && <span style={{ color: 'var(--forest)', fontSize: 12 }}>✓</span>}
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', fontWeight: form.model === m.id ? 600 : 400 }}>{m.label}</span>
+                </div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{m.costHint}</span>
+              </div>
+            ))}
+          </div>
+          {selectedModel && (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--jade)', margin: '6px 0 0' }}>Selected: {selectedModel.costHint}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Parameters */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>Parameters</p>
+
+        <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ flex: 1 }}>
+            {label('Max Tokens (200–4000)')}
+            <input type="number" min={200} max={4000} step={100}
+              value={form.maxTokens}
+              onChange={e => setForm((f: any) => ({ ...f, maxTokens: parseInt(e.target.value) || 1000 }))}
+              style={{ ...inputStyle, width: '100%' }}
+            />
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', margin: '4px 0 0' }}>Max response length per AI call</p>
+          </div>
+          <div style={{ flex: 1 }}>
+            {label(`Temperature — ${form.temperature.toFixed(1)}`)}
+            <input type="range" min={0} max={1} step={0.1}
+              value={form.temperature}
+              onChange={e => setForm((f: any) => ({ ...f, temperature: parseFloat(e.target.value) }))}
+              style={{ width: '100%', marginTop: 6 }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>0.0 Consistent</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)' }}>1.0 Creative</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Feature flags */}
       <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Feature Flags</p>
-        {config.features && Object.entries(config.features).map(([key, val]) => (
-          row(key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), badge(!!val))
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 12 }}>Feature Flags</p>
+        {[
+          { key: 'devAssistant',   label: 'Dev Assistant',     desc: 'AI panel in admin requirement review' },
+          { key: 'specGeneration', label: 'Spec Generation',   desc: 'AI spec generation for customers' },
+          { key: 'devPlan',        label: 'Dev Plan',          desc: 'AI internal dev plan generation' },
+          { key: 'feasibility',    label: 'Feasibility Check', desc: 'AI feasibility analysis' },
+          { key: 'cfoChatQuery',   label: 'CFO Assistant',     desc: 'AI responses to CFO chat queries' },
+        ].map(({ key, label: lbl, desc }) => (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--fog)' }}>
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', margin: 0 }}>{lbl}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', margin: '2px 0 0' }}>{desc}</p>
+            </div>
+            <button onClick={() => setForm((f: any) => ({ ...f, features: { ...f.features, [key]: !f.features[key] } }))} style={{
+              fontFamily: 'var(--font-mono)', fontSize: 8, padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
+              background: form.features[key] ? 'rgba(10,92,70,0.08)' : 'rgba(163,45,45,0.08)',
+              border: `1px solid ${form.features[key] ? 'rgba(10,92,70,0.2)' : 'rgba(163,45,45,0.2)'}`,
+              color: form.features[key] ? 'var(--forest)' : '#A32D2D',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>{form.features[key] ? 'Enabled' : 'Disabled'}</button>
+          </div>
         ))}
       </div>
 
-      {/* Usage this month */}
+      {/* API key status — read only, managed in Vercel */}
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>API Keys</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 12 }}>API keys are managed securely in <strong>Vercel → Project → Settings → Environment Variables</strong> and are never stored in the database.</p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {[{ key: 'ANTHROPIC_API_KEY', set: config.anthropicKeySet, label: 'Anthropic' }, { key: 'OPENAI_API_KEY', set: config.openaiKeySet, label: 'OpenAI' }].map(k => (
+            <div key={k.key} style={{ flex: 1, background: 'var(--cream)', borderRadius: 8, padding: '10px 14px' }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>{k.label}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                {badge(k.set)}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{k.key}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Usage panel */}
       {usage && !usage.error && (
         <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Token Usage — This Month</p>
-
-          {/* KPI row */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
             {[
               { label: 'Requests',      value: usage.thisMonth.requests.toLocaleString() },
@@ -2033,57 +2184,43 @@ function AISettingsTab() {
               </div>
             ))}
           </div>
-
-          {/* By tenant — this month */}
           {usage.byTenant?.length > 0 && (
             <>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Tenant — This Month</p>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
-                <thead>
-                  <tr>{['Tenant', 'Requests', 'In tokens', 'Out tokens', 'Est. cost'].map(h => (
-                    <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '5px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
-                  ))}</tr>
-                </thead>
-                <tbody>
-                  {usage.byTenant.map((t: any) => (
-                    <tr key={t.tenantId}>
-                      <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--ink)' }}>{t.tenantName}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{t.requests}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens  ?? 0).toLocaleString()}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.outputTokens ?? 0).toLocaleString()}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 600 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
-                    </tr>
-                  ))}
-                </tbody>
+                <thead><tr>{['Tenant','Requests','In tokens','Out tokens','Est. cost'].map(h => (
+                  <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '5px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
+                ))}</tr></thead>
+                <tbody>{usage.byTenant.map((t: any) => (
+                  <tr key={t.tenantId}>
+                    <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--ink)' }}>{t.tenantName}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{t.requests}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens ?? 0).toLocaleString()}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.outputTokens ?? 0).toLocaleString()}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 600 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
+                  </tr>
+                ))}</tbody>
               </table>
             </>
           )}
-
-          {/* By tenant — all time (cumulative cost basis) */}
           {usage.byTenantAllTime?.length > 0 && (
             <>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6, marginTop: 4 }}>By Tenant — All Time (Cost Basis)</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Tenant — All Time (Cost Basis)</p>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
-                <thead>
-                  <tr>{['Tenant', 'Total Requests', 'Total Tokens', 'Est. Cost (USD)'].map(h => (
-                    <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '5px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
-                  ))}</tr>
-                </thead>
-                <tbody>
-                  {usage.byTenantAllTime.map((t: any) => (
-                    <tr key={t.tenantId}>
-                      <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--ink)', fontWeight: 500 }}>{t.tenantName}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{t.requests}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens + t.outputTokens).toLocaleString()}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 700 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
-                    </tr>
-                  ))}
-                </tbody>
+                <thead><tr>{['Tenant','Total Requests','Total Tokens','Est. cost (USD)'].map(h => (
+                  <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '5px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
+                ))}</tr></thead>
+                <tbody>{usage.byTenantAllTime.map((t: any) => (
+                  <tr key={t.tenantId}>
+                    <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--ink)', fontWeight: 500 }}>{t.tenantName}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{t.requests}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--slate)' }}>{(t.inputTokens + t.outputTokens).toLocaleString()}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '6px 8px', borderBottom: '1px solid var(--fog)', color: 'var(--jade)', fontWeight: 700 }}>${(t.estimatedUsd ?? 0).toFixed(4)}</td>
+                  </tr>
+                ))}</tbody>
               </table>
             </>
           )}
-
-          {/* By feature */}
           {usage.byFeature?.length > 0 && (
             <>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>By Feature</p>
@@ -2098,41 +2235,11 @@ function AISettingsTab() {
               </div>
             </>
           )}
-
           {usage.thisMonth.requests === 0 && (
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', textAlign: 'center', padding: '20px 0' }}>No AI usage recorded yet this month.</p>
           )}
         </div>
       )}
-
-      {/* Env var reference */}
-      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '16px 20px' }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>Environment Variables</p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 12 }}>
-          Set these in <strong>Vercel Dashboard → Project → Settings → Environment Variables</strong>. Changes take effect on next deployment.
-        </p>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-          <thead>
-            <tr>
-              {['Variable', 'Default', 'Description'].map(h => (
-                <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--fog)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {config.envVars?.map((v: any) => (
-              <tr key={v.key}>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink)', padding: '7px 8px', borderBottom: '1px solid var(--fog)', verticalAlign: 'top' }}>
-                  {v.key}
-                  {v.sensitive && <span style={{ marginLeft: 6, fontSize: 8, color: 'var(--slate)' }}>🔒</span>}
-                </td>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--jade)', padding: '7px 8px', borderBottom: '1px solid var(--fog)', verticalAlign: 'top' }}>{v.default ?? '—'}</td>
-                <td style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', padding: '7px 8px', borderBottom: '1px solid var(--fog)', verticalAlign: 'top' }}>{v.description}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }

@@ -236,3 +236,18 @@ model AiUsageLog {
   @@index([tenantId])
   @@index([createdAt])
 }
+
+model AiConfig {
+  id             String   @id @default("default")
+  provider       String   @default("anthropic")
+  model          String   @default("claude-sonnet-4-5")
+  maxTokens      Int      @default(1000)
+  temperature    Float    @default(0.4)
+  devAssistant   Boolean  @default(true)
+  specGeneration Boolean  @default(true)
+  devPlan        Boolean  @default(true)
+  feasibility    Boolean  @default(true)
+  cfoChatQuery   Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+  updatedBy      String?
+}
