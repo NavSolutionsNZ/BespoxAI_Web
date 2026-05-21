@@ -605,69 +605,69 @@ export default function SettingsPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <div style={lbl}>Database Server</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Database Server</div>
                   <input type="text" placeholder="localhost" value={instForm.navDatabaseServer}
                     onChange={e => setInstForm(f => ({ ...f, navDatabaseServer: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ navDatabaseServer: e.target.value || 'localhost' }) }} />
                 </div>
                 <div>
-                  <div style={lbl}>Database Name</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Database Name</div>
                   <input type="text" placeholder="e.g. Dynamics NAV 2017" value={instForm.navDatabaseName}
                     onChange={e => setInstForm(f => ({ ...f, navDatabaseName: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ navDatabaseName: e.target.value }) }} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <div style={lbl}>Server Instance</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Server Instance</div>
                   <input type="text" placeholder="e.g. DynamicsNAV110" value={instForm.navServerInstance}
                     onChange={e => setInstForm(f => ({ ...f, navServerInstance: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ navServerInstance: e.target.value }) }} />
                 </div>
                 <div>
-                  <div style={lbl}>BC Instance Name</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>BC Instance Name</div>
                   <input type="text" placeholder="e.g. BC" value={instForm.bcInstance}
                     onChange={e => setInstForm(f => ({ ...f, bcInstance: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ bcInstance: e.target.value }) }} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <div style={lbl}>BC Company Name</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>BC Company Name</div>
                   <input type="text" placeholder="e.g. CRONUS International Ltd." value={instForm.bcCompany}
                     onChange={e => setInstForm(f => ({ ...f, bcCompany: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ bcCompany: e.target.value }) }} />
                 </div>
                 <div>
-                  <div style={lbl}>BC OData Port · default 8048</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>BC OData Port · default 8048</div>
                   <input type="number" value={instForm.bcPort}
                     onChange={e => setInstForm(f => ({ ...f, bcPort: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ bcPort: e.target.value }) }} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <div style={lbl}>BC Username</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>BC Username</div>
                   <input type="text" placeholder="DOMAIN\username" value={instForm.bcUsername}
                     onChange={e => setInstForm(f => ({ ...f, bcUsername: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                   <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows / BC service account with OData access.</p>
                 </div>
                 <div>
-                  <div style={lbl}>BC Password</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>BC Password</div>
                   <input type="password" placeholder="" value={instForm.bcPassword}
                     onChange={e => setInstForm(f => ({ ...f, bcPassword: e.target.value }))}
-                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                   <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
                 </div>
