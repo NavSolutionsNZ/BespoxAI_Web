@@ -57,9 +57,10 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 // Test environment form — explicit save button, no auto-save
-function TestEnvForm({ initial, onSave }: {
+function TestEnvForm({ initial, onSave, onSaved }: {
   initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string }
   onSave: (data: Record<string, any>) => Promise<void>
+  onSaved: (vals: Record<string, string | null>) => void
 }) {
   const [saving, setSaving] = useState(false)
   const refs = {
@@ -78,14 +79,16 @@ function TestEnvForm({ initial, onSave }: {
   )
   async function save() {
     setSaving(true)
-    await onSave({
+    const vals = {
       testNavDatabaseServer: refs.testNavDatabaseServer.current?.value || null,
       testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || null,
       testNavServerInstance: refs.testNavServerInstance.current?.value || null,
       testBcPort:            refs.testBcPort.current?.value            || null,
       testBcInstance:        refs.testBcInstance.current?.value        || null,
       testBcCompany:         refs.testBcCompany.current?.value         || null,
-    })
+    }
+    await onSave(vals)
+    onSaved(vals)
     setSaving(false)
   }
   return (
@@ -376,7 +379,7 @@ export default function SettingsPage() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. Leave blank to use the same server as production. Details are injected into the BCAgent installer.
                 </p>
-                <TestEnvForm key={tenant?.id ?? 'testenv'} initial={testEnv} onSave={saveSystemConfig} />
+                <TestEnvForm key={tenant?.id ?? 'testenv'} initial={testEnv} onSave={saveSystemConfig} onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))} />
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Server</div>
