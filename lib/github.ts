@@ -75,20 +75,26 @@ export async function ensureRepo(
 ): Promise<string> {
   const repo = repoName(tenantName)
 
-  // Check if repo already exists
-  const check = await fetch(`${GITHUB_API}/repos/${org}/${repo}`, {
+  // Get authenticated user (repo lives under personal account)
+  const meRes = await fetch(`${GITHUB_API}/user`, { headers: headers() })
+  const me    = await meRes.json()
+  const owner = (me as any).login as string
+  if (!owner) throw new Error('Could not determine GitHub user from token')
+
+  // Check if repo already exists under owner
+  const check = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
     headers: headers(),
   })
 
-  if (check.status === 200) return repo // already exists
+  if (check.status === 200) return { repo, owner } // already exists
 
   if (check.status !== 404) {
     const err = await check.json().catch(() => ({}))
     throw new Error(`GitHub repo check failed: ${check.status} — ${(err as any).message ?? ''}`)
   }
 
-  // Create it
-  const create = await fetch(`${GITHUB_API}/orgs/${org}/repos`, {
+  // Create under authenticated user (works with repo-scoped PAT without org admin rights)
+  const create = await fetch(`${GITHUB_API}/user/repos`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
@@ -107,7 +113,7 @@ export async function ensureRepo(
   // Brief pause to let GitHub initialise the repo before we try to use it
   await new Promise(r => setTimeout(r, 1500))
 
-  return repo
+  return { repo, owner }
 }
 
 // ── Branch management ─────────────────────────────────────────────────────────
@@ -278,11 +284,10 @@ export async function pushObjectsToGitHub(params: PushObjectsParams): Promise<{
   repo:   string
   branch: string
 }> {
-  const org    = params.tenantGithubOrg || DEFAULT_ORG
-  const repo   = await ensureRepo(params.tenantName, org)
-  const branch = branchName(params.requirementId, params.requirementTitle)
+  const { repo, owner } = await ensureRepo(params.tenantName, params.tenantGithubOrg || DEFAULT_ORG)
+  const branch          = branchName(params.requirementId, params.requirementTitle)
 
-  await ensureBranch(org, repo, branch)
+  await ensureBranch(owner, repo, branch)
 
   const files: GitHubFile[] = params.objects.map(o => ({
     path:    `objects/${o.objectType}_${o.objectId ?? 'X'}_${o.objectName.replace(/[^a-zA-Z0-9_\-. ]/g, '_')}.txt`,
@@ -291,7 +296,7 @@ export async function pushObjectsToGitHub(params: PushObjectsParams): Promise<{
 
   const msg = params.commitMessage ?? `chore: fetch ${files.length} object${files.length !== 1 ? 's' : ''} for requirement ${params.requirementId.slice(0, 8)}`
 
-  await pushFiles(org, repo, branch, files, msg)
+  await pushFiles(owner, repo, branch, files, msg)
 
-  return { org, repo, branch }
+  return { org: owner, repo, branch }
 }
