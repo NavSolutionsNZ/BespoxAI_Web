@@ -67,8 +67,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // ── DEBUG ──
-  if (DEBUG) return NextResponse.json({ tenant: DEBUG_TENANT, _debug: true })
+  // ── DEBUG — allow PATCH to fall through to real DB save even in debug mode ──
   // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
