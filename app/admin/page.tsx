@@ -1321,14 +1321,22 @@ function AdminRequirementsTab() {
   const [deployResults, setDeployResults]       = useState<any[]|null>(null)
   const [deployDebug, setDeployDebug]           = useState(false)
   const [deployErr, setDeployErr]               = useState('')
+  const [developers, setDevelopers]             = useState<{id:string;name:string|null;email:string}[]>([])
 
   async function load() {
     setLoading(true)
     try {
-      const res  = await fetch('/api/admin/requirements')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      const [reqRes, usersRes] = await Promise.all([
+        fetch('/api/admin/requirements'),
+        fetch('/api/admin/users'),
+      ])
+      const data = await reqRes.json()
+      if (!reqRes.ok) throw new Error(data.error)
       setReqs(data.requirements)
+      if (usersRes.ok) {
+        const ud = await usersRes.json()
+        setDevelopers((ud.users ?? []).filter((u: any) => u.role === 'developer'))
+      }
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -1754,14 +1762,14 @@ function AdminRequirementsTab() {
                     body: JSON.stringify({ assignedDeveloperId: devId }),
                   })
                   if (res.ok) {
-                    const dev = devId ? users.find(u => u.id === devId) : null
+                    const dev = devId ? developers.find(u => u.id === devId) : null
                     setSelected((s: any) => s ? { ...s, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : s)
                     setReqs(prev => prev.map(r => r.id === selected.id ? { ...r, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : r))
                   }
                 }}
               >
                 <option value="">Assign developer…</option>
-                {users.filter(u => u.role === 'developer').map(u => (
+                {developers.map(u => (
                   <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
                 ))}
               </select>
