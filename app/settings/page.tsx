@@ -68,6 +68,7 @@ export default function SettingsPage() {
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
   const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '' })
+  const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '' })
   const [instLoading,  setInstLoading]  = useState(false)
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
   const [inviteResult, setInviteResult] = useState<{ tempPassword: string; email: string } | null>(null)
@@ -98,6 +99,14 @@ export default function SettingsPage() {
         if (t?.bcPort)     setInstForm(f => ({ ...f, bcPort:     String(t.bcPort)    }))
         if (t?.agentPort)  setInstForm(f => ({ ...f, agentPort:  String(t.agentPort) }))
         if (t?.bcInstance) setInstForm(f => ({ ...f, bcInstance: t.bcInstance        }))
+        setTestEnv({
+          testNavDatabaseServer: t?.testNavDatabaseServer ?? '',
+          testNavDatabaseName:   t?.testNavDatabaseName   ?? '',
+          testNavServerInstance: t?.testNavServerInstance ?? '',
+          testBcPort:            t?.testBcPort ? String(t.testBcPort) : '',
+          testBcInstance:        t?.testBcInstance        ?? '',
+          testBcCompany:         t?.testBcCompany         ?? '',
+        })
         if (t?.bcCompany)  setInstForm(f => ({ ...f, bcCompany:  t.bcCompany         }))
         setLoading(false)
       }).catch(() => setLoading(false))
@@ -322,21 +331,24 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Server</div>
-                    <input type="text" defaultValue={tenant?.testNavDatabaseServer ?? ''} placeholder="localhost (defaults to production server)"
+                    <input type="text" value={testEnv.testNavDatabaseServer} placeholder="localhost (defaults to production server)"
+                      onChange={e => setTestEnv(f => ({ ...f, testNavDatabaseServer: e.target.value }))}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavDatabaseServer: e.target.value }) }}
                       onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                   </div>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Name <span style={{ color: '#A32D2D' }}>*</span></div>
-                    <input type="text" defaultValue={tenant?.testNavDatabaseName ?? ''} placeholder="e.g. Dynamics NAV 2017 Test"
+                    <input type="text" value={testEnv.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test"
+                      onChange={e => setTestEnv(f => ({ ...f, testNavDatabaseName: e.target.value }))}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavDatabaseName: e.target.value }) }}
                       onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                   </div>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Server Instance <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(optional)</span></div>
-                    <input type="text" defaultValue={tenant?.testNavServerInstance ?? ''} placeholder="e.g. DynamicsNAV110_Test"
+                    <input type="text" value={testEnv.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test"
+                      onChange={e => setTestEnv(f => ({ ...f, testNavServerInstance: e.target.value }))}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavServerInstance: e.target.value }) }}
                       onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
@@ -344,14 +356,16 @@ export default function SettingsPage() {
                   <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test BC Port <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(OData, optional)</span></div>
-                      <input type="number" defaultValue={tenant?.testBcPort ?? ''} placeholder="e.g. 7048"
+                      <input type="number" value={testEnv.testBcPort} placeholder="e.g. 7048"
+                        onChange={e => setTestEnv(f => ({ ...f, testBcPort: e.target.value }))}
                         onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ testBcPort: e.target.value }) }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test BC Company <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(optional)</span></div>
-                      <input type="text" defaultValue={tenant?.testBcCompany ?? ''} placeholder="e.g. Cronus NZ Test"
+                      <input type="text" value={testEnv.testBcCompany} placeholder="e.g. Cronus NZ Test"
+                        onChange={e => setTestEnv(f => ({ ...f, testBcCompany: e.target.value }))}
                         onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testBcCompany: e.target.value }) }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
