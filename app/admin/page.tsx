@@ -1899,8 +1899,8 @@ function AdminRequirementsTab() {
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: i < deployResults.length - 1 ? '1px solid var(--fog)' : 'none', background: r.imported && r.compiled ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}>
                         <span style={{ fontSize: 10 }}>{r.imported && r.compiled ? '✓' : '✕'}</span>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1 }}>{r.filename}</span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>import {r.imported ? '✓' : '✕'}</span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>compile {r.compiled ? '✓' : '✕'}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>{'import '}{r.imported ? '✓' : '✕'}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>{'compile '}{r.compiled ? '✓' : '✕'}</span>
                         {r.error && <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: '#A32D2D', maxWidth: 200 }} title={r.error}>⚠ {r.error.slice(0, 40)}…</span>}
                       </div>
                     ))}
