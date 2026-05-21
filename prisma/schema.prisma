@@ -34,6 +34,8 @@ model Tenant {
   testBcPort             Int?                        // test BC OData port
   testBcInstance         String?                     // test BC instance name
   testBcCompany          String?                     // test BC company name
+  githubOrg            String?                    // GitHub org for customer repos (defaults to NavSolutionsNZ)
+  githubRepo           String?                    // GitHub repo name e.g. bespoxai-acme
   tier                 String   @default("trial") // "free" | "trial" | "assistant" | "manager" | "executive"
   trialEndsAt          DateTime?                  // null = no expiry
   stripeCustomerId     String?                    // Stripe customer ID
@@ -164,6 +166,7 @@ model Requirement {
   // ── Deployment & UAT tracking ──────────────────────────────────────────────
   testDeploySnapshotId  String?           // BCAgent snapshotId deployed to test
   testDeployedAt        DateTime?         // when deployed to test env
+  githubBranch          String?           // GitHub branch for this requirement e.g. req/abc123-shopify
   uatApprovedAt         DateTime?         // customer signed off UAT
   uatApprovedById       String?           // userId who approved
   uatRejectedAt         DateTime?         // customer rejected UAT

@@ -52,14 +52,6 @@ interface RequirementRow {
   feasibilityCostRange: string | null
 }
 
-interface ObjectFileRow {
-  objectType: string
-  objectName: string
-  objectId:   number | null
-  language:   string
-  summary:    Record<string, any> | null
-}
-
 // ── Per-tenant 5-minute cache ─────────────────────────────────────────────────
 
 interface CacheEntry { context: string; at: number }
@@ -157,14 +149,18 @@ const STATUS_LABELS: Record<string, string> = {
  *   ## Customer BC Environment
  *   ## Enabled BC Entities
  *   ## Customisation History
- *   ## Known BC Objects
+ *
+ * Note: BC object source code is intentionally excluded here.
+ * Full C/AL/AL source is loaded directly from GitHub per-requirement
+ * in the Coding Assistant workflow — keeping raw code out of general
+ * AI context prompts avoids token bloat and keeps concerns separated.
  */
 export async function buildTenantContext(tenantId: string): Promise<string> {
   const hit = _cache.get(tenantId)
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.context
 
   try {
-    const [tenant, requirements, objects] = await Promise.all([
+    const [tenant, requirements] = await Promise.all([
 
       (prisma as any).tenant.findUnique({
         where: { id: tenantId },
@@ -197,20 +193,6 @@ export async function buildTenantContext(tenantId: string): Promise<string> {
         },
       }) as Promise<RequirementRow[]>,
 
-      // Uploaded AL objects, most recent first, deduplicated below
-      (prisma as any).tenantObjectFile.findMany({
-        where: { tenantId, parseError: false },
-        orderBy: { uploadedAt: 'desc' },
-        take: 30,
-        select: {
-          objectType: true,
-          objectName: true,
-          objectId:   true,
-          language:   true,
-          summary:    true,
-        },
-      }) as Promise<ObjectFileRow[]>,
-
     ])
 
     if (!tenant) {
@@ -224,7 +206,6 @@ export async function buildTenantContext(tenantId: string): Promise<string> {
     const bcVersion = resolveBcVersion(tenant)
     lines.push('## Customer BC Environment')
     lines.push(`Product: ${bcVersion}`)
-    // Only show company name if it's been customised away from the default
     if (tenant.bcCompany && tenant.bcCompany !== 'GWM') {
       lines.push(`BC Company: ${tenant.bcCompany}`)
     }
@@ -258,45 +239,10 @@ export async function buildTenantContext(tenantId: string): Promise<string> {
         }
 
         if (r.consultantNote) {
-          // Trim long notes to keep token overhead bounded (~200 chars)
           const note = r.consultantNote.replace(/\s+/g, ' ').trim()
           const trimmed = note.length > 200 ? note.slice(0, 200) + '…' : note
           lines.push(`  Note: ${trimmed}`)
         }
-      }
-    }
-
-    // ── Section 4: Known AL Objects ──────────────────────────────────────────
-    if (objects.length > 0) {
-      lines.push('\n## Known BC Objects (fetched from customer system)')
-      const seen = new Set<string>()
-      for (const o of objects) {
-        const dedupeKey = `${o.objectType}-${o.objectId ?? o.objectName}`
-        if (seen.has(dedupeKey)) continue
-        seen.add(dedupeKey)
-        const id  = o.objectId ? ` ${o.objectId}` : ''
-        const s   = (o.summary ?? {}) as Record<string, any>
-        const vl  = s.versionList ? ` — ${s.versionList}` : ''
-        lines.push(`- ${o.objectType}${id} "${o.objectName}" (${o.language})${vl}`)
-
-        // Fields (Tables)
-        if (s.fields?.length) {
-          const fieldList = s.fields.slice(0, 15).map((f: any) => `${f.name}(${f.type})`).join(', ')
-          const more = s.fields.length > 15 ? ` +${s.fields.length - 15} more` : ''
-          lines.push(`  Fields: ${fieldList}${more}`)
-        }
-        // Procedures / functions (Codeunits)
-        if (s.procedures?.length) {
-          const procList = s.procedures.slice(0, 10).map((p: any) => p.name).join(', ')
-          const more = s.procedures.length > 10 ? ` +${s.procedures.length - 10} more` : ''
-          lines.push(`  Functions: ${procList}${more}`)
-        }
-        // Event subscribers
-        if (s.eventSubscribers?.length) {
-          lines.push(`  Subscribes: ${s.eventSubscribers.map((e: any) => `${e.object}.${e.event}`).join(', ')}`)
-        }
-        // Source table (Pages)
-        if (s.sourceTable) lines.push(`  Source table: ${s.sourceTable}`)
       }
     }
 
