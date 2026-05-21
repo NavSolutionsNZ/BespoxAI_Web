@@ -1743,7 +1743,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                               placeholder="Please describe what is not working or what needs to change…"
                               rows={3}
                               style={{width:'100%',fontFamily:'var(--font-body)',fontSize:12,padding:'8px 10px',borderRadius:6,border:'1px solid var(--fog)',resize:'vertical',boxSizing:'border-box'}}
-                            />
+                            ></textarea>
                             <div style={{display:'flex',gap:8,marginTop:6}}>
                               <button
                                 disabled={!uatRejectReason.trim()||uatRejectLoading}

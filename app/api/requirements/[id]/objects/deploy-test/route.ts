@@ -68,6 +68,8 @@ export async function POST(
     })
   }
   // ── END DEBUG ─────────────────────────────────────────────────────────────
+
+  const tenant = await (prisma as any).tenant.findUnique({
     where:  { id: requirement.tenantId },
     select: { tunnelSubdomain: true, apiKey: true, testNavDatabaseName: true },
   })

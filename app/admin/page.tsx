@@ -1108,6 +1108,14 @@ interface AdminReq {
   adminQuestions: string | null; customerAnswers: string | null; adminQALog: string | null
   quoteRejectedAt: string | null; quoteRejectionReason: string | null
   devPlan: string | null
+  // Deployment & UAT
+  testDeployedAt:       string | null
+  testDeploySnapshotId: string | null
+  uatApprovedAt:        string | null
+  uatApprovedById:      string | null
+  uatRejectedAt:        string | null
+  uatRejectionReason:   string | null
+  uatRejectionAnalysis: any | null
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string }
