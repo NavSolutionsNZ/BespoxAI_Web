@@ -1719,14 +1719,11 @@ function AdminRequirementsTab() {
   function extractCalObjects(text: string): { filename: string; content: string }[] {
     const results: { filename: string; content: string }[] = []
     // Match fenced code blocks that contain C/AL OBJECT declarations
-    const fenceRe = /```(?:cal|txt|nav|c\/al)?
-(OBJECT [^
-]+[\s\S]*?)```/gi
+    const fenceRe = /```(?:cal|txt|nav|c\/al)?\n(OBJECT [^\n]+[\s\S]*?)```/gi
     let m
     while ((m = fenceRe.exec(text)) !== null) {
       const block = m[1].trim()
-      const header = block.split('
-')[0] // e.g. "OBJECT Codeunit 80 Sales-Post"
+      const header = block.split('\n')[0] // e.g. "OBJECT Codeunit 80 Sales-Post"
       const parts  = header.match(/^OBJECT\s+(\w+)\s+(\d+)\s+(.+)$/)
       if (parts) {
         const objType = parts[1]
