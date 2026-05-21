@@ -34,6 +34,19 @@ export async function POST(
   if (!fileIds?.length)
     return NextResponse.json({ error: 'No fileIds provided' }, { status: 400 })
 
+  // ── DEBUG ──
+  if (process.env.SETTINGS_DEBUG === 'true') {
+    const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)
+    const snapshotId = `${ts}_deploy_DEBUG`
+    return NextResponse.json({
+      snapshotId,
+      path:        `C:\\BespoxAI\\Deployments\\${params.id}\\${snapshotId}`,
+      objectCount: fileIds.length,
+      _debug:      true,
+    })
+  }
+  // ── END DEBUG ──
+
   // Load object files with content
   const files = await (prisma as any).tenantObjectFile.findMany({
     where: {

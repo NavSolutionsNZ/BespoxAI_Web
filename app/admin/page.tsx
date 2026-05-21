@@ -1156,6 +1156,7 @@ function AdminRequirementsTab() {
   const [writeErr, setWriteErr]                 = useState('')
   const [deployLoading, setDeployLoading]       = useState(false)
   const [deployResults, setDeployResults]       = useState<any[]|null>(null)
+  const [deployDebug, setDeployDebug]           = useState(false)
   const [deployErr, setDeployErr]               = useState('')
 
   async function load() {
@@ -1325,6 +1326,7 @@ function AdminRequirementsTab() {
     setWriteErr('')
     setWriteSnapshotId(null)
     setDeployResults(null)
+    setDeployDebug(false)
     try {
       // Load object file IDs for this requirement that have content
       const filesRes = await fetch(`/api/requirements/${selected.id}/objects`)
@@ -1362,6 +1364,7 @@ function AdminRequirementsTab() {
       if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
       const data = await res.json()
       setDeployResults(data.results ?? [])
+      setDeployDebug(!!data._debug)
       if (data.success) {
         // Refresh requirement to show testDeployedAt
         const reqRes = await fetch('/api/admin/requirements')
@@ -1879,6 +1882,11 @@ function AdminRequirementsTab() {
                 {/* Deploy results */}
                 {deployResults && (
                   <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
+                    {deployDebug && (
+                      <div style={{ background: '#FAEEDA', borderBottom: '1px solid #EF9F27', padding: '4px 10px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#633806' }}>🧪 DEBUG — simulated results, no real deployment occurred</span>
+                      </div>
+                    )}
                     {deployResults.map((r: any, i: number) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: i < deployResults.length - 1 ? '1px solid var(--fog)' : 'none', background: r.imported && r.compiled ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}>
                         <span style={{ fontSize: 10 }}>{r.imported && r.compiled ? '✓' : '✕'}</span>

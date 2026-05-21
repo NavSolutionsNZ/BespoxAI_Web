@@ -37,7 +37,37 @@ export async function POST(
   if (!snapshotId)
     return NextResponse.json({ error: 'snapshotId required' }, { status: 400 })
 
-  const tenant = await (prisma as any).tenant.findUnique({
+  // ── DEBUG — simulate successful test deployment, write real DB fields ──────
+  if (process.env.SETTINGS_DEBUG === 'true') {
+    const mockResults = [
+      { filename: 'Codeunit_80_Sales-Post.txt',            imported: true, compiled: true,  error: '' },
+      { filename: 'Table_50100_Custom_Approval_Entry.txt', imported: true, compiled: true,  error: '' },
+      { filename: 'Page_50300_Custom_Approval_List.txt',   imported: true, compiled: false,
+        error: 'NAV compilation skipped in debug mode' },
+    ]
+    const now = new Date()
+    await (prisma as any).requirement.update({
+      where: { id: params.id },
+      data:  {
+        testDeployedAt:       now,
+        testDeploySnapshotId: snapshotId,
+        uatApprovedAt:        null,
+        uatApprovedById:      null,
+        uatRejectedAt:        null,
+        uatRejectedById:      null,
+        uatRejectionReason:   null,
+        uatRejectionAnalysis: null,
+      },
+    })
+    return NextResponse.json({
+      success:    true,
+      results:    mockResults,
+      snapshotId,
+      deployedAt: now.toISOString(),
+      _debug:     true,
+    })
+  }
+  // ── END DEBUG ─────────────────────────────────────────────────────────────
     where:  { id: requirement.tenantId },
     select: { tunnelSubdomain: true, apiKey: true, testNavDatabaseName: true },
   })
