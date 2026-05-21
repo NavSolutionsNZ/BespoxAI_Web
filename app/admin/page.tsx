@@ -225,7 +225,8 @@ function AdminPageInner() {
   }
 
   async function toggleUserRole(userId: string, currentRole: string) {
-    const newRole = currentRole === 'tenant_admin' ? 'user' : 'tenant_admin'
+    const cycle: Record<string, string> = { user: 'tenant_admin', tenant_admin: 'developer', developer: 'user' }
+    const newRole = cycle[currentRole] ?? 'user'
     setUserAction(userId)
     const res = await fetch(`/api/admin/users/${userId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -556,6 +557,7 @@ function AdminPageInner() {
                       <select style={inputStyle} value={userForm.role} onChange={e => setUserForm(f => ({ ...f, role: e.target.value }))}>
                         <option value="user">User</option>
                         <option value="tenant_admin">Tenant Admin</option>
+                        <option value="developer">Developer</option>
                       </select>
                     </FormRow>
                   </div>
@@ -578,8 +580,8 @@ function AdminPageInner() {
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant.name}</td>
                         <td style={tdStyle}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
-                            {u.role === 'superadmin' ? 'Super Admin' : u.role === 'tenant_admin' ? 'Admin' : 'User'}
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : u.role === 'developer' ? 'rgba(59,82,163,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : u.role === 'developer' ? '#3B52A3' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : u.role === 'developer' ? 'rgba(59,82,163,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
+                            {u.role === 'superadmin' ? 'Super Admin' : u.role === 'tenant_admin' ? 'Admin' : u.role === 'developer' ? 'Developer' : 'User'}
                           </span>
                         </td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
@@ -595,10 +597,10 @@ function AdminPageInner() {
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => toggleUserRole(u.id, u.role)}
-                                  style={{ ...ghostBtn, color: u.role === 'tenant_admin' ? 'var(--slate)' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
-                                  title={u.role === 'tenant_admin' ? 'Demote to User' : 'Promote to Admin'}
+                                  style={{ ...ghostBtn, color: u.role === 'tenant_admin' ? 'var(--slate)' : u.role === 'developer' ? 'var(--slate)' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
+                                  title={u.role === 'tenant_admin' ? 'Make Developer' : u.role === 'developer' ? 'Make User' : 'Make Admin'}
                                 >
-                                  {userAction === u.id ? '…' : u.role === 'tenant_admin' ? '↓ User' : '↑ Admin'}
+                                  {userAction === u.id ? '…' : u.role === 'tenant_admin' ? '→ Dev' : u.role === 'developer' ? '→ User' : '↑ Admin'}
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
@@ -1116,6 +1118,8 @@ interface AdminReq {
   uatRejectedAt:        string | null
   uatRejectionReason:   string | null
   uatRejectionAnalysis: any | null
+  assignedDeveloper:    { id: string; name: string | null; email: string } | null
+  githubBranch:         string | null
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string }
@@ -1734,8 +1738,33 @@ function AdminRequirementsTab() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)' }}>{selected.tenant.name}</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>·</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{selected.user.name ?? selected.user.email}</span>
+                  {selected.assignedDeveloper ? (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3B52A3' }}>· Dev: {selected.assignedDeveloper.name ?? selected.assignedDeveloper.email}</span>
+                  ) : null}
                 </div>
               </div>
+              {/* Assign developer — superadmin only */}
+              <select
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--fog)', background: 'var(--white)', color: 'var(--slate)', cursor: 'pointer' }}
+                value={selected.assignedDeveloper?.id ?? ''}
+                onChange={async e => {
+                  const devId = e.target.value || null
+                  const res = await fetch(`/api/requirements/${selected.id}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assignedDeveloperId: devId }),
+                  })
+                  if (res.ok) {
+                    const dev = devId ? users.find(u => u.id === devId) : null
+                    setSelected((s: any) => s ? { ...s, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : s)
+                    setReqs(prev => prev.map(r => r.id === selected.id ? { ...r, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : r))
+                  }
+                }}
+              >
+                <option value="">Assign developer…</option>
+                {users.filter(u => u.role === 'developer').map(u => (
+                  <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
+                ))}
+              </select>
             </div>
 
             {/* Quote rejection banner */}

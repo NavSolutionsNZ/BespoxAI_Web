@@ -6,23 +6,33 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 function superadminGuard(session: any) {
-  if (!session?.user || (session.user as any).role !== 'superadmin')
+  if (!session?.user || !['superadmin', 'developer'].includes((session.user as any).role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   return null
 }
 
 // GET /api/admin/requirements — all requirements across all tenants
+// Superadmin: sees all. Developer: sees unassigned + assigned to them.
 export async function GET() {
   const session = await getServerSession(authOptions)
   const guard = superadminGuard(session)
   if (guard) return guard
 
+  const role   = (session!.user as any).role
+  const userId = (session!.user as any).id
+
   try {
+    const where = role === 'developer'
+      ? { OR: [{ assignedDeveloperId: null }, { assignedDeveloperId: userId }] }
+      : {}
+
     const requirements = await prisma.requirement.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
-        user:   { select: { name: true, email: true } },
-        tenant: { select: { name: true } },
+        user:              { select: { name: true, email: true } },
+        tenant:            { select: { name: true } },
+        assignedDeveloper: { select: { id: true, name: true, email: true } },
       },
     })
 

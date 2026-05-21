@@ -61,7 +61,7 @@ model User {
   email         String    @unique
   name          String?
   password      String                           // bcrypt hashed
-  role          String    @default("user")       // "superadmin" | "tenant_admin" | "user"
+  role          String    @default("user")       // "superadmin" | "tenant_admin" | "user" | "developer"
   persona       String?                          // "cfo" | "finance" | "it" | "other"
   onboardingDone Boolean  @default(false)
   active        Boolean   @default(true)
@@ -73,6 +73,7 @@ model User {
   sessions      Session[]
   queryLogs     QueryLog[]
   requirements  Requirement[]
+  assignedRequirements Requirement[] @relation("RequirementDeveloper")
   migrationEnquiries MigrationEnquiry[]
   uploadedObjects    TenantObjectFile[]
 }
@@ -167,6 +168,8 @@ model Requirement {
   testDeploySnapshotId  String?           // BCAgent snapshotId deployed to test
   testDeployedAt        DateTime?         // when deployed to test env
   githubBranch          String?           // GitHub branch for this requirement e.g. req/abc123-shopify
+  assignedDeveloperId   String?           // nullable — developer assigned to this req (null = visible to all devs)
+  assignedDeveloper     User?             @relation("RequirementDeveloper", fields: [assignedDeveloperId], references: [id], onDelete: SetNull)
   uatApprovedAt         DateTime?         // customer signed off UAT
   uatApprovedById       String?           // userId who approved
   uatRejectedAt         DateTime?         // customer rejected UAT

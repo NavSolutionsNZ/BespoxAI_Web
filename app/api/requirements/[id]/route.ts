@@ -27,9 +27,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const updateData: any = {}
 
   if (isSuperadmin) {
-    if (body.status !== undefined)         updateData.status         = body.status
-    if (body.quote !== undefined)          updateData.quote          = body.quote !== null ? parseFloat(body.quote) : null
-    if (body.consultantNote !== undefined) updateData.consultantNote = body.consultantNote
+    if (body.status !== undefined)              updateData.status              = body.status
+    if (body.quote !== undefined)               updateData.quote               = body.quote !== null ? parseFloat(body.quote) : null
+    if (body.consultantNote !== undefined)      updateData.consultantNote      = body.consultantNote
+    if (body.assignedDeveloperId !== undefined) updateData.assignedDeveloperId = body.assignedDeveloperId
 
     // Superadmin can directly patch bcObjects in the aiSpec
     if (body.bcObjects !== undefined && existing.aiSpec) {

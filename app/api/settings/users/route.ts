@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const { email, name, userRole = 'user' } = body
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
-  if (!['user', 'tenant_admin'].includes(userRole)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+  if (!['user', 'tenant_admin', 'developer'].includes(userRole)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
 
   // ── DEBUG ──
   if (DEBUG) return NextResponse.json({

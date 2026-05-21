@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const updateData: any = {}
   if (active !== undefined) updateData.active = active
   if (role   !== undefined) {
-    const allowed = ['user', 'tenant_admin']
+    const allowed = ['user', 'tenant_admin', 'developer']
     updateData.role = allowed.includes(role) ? role : 'user'
   }
 
