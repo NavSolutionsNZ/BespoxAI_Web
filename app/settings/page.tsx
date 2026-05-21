@@ -376,7 +376,26 @@ export default function SettingsPage() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. Leave blank to use the same server as production. Details are injected into the BCAgent installer.
                 </p>
-                <TestEnvForm key={tenant?.id ?? 'testenv'} initial={testEnv} onSave={saveSystemConfig} onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))} />
+                {/* Read-only reference — edit in BC Installer tab */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: 'Test Database Server',   val: tenant?.testNavDatabaseServer },
+                    { label: 'Test Database Name',     val: tenant?.testNavDatabaseName   },
+                    { label: 'Test Server Instance',   val: tenant?.testNavServerInstance },
+                    { label: 'Test BC Port',           val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
+                    { label: 'Test BC Instance',       val: tenant?.testBcInstance },
+                    { label: 'Test BC Company',        val: tenant?.testBcCompany },
+                  ].map(({ label, val }) => val ? (
+                    <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 160 }}>{label}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 6, padding: '4px 10px' }}>{val}</span>
+                    </div>
+                  ) : null)}
+                  {!tenant?.testNavDatabaseName && (
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>No test environment configured.</p>
+                  )}
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <strong>BC Installer</strong> tab.</p>
+                </div>
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Server</div>
@@ -614,6 +633,16 @@ export default function SettingsPage() {
                 </div>
               </div>
             </Card>
+
+            {(tenant?.navProduct === 'NAV' || tenant?.navProduct === 'BC') && (
+              <Card>
+                <Label>Test Environment</Label>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
+                  Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
+                </p>
+                <TestEnvForm key={tenant?.id ?? 'testenv'} initial={testEnv} onSave={saveSystemConfig} onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))} />
+              </Card>
+            )}
 
             <button onClick={downloadInstaller} disabled={instLoading} style={{ marginTop: 8, width: '100%', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: instLoading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, opacity: instLoading ? 0.7 : 1 }}>
               {instLoading ? 'Generating…' : '⬇ Download Installer (.zip)'}
