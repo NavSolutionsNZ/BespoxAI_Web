@@ -95,6 +95,7 @@ function TestEnvForm({ initial, onSave }: {
       <div>{lbl('Test Server Instance')}<input ref={refs.testNavServerInstance} style={inputStyle} type="text" defaultValue={initial.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test" /></div>
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ flex: 1 }}>{lbl('Test BC Port (optional)')}<input ref={refs.testBcPort} style={inputStyle} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
+        <div style={{ flex: 1 }}>{lbl('Test BC Instance (optional)')}<input ref={refs.testBcInstance} style={inputStyle} type="text" defaultValue={initial.testBcInstance} placeholder="e.g. BC_Test" /></div>
         <div style={{ flex: 1 }}>{lbl('Test BC Company (optional)')}<input ref={refs.testBcCompany} style={inputStyle} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" /></div>
       </div>
       <div><button onClick={save} disabled={saving} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--forest)', color: 'var(--white)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Test Environment'}</button></div>
