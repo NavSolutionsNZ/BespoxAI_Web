@@ -57,6 +57,7 @@ interface ObjectFileRow {
   objectName: string
   objectId:   number | null
   language:   string
+  summary:    Record<string, any> | null
 }
 
 // ── Per-tenant 5-minute cache ─────────────────────────────────────────────────
@@ -206,6 +207,7 @@ export async function buildTenantContext(tenantId: string): Promise<string> {
           objectName: true,
           objectId:   true,
           language:   true,
+          summary:    true,
         },
       }) as Promise<ObjectFileRow[]>,
 
