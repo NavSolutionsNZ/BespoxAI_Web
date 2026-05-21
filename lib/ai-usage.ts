@@ -13,6 +13,7 @@ import { prisma } from '@/lib/db'
 
 export type AiFeature =
   | 'dev_assistant'
+  | 'coding_assistant'
   | 'spec_gen'
   | 'dev_plan'
   | 'feasibility'
