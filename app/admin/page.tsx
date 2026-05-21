@@ -2171,7 +2171,7 @@ function AdminRequirementsTab() {
             )}
 
             {/* ── AI Developer Assistant — visible during review & quoting ── */}
-            {['in_review', 'quote_rejected', 'submitted'].includes(selected.status) && (
+            {['in_review', 'quote_rejected', 'submitted', 'in_development'].includes(selected.status) && (
               <div style={{ background: 'rgba(200,149,42,0.05)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 8, overflow: 'hidden' }}>
                 <button
                   onClick={() => { setShowAiPanel(p => !p); if (showAiPanel) { setDevHistory([]); setDevQuestion('') } }}

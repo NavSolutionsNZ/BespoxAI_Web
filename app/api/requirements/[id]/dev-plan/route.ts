@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import OpenAI from 'openai'
 import { getAiConfig } from '@/lib/ai-config'
+import { buildTenantContext } from '@/lib/tenant-context'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -145,12 +146,34 @@ Rules:
 - suggestedDailyRate in NZD ($1000-$1500/day typical)
 - totalEstimatedHours: sum tasks + 15-20% contingency`
 
-// Repair truncated JSON
-function repairDevPlanJSON(raw: string): string {
-  let s = raw.trim().replace(/,\s*$/, '')
+// Sanitize AI JSON — fixes literal newlines/tabs inside strings (common in code snippets)
+// then closes any unclosed brackets from truncation
+function sanitizeDevPlanJSON(raw: string): string {
+  // Strip markdown fences
+  let s = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim()
+
+  // Pass 1 — replace literal newlines/tabs/carriage returns inside JSON strings
+  let sanitized = ''
+  let inString = false
+  let escape = false
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (escape) { sanitized += ch; escape = false; continue }
+    if (ch === '\\') { sanitized += ch; escape = true; continue }
+    if (ch === '"') { inString = !inString; sanitized += ch; continue }
+    if (inString) {
+      if (ch === '\n') { sanitized += '\\n'; continue }
+      if (ch === '\r') { sanitized += '\\r'; continue }
+      if (ch === '\t') { sanitized += '\\t'; continue }
+    }
+    sanitized += ch
+  }
+
+  // Pass 2 — close any unclosed brackets from token truncation
+  sanitized = sanitized.trim().replace(/,\s*$/, '')
   const stack: string[] = []
-  let inString = false, escape = false
-  for (const ch of s) {
+  inString = false; escape = false
+  for (const ch of sanitized) {
     if (escape) { escape = false; continue }
     if (ch === '\\') { escape = true; continue }
     if (ch === '"') { inString = !inString; continue }
@@ -159,8 +182,8 @@ function repairDevPlanJSON(raw: string): string {
     else if (ch === '[') stack.push(']')
     else if (ch === '}' || ch === ']') stack.pop()
   }
-  if (inString) s += '"'
-  return s + stack.reverse().join('')
+  if (inString) sanitized += '"'
+  return sanitized + stack.reverse().join('')
 }
 
 // POST /api/requirements/[id]/dev-plan — SUPERADMIN ONLY
@@ -294,6 +317,12 @@ export async function POST(
     if (req_data.customerAnswers) qaContext = `Customer context: ${req_data.customerAnswers}`
   }
 
+  // ── Tenant knowledge context (KB objects, BC env, customisation history) ──
+  let tenantContext = ''
+  try {
+    tenantContext = await buildTenantContext(req_data.tenant.id)
+  } catch { /* non-fatal */ }
+
   const bcConnectionNote = Object.keys(tableFieldMap).length > 0
     ? `Live BC instance connected — field lists retrieved from ${Object.keys(tableFieldMap).join(', ')}`
     : `No live BC field data available — plan based on standard BC schema. Verify fields manually before development.`
@@ -313,6 +342,7 @@ export async function POST(
     qaContext      ? `\n${qaContext}` : '',
     specContext    ? `\n--- FUNCTIONAL SPEC CONTEXT ---\n${specContext}` : '',
     fieldInspectionReport,
+    tenantContext ? `\n--- TENANT KNOWLEDGE BASE (known BC objects, customisation history) ---\n${tenantContext}` : '',
     ``,
     `Generate a detailed internal development plan. Check EVERY planned field against the live BC field lists above before including it.`,
   ].filter(Boolean).join('\n')
@@ -328,7 +358,7 @@ export async function POST(
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: cfg.model, max_tokens: cfg.maxTokens, temperature: cfg.temperature, system: DEV_PLAN_SYSTEM, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify({ model: cfg.model, max_tokens: Math.max(cfg.maxTokens, 4000), temperature: cfg.temperature, system: DEV_PLAN_SYSTEM, messages: [{ role: 'user', content: prompt }] }),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error?.message ?? `Anthropic error ${res.status}`)
@@ -346,13 +376,13 @@ export async function POST(
       logAiUsage({ tenantId: req_data.tenant.id, requirementId: params.id, feature: 'dev_plan', model: cfg.model, inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 })
     }
     if (!raw) throw new Error('Empty response from AI')
-    const cleaned = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim()
+    const cleaned = sanitizeDevPlanJSON(raw)
     try {
       plan = JSON.parse(cleaned)
     } catch {
-      // Attempt repair of truncated JSON
-      const repaired = repairDevPlanJSON(cleaned)
-      plan = JSON.parse(repaired)
+      // Last resort — try trimming to last complete top-level value
+      const lastBrace = cleaned.lastIndexOf('}')
+      plan = JSON.parse(cleaned.slice(0, lastBrace + 1))
     }
   } catch (err: any) {
     console.error('Dev plan generation failed:', err)
