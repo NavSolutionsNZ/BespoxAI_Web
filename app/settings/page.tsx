@@ -56,13 +56,17 @@ function RoleBadge({ role }: { role: string }) {
   return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
 }
 
-// Test environment form — explicit save button, no auto-save
-function TestEnvForm({ initial, onSave, onSaved }: {
+// Test environment form — full credentials + optional "use production credentials" checkbox
+function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onTestCredsChange }: {
   initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string }
   onSave: (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string | null>) => void
+  prodUsername: string
+  prodPassword: string
+  onTestCredsChange: (username: string, password: string) => void
 }) {
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [useProdCreds, setUseProdCreds] = useState(false)
   const refs = {
     testNavDatabaseServer: useRef<HTMLInputElement>(null),
     testNavDatabaseName:   useRef<HTMLInputElement>(null),
@@ -70,8 +74,10 @@ function TestEnvForm({ initial, onSave, onSaved }: {
     testBcPort:            useRef<HTMLInputElement>(null),
     testBcInstance:        useRef<HTMLInputElement>(null),
     testBcCompany:         useRef<HTMLInputElement>(null),
+    testBcUsername:        useRef<HTMLInputElement>(null),
+    testBcPassword:        useRef<HTMLInputElement>(null),
   }
-  const inputStyle: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
+  const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
   const lbl = (text: string, required = false) => (
     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>
       {text}{required ? <span style={{ color: '#A32D2D' }}> *</span> : null}
@@ -79,6 +85,9 @@ function TestEnvForm({ initial, onSave, onSaved }: {
   )
   async function save() {
     setSaving(true)
+    const username = useProdCreds ? prodUsername : (refs.testBcUsername.current?.value || '')
+    const password = useProdCreds ? prodPassword : (refs.testBcPassword.current?.value || '')
+    onTestCredsChange(username, password)
     const vals = {
       testNavDatabaseServer: refs.testNavDatabaseServer.current?.value || null,
       testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || null,
@@ -92,14 +101,30 @@ function TestEnvForm({ initial, onSave, onSaved }: {
     setSaving(false)
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div>{lbl('Test Database Server')}<input ref={refs.testNavDatabaseServer} style={inputStyle} type="text" defaultValue={initial.testNavDatabaseServer} placeholder="localhost (defaults to production server)" /></div>
-      <div>{lbl('Test Database Name', true)}<input ref={refs.testNavDatabaseName} style={inputStyle} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" /></div>
-      <div>{lbl('Test Server Instance')}<input ref={refs.testNavServerInstance} style={inputStyle} type="text" defaultValue={initial.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test" /></div>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1 }}>{lbl('Test BC Port (optional)')}<input ref={refs.testBcPort} style={inputStyle} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
-        <div style={{ flex: 1 }}>{lbl('Test BC Instance (optional)')}<input ref={refs.testBcInstance} style={inputStyle} type="text" defaultValue={initial.testBcInstance} placeholder="e.g. BC_Test" /></div>
-        <div style={{ flex: 1 }}>{lbl('Test BC Company (optional)')}<input ref={refs.testBcCompany} style={inputStyle} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" /></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>{lbl('Test Database Server')}<input ref={refs.testNavDatabaseServer} style={inp} type="text" defaultValue={initial.testNavDatabaseServer} placeholder="localhost" /></div>
+        <div>{lbl('Test Database Name', true)}<input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" /></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>{lbl('Test Server Instance')}<input ref={refs.testNavServerInstance} style={inp} type="text" defaultValue={initial.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test" /></div>
+        <div>{lbl('Test BC Instance')}<input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance} placeholder="e.g. BC_Test" /></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>{lbl('Test BC Company')}<input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" /></div>
+        <div>{lbl('Test BC OData Port')}<input ref={refs.testBcPort} style={inp} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
+      </div>
+      <div style={{ borderTop: '1px solid rgba(10,92,70,0.15)', paddingTop: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
+          <input type="checkbox" checked={useProdCreds} onChange={e => setUseProdCreds(e.target.checked)} style={{ accentColor: 'var(--forest)', width: 14, height: 14 }} />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>Use production credentials</span>
+        </label>
+        {!useProdCreds && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>{lbl('Test Username')}<input ref={refs.testBcUsername} style={inp} type="text" placeholder="DOMAIN\username" /></div>
+            <div>{lbl('Test Password')}<input ref={refs.testBcPassword} style={inp} type="password" placeholder="" /></div>
+          </div>
+        )}
       </div>
       <div><button onClick={save} disabled={saving} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--forest)', color: 'var(--white)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Test Environment'}</button></div>
     </div>
@@ -118,7 +143,7 @@ export default function SettingsPage() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null)
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
-  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '' })
+  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '', testBcUsername: '', testBcPassword: '' })
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '' })
   const [instLoading,  setInstLoading]  = useState(false)
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
@@ -214,7 +239,7 @@ export default function SettingsPage() {
     // Persist port values to tenant so they're remembered
     await saveSystemConfig({ bcPort: instForm.bcPort, agentPort: instForm.agentPort })
     try {
-      const r = await fetch('/api/settings/installer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(instForm) })
+      const r = await fetch('/api/settings/installer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...instForm, testBcUsername: instForm.testBcUsername, testBcPassword: instForm.testBcPassword }) })
       if (!r.ok) { toast$('Generation failed', false); setInstLoading(false); return }
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'BespoxAI-Installer.zip' })
       a.click(); URL.revokeObjectURL(a.href)
@@ -568,9 +593,9 @@ export default function SettingsPage() {
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 10 }}>BC Agent Installer</h1>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 28, lineHeight: 1.65 }}>Download a pre-configured installer for the BespoxAI BCAgent. Run it on the Windows Server hosting Business Central — it installs the agent, configures the Cloudflare tunnel, and starts the service automatically.</p>
 
-            <Card>
-              <Label>BC Connection Details</Label>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>These identify which Business Central instance to connect to. Instance and company are saved to your account — credentials are embedded in the installer only and never stored.</p>
+            <Card style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)' }}>
+              <Label>Production Environment</Label>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance and company are saved — credentials are embedded in the installer only and never stored.</p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
@@ -635,12 +660,20 @@ export default function SettingsPage() {
             </Card>
 
             {(tenant?.navProduct === 'NAV' || tenant?.navProduct === 'BC') && (
-              <Card>
+              <Card style={{ background: 'rgba(10,92,70,0.06)', border: '1px solid rgba(10,92,70,0.25)' }}>
                 <Label>Test Environment</Label>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
                 </p>
-                <TestEnvForm key={tenant?.id ?? 'testenv'} initial={testEnv} onSave={saveSystemConfig} onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))} />
+                <TestEnvForm
+                  key={tenant?.id ?? 'testenv'}
+                  initial={testEnv}
+                  onSave={saveSystemConfig}
+                  onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))}
+                  prodUsername={instForm.bcUsername}
+                  prodPassword={instForm.bcPassword}
+                  onTestCredsChange={(u, p) => setInstForm(f => ({ ...f, testBcUsername: u, testBcPassword: p }))}
+                />
               </Card>
             )}
 
