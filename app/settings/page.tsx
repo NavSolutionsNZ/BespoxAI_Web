@@ -605,7 +605,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>BC Password</div>
-                  <input type="password" placeholder="••••••••" value={instForm.bcPassword}
+                  <input type="password" placeholder="" value={instForm.bcPassword}
                     onChange={e => setInstForm(f => ({ ...f, bcPassword: e.target.value }))}
                     style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
                     onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
