@@ -364,10 +364,10 @@ export default function SettingsPage() {
               <div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>OData / Agent Ports</div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <input type="number" defaultValue={tenant?.bcPort ?? 8048} placeholder="BC port (8048)" onBlur={async e => { await saveSystemConfig({ bcPort: e.target.value }) }} style={{ width: 130, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none' }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.bcPort ?? 8048}</span>
                   <span style={{ color: 'var(--fog)', fontSize: 14 }}>·</span>
-                  <input type="number" defaultValue={tenant?.agentPort ?? 8080} placeholder="Agent port (8080)" onBlur={async e => { await saveSystemConfig({ agentPort: e.target.value }) }} style={{ width: 150, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none' }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>saved on blur · pre-filled in installer</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.agentPort ?? 8080}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <strong>BC Installer</strong> tab and reinstall BCAgent.</span>
                 </div>
               </div>
             </Card>
