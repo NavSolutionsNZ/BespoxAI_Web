@@ -3,18 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getAiConfig } from '@/lib/ai-config'
+import { buildTenantContext, resolveBcVersion } from '@/lib/tenant-context'
 
 export const dynamic = 'force-dynamic'
-
-// ── BC version resolver ────────────────────────────────────────────────────
-function resolveBcVersion(tenant: any): string {
-  if (tenant.navProduct && tenant.navVersion) {
-    return `${tenant.navProduct} — ${tenant.navVersion}${tenant.lastCU ? ` (${tenant.lastCU})` : ''}`
-  }
-  if (tenant.navVersion) return tenant.navVersion
-  if (tenant.bcInstance) return `Business Central (instance: ${tenant.bcInstance})`
-  return 'Business Central / NAV (version not confirmed — assume latest BC SaaS)'
-}
 
 // ── JSON repair ────────────────────────────────────────────────────────────
 function repairJSON(raw: string): string {
@@ -65,9 +56,12 @@ export async function POST(
   if (user.role !== 'superadmin' && requirement.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const bcVersion = resolveBcVersion(requirement.tenant)
+  const bcVersion  = resolveBcVersion(requirement.tenant)
+  const tenantCtx  = await buildTenantContext(requirement.tenantId)
 
   const systemPrompt = `You are a senior Microsoft Dynamics 365 Business Central / Navision (NAV) consultant with 20+ years of experience. Classify the customer requirement below into exactly one category and respond ONLY with valid JSON — no markdown, no preamble.
+
+${tenantCtx}
 
 Categories:
 - "cfo_assistant": The requirement is a data query, financial report, KPI dashboard, or question answerable directly from live BC/NAV data without any code changes. Examples: show aged debtors, which products have the lowest margin, what are overdue purchase orders, monthly revenue by department, top 10 customers by balance.

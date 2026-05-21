@@ -6,68 +6,13 @@ import OpenAI from 'openai'
 import { buildObjectContextSection } from '@/lib/bc-object-parser'
 import { checkTokenLimit } from '@/lib/tier'
 import { getAiConfig } from '@/lib/ai-config'
+import { buildTenantContext, resolveBcVersion } from '@/lib/tenant-context'
 
 export const dynamic   = 'force-dynamic'
 export const maxDuration = 60
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const MAX_GENS = 4  // 1 initial + 3 customer-driven refinements
-
-// ── BC/NAV version string ──────────────────────────────────────────────────────
-
-function resolveBcVersion(tenant: {
-  navProduct: string | null
-  navVersion: string | null
-  lastCU:     string | null
-  bcInstance: string
-  name:       string
-}, signupBcVersion?: string | null): string {
-  // Prefer onboarding-captured fields (most accurate — set by the tenant themselves)
-  if (tenant.navProduct && tenant.navVersion) {
-    const parts = [tenant.navVersion]
-    if (tenant.lastCU) parts.push(`CU: ${tenant.lastCU}`)
-    if (tenant.navProduct === 'NAV') parts.push('(C/AL — Navision on-premise)')
-    else if (tenant.navProduct === 'BC') {
-      // Detect on-prem BC14 which uses C/AL hybrid
-      const isOnPremHybrid = tenant.navVersion.toLowerCase().includes('14')
-      if (isOnPremHybrid) parts.push('(on-premise, C/AL + AL hybrid)')
-      else parts.push('(AL extensions)')
-    }
-    return parts.join(' — ')
-  }
-
-  // Fall back to signup request bcVersion code
-  if (signupBcVersion) {
-    const vMap: Record<string, string> = {
-      BC14:    'BC 14 (on-premise, C/AL + AL hybrid)',
-      BC15:    'BC 15 (AL extensions)',
-      BC16:    'BC 16 (AL extensions)',
-      BC17:    'BC 17 (AL extensions)',
-      BC18:    'BC 18 (AL extensions)',
-      BC19:    'BC 19 (AL extensions)',
-      BC20:    'BC 20 (AL extensions)',
-      BC21:    'BC 21 (AL extensions)',
-      BC22:    'BC 22 (AL extensions)',
-      BC23:    'BC 23 (AL extensions)',
-      BC24:    'BC 24 (AL extensions)',
-      BC25:    'BC 25 (AL extensions, latest)',
-      NAV2009: 'NAV 2009 (C/AL)',
-      NAV2013: 'NAV 2013 (C/AL)',
-      NAV2015: 'NAV 2015 (C/AL)',
-      NAV2016: 'NAV 2016 (C/AL)',
-      NAV2017: 'NAV 2017 (C/AL)',
-      NAV2018: 'NAV 2018 (C/AL)',
-    }
-    return vMap[signupBcVersion] ?? signupBcVersion
-  }
-
-  // Last resort — bcInstance gives some signal
-  if (tenant.bcInstance && tenant.bcInstance !== 'GWM_Dev') {
-    return `Business Central (instance: ${tenant.bcInstance} — version not confirmed)`
-  }
-
-  return 'Business Central / NAV (version not confirmed — assume latest BC SaaS unless context suggests otherwise)'
-}
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
@@ -202,6 +147,9 @@ export async function POST(
 
   const bcVersion = resolveBcVersion(req_data.tenant, signupBcVersion)
 
+  // ── Per-tenant knowledge context ─────────────────────────────────────────────
+  const tenantCtx = await buildTenantContext(req_data.tenantId)
+
   // ── Tenant deployed objects (all requirements, not just this one) ─────────
   let tenantObjectsSection = ''
   try {
@@ -334,6 +282,7 @@ export async function POST(
     '',
     'Original customer description:',
     req_data.description,
+    tenantCtx ? `\n${tenantCtx}` : '',
     tenantObjectsSection,
     aiQASection,
     adminQASection,

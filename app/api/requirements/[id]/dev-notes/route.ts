@@ -13,6 +13,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getAiConfig } from '@/lib/ai-config'
 import { logAiUsage } from '@/lib/ai-usage'
+import { buildTenantContext } from '@/lib/tenant-context'
 
 export const dynamic    = 'force-dynamic'
 export const maxDuration = 60
@@ -160,11 +161,16 @@ export async function POST(
   const specText    = buildSpecText(requirement.aiSpec)
   const devPlanText = buildDevPlanText(requirement.devPlan)
 
+  // Per-tenant accumulated knowledge — BC environment, history, known objects
+  const tenantCtx = await buildTenantContext(requirement.tenantId)
+
   const systemPrompt = `You are a senior Microsoft Dynamics 365 Business Central developer and consultant at BespoxAI.
 You are currently assisting ${adminName} (${adminEmail}) with quoting and reviewing a customisation request.
 
 CUSTOMER: ${customerName} (${customerEmail}) at ${tenantName}
 BC VERSION: ${bcVersion}
+
+${tenantCtx}
 
 REQUIREMENT:
 Title: ${requirement.title}
