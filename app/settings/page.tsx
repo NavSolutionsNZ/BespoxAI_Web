@@ -349,12 +349,9 @@ export default function SettingsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Product</div>
-                  <select defaultValue={tenant?.navProduct ?? ''} onChange={async e => { await saveSystemConfig({ navProduct: e.target.value }) }} style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', outline: 'none' }}>
-                    <option value="">Not specified</option>
-                    <option value="BC">Business Central</option>
-                    <option value="NAV">Microsoft NAV</option>
-                    <option value="unsure">Not sure</option>
-                  </select>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px' }}>
+                    {tenant?.navProduct === 'BC' ? 'Business Central' : tenant?.navProduct === 'NAV' ? 'Microsoft NAV' : tenant?.navProduct === 'unsure' ? 'Not sure' : 'Not specified'}
+                  </div>
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Last CU</div>
