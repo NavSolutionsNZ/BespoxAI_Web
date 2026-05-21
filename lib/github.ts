@@ -72,7 +72,7 @@ export function branchName(requirementId: string, title: string): string {
 export async function ensureRepo(
   tenantName: string,
   org: string = DEFAULT_ORG,
-): Promise<string> {
+): Promise<{ repo: string; owner: string }> {
   const repo = repoName(tenantName)
 
   // Get authenticated user (repo lives under personal account)
