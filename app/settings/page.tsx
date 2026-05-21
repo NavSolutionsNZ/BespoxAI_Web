@@ -1,7 +1,8 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
@@ -62,12 +63,12 @@ function TestEnvForm({ initial, onSave }: {
 }) {
   const [saving, setSaving] = useState(false)
   const refs = {
-    testNavDatabaseServer: React.useRef<HTMLInputElement>(null),
-    testNavDatabaseName:   React.useRef<HTMLInputElement>(null),
-    testNavServerInstance: React.useRef<HTMLInputElement>(null),
-    testBcPort:            React.useRef<HTMLInputElement>(null),
-    testBcInstance:        React.useRef<HTMLInputElement>(null),
-    testBcCompany:         React.useRef<HTMLInputElement>(null),
+    testNavDatabaseServer: useRef<HTMLInputElement>(null),
+    testNavDatabaseName:   useRef<HTMLInputElement>(null),
+    testNavServerInstance: useRef<HTMLInputElement>(null),
+    testBcPort:            useRef<HTMLInputElement>(null),
+    testBcInstance:        useRef<HTMLInputElement>(null),
+    testBcCompany:         useRef<HTMLInputElement>(null),
   }
   const inputStyle: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
   const lbl = (text: string, required = false) => (
