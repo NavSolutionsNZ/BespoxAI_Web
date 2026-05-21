@@ -55,32 +55,48 @@ function RoleBadge({ role }: { role: string }) {
   return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
 }
 
-// Uncontrolled inputs with refs — no state updates on typing, no re-render, no focus loss
+// Test environment form — explicit save button, no auto-save
 function TestEnvForm({ initial, onSave }: {
   initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string }
   onSave: (data: Record<string, any>) => Promise<void>
 }) {
+  const [saving, setSaving] = useState(false)
+  const refs = {
+    testNavDatabaseServer: React.useRef<HTMLInputElement>(null),
+    testNavDatabaseName:   React.useRef<HTMLInputElement>(null),
+    testNavServerInstance: React.useRef<HTMLInputElement>(null),
+    testBcPort:            React.useRef<HTMLInputElement>(null),
+    testBcInstance:        React.useRef<HTMLInputElement>(null),
+    testBcCompany:         React.useRef<HTMLInputElement>(null),
+  }
   const inputStyle: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
-  const label = (text: string, required = false) => (
+  const lbl = (text: string, required = false) => (
     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>
       {text}{required ? <span style={{ color: '#A32D2D' }}> *</span> : null}
     </div>
   )
-  const blur = (field: string) => async (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.style.borderColor = 'var(--fog)'
-    await onSave({ [field]: e.target.value || null })
+  async function save() {
+    setSaving(true)
+    await onSave({
+      testNavDatabaseServer: refs.testNavDatabaseServer.current?.value || null,
+      testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || null,
+      testNavServerInstance: refs.testNavServerInstance.current?.value || null,
+      testBcPort:            refs.testBcPort.current?.value            || null,
+      testBcInstance:        refs.testBcInstance.current?.value        || null,
+      testBcCompany:         refs.testBcCompany.current?.value         || null,
+    })
+    setSaving(false)
   }
-  const focus = (e: React.FocusEvent<HTMLInputElement>) => { e.target.style.borderColor = 'var(--forest)' }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div>{label('Test Database Server')}<input style={inputStyle} type="text" defaultValue={initial.testNavDatabaseServer} placeholder="localhost (defaults to production server)" onBlur={blur('testNavDatabaseServer')} onFocus={focus} /></div>
-      <div>{label('Test Database Name', true)}<input style={inputStyle} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" onBlur={blur('testNavDatabaseName')} onFocus={focus} /></div>
-      <div>{label('Test Server Instance')}<input style={inputStyle} type="text" defaultValue={initial.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test" onBlur={blur('testNavServerInstance')} onFocus={focus} /></div>
+      <div>{lbl('Test Database Server')}<input ref={refs.testNavDatabaseServer} style={inputStyle} type="text" defaultValue={initial.testNavDatabaseServer} placeholder="localhost (defaults to production server)" /></div>
+      <div>{lbl('Test Database Name', true)}<input ref={refs.testNavDatabaseName} style={inputStyle} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" /></div>
+      <div>{lbl('Test Server Instance')}<input ref={refs.testNavServerInstance} style={inputStyle} type="text" defaultValue={initial.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test" /></div>
       <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1 }}>{label('Test BC Port (optional)')}<input style={inputStyle} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" onBlur={blur('testBcPort')} onFocus={focus} /></div>
-        <div style={{ flex: 1 }}>{label('Test BC Company (optional)')}<input style={inputStyle} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" onBlur={blur('testBcCompany')} onFocus={focus} /></div>
+        <div style={{ flex: 1 }}>{lbl('Test BC Port (optional)')}<input ref={refs.testBcPort} style={inputStyle} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
+        <div style={{ flex: 1 }}>{lbl('Test BC Company (optional)')}<input ref={refs.testBcCompany} style={inputStyle} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" /></div>
       </div>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', margin: 0 }}>saved on blur · injected into BCAgent installer</p>
+      <div><button onClick={save} disabled={saving} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--forest)', color: 'var(--white)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Test Environment'}</button></div>
     </div>
   )
 }
