@@ -24,6 +24,9 @@ model Tenant {
   lastCU          String?                    // e.g. "CU3" — free text
   bcPort          Int      @default(8048)    // BC OData port (injected into installer)
   agentPort       Int      @default(8080)    // BCAgent listening port (injected into installer)
+  navDatabaseServer   String?  @default("localhost") // NAV/BC14 SQL Server host (injected into installer v2.3+)
+  navDatabaseName     String?                        // NAV/BC14 SQL database name
+  navServerInstance   String?                        // NAV server instance name (optional)
   tier                 String   @default("trial") // "free" | "trial" | "assistant" | "manager" | "executive"
   trialEndsAt          DateTime?                  // null = no expiry
   stripeCustomerId     String?                    // Stripe customer ID
@@ -209,6 +212,7 @@ model TenantObjectFile {
   objectName    String
   language      String    @default("AL")
   summary       Json      @default("{}")
+  content       String?   @db.Text          // Full C/AL source or BC metadata text — stored after client-side split
   parseError    Boolean   @default(false)
   uploadedAt    DateTime  @default(now())
   uploadedById  String

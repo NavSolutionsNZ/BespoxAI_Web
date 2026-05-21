@@ -61,6 +61,15 @@ function AdminPageInner() {
     const t = (searchParams.get('tab') as Tab | null) ?? 'overview'
     setTabState(t)
   }, [searchParams])
+
+  // Load JSZip for client-side NAV object zip handling
+  useEffect(() => {
+    if (!(window as any).JSZip) {
+      const s = document.createElement('script')
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
+      document.head.appendChild(s)
+    }
+  }, [])
   const [signups, setSignups]   = useState<any[]>([])
   const [signupsLoaded, setSignupsLoaded] = useState(false)
   const [signupsError, setSignupsError]   = useState<string | null>(null)
@@ -1135,6 +1144,12 @@ function AdminRequirementsTab() {
   const [showObjectEditor, setShowObjectEditor] = useState(false)
   const [editableObjects, setEditableObjects]   = useState<string[]>([])
   const [newObjectText, setNewObjectText]       = useState('')
+  // BC Objects fetch panel
+  const [fetchingObjs, setFetchingObjs]         = useState(false)
+  const [fetchObjErr, setFetchObjErr]           = useState('')
+  const [splitObjects, setSplitObjects]         = useState<any[]>([])   // client-side split results
+  const [savingObjs, setSavingObjs]             = useState(false)
+  const [savedObjCount, setSavedObjCount]       = useState(0)
 
   async function load() {
     setLoading(true)
@@ -1196,6 +1211,103 @@ function AdminRequirementsTab() {
       setSelected(prev => prev ? { ...prev, devPlan: JSON.stringify(data.devPlan) } : prev)
     } catch(e: any) { setPlanErr(e.message ?? 'Generation failed') }
     finally { setGenPlan(false) }
+  }
+
+  // ── BC Objects fetch + client-side split ──────────────────────────────────
+  async function fetchNavObjects() {
+    if (!selected || fetchingObjs) return
+    setFetchingObjs(true)
+    setFetchObjErr('')
+    setSplitObjects([])
+    setSavedObjCount(0)
+
+    // Parse spec bcObjects → [{type, id}] filter list
+    let spec: any = {}
+    try { if (selected.aiSpec) spec = JSON.parse(selected.aiSpec) } catch {}
+    const bcObjs: string[] = spec.bcObjects ?? []
+
+    const objects: Array<{type: string; id: number}> = []
+    for (const o of bcObjs) {
+      const m = o.match(/^(Table|Page|Codeunit|Report|XMLport|Query|MenuSuite|Dataport)\s+(\d+)/i)
+      if (m) objects.push({ type: m[1], id: parseInt(m[2]) })
+    }
+
+    if (!objects.length) {
+      setFetchObjErr('No parseable objects in spec (need "Codeunit 80 ..." format). Add objects via the editor above first.')
+      setFetchingObjs(false)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/requirements/${selected.id}/fetch-objects`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ objects }),
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error ?? `Agent returned ${res.status}`)
+      }
+
+      // Client-side unzip + C/AL split
+      const blob = await res.blob()
+      const JSZip = (window as any).JSZip
+      if (!JSZip) throw new Error('JSZip not loaded — refresh and try again')
+      const zip = await JSZip.loadAsync(blob)
+      const txtFiles = Object.keys(zip.files).filter((n: string) => n.endsWith('.txt'))
+      if (!txtFiles.length) throw new Error('No .txt in zip response')
+      const txt: string = await zip.files[txtFiles[0]].async('string')
+
+      // Split on OBJECT boundary (relaxed — matches anywhere on line)
+      const HDR = /OBJECT\s+(Table|Page|Codeunit|Report|XMLport|Query|MenuSuite|Dataport)\s+(\d+)\s+(.+)/i
+      const VL  = /Version List=([^;]*);/
+      const lines = txt.split('\n')
+      const parsed: any[] = []
+      let cur: any = null, buf: string[] = []
+
+      for (const rawLine of lines) {
+        const line = rawLine.replace(/\r$/, '')
+        const m = line.match(HDR)
+        if (m) {
+          if (cur) { cur.content = buf.join('\n'); cur.sizeBytes = new TextEncoder().encode(cur.content).length; parsed.push(cur) }
+          cur = { objectType: m[1], objectId: parseInt(m[2]), objectName: m[3].trim().replace(/\r/g,''), versionList: null, content: '', sizeBytes: 0, selected: true, language: 'CAL' }
+          buf = [line]
+        } else if (cur) {
+          buf.push(line)
+          if (!cur.versionList) { const v = line.match(VL); if (v) cur.versionList = v[1].trim() }
+        }
+      }
+      if (cur && buf.length) { cur.content = buf.join('\n'); cur.sizeBytes = new TextEncoder().encode(cur.content).length; parsed.push(cur) }
+
+      if (!parsed.length) throw new Error('Zip received but no OBJECT headers found — check NAV database config and object IDs')
+      setSplitObjects(parsed)
+    } catch(e: any) {
+      setFetchObjErr(e.message ?? 'Fetch failed')
+    } finally {
+      setFetchingObjs(false)
+    }
+  }
+
+  async function saveSelectedObjects() {
+    if (!selected || savingObjs) return
+    const toSave = splitObjects.filter(o => o.selected)
+    if (!toSave.length) return
+    setSavingObjs(true)
+    try {
+      const res = await fetch(`/api/requirements/${selected.id}/objects`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ objects: toSave }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+      const data = await res.json()
+      setSavedObjCount(data.upserted)
+      setSplitObjects([])
+    } catch(e: any) {
+      setFetchObjErr(e.message)
+    } finally {
+      setSavingObjs(false)
+    }
   }
 
   // ── AI Dev Assistant — streaming fetch with conversation history ─────────
@@ -1554,6 +1666,67 @@ function AdminRequirementsTab() {
                         ))}
                       </div>
                     )}
+
+                    {/* Fetch from BCAgent */}
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--fog)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>Fetch C/AL Source</p>
+                        <button
+                          onClick={fetchNavObjects}
+                          disabled={fetchingObjs}
+                          style={{ ...btnStyle, fontSize: 10, padding: '4px 10px', background: fetchingObjs ? 'var(--fog)' : 'var(--forest)', color: 'var(--cream)', border: 'none' }}
+                        >
+                          {fetchingObjs ? '⟳ Fetching…' : '↓ Fetch from BCAgent'}
+                        </button>
+                        {savedObjCount > 0 && (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)' }}>✓ {savedObjCount} saved</span>
+                        )}
+                      </div>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--slate)', margin: '0 0 6px', lineHeight: 1.5 }}>
+                        Fetches C/AL source for the objects listed in the spec. Split and select which to save to the knowledge base.
+                      </p>
+                      {fetchObjErr && (
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '4px 0' }}>{fetchObjErr}</p>
+                      )}
+                      {splitObjects.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{splitObjects.length} objects parsed — select to save</span>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => setSplitObjects(p => p.map(o => ({...o, selected: true})))} style={{ ...btnStyle, fontSize: 9, padding: '3px 8px' }}>All</button>
+                              <button onClick={() => setSplitObjects(p => p.map(o => ({...o, selected: false})))} style={{ ...btnStyle, fontSize: 9, padding: '3px 8px' }}>None</button>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', border: '1px solid var(--fog)', borderRadius: 6, padding: 6 }}>
+                            {splitObjects.map((o, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 4px', borderRadius: 4, background: o.selected ? 'rgba(10,92,70,0.04)' : 'transparent' }}>
+                                <input type="checkbox" checked={o.selected} onChange={e => setSplitObjects(p => p.map((x, j) => j === i ? {...x, selected: e.target.checked} : x))} style={{ width: 12, height: 12 }} />
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)', minWidth: 60 }}>{o.objectType}</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 40 }}>{o.objectId}</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.objectName}</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', whiteSpace: 'nowrap' }}>{o.sizeBytes > 1024 ? (o.sizeBytes/1024).toFixed(0)+'KB' : o.sizeBytes+'B'}</span>
+                                {o.versionList && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#9A6A00', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.versionList}>{o.versionList}</span>}
+                                <a
+                                  href="#"
+                                  onClick={e => { e.preventDefault(); const blob = new Blob([o.content], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${o.objectType}_${o.objectId}_${o.objectName.replace(/[^a-z0-9]/gi,'_')}.txt`; a.click() }}
+                                  style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--jade)' }}
+                                >↓</a>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                            <button
+                              onClick={saveSelectedObjects}
+                              disabled={savingObjs || !splitObjects.some(o => o.selected)}
+                              style={{ ...btnStyle, fontSize: 10, background: 'var(--ink)', color: 'var(--cream)', border: 'none' }}
+                            >
+                              {savingObjs ? 'Saving…' : `Save ${splitObjects.filter(o=>o.selected).length} to Knowledge Base`}
+                            </button>
+                            <button onClick={() => setSplitObjects([])} style={{ ...btnStyle, fontSize: 10, background: 'var(--fog)', color: 'var(--ink)', border: 'none' }}>Discard</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {spec.questions?.length > 0 && (

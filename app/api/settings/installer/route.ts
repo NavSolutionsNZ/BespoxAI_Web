@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const { bcUsername, bcPassword, bcPort = 8048, agentPort = 8080, bcInstance, bcCompany } = body
+  const { bcUsername, bcPassword, bcPort = 8048, agentPort = 8080, bcInstance, bcCompany,
+          navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '' } = body
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
 
   // ── DEBUG ── Generates a clearly-marked dummy installer zip
@@ -71,8 +72,11 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
       data: {
         ...(bcInstance ? { bcInstance } : {}),
         ...(bcCompany  ? { bcCompany  } : {}),
-        bcPort:    parseInt(String(bcPort),    10) || 8048,
-        agentPort: parseInt(String(agentPort), 10) || 8080,
+        bcPort:            parseInt(String(bcPort),    10) || 8048,
+        agentPort:         parseInt(String(agentPort), 10) || 8080,
+        ...(navDatabaseName   ? { navDatabaseName }   : {}),
+        ...(navServerInstance ? { navServerInstance } : {}),
+        navDatabaseServer: navDatabaseServer || 'localhost',
       },
     })
   }
@@ -98,6 +102,9 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${bcInstance || tenant.bcInstance}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${bcCompany || tenant.bcCompany}',`)
     .replace('[int]    $AgentPort   = 8080,',                 `[int]    $AgentPort   = ${agentPort},`)
+    .replace("[string] $NavDatabaseServer = 'localhost',",    `[string] $NavDatabaseServer = '${navDatabaseServer}',`)
+    .replace("[string] $NavDatabaseName   = '',",             `[string] $NavDatabaseName   = '${navDatabaseName}',`)
+    .replace("[string] $NavServerInstance = '',",             `[string] $NavServerInstance = '${navServerInstance}',`)
 
   // Base64 + BAT wrapper (same pattern as admin installer)
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')

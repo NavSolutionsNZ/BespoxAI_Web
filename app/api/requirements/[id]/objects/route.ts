@@ -41,8 +41,15 @@ export async function GET(
 }
 
 // ── POST /api/requirements/[id]/objects ───────────────────────────────────────
-// Accepts multipart/form-data with one or more files (field name: "files").
-// Parses each file, splits C/AL multi-object exports, stores summaries.
+// Two accepted formats:
+//
+// 1. JSON body (from client-side C/AL split after BCAgent fetch):
+//    { objects: [{ objectType, objectId, objectName, language, versionList, content }] }
+//    Upserts by tenantId + objectType + objectId — overwrites existing.
+//
+// 2. multipart/form-data (manual file upload, field name "files"):
+//    Parses via bc-object-parser. Original behaviour preserved.
+//
 // Superadmin only.
 
 export async function POST(
@@ -62,6 +69,79 @@ export async function POST(
   })
   if (!requirement) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // ── JSON path: pre-parsed objects from client-side split ──────────────────
+  const ct = req.headers.get('content-type') ?? ''
+  if (ct.includes('application/json')) {
+    const body = await req.json().catch(() => ({}))
+    const inbound = body.objects as Array<{
+      objectType:  string
+      objectId:    number | null
+      objectName:  string
+      language:    string
+      versionList: string | null
+      content:     string
+    }>
+
+    if (!inbound?.length)
+      return NextResponse.json({ error: 'No objects provided' }, { status: 400 })
+
+    const upserted: any[] = []
+    for (const o of inbound) {
+      // Build summary from what the client extracted
+      const summary: Record<string, any> = {}
+      if (o.versionList) summary.versionList = o.versionList
+      if (o.content)     summary.sizeBytes   = new TextEncoder().encode(o.content).length
+
+      // Upsert: match on tenantId + objectType + objectId (or objectName if no id)
+      const existing = await (prisma as any).tenantObjectFile.findFirst({
+        where: {
+          tenantId:   requirement.tenantId,
+          objectType: o.objectType,
+          ...(o.objectId != null
+            ? { objectId: o.objectId }
+            : { objectName: o.objectName }),
+        },
+        select: { id: true },
+      })
+
+      let rec: any
+      const data = {
+        tenantId:      requirement.tenantId,
+        requirementId: params.id,
+        filename:      `${o.objectType}_${o.objectId ?? o.objectName}.txt`,
+        objectType:    o.objectType,
+        objectId:      o.objectId ?? null,
+        objectName:    o.objectName,
+        language:      (o.language ?? 'CAL') as string,
+        summary,
+        content:       o.content ?? null,
+        parseError:    false,
+        uploadedById:  (session.user as any).id,
+      }
+
+      if (existing) {
+        rec = await (prisma as any).tenantObjectFile.update({
+          where:  { id: existing.id },
+          data:   { ...data, uploadedAt: new Date() },
+          select: { id: true, objectType: true, objectId: true, objectName: true, uploadedAt: true },
+        })
+      } else {
+        rec = await (prisma as any).tenantObjectFile.create({
+          data,
+          select: { id: true, objectType: true, objectId: true, objectName: true, uploadedAt: true },
+        })
+      }
+      upserted.push(rec)
+    }
+
+    // Invalidate tenant context cache so new objects appear in AI calls immediately
+    const { invalidateTenantContext } = await import('@/lib/tenant-context')
+    invalidateTenantContext(requirement.tenantId)
+
+    return NextResponse.json({ upserted: upserted.length, objects: upserted })
+  }
+
+  // ── multipart/form-data path: manual file upload (original behaviour) ─────
   let formData: FormData
   try {
     formData = await req.formData()

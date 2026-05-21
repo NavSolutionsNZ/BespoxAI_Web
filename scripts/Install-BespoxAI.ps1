@@ -10,7 +10,7 @@
     This script:
       1. Creates C:\BespoxAI\ directory structure
       2. Downloads cloudflared.exe (Cloudflare Tunnel client)
-      3. Installs BCAgent v2.2 (local NTLM proxy for BC OData)
+      3. Installs BCAgent v2.3 (local NTLM proxy + NAV object export)
       4. Writes agent.config.json with your credentials
       5. Installs cloudflared as a Windows service (auto-start)
       6. Installs BCAgent as a scheduled task (auto-start, runs as SYSTEM)
@@ -70,7 +70,10 @@ param(
     [int]    $BCPort      = 8048,
     [string] $BCInstance  = 'BC',
     [string] $BCCompany   = 'CRONUS International Ltd.',
-    [int]    $AgentPort   = 8080
+    [int]    $AgentPort   = 8080,
+    [string] $NavDatabaseServer = 'localhost',
+    [string] $NavDatabaseName   = '',
+    [string] $NavServerInstance = ''
 )
 
 Set-StrictMode -Version Latest
@@ -179,14 +182,15 @@ Write-OK "cloudflared version: $cfVersion"
 
 # ── Step 4: Write BCAgent.ps1 ──────────────────────────────────────────────────
 
-Write-Step 'Installing BCAgent v2.2'
+Write-Step 'Installing BCAgent v2.3'
 
 $AgentCode = @'
 #Requires -Version 5.1
 <#
-  BCAgent v2.2 — BespoxAI local proxy for Business Central OData
+  BCAgent v2.3 — BespoxAI local proxy for Business Central OData
   Validates X-BespoxAI-Key, forwards requests to BC with NTLM auth.
-  v2.1 fix: sets Accept-Encoding: identity to prevent gzip issues.
+  v2.1: Accept-Encoding fix. v2.2: POST body forwarding.
+  v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
@@ -195,11 +199,14 @@ if (-not (Test-Path $ConfigPath)) {
 }
 
 $Config     = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-$ListenPort = if ($Config.listenPort) { $Config.listenPort } else { 8080 }
-$ApiKey     = $Config.apiKey
-$BCBase     = $Config.bcBaseUrl   # e.g. http://localhost:8048
-$BCUser     = $Config.bcUsername
-$BCPass     = $Config.bcPassword
+$ListenPort    = if ($Config.listenPort) { $Config.listenPort } else { 8080 }
+$ApiKey        = $Config.apiKey
+$BCBase        = $Config.bcBaseUrl   # e.g. http://localhost:8048
+$BCUser        = $Config.bcUsername
+$BCPass        = $Config.bcPassword
+$NavDbServer   = if ($Config.navDatabaseServer) { $Config.navDatabaseServer } else { 'localhost' }
+$NavDbName     = $Config.navDatabaseName
+$NavServerInst = $Config.navServerInstance
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
 function Write-Log {
@@ -243,13 +250,77 @@ while ($Listener.IsListening) {
             $incomingKey = $req.Headers['X-BespoxAI-Key']
             $statusCode  = if ($incomingKey -eq $ApiKey) { 200 } else { 401 }
             $statusMsg   = if ($incomingKey -eq $ApiKey) { 'ok' } else { 'unauthorized' }
-            $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"2.1`"}")
+            $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"2.3`"}")
             $res.StatusCode = $statusCode
             $res.ContentType = 'application/json'
             $res.ContentLength64 = $body.Length
             $res.OutputStream.Write($body, 0, $body.Length)
             $res.Close()
             continue
+        }
+
+        # BCAgent-local: NAV object export endpoint (v2.3)
+        if ($rawUrl -like '/bespoxai/objects/export*' -and $req.HttpMethod -eq 'POST') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $bodyLen   = $req.ContentLength64
+                $bodyBytes = New-Object byte[] $bodyLen
+                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
+                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $objects = $body.objects
+
+                if (-not $NavDbName) { throw 'navDatabaseName not configured. Set it in the BC Installer tab and regenerate the installer.' }
+                if (-not $objects -or $objects.Count -eq 0) { throw 'No objects specified.' }
+
+                # Try to load NAV management module from standard paths
+                $navPaths = @(
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1'
+                )
+                foreach ($pat in $navPaths) {
+                    $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($f) { . $f.FullName; break }
+                }
+
+                $tempId  = [System.Guid]::NewGuid().ToString('N')
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $tempTxt = Join-Path $tempDir "$tempId.txt"
+                $tempZip = Join-Path $tempDir "$tempId.zip"
+
+                $exportArgs = @{ DatabaseServer = $NavDbServer; DatabaseName = $NavDbName; Path = $tempTxt; Force = $true }
+                if ($NavServerInst) { $exportArgs['ServerInstance'] = $NavServerInst }
+
+                foreach ($obj in $objects) {
+                    $filter = "Type=$($obj.type);Id=$($obj.id)"
+                    Write-Log "NAV export: $filter"
+                    try { Export-NAVApplicationObject @exportArgs -Filter $filter -ErrorAction Stop }
+                    catch { Write-Log "Skip $filter`: $_" }
+                }
+
+                if (-not (Test-Path $tempTxt) -or (Get-Item $tempTxt).Length -eq 0) {
+                    throw 'Export produced no output. Check object IDs, database name, and that the NAV management module is installed.'
+                }
+
+                Compress-Archive -Path $tempTxt -DestinationPath $tempZip -Force
+                $zipBytes = [System.IO.File]::ReadAllBytes($tempZip)
+                Remove-Item $tempTxt, $tempZip -ErrorAction SilentlyContinue
+                Write-Log "Export OK: $($objects.Count) objects, $($zipBytes.Length) bytes"
+
+                $res.StatusCode = 200
+                $res.ContentType = 'application/zip'
+                $res.Headers.Add('Content-Disposition', 'attachment; filename="nav-objects.zip"')
+                $res.ContentLength64 = $zipBytes.Length
+                $res.OutputStream.Write($zipBytes, 0, $zipBytes.Length)
+            } catch {
+                Write-Log "Export ERROR: $_"
+                $em = ($_.ToString() -replace '"', "'") -replace '[\r\n]+', ' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length
+                $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
         }
 
         # Validate API key
@@ -328,15 +399,18 @@ Write-OK "BCAgent.ps1 written to $AgentScript"
 Write-Step 'Writing agent configuration'
 
 $Config = [ordered]@{
-    apiKey     = $ApiKey
-    listenPort = $AgentPort
-    bcBaseUrl  = "http://localhost:$BCPort"
-    bcUsername = $BCUsername
-    bcPassword = $BCPassword
-    bcInstance = $BCInstance
-    bcCompany  = $BCCompany
-    version    = '2.2'
-    installedAt= (Get-Date -Format 'o')
+    apiKey            = $ApiKey
+    listenPort        = $AgentPort
+    bcBaseUrl         = "http://localhost:$BCPort"
+    bcUsername        = $BCUsername
+    bcPassword        = $BCPassword
+    bcInstance        = $BCInstance
+    bcCompany         = $BCCompany
+    navDatabaseServer = $NavDatabaseServer
+    navDatabaseName   = $NavDatabaseName
+    navServerInstance = $NavServerInstance
+    version           = '2.3'
+    installedAt       = (Get-Date -Format 'o')
 }
 
 $Config | ConvertTo-Json | Set-Content -Path $AgentConfig -Encoding UTF8 -Force
@@ -460,7 +534,7 @@ Write-Host '  ╚═════════════════════
 Write-Host ''
 Write-Host '  Services installed:' -ForegroundColor White
 Write-Host "    • cloudflared    — Windows Service  (auto-start)"
-Write-Host "    • BCAgent v2.2   — Scheduled Task   (auto-start at boot)"
+Write-Host "    • BCAgent v2.3   — Scheduled Task   (auto-start at boot)"
 Write-Host ''
 Write-Host '  Files:' -ForegroundColor White
 Write-Host "    • $AgentScript"
