@@ -1980,14 +1980,6 @@ function AdminRequirementsTab() {
               </button>
             )}
 
-                {specErr && <p style={{ color: '#A32D2D', fontSize: 11, marginTop: 8 }}>{specErr}</p>}
-              </div>
-            ) : (
-              <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500 }}>
-                {genSpec ? '✦ Generating…' : '✦ Generate AI Spec'}
-              </button>
-            )}
-
             {/* ── Deploy to Test (when requirement is in_development) ── */}
             {selected.status === 'in_development' && (
               <DeployToTestPanel
