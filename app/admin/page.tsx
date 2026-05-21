@@ -1323,6 +1323,14 @@ function AdminRequirementsTab() {
   const [deployErr, setDeployErr]               = useState('')
   const [developers, setDevelopers]             = useState<{id:string;name:string|null;email:string}[]>([])
 
+  // ── Coding Assistant state ──────────────────────────────────────────────────
+  const [showCodingPanel, setShowCodingPanel]   = useState(false)
+  const [codingHistory, setCodingHistory]       = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [codingMessage, setCodingMessage]       = useState('')
+  const [codingStreaming, setCodingStreaming]    = useState(false)
+  const [codingCommitting, setCodingCommitting] = useState<number|null>(null)   // index of msg being committed
+  const [codingCommitErr, setCodingCommitErr]   = useState('')
+
   async function load() {
     setLoading(true)
     try {
@@ -1628,6 +1636,109 @@ function AdminRequirementsTab() {
     } finally {
       setDevStreaming(false)
     }
+  }
+
+  // ── Coding Assistant — streaming + commit ─────────────────────────────────
+  async function askCodingAssistant() {
+    if (!selected || !codingMessage.trim() || codingStreaming) return
+    const msg = codingMessage.trim()
+    setCodingMessage('')
+    setCodingStreaming(true)
+
+    const historyToSend = codingHistory.map(h => ({ role: h.role, content: h.content }))
+    // Optimistically add the user message + empty assistant placeholder
+    setCodingHistory(prev => [...prev, { role: 'user', content: msg }, { role: 'assistant', content: '' }])
+
+    try {
+      const res = await fetch(`/api/requirements/${selected.id}/coding-assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ message: msg, history: historyToSend }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error((d as any).error ?? 'Request failed')
+      }
+      const reader  = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buf    = ''
+      let answer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('
+')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
+              answer += data.delta.text ?? ''
+              setCodingHistory(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1] = { role: 'assistant', content: answer }
+                return updated
+              })
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (e: any) {
+      setCodingHistory(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { role: 'assistant', content: `Error: ${e.message ?? 'Could not reach AI'}` }
+        return updated
+      })
+    } finally {
+      setCodingStreaming(false)
+    }
+  }
+
+  async function commitCalObject(msgIndex: number, filename: string, content: string) {
+    if (!selected) return
+    setCodingCommitting(msgIndex)
+    setCodingCommitErr('')
+    try {
+      const res = await fetch(`/api/requirements/${selected.id}/coding-assistant/commit`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ filename, content }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Commit failed')
+    } catch (e: any) {
+      setCodingCommitErr(e.message ?? 'Commit failed')
+    } finally {
+      setCodingCommitting(null)
+    }
+  }
+
+  // Extract C/AL object blocks from an AI response message.
+  // Returns array of { filename, content } for each OBJECT block found.
+  function extractCalObjects(text: string): { filename: string; content: string }[] {
+    const results: { filename: string; content: string }[] = []
+    // Match fenced code blocks that contain C/AL OBJECT declarations
+    const fenceRe = /```(?:cal|txt|nav|c\/al)?
+(OBJECT [^
+]+[\s\S]*?)```/gi
+    let m
+    while ((m = fenceRe.exec(text)) !== null) {
+      const block = m[1].trim()
+      const header = block.split('
+')[0] // e.g. "OBJECT Codeunit 80 Sales-Post"
+      const parts  = header.match(/^OBJECT\s+(\w+)\s+(\d+)\s+(.+)$/)
+      if (parts) {
+        const objType = parts[1]
+        const objId   = parts[2]
+        const objName = parts[3].trim().replace(/[^a-zA-Z0-9_\-. ]/g, '_')
+        results.push({ filename: `${objType}_${objId}_${objName}.txt`, content: block })
+      } else {
+        results.push({ filename: 'object.txt', content: block })
+      }
+    }
+    return results
   }
 
   const filtered = filterStatus === 'all' ? reqs : reqs.filter(r => r.status === filterStatus)
@@ -2032,6 +2143,137 @@ function AdminRequirementsTab() {
                 onDeploy={deployToTest}
               />
             )}
+
+            {/* ── Coding Assistant (in_development with github branch) ── */}
+            {selected.status === 'in_development' ? (
+              <div style={{ background: 'rgba(10,92,70,0.05)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => { setShowCodingPanel(p => !p); if (showCodingPanel) { setCodingHistory([]); setCodingMessage(''); setCodingCommitErr('') } }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13 }}>{'</>'}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--forest)' }}>Coding Assistant</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)' }}>
+                      {selected.githubBranch ? ('— ' + selected.githubBranch) : '— no branch yet (fetch objects first)'}
+                    </span>
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)' }}>{showCodingPanel ? '▲' : '▼'}</span>
+                </button>
+
+                {showCodingPanel ? (
+                  <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid rgba(10,92,70,0.15)' }}>
+
+                    {selected.githubBranch ? null : (
+                      <div style={{ paddingTop: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', lineHeight: 1.6 }}>
+                        No GitHub branch is linked yet. Use the BC Objects panel above to fetch objects from BCAgent and save them to the Knowledge Base — this will automatically create the branch.
+                      </div>
+                    )}
+
+                    {selected.githubBranch ? (
+                      <>
+                        {/* Quick prompts */}
+                        {codingHistory.length === 0 ? (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10 }}>
+                            {[
+                              'Explain what these objects do and how they relate to each other',
+                              'What changes are needed to implement this requirement?',
+                              'Write the modified objects for this requirement',
+                              'What are the risks and dependencies I should be aware of?',
+                              'Check the code for any issues or anti-patterns',
+                            ].map(q => (
+                              <button key={q} onClick={() => setCodingMessage(q)} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.06em', padding: '3px 8px', borderRadius: 6, background: 'rgba(10,92,70,0.08)', border: '1px solid rgba(10,92,70,0.2)', color: 'var(--forest)', cursor: 'pointer' }}>{q}</button>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {/* Conversation thread */}
+                        {codingHistory.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, maxHeight: 560, overflowY: 'auto' }}>
+                            {codingHistory.map((msg, i) => {
+                              const calObjects = msg.role === 'assistant' ? extractCalObjects(msg.content) : []
+                              return (
+                                <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '95%', width: msg.role === 'assistant' ? '95%' : undefined }}>
+                                  {msg.role === 'user' ? (
+                                    <div style={{ background: 'rgba(10,92,70,0.1)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: '10px 10px 2px 10px', padding: '8px 12px' }}>
+                                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--forest)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
+                                    </div>
+                                  ) : (
+                                    <div style={{ background: 'var(--ink)', borderRadius: '10px 10px 10px 2px', padding: '10px 14px' }}>
+                                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.9)', lineHeight: 1.7 }}>
+                                        {renderMd(msg.content)}
+                                        {codingStreaming && i === codingHistory.length - 1 ? <span style={{ opacity: 0.5 }}>▌</span> : null}
+                                      </div>
+                                      {/* Commit buttons for detected C/AL objects */}
+                                      {!codingStreaming && calObjects.length > 0 ? (
+                                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(10,92,70,0.7)', margin: 0 }}>
+                                            {calObjects.length} C/AL object{calObjects.length !== 1 ? 's' : ''} detected
+                                          </p>
+                                          {calObjects.map((obj, oi) => (
+                                            <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(214,217,212,0.6)', flex: 1 }}>{obj.filename}</span>
+                                              <button
+                                                onClick={() => commitCalObject(i, obj.filename, obj.content)}
+                                                disabled={codingCommitting === i}
+                                                style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--jade)', background: 'none', border: '1px solid rgba(10,92,70,0.4)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', opacity: codingCommitting === i ? 0.5 : 1 }}
+                                              >
+                                                {codingCommitting === i ? '…' : '↑ Commit to Branch'}
+                                              </button>
+                                            </div>
+                                          ))}
+                                          {codingCommitErr ? (
+                                            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', margin: 0 }}>{codingCommitErr}</p>
+                                          ) : null}
+                                        </div>
+                                      ) : null}
+                                      {/* Clear button on last completed message */}
+                                      {msg.role === 'assistant' && !codingStreaming && i === codingHistory.length - 1 ? (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                          <button
+                                            onClick={() => { setCodingHistory([]); setCodingCommitErr('') }}
+                                            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer' }}
+                                          >✕ Clear</button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+
+                        {/* Input */}
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <textarea
+                            value={codingMessage}
+                            onChange={e => setCodingMessage(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && !e.shiftKey && codingMessage.trim() && !codingStreaming) {
+                                e.preventDefault()
+                                askCodingAssistant()
+                              }
+                            }}
+                            placeholder={codingHistory.length > 0 ? 'Ask a follow-up or request changes…' : 'Ask about the code, request modifications, or ask it to write the implementation…'}
+                            rows={2}
+                            style={{ ...inputStyle, flex: 1, resize: 'vertical', fontFamily: 'var(--font-body)', fontSize: 12 }}
+                            disabled={codingStreaming}
+                          />
+                          <button
+                            disabled={codingStreaming || !codingMessage.trim()}
+                            onClick={askCodingAssistant}
+                            style={{ ...btnStyle, background: '#0A5C46', opacity: (codingStreaming || !codingMessage.trim()) ? 0.6 : 1, whiteSpace: 'nowrap', padding: '9px 14px', alignSelf: 'flex-end' }}
+                          >
+                            {codingStreaming ? '…' : 'Send →'}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* ── Dev Plan (superadmin internal only) ── */}
             {['in_review','quoted','approved','in_development','complete','quote_rejected'].includes(selected.status) && (
