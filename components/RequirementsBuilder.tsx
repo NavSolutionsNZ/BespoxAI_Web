@@ -42,6 +42,11 @@ export interface Requirement {
   feasibilityCostRange: string | null; feasibilityCheckedAt: string | null
   reviewPaidAt: string | null; reviewStripeSessionId: string | null
   reviewBypassed: boolean; reviewIncluded: boolean; reviewSubmittedAt: string | null
+  // Deployment & UAT
+  testDeployedAt: string | null; testDeploySnapshotId: string | null
+  uatApprovedAt: string | null; uatApprovedById: string | null
+  uatRejectedAt: string | null; uatRejectionReason: string | null
+  uatRejectionAnalysis: any | null
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string; country: string | null; paymentTermsKey: string | null }
@@ -168,6 +173,12 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   const [actLoading, setAL]       = useState(false)
   const [showQF, setShowQF]       = useState(false)
+  // UAT sign-off / rejection
+  const [showUATReject, setShowUATReject]     = useState(false)
+  const [uatRejectReason, setUATRejectReason] = useState('')
+  const [uatRejectLoading, setUATRejectLoad]  = useState(false)
+  const [uatScopeCreep, setUATScopeCreep]     = useState<{explanation:string;suggestedAmendment?:string}|null>(null)
+  const [uatApproveLoading, setUATApproveLoad] = useState(false)
   const [quoteAmt, setQA]         = useState('')
   const [quoteNote, setQN]        = useState('')
 
@@ -1682,6 +1693,96 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 )}
                 {isSuperadmin&&req.status==='in_development'&&(
                   <button onClick={()=>patch(req.id,{status:'complete_pending_payment'})} disabled={actLoading} style={{...pBTN,background:'#0F6E56'}}>✓ Mark Complete — Request Balance</button>
+                )}
+
+                {/* ── UAT Panel (customer-facing when test env is deployed) ── */}
+                {!isSuperadmin&&req.status==='in_development'&&req.testDeployedAt&&(
+                  <div style={{...crd,borderColor:req.uatApprovedAt?'rgba(10,92,70,0.3)':req.uatRejectedAt?'rgba(163,45,45,0.3)':'rgba(200,149,42,0.3)',background:req.uatApprovedAt?'rgba(10,92,70,0.04)':req.uatRejectedAt?'rgba(163,45,45,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
+                    {req.uatApprovedAt?(
+                      <div>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#0A5C46',fontWeight:600,marginBottom:4}}>✓ UAT Approved</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',margin:0}}>Signed off {new Date(req.uatApprovedAt).toLocaleDateString('en-NZ')} — awaiting production deployment.</p>
+                      </div>
+                    ):req.uatRejectedAt?(
+                      <div>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#A32D2D',fontWeight:600,marginBottom:4}}>✕ UAT Rejected — New deployment cycle in progress</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',margin:0}}>Our team has been notified and will address the issues raised.</p>
+                      </div>
+                    ):(
+                      <div>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#9A6A00',fontWeight:600,letterSpacing:'0.08em',marginBottom:6}}>🧪 TEST ENVIRONMENT READY</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',lineHeight:1.6,marginBottom:4}}>Your customisation has been deployed to the test environment. Please test thoroughly and sign off when satisfied.</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginBottom:12}}>Deployed to test: {new Date(req.testDeployedAt).toLocaleDateString('en-NZ')}</p>
+
+                        {/* Scope-creep analysis result */}
+                        {uatScopeCreep&&(
+                          <div style={{background:'rgba(163,45,45,0.06)',border:'1px solid rgba(163,45,45,0.2)',borderRadius:6,padding:'10px 12px',marginBottom:12}}>
+                            <p style={{fontFamily:'var(--font-mono)',fontSize:9,color:'#A32D2D',fontWeight:600,marginBottom:6}}>SCOPE ASSESSMENT</p>
+                            <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',lineHeight:1.6,marginBottom:6}}>{uatScopeCreep.explanation}</p>
+                            {uatScopeCreep.suggestedAmendment&&(
+                              <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginBottom:8}}><strong>Amendment would cover:</strong> {uatScopeCreep.suggestedAmendment}</p>
+                            )}
+                            <div style={{display:'flex',gap:8}}>
+                              <button
+                                onClick={async()=>{
+                                  const r=await fetch(`/api/requirements/${req.id}/uat-reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:uatRejectReason,confirm:true})})
+                                  if(r.ok){setUATScopeCreep(null);setShowUATReject(false);setUATRejectReason('');const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,uatRejectedAt:d.rejectedAt,testDeployedAt:null}:x))}
+                                }}
+                                style={{...sBTN,fontSize:11,color:'#A32D2D'}}
+                              >Reject anyway</button>
+                              <button onClick={()=>{setUATScopeCreep(null);setShowUATReject(false);setUATRejectReason('')}} style={{...pBTN,fontSize:11}}>Request amendment instead</button>
+                            </div>
+                          </div>
+                        )}
+
+                        {showUATReject&&!uatScopeCreep&&(
+                          <div style={{marginBottom:12}}>
+                            <textarea
+                              value={uatRejectReason}
+                              onChange={e=>setUATRejectReason(e.target.value)}
+                              placeholder="Please describe what is not working or what needs to change…"
+                              rows={3}
+                              style={{width:'100%',fontFamily:'var(--font-body)',fontSize:12,padding:'8px 10px',borderRadius:6,border:'1px solid var(--fog)',resize:'vertical',boxSizing:'border-box'}}
+                            />
+                            <div style={{display:'flex',gap:8,marginTop:6}}>
+                              <button
+                                disabled={!uatRejectReason.trim()||uatRejectLoading}
+                                onClick={async()=>{
+                                  setUATRejectLoad(true)
+                                  try{
+                                    const r=await fetch(`/api/requirements/${req.id}/uat-reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:uatRejectReason})})
+                                    const d=await r.json()
+                                    if(d.isScopeCreep){setUATScopeCreep({explanation:d.explanation,suggestedAmendment:d.suggestedAmendment})}
+                                    else if(d.rejected){setShowUATReject(false);setUATRejectReason('');setReqs(prev=>prev.map(x=>x.id===req.id?{...x,uatRejectedAt:d.rejectedAt,testDeployedAt:null}:x))}
+                                  }finally{setUATRejectLoad(false)}
+                                }}
+                                style={{...sBTN,fontSize:11,color:'#A32D2D'}}
+                              >{uatRejectLoading?'Checking…':'Submit Rejection'}</button>
+                              <button onClick={()=>{setShowUATReject(false);setUATRejectReason('');setUATScopeCreep(null)}} style={{...pBTN,fontSize:11,background:'var(--fog)',color:'var(--ink)'}}>Cancel</button>
+                            </div>
+                          </div>
+                        )}
+
+                        {!showUATReject&&!uatScopeCreep&&(
+                          <div style={{display:'flex',gap:8}}>
+                            <button
+                              disabled={uatApproveLoading}
+                              onClick={async()=>{
+                                if(!confirm('Sign off UAT? This confirms the customisation has been tested and is ready for production deployment.'))return
+                                setUATApproveLoad(true)
+                                try{
+                                  const r=await fetch(`/api/requirements/${req.id}/uat-approve`,{method:'POST'})
+                                  if(r.ok){const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,uatApprovedAt:d.approvedAt}:x))}
+                                }finally{setUATApproveLoad(false)}
+                              }}
+                              style={{...pBTN,background:'#0A5C46',color:'var(--cream)',fontSize:12}}
+                            >{uatApproveLoading?'Signing off…':'✓ Sign Off UAT'}</button>
+                            <button onClick={()=>{setShowUATReject(true);setUATScopeCreep(null)}} style={{...sBTN,fontSize:12,color:'#A32D2D'}}>✕ Reject</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {isSuperadmin&&req.status==='complete_pending_payment'&&(
                   <button onClick={()=>patch(req.id,{status:'fully_paid'})} disabled={actLoading} style={{...pBTN,background:'#085040'}}>✓ Confirm Balance Received</button>

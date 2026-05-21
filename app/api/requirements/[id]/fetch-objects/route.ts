@@ -242,7 +242,7 @@ export async function POST(
         'Content-Type':    'application/json',
         'X-BespoxAI-Key':  tenant.apiKey,
       },
-      body: JSON.stringify({ objects }),
+      body: JSON.stringify({ requirementId: params.id, objects }),
     })
 
     if (!agentRes.ok) {

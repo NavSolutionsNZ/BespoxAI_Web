@@ -1150,6 +1150,13 @@ function AdminRequirementsTab() {
   const [splitObjects, setSplitObjects]         = useState<any[]>([])   // client-side split results
   const [savingObjs, setSavingObjs]             = useState(false)
   const [savedObjCount, setSavedObjCount]       = useState(0)
+  // Deployment workflow
+  const [writeLoading, setWriteLoading]         = useState(false)
+  const [writeSnapshotId, setWriteSnapshotId]   = useState<string|null>(null)
+  const [writeErr, setWriteErr]                 = useState('')
+  const [deployLoading, setDeployLoading]       = useState(false)
+  const [deployResults, setDeployResults]       = useState<any[]|null>(null)
+  const [deployErr, setDeployErr]               = useState('')
 
   async function load() {
     setLoading(true)
@@ -1309,6 +1316,63 @@ function AdminRequirementsTab() {
       setFetchObjErr(e.message)
     } finally {
       setSavingObjs(false)
+    }
+  }
+
+  async function writeObjectsToServer() {
+    if (!selected || writeLoading) return
+    setWriteLoading(true)
+    setWriteErr('')
+    setWriteSnapshotId(null)
+    setDeployResults(null)
+    try {
+      // Load object file IDs for this requirement that have content
+      const filesRes = await fetch(`/api/requirements/${selected.id}/objects`)
+      if (!filesRes.ok) throw new Error('Could not load object files')
+      const filesData = await filesRes.json()
+      const fileIds = (filesData.objects ?? []).filter((f: any) => f.hasContent).map((f: any) => f.id)
+      if (!fileIds.length) throw new Error('No object files with content found. Fetch objects from BCAgent first.')
+
+      const res = await fetch(`/api/requirements/${selected.id}/objects/write`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ fileIds }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+      const data = await res.json()
+      setWriteSnapshotId(data.snapshotId)
+    } catch(e: any) {
+      setWriteErr(e.message)
+    } finally {
+      setWriteLoading(false)
+    }
+  }
+
+  async function deployToTest() {
+    if (!selected || !writeSnapshotId || deployLoading) return
+    setDeployLoading(true)
+    setDeployErr('')
+    setDeployResults(null)
+    try {
+      const res = await fetch(`/api/requirements/${selected.id}/objects/deploy-test`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ snapshotId: writeSnapshotId }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+      const data = await res.json()
+      setDeployResults(data.results ?? [])
+      if (data.success) {
+        // Refresh requirement to show testDeployedAt
+        const reqRes = await fetch('/api/admin/requirements')
+        if (reqRes.ok) { const d = await reqRes.json(); setReqs(d.requirements) }
+      } else {
+        setDeployErr('Some objects failed — check results below')
+      }
+    } catch(e: any) {
+      setDeployErr(e.message)
+    } finally {
+      setDeployLoading(false)
     }
   }
 
@@ -1752,6 +1816,97 @@ function AdminRequirementsTab() {
               <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500 }}>
                 {genSpec ? '✦ Generating…' : '✦ Generate AI Spec'}
               </button>
+            )}
+
+                {specErr && <p style={{ color: '#A32D2D', fontSize: 11, marginTop: 8 }}>{specErr}</p>}
+              </div>
+            ) : (
+              <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500 }}>
+                {genSpec ? '✦ Generating…' : '✦ Generate AI Spec'}
+              </button>
+            )}
+
+            {/* ── Deploy to Test (when requirement is in_development) ── */}
+            {selected.status === 'in_development' && (
+              <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 10 }}>Deploy to Test Environment</p>
+
+                {/* UAT status banner */}
+                {selected.uatApprovedAt && (
+                  <div style={{ background: 'rgba(10,92,70,0.06)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', margin: 0 }}>✓ UAT approved by customer — {new Date(selected.uatApprovedAt).toLocaleDateString('en-NZ')}</p>
+                  </div>
+                )}
+                {selected.uatRejectedAt && !selected.testDeployedAt && (
+                  <div style={{ background: 'rgba(163,45,45,0.06)', border: '1px solid rgba(163,45,45,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginBottom: 4 }}>✕ UAT rejected — new deployment cycle required</p>
+                    {selected.uatRejectionReason && <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', margin: 0 }}>Reason: {selected.uatRejectionReason}</p>}
+                  </div>
+                )}
+                {selected.testDeployedAt && !selected.uatApprovedAt && (
+                  <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9A6A00', margin: 0 }}>🧪 Deployed to test {new Date(selected.testDeployedAt).toLocaleDateString('en-NZ')} — awaiting customer UAT sign-off</p>
+                  </div>
+                )}
+
+                {/* Step 1: Write files */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 1</span>
+                  <button
+                    onClick={writeObjectsToServer}
+                    disabled={writeLoading}
+                    style={{ ...btnStyle, fontSize: 10, background: writeSnapshotId ? 'var(--fog)' : 'var(--ink)', color: writeSnapshotId ? 'var(--slate)' : 'var(--cream)', border: 'none' }}
+                  >
+                    {writeLoading ? '⟳ Writing…' : writeSnapshotId ? '✓ Files written — re-write' : '↑ Write files to server'}
+                  </button>
+                  {writeSnapshotId && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>Snapshot: {writeSnapshotId}</span>}
+                </div>
+                {writeErr && <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '0 0 8px' }}>{writeErr}</p>}
+
+                {/* Step 2: Deploy */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 2</span>
+                  <button
+                    onClick={deployToTest}
+                    disabled={!writeSnapshotId || deployLoading}
+                    style={{ ...btnStyle, fontSize: 10, background: writeSnapshotId ? '#0A5C46' : 'var(--fog)', color: 'var(--cream)', border: 'none', opacity: writeSnapshotId ? 1 : 0.5 }}
+                  >
+                    {deployLoading ? '⟳ Deploying…' : '→ Deploy + Compile to Test'}
+                  </button>
+                </div>
+                {deployErr && <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p>}
+
+                {/* Deploy results */}
+                {deployResults && (
+                  <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
+                    {deployResults.map((r: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: i < deployResults.length - 1 ? '1px solid var(--fog)' : 'none', background: r.imported && r.compiled ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}>
+                        <span style={{ fontSize: 10 }}>{r.imported && r.compiled ? '✓' : '✕'}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1 }}>{r.filename}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>import {r.imported ? '✓' : '✕'}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>compile {r.compiled ? '✓' : '✕'}</span>
+                        {r.error && <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: '#A32D2D', maxWidth: 200 }} title={r.error}>⚠ {r.error.slice(0, 40)}…</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Timeout fallback instructions */}
+                {deployErr?.includes('timeout') && (
+                  <details style={{ marginTop: 10, fontSize: 11 }}>
+                    <summary style={{ cursor: 'pointer', color: 'var(--slate)', fontFamily: 'var(--font-mono)', fontSize: 9 }}>Manual deployment instructions (click to expand)</summary>
+                    <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 9, background: 'var(--parchment)', padding: '8px 10px', borderRadius: 6, overflowX: 'auto', marginTop: 6 }}>
+{`# Run on the customer server (PowerShell):
+Import-NAVApplicationObject -DatabaseServer localhost \\
+  -DatabaseName "TEST_DB_NAME" \\
+  -Path "C:\\BespoxAI\\Deployments\\${selected.id}\\${writeSnapshotId}\\*.txt" \\
+  -ImportAction Overwrite -SynchronizeSchemaChanges Force
+Compile-NAVApplicationObject -DatabaseServer localhost \\
+  -DatabaseName "TEST_DB_NAME" -SynchronizeSchemaChanges Force`}
+                    </pre>
+                  </details>
+                )}
+              </div>
             )}
 
             {/* ── Dev Plan (superadmin internal only) ── */}

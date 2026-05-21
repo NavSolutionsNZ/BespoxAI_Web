@@ -26,16 +26,23 @@ export async function GET(
   if (user.role !== 'superadmin' && requirement.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const objects = await (prisma as any).tenantObjectFile.findMany({
+  const rawObjects = await (prisma as any).tenantObjectFile.findMany({
     where:   { requirementId: params.id },
     select:  {
       id: true, filename: true, objectType: true, objectId: true,
       objectName: true, language: true, summary: true, parseError: true,
       uploadedAt: true,
       uploadedBy: { select: { name: true, email: true } },
+      content: true,
     },
     orderBy: { uploadedAt: 'asc' },
   })
+
+  const objects = (rawObjects as any[]).map(o => ({
+    ...o,
+    hasContent: !!o.content,
+    content: undefined,
+  }))
 
   return NextResponse.json({ objects })
 }
@@ -87,10 +94,23 @@ export async function POST(
 
     const upserted: any[] = []
     for (const o of inbound) {
-      // Build summary from what the client extracted
-      const summary: Record<string, any> = {}
-      if (o.versionList) summary.versionList = o.versionList
-      if (o.content)     summary.sizeBytes   = new TextEncoder().encode(o.content).length
+      // Parse C/AL content for rich summary (fields, functions, version list)
+      let richSummary: Record<string, any> = {}
+      if (o.content) {
+        try {
+          const parsed = parseObjectFile(o.content, `${o.objectType}_${o.objectId}.txt`)
+          if (parsed.length > 0 && !parsed[0].parseError) {
+            richSummary = parsed[0].summary ?? {}
+          }
+        } catch { /* parser failure is non-fatal */ }
+      }
+
+      // Build summary from parser output + client-extracted metadata
+      const summary: Record<string, any> = {
+        ...richSummary,
+        ...(o.versionList ? { versionList: o.versionList } : {}),
+        ...(o.content     ? { sizeBytes: new TextEncoder().encode(o.content).length } : {}),
+      }
 
       // Upsert: match on tenantId + objectType + objectId (or objectName if no id)
       const existing = await (prisma as any).tenantObjectFile.findFirst({

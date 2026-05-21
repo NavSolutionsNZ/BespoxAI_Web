@@ -10,7 +10,7 @@
     This script:
       1. Creates C:\BespoxAI\ directory structure
       2. Downloads cloudflared.exe (Cloudflare Tunnel client)
-      3. Installs BCAgent v2.3 (local NTLM proxy + NAV object export)
+      3. Installs BCAgent v2.4 (local NTLM proxy + NAV export/import + deployment workflow)
       4. Writes agent.config.json with your credentials
       5. Installs cloudflared as a Windows service (auto-start)
       6. Installs BCAgent as a scheduled task (auto-start, runs as SYSTEM)
@@ -73,7 +73,13 @@ param(
     [int]    $AgentPort   = 8080,
     [string] $NavDatabaseServer = 'localhost',
     [string] $NavDatabaseName   = '',
-    [string] $NavServerInstance = ''
+    [string] $NavServerInstance    = '',
+    [string] $TestNavDatabaseServer = '',
+    [string] $TestNavDatabaseName   = '',
+    [string] $TestNavServerInstance = '',
+    [string] $TestBcInstance        = '',
+    [string] $TestBcCompany         = '',
+    [int]    $TestBcPort            = 0
 )
 
 Set-StrictMode -Version Latest
@@ -182,7 +188,7 @@ Write-OK "cloudflared version: $cfVersion"
 
 # ── Step 4: Write BCAgent.ps1 ──────────────────────────────────────────────────
 
-Write-Step 'Installing BCAgent v2.3'
+Write-Step 'Installing BCAgent v2.4'
 
 $AgentCode = @'
 #Requires -Version 5.1
@@ -206,7 +212,13 @@ $BCUser        = $Config.bcUsername
 $BCPass        = $Config.bcPassword
 $NavDbServer   = if ($Config.navDatabaseServer) { $Config.navDatabaseServer } else { 'localhost' }
 $NavDbName     = $Config.navDatabaseName
-$NavServerInst = $Config.navServerInstance
+$NavServerInst       = $Config.navServerInstance
+$TestNavDbServer     = if ($Config.testNavDatabaseServer) { $Config.testNavDatabaseServer } else { $NavDbServer }
+$TestNavDbName       = $Config.testNavDatabaseName
+$TestNavServerInst   = $Config.testNavServerInstance
+$TestBcInstance      = $Config.testBcInstance
+$TestBcCompany       = $Config.testBcCompany
+$TestBcPort          = if ($Config.testBcPort) { $Config.testBcPort } else { 0 }
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
 function Write-Log {
@@ -250,7 +262,7 @@ while ($Listener.IsListening) {
             $incomingKey = $req.Headers['X-BespoxAI-Key']
             $statusCode  = if ($incomingKey -eq $ApiKey) { 200 } else { 401 }
             $statusMsg   = if ($incomingKey -eq $ApiKey) { 'ok' } else { 'unauthorized' }
-            $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"2.3`"}")
+            $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"2.4`"}")
             $res.StatusCode = $statusCode
             $res.ContentType = 'application/json'
             $res.ContentLength64 = $body.Length
@@ -259,7 +271,208 @@ while ($Listener.IsListening) {
             continue
         }
 
-        # BCAgent-local: NAV object export endpoint (v2.3)
+        # BCAgent-local: Write deployment files to server (v2.4)
+        if ($rawUrl -like '/bespoxai/objects/write*' -and $req.HttpMethod -eq 'POST') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $bodyLen   = $req.ContentLength64
+                $bodyBytes = New-Object byte[] $bodyLen
+                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
+                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $objects = $body.objects          # [{filename, content}]
+                $requirementId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { 'unknown' }
+                $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+
+                if (-not $objects -or $objects.Count -eq 0) { throw 'No objects provided.' }
+
+                $deployDir = "C:\BespoxAI\Deployments\$requirementId\${timestamp}_deploy"
+                New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
+
+                foreach ($obj in $objects) {
+                    $safeName = $obj.filename -replace '[^a-zA-Z0-9_\-. ]',''
+                    Set-Content -Path "$deployDir\$safeName" -Value $obj.content -Encoding UTF8
+                }
+
+                # Write manifest
+                $manifest = @{
+                    requirementId = $requirementId
+                    type          = 'deployment'
+                    timestamp     = (Get-Date -Format 'o')
+                    objects       = @($objects | ForEach-Object { $_.filename })
+                    status        = 'written'
+                } | ConvertTo-Json
+                Set-Content -Path "$deployDir\_manifest.json" -Value $manifest -Encoding UTF8
+                Write-Log "Deployment written: $deployDir ($($objects.Count) objects)"
+
+                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"snapshotId`":`"${timestamp}_deploy`",`"path`":`"$deployDir`",`"objectCount`":$($objects.Count)}")
+                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $resp.Length
+                $res.OutputStream.Write($resp, 0, $resp.Length)
+            } catch {
+                Write-Log "Write ERROR: $_"
+                $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
+        # BCAgent-local: Deploy from folder to test or production (v2.4)
+        if ($rawUrl -like '/bespoxai/objects/deploy*' -and $req.HttpMethod -eq 'POST') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $bodyLen   = $req.ContentLength64
+                $bodyBytes = New-Object byte[] $bodyLen
+                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
+                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $requirementId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { 'unknown' }
+                $snapshotId    = $body.snapshotId -replace '[^a-zA-Z0-9_-]',''
+                $environment   = if ($body.environment) { $body.environment } else { 'test' }
+
+                # Select database based on environment
+                if ($environment -eq 'production') {
+                    $dbServer = $NavDbServer; $dbName = $NavDbName; $dbInst = $NavServerInst
+                } else {
+                    $dbServer = $TestNavDbServer; $dbName = $TestNavDbName; $dbInst = $TestNavServerInst
+                    if (-not $dbName) { throw "testNavDatabaseName not configured. Add it in the BC Installer tab." }
+                }
+
+                $deployDir = "C:\BespoxAI\Deployments\$requirementId\$snapshotId"
+                if (-not (Test-Path $deployDir)) { throw "Snapshot folder not found: $deployDir" }
+
+                # Load NAV management module
+                $navPaths = @(
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1'
+                )
+                foreach ($pat in $navPaths) {
+                    $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($f) { . $f.FullName; break }
+                }
+
+                $results = @()
+                $txtFiles = Get-ChildItem -Path $deployDir -Filter '*.txt' -File
+
+                foreach ($file in $txtFiles) {
+                    $fileResult = @{ filename = $file.Name; imported = $false; compiled = $false; error = '' }
+                    try {
+                        # Import
+                        Import-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
+                            -Path $file.FullName -ImportAction Overwrite -SynchronizeSchemaChanges Force `
+                            -ErrorAction Stop
+                        $fileResult.imported = $true
+                        Write-Log "Imported: $($file.Name) → $dbName"
+
+                        # Parse type+id from filename (Type_Id_Name.txt)
+                        $parts = $file.BaseName -split '_'
+                        if ($parts.Count -ge 2) {
+                            $objType = $parts[0]; $objId = $parts[1]
+                            $filter = "Type=$objType;Id=$objId"
+                            Compile-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
+                                -Filter $filter -SynchronizeSchemaChanges Force -ErrorAction Stop
+                            $fileResult.compiled = $true
+                            Write-Log "Compiled: $filter"
+                        }
+                    } catch {
+                        $fileResult.error = $_.ToString() -replace '[\r\n]+',' '
+                        Write-Log "Deploy error ($($file.Name)): $_"
+                    }
+                    $results += $fileResult
+                }
+
+                # Update manifest with deploy result
+                $manifestPath = "$deployDir\_manifest.json"
+                if (Test-Path $manifestPath) {
+                    $mf = Get-Content $manifestPath | ConvertFrom-Json
+                    $mf | Add-Member -NotePropertyName "${environment}DeployedAt" -NotePropertyValue (Get-Date -Format 'o') -Force
+                    $mf | Add-Member -NotePropertyName "status" -NotePropertyValue "deployed_$environment" -Force
+                    $mf | ConvertTo-Json | Set-Content $manifestPath -Encoding UTF8
+                }
+
+                $success = ($results | Where-Object { -not $_.imported }).Count -eq 0
+                $resultsJson = $results | ConvertTo-Json -Compress
+                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"success`":$($success.ToString().ToLower()),`"environment`":`"$environment`",`"results`":$resultsJson}")
+                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
+            } catch {
+                Write-Log "Deploy ERROR: $_"
+                $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
+        # BCAgent-local: List regression/deployment snapshots (v2.4)
+        if ($rawUrl -like '/bespoxai/objects/snapshots*' -and $req.HttpMethod -eq 'GET') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $result = @{ regression = @(); deployments = @() }
+                foreach ($tree in @(@{key='regression';path='C:\BespoxAI\Regression'}, @{key='deployments';path='C:\BespoxAI\Deployments'})) {
+                    if (Test-Path $tree.path) {
+                        Get-ChildItem $tree.path -Directory | ForEach-Object {
+                            $reqId = $_.Name
+                            Get-ChildItem $_.FullName -Directory | ForEach-Object {
+                                $mfPath = "$($_.FullName)\_manifest.json"
+                                if (Test-Path $mfPath) {
+                                    $mf = Get-Content $mfPath | ConvertFrom-Json
+                                    $mf | Add-Member -NotePropertyName 'requirementId' -NotePropertyValue $reqId -Force
+                                    $mf | Add-Member -NotePropertyName 'snapshotId' -NotePropertyValue $_.Name -Force
+                                    $result[$tree.key] += $mf
+                                }
+                            }
+                        }
+                    }
+                }
+                $resp = [System.Text.Encoding]::UTF8.GetBytes(($result | ConvertTo-Json -Compress -Depth 5))
+                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
+            } catch {
+                $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
+        # BCAgent-local: Cleanup snapshots (v2.4)
+        if ($rawUrl -like '/bespoxai/objects/cleanup*' -and $req.HttpMethod -eq 'POST') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $bodyLen = $req.ContentLength64
+                $bodyBytes = New-Object byte[] $bodyLen
+                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
+                $body = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $reqId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { '' }
+                $deleted = 0
+                foreach ($base in @('C:\BespoxAI\Regression','C:\BespoxAI\Deployments')) {
+                    if ($reqId) {
+                        $target = "$base\$reqId"
+                        if (Test-Path $target) { Remove-Item $target -Recurse -Force; $deleted++ }
+                    } else {
+                        if (Test-Path $base) { Remove-Item "$base\*" -Recurse -Force; $deleted++ }
+                    }
+                }
+                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"deleted`":$deleted}")
+                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
+            } catch {
+                $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
+        # BCAgent-local: NAV object export endpoint (v2.3→v2.4 + regression save)
         if ($rawUrl -like '/bespoxai/objects/export*' -and $req.HttpMethod -eq 'POST') {
             $incomingKey = $req.Headers['X-BespoxAI-Key']
             if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
@@ -301,6 +514,14 @@ while ($Listener.IsListening) {
                 if (-not (Test-Path $tempTxt) -or (Get-Item $tempTxt).Length -eq 0) {
                     throw 'Export produced no output. Check object IDs, database name, and that the NAV management module is installed.'
                 }
+
+                # Save regression snapshot
+                $regressionDir = "C:\BespoxAI\Regression\$requirementId\${timestamp}_fetch"
+                New-Item -ItemType Directory -Path $regressionDir -Force | Out-Null
+                $manifest = @{ requirementId=$requirementId; type='fetch'; timestamp=(Get-Date -Format 'o'); objects=@($objects|ForEach-Object{"$($_.type) $($_.id)"}) } | ConvertTo-Json
+                Set-Content -Path "$regressionDir\_manifest.json" -Value $manifest -Encoding UTF8
+                if (Test-Path $tempTxt) { Copy-Item $tempTxt -Destination $regressionDir -Force }
+                Write-Log "Regression saved: $regressionDir"
 
                 Compress-Archive -Path $tempTxt -DestinationPath $tempZip -Force
                 $zipBytes = [System.IO.File]::ReadAllBytes($tempZip)
@@ -534,7 +755,7 @@ Write-Host '  ╚═════════════════════
 Write-Host ''
 Write-Host '  Services installed:' -ForegroundColor White
 Write-Host "    • cloudflared    — Windows Service  (auto-start)"
-Write-Host "    • BCAgent v2.3   — Scheduled Task   (auto-start at boot)"
+Write-Host "    • BCAgent v2.4   — Scheduled Task   (auto-start at boot)"
 Write-Host ''
 Write-Host '  Files:' -ForegroundColor White
 Write-Host "    • $AgentScript"

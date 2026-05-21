@@ -24,6 +24,9 @@ const DEBUG_TENANT = {
   tunnelId: 'debug-tunnel-id', createdAt: '2026-01-15T00:00:00.000Z',
   navProduct: 'BC', navVersion: 'Business Central 2024 Wave 2 (BC25)',
   lastCU: 'CU2', bcPort: 8048, agentPort: 8080,
+  navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '',
+  testNavDatabaseServer: 'localhost', testNavDatabaseName: '', testNavServerInstance: '',
+  testBcPort: 0, testBcInstance: '', testBcCompany: '',
   _debug: true,
 }
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
@@ -48,6 +51,9 @@ export async function GET() {
       tunnelId: true, createdAt: true,
       navProduct: true, navVersion: true, lastCU: true,
       bcPort: true, agentPort: true,
+      navDatabaseServer: true, navDatabaseName: true, navServerInstance: true,
+      testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true,
+      testBcPort: true, testBcInstance: true, testBcCompany: true,
     },
   })
   if (!tenant) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -67,7 +73,10 @@ export async function PATCH(req: NextRequest) {
 
   const tenantId = (session.user as any).tenantId
   const body = await req.json().catch(() => ({}))
-  const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany } = body
+  const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany,
+          navDatabaseServer, navDatabaseName, navServerInstance,
+          testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
+          testBcPort, testBcInstance, testBcCompany } = body
 
   const data: Record<string, any> = {}
   if (country    !== undefined) { if (typeof country !== 'string' || country.length > 4) return NextResponse.json({ error: 'Invalid country' }, { status: 400 }); data.country = country.toUpperCase() }
@@ -78,6 +87,20 @@ export async function PATCH(req: NextRequest) {
   if (lastCU     !== undefined) data.lastCU     = lastCU     || null
   if (bcInstance !== undefined) data.bcInstance = bcInstance || null
   if (bcCompany  !== undefined) data.bcCompany  = bcCompany  || null
+  // NAV production DB
+  if (navDatabaseServer !== undefined) data.navDatabaseServer = navDatabaseServer || 'localhost'
+  if (navDatabaseName   !== undefined) data.navDatabaseName   = navDatabaseName   || null
+  if (navServerInstance !== undefined) data.navServerInstance = navServerInstance || null
+  // Test environment
+  if (testNavDatabaseServer !== undefined) data.testNavDatabaseServer = testNavDatabaseServer || null
+  if (testNavDatabaseName   !== undefined) data.testNavDatabaseName   = testNavDatabaseName   || null
+  if (testNavServerInstance !== undefined) data.testNavServerInstance = testNavServerInstance || null
+  if (testBcInstance        !== undefined) data.testBcInstance        = testBcInstance        || null
+  if (testBcCompany         !== undefined) data.testBcCompany         = testBcCompany         || null
+  if (testBcPort !== undefined) {
+    const p = parseInt(testBcPort, 10)
+    if (!isNaN(p) && p >= 0 && p <= 65535) data.testBcPort = p || null
+  }
   if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
   const tenant = await (prisma as any).tenant.update({ where: { id: tenantId }, data })

@@ -266,15 +266,35 @@ export async function buildTenantContext(tenantId: string): Promise<string> {
 
     // ── Section 4: Known AL Objects ──────────────────────────────────────────
     if (objects.length > 0) {
-      lines.push('\n## Known BC Objects (uploaded by customer)')
+      lines.push('\n## Known BC Objects (fetched from customer system)')
       const seen = new Set<string>()
       for (const o of objects) {
-        // Deduplicate by objectType + objectId (or name as fallback)
         const dedupeKey = `${o.objectType}-${o.objectId ?? o.objectName}`
         if (seen.has(dedupeKey)) continue
         seen.add(dedupeKey)
-        const id = o.objectId ? ` ${o.objectId}` : ''
-        lines.push(`- ${o.objectType}${id} "${o.objectName}" (${o.language})`)
+        const id  = o.objectId ? ` ${o.objectId}` : ''
+        const s   = (o.summary ?? {}) as Record<string, any>
+        const vl  = s.versionList ? ` — ${s.versionList}` : ''
+        lines.push(`- ${o.objectType}${id} "${o.objectName}" (${o.language})${vl}`)
+
+        // Fields (Tables)
+        if (s.fields?.length) {
+          const fieldList = s.fields.slice(0, 15).map((f: any) => `${f.name}(${f.type})`).join(', ')
+          const more = s.fields.length > 15 ? ` +${s.fields.length - 15} more` : ''
+          lines.push(`  Fields: ${fieldList}${more}`)
+        }
+        // Procedures / functions (Codeunits)
+        if (s.procedures?.length) {
+          const procList = s.procedures.slice(0, 10).map((p: any) => p.name).join(', ')
+          const more = s.procedures.length > 10 ? ` +${s.procedures.length - 10} more` : ''
+          lines.push(`  Functions: ${procList}${more}`)
+        }
+        // Event subscribers
+        if (s.eventSubscribers?.length) {
+          lines.push(`  Subscribes: ${s.eventSubscribers.map((e: any) => `${e.object}.${e.event}`).join(', ')}`)
+        }
+        // Source table (Pages)
+        if (s.sourceTable) lines.push(`  Source table: ${s.sourceTable}`)
       }
     }
 

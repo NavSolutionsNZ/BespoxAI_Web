@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const { bcUsername, bcPassword, bcPort = 8048, agentPort = 8080, bcInstance, bcCompany,
-          navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '' } = body
+          navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',
+          testNavDatabaseServer = '', testNavDatabaseName = '', testNavServerInstance = '',
+          testBcInstance = '', testBcCompany = '', testBcPort = 0 } = body
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
 
   // ── DEBUG ── Generates a clearly-marked dummy installer zip
@@ -77,6 +79,12 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
         ...(navDatabaseName   ? { navDatabaseName }   : {}),
         ...(navServerInstance ? { navServerInstance } : {}),
         navDatabaseServer: navDatabaseServer || 'localhost',
+        ...(testNavDatabaseServer ? { testNavDatabaseServer } : {}),
+        ...(testNavDatabaseName   ? { testNavDatabaseName }   : {}),
+        ...(testNavServerInstance ? { testNavServerInstance } : {}),
+        ...(testBcInstance        ? { testBcInstance }        : {}),
+        ...(testBcCompany         ? { testBcCompany }         : {}),
+        ...(testBcPort            ? { testBcPort: parseInt(String(testBcPort), 10) || null } : {}),
       },
     })
   }

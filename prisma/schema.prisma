@@ -27,6 +27,13 @@ model Tenant {
   navDatabaseServer   String?  @default("localhost") // NAV/BC14 SQL Server host (injected into installer v2.3+)
   navDatabaseName     String?                        // NAV/BC14 SQL database name
   navServerInstance   String?                        // NAV server instance name (optional)
+  // ── Test environment (same server, different DB/port) ─────────────────────
+  testNavDatabaseServer  String?                     // defaults to navDatabaseServer if blank
+  testNavDatabaseName    String?                     // test NAV database name
+  testNavServerInstance  String?                     // test NAV server instance
+  testBcPort             Int?                        // test BC OData port
+  testBcInstance         String?                     // test BC instance name
+  testBcCompany          String?                     // test BC company name
   tier                 String   @default("trial") // "free" | "trial" | "assistant" | "manager" | "executive"
   trialEndsAt          DateTime?                  // null = no expiry
   stripeCustomerId     String?                    // Stripe customer ID
@@ -153,6 +160,16 @@ model Requirement {
   adminQALog      String?   @db.Text  // JSON array [{round, questions, answers, askedAt, answeredAt}]
   quoteRejectedAt      DateTime?
   quoteRejectionReason String?  @db.Text
+
+  // ── Deployment & UAT tracking ──────────────────────────────────────────────
+  testDeploySnapshotId  String?           // BCAgent snapshotId deployed to test
+  testDeployedAt        DateTime?         // when deployed to test env
+  uatApprovedAt         DateTime?         // customer signed off UAT
+  uatApprovedById       String?           // userId who approved
+  uatRejectedAt         DateTime?         // customer rejected UAT
+  uatRejectedById       String?           // userId who rejected
+  uatRejectionReason    String?  @db.Text // customer's rejection text
+  uatRejectionAnalysis  Json?             // {isScopeCreep, explanation, suggestedAmendment}
   devPlan              String?  @db.Text  // JSON: internal superadmin-only development plan
   depositStripeSessionId  String?          // Stripe Checkout Session ID for deposit payment
   depositBypassed         Boolean @default(false)  // superadmin can bypass deposit requirement

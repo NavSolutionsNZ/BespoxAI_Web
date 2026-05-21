@@ -13,6 +13,9 @@ interface Tenant {
   tunnelId: string | null; createdAt: string
   navProduct: string | null; navVersion: string | null; lastCU: string | null
   bcPort: number; agentPort: number
+  navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
+  testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
+  testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
@@ -308,6 +311,56 @@ export default function SettingsPage() {
                 </div>
               </div>
             </Card>
+
+            {/* Test Environment — NAV/BC14 only */}
+            {(tenant?.navProduct === 'NAV' || tenant?.navProduct === 'BC') && (
+              <Card>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Test Environment</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
+                  Used for pre-production deployment and UAT. Leave blank to use the same server as production. Details are injected into the BCAgent installer.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Server</div>
+                    <input type="text" defaultValue={tenant?.testNavDatabaseServer ?? ''} placeholder="localhost (defaults to production server)"
+                      onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavDatabaseServer: e.target.value }) }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Name <span style={{ color: '#A32D2D' }}>*</span></div>
+                    <input type="text" defaultValue={tenant?.testNavDatabaseName ?? ''} placeholder="e.g. Dynamics NAV 2017 Test"
+                      onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavDatabaseName: e.target.value }) }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Server Instance <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(optional)</span></div>
+                    <input type="text" defaultValue={tenant?.testNavServerInstance ?? ''} placeholder="e.g. DynamicsNAV110_Test"
+                      onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavServerInstance: e.target.value }) }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test BC Port <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(OData, optional)</span></div>
+                      <input type="number" defaultValue={tenant?.testBcPort ?? ''} placeholder="e.g. 7048"
+                        onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ testBcPort: e.target.value }) }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test BC Company <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(optional)</span></div>
+                      <input type="text" defaultValue={tenant?.testBcCompany ?? ''} placeholder="e.g. Cronus NZ Test"
+                        onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testBcCompany: e.target.value }) }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
+                    </div>
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', margin: 0 }}>saved on blur · injected into BCAgent installer</p>
+                </div>
+              </Card>
+            )}
             <Card>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.65 }}>Sets the tax, accounting, and compliance context for AI responses — GST rates, VAT rules, and local reporting standards.</p>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
