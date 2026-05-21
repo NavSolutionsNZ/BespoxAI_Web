@@ -16,7 +16,7 @@ interface Tenant {
   bcPort: number; agentPort: number
   navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
-  testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null
+  testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
@@ -58,7 +58,7 @@ function RoleBadge({ role }: { role: string }) {
 
 // Test environment form — full credentials + optional "use production credentials" checkbox
 function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onTestCredsChange }: {
-  initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string }
+  initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string; testAgentPort: string }
   onSave: (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string | null>) => void
   prodUsername: string
@@ -76,6 +76,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
     testBcCompany:         useRef<HTMLInputElement>(null),
     testBcUsername:        useRef<HTMLInputElement>(null),
     testBcPassword:        useRef<HTMLInputElement>(null),
+    testAgentPort:         useRef<HTMLInputElement>(null),
   }
   const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
   const lbl = (text: string, required = false) => (
@@ -95,6 +96,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
       testBcPort:            refs.testBcPort.current?.value            || null,
       testBcInstance:        refs.testBcInstance.current?.value        || null,
       testBcCompany:         refs.testBcCompany.current?.value         || null,
+      testAgentPort:         refs.testAgentPort.current?.value          || null,
     }
     await onSave(vals)
     onSaved(vals)
@@ -113,6 +115,9 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>{lbl('Test BC Company')}<input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" /></div>
         <div>{lbl('Test BC OData Port')}<input ref={refs.testBcPort} style={inp} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>{lbl('Test Agent Port · default 8080')}<input ref={refs.testAgentPort} style={inp} type="number" defaultValue={initial.testAgentPort} placeholder="e.g. 8081" /></div>
       </div>
       <div style={{ borderTop: '1px solid rgba(10,92,70,0.15)', paddingTop: 14 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
@@ -144,7 +149,7 @@ export default function SettingsPage() {
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
   const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
-  const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '' })
+  const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [instLoading,  setInstLoading]  = useState(false)
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
   const [inviteResult, setInviteResult] = useState<{ tempPassword: string; email: string } | null>(null)
@@ -188,6 +193,7 @@ export default function SettingsPage() {
           testBcPort:            t?.testBcPort ? String(t.testBcPort) : '',
           testBcInstance:        t?.testBcInstance        ?? '',
           testBcCompany:         t?.testBcCompany         ?? '',
+          testAgentPort:         t?.testAgentPort ? String(t.testAgentPort) : '',
         })
         if (t?.bcCompany)  setInstForm(f => ({ ...f, bcCompany:  t.bcCompany         }))
         setLoading(false)
@@ -416,6 +422,7 @@ export default function SettingsPage() {
                     { label: 'Test BC Port',           val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
                     { label: 'Test BC Instance',       val: tenant?.testBcInstance },
                     { label: 'Test BC Company',        val: tenant?.testBcCompany },
+                    { label: 'Test Agent Port',         val: tenant?.testAgentPort ? String(tenant.testAgentPort) : null },
                   ].map(({ label, val }) => val ? (
                     <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 160 }}>{label}</span>

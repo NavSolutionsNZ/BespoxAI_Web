@@ -34,6 +34,7 @@ model Tenant {
   testBcPort             Int?                        // test BC OData port
   testBcInstance         String?                     // test BC instance name
   testBcCompany          String?                     // test BC company name
+  testAgentPort          Int?                        // test BCAgent listening port
   githubOrg            String?                    // GitHub org for customer repos (defaults to NavSolutionsNZ)
   githubRepo           String?                    // GitHub repo name e.g. bespoxai-acme
   testServerSeparate   Boolean  @default(false)   // true = separate Windows Server for test env
