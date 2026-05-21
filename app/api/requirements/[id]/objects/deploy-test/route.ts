@@ -71,7 +71,7 @@ export async function POST(
 
   const tenant = await (prisma as any).tenant.findUnique({
     where:  { id: requirement.tenantId },
-    select: { tunnelSubdomain: true, apiKey: true, testNavDatabaseName: true },
+    select: { tunnelSubdomain: true, apiKey: true, testNavDatabaseName: true, testServerSeparate: true, testAgentUrl: true },
   })
   if (!tenant?.tunnelSubdomain)
     return NextResponse.json({ error: 'Tenant tunnel not configured' }, { status: 400 })
@@ -81,7 +81,10 @@ export async function POST(
       error: 'Test NAV database not configured. Add it in the BC Installer tab.',
     }, { status: 400 })
 
-  const agentBase = `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`
+  // Use separate test agent URL if configured, otherwise use production agent
+  const agentBase = (tenant.testServerSeparate && tenant.testAgentUrl)
+    ? tenant.testAgentUrl.replace(/\/$/, '')
+    : `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`
 
   const agentRes = await fetch(`${agentBase}/bespoxai/objects/deploy`, {
     method:  'POST',

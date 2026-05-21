@@ -143,7 +143,7 @@ export default function SettingsPage() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null)
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
-  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '', testBcUsername: '', testBcPassword: '' })
+  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '' })
   const [instLoading,  setInstLoading]  = useState(false)
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
@@ -172,9 +172,15 @@ export default function SettingsPage() {
         const t = td.tenant ?? null
         setTenant(t); setCountry(t?.country ?? 'NZ')
         setEntityConfig(t?.entityConfig ?? {}); setUsers(ud.users ?? [])
-        if (t?.bcPort)     setInstForm(f => ({ ...f, bcPort:     String(t.bcPort)    }))
-        if (t?.agentPort)  setInstForm(f => ({ ...f, agentPort:  String(t.agentPort) }))
-        if (t?.bcInstance) setInstForm(f => ({ ...f, bcInstance: t.bcInstance        }))
+        if (t?.bcPort)              setInstForm(f => ({ ...f, bcPort:              String(t.bcPort)            }))
+        if (t?.agentPort)           setInstForm(f => ({ ...f, agentPort:           String(t.agentPort)         }))
+        if (t?.bcInstance)          setInstForm(f => ({ ...f, bcInstance:          t.bcInstance                }))
+        if (t?.navDatabaseServer)   setInstForm(f => ({ ...f, navDatabaseServer:   t.navDatabaseServer         }))
+        if (t?.navDatabaseName)     setInstForm(f => ({ ...f, navDatabaseName:     t.navDatabaseName           }))
+        if (t?.navServerInstance)   setInstForm(f => ({ ...f, navServerInstance:   t.navServerInstance         }))
+        if (t?.testServerSeparate)  setInstForm(f => ({ ...f, testServerSeparate:  t.testServerSeparate        }))
+        if (t?.testAgentUrl)        setInstForm(f => ({ ...f, testAgentUrl:        t.testAgentUrl              }))
+        if (t?.testTunnelToken)     setInstForm(f => ({ ...f, testTunnelToken:     t.testTunnelToken           }))
         setTestEnv({
           testNavDatabaseServer: t?.testNavDatabaseServer ?? '',
           testNavDatabaseName:   t?.testNavDatabaseName   ?? '',
@@ -595,59 +601,79 @@ export default function SettingsPage() {
 
             <Card style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)' }}>
               <Label>Production Environment</Label>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance and company are saved — credentials are embedded in the installer only and never stored.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.</p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>BC Instance name</div>
-                  <input type="text" placeholder="e.g. BC" value={instForm.bcInstance}
-                    onChange={e => setInstForm(f => ({ ...f, bcInstance: e.target.value }))}
-                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ bcInstance: e.target.value }) }} />
-                  <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Service instance name in BC admin — usually "BC" or "NAV".</p>
+                  <div style={lbl}>Database Server</div>
+                  <input type="text" placeholder="localhost" value={instForm.navDatabaseServer}
+                    onChange={e => setInstForm(f => ({ ...f, navDatabaseServer: e.target.value }))}
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ navDatabaseServer: e.target.value || 'localhost' }) }} />
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>BC Company name</div>
-                  <input type="text" placeholder="e.g. CRONUS International Ltd." value={instForm.bcCompany}
-                    onChange={e => setInstForm(f => ({ ...f, bcCompany: e.target.value }))}
-                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ bcCompany: e.target.value }) }} />
-                  <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Exact company name as it appears in BC.</p>
+                  <div style={lbl}>Database Name</div>
+                  <input type="text" placeholder="e.g. Dynamics NAV 2017" value={instForm.navDatabaseName}
+                    onChange={e => setInstForm(f => ({ ...f, navDatabaseName: e.target.value }))}
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ navDatabaseName: e.target.value }) }} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>BC Username</div>
+                  <div style={lbl}>Server Instance</div>
+                  <input type="text" placeholder="e.g. DynamicsNAV110" value={instForm.navServerInstance}
+                    onChange={e => setInstForm(f => ({ ...f, navServerInstance: e.target.value }))}
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ navServerInstance: e.target.value }) }} />
+                </div>
+                <div>
+                  <div style={lbl}>BC Instance Name</div>
+                  <input type="text" placeholder="e.g. BC" value={instForm.bcInstance}
+                    onChange={e => setInstForm(f => ({ ...f, bcInstance: e.target.value }))}
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ bcInstance: e.target.value }) }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div>
+                  <div style={lbl}>BC Company Name</div>
+                  <input type="text" placeholder="e.g. CRONUS International Ltd." value={instForm.bcCompany}
+                    onChange={e => setInstForm(f => ({ ...f, bcCompany: e.target.value }))}
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ bcCompany: e.target.value }) }} />
+                </div>
+                <div>
+                  <div style={lbl}>BC OData Port · default 8048</div>
+                  <input type="number" value={instForm.bcPort}
+                    onChange={e => setInstForm(f => ({ ...f, bcPort: e.target.value }))}
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ bcPort: e.target.value }) }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div>
+                  <div style={lbl}>BC Username</div>
                   <input type="text" placeholder="DOMAIN\username" value={instForm.bcUsername}
                     onChange={e => setInstForm(f => ({ ...f, bcUsername: e.target.value }))}
-                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                    onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                   <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows / BC service account with OData access.</p>
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>BC Password</div>
+                  <div style={lbl}>BC Password</div>
                   <input type="password" placeholder="" value={instForm.bcPassword}
                     onChange={e => setInstForm(f => ({ ...f, bcPassword: e.target.value }))}
-                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                    onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                    style={inp} onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                   <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>BC OData Port · default 8048</div>
-                  <input type="number" value={instForm.bcPort}
-                    onChange={e => setInstForm(f => ({ ...f, bcPort: e.target.value }))}
-                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                    onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ bcPort: e.target.value }) }} />
-                </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Agent Port · default 8080</div>
                   <input type="number" value={instForm.agentPort}
@@ -676,6 +702,51 @@ export default function SettingsPage() {
                 />
               </Card>
             )}
+
+            <Card>
+              <Label>Separate Test Server</Label>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
+                If your test environment is on a separate server, enable this to configure a dedicated BCAgent for it.
+                The test agent handles deployment and compilation only — no object export or health polling.
+              </p>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: instForm.testServerSeparate ? 16 : 0 }}>
+                <input type="checkbox" checked={instForm.testServerSeparate}
+                  onChange={async e => {
+                    const val = e.target.checked
+                    setInstForm(f => ({ ...f, testServerSeparate: val }))
+                    await saveSystemConfig({ testServerSeparate: val })
+                  }}
+                  style={{ accentColor: 'var(--forest)', width: 14, height: 14 }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>Test environment is on a separate server</span>
+              </label>
+              {instForm.testServerSeparate && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Agent URL</div>
+                    <input type="text" placeholder="e.g. http://test-server:8080" value={instForm.testAgentUrl}
+                      onChange={e => setInstForm(f => ({ ...f, testAgentUrl: e.target.value }))}
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testAgentUrl: e.target.value }) }} />
+                    <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>URL of the BCAgent running on the test server. Set after installing the test agent below.</p>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Cloudflare Tunnel Token (test server)</div>
+                    <input type="password" placeholder="" value={instForm.testTunnelToken}
+                      onChange={e => setInstForm(f => ({ ...f, testTunnelToken: e.target.value }))}
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testTunnelToken: e.target.value }) }} />
+                    <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>From your Cloudflare Zero Trust dashboard — separate tunnel for the test server.</p>
+                  </div>
+                  <div style={{ background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 10, padding: '12px 16px' }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--amber)', margin: 0 }}>
+                      ✦ Separate test server installer generation is coming soon. Once your details are saved above, contact BespoxAI and we will configure the test agent installer for you.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </Card>
 
             <button onClick={downloadInstaller} disabled={instLoading} style={{ marginTop: 8, width: '100%', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: instLoading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, opacity: instLoading ? 0.7 : 1 }}>
               {instLoading ? 'Generating…' : '⬇ Download Installer (.zip)'}

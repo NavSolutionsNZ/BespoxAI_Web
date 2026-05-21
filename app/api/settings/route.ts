@@ -75,7 +75,8 @@ export async function PATCH(req: NextRequest) {
   const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany,
           navDatabaseServer, navDatabaseName, navServerInstance,
           testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
-          testBcPort, testBcInstance, testBcCompany } = body
+          testBcPort, testBcInstance, testBcCompany,
+          testServerSeparate, testAgentUrl, testTunnelToken } = body
 
   const data: Record<string, any> = {}
   if (country    !== undefined) { if (typeof country !== 'string' || country.length > 4) return NextResponse.json({ error: 'Invalid country' }, { status: 400 }); data.country = country.toUpperCase() }
@@ -100,6 +101,9 @@ export async function PATCH(req: NextRequest) {
     const p = parseInt(testBcPort, 10)
     if (!isNaN(p) && p >= 0 && p <= 65535) data.testBcPort = p || null
   }
+  if (testServerSeparate !== undefined) data.testServerSeparate = Boolean(testServerSeparate)
+  if (testAgentUrl       !== undefined) data.testAgentUrl       = testAgentUrl    || null
+  if (testTunnelToken    !== undefined) data.testTunnelToken    = testTunnelToken  || null
   if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
   const tenant = await (prisma as any).tenant.update({ where: { id: tenantId }, data })
