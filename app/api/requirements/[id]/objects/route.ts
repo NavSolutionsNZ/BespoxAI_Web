@@ -161,39 +161,48 @@ export async function POST(
     const { invalidateTenantContext } = await import('@/lib/tenant-context')
     invalidateTenantContext(requirement.tenantId)
 
-    // Push objects to GitHub (non-fatal — don't block the response)
+    // Push objects to GitHub
+    let githubResult: { org: string; repo: string; branch: string } | null = null
+    let githubError: string | null = null
     if (process.env.GITHUB_CUSTOMER_REPOS_TOKEN) {
       const objectsWithContent = inbound.filter(o => o.content)
       if (objectsWithContent.length > 0) {
-        import('@/lib/github').then(({ pushObjectsToGitHub, branchName }) =>
-          pushObjectsToGitHub({
+        try {
+          const { pushObjectsToGitHub } = await import('@/lib/github')
+          githubResult = await pushObjectsToGitHub({
             tenantName:       requirement.tenant.name,
             tenantGithubOrg:  requirement.tenant.githubOrg,
             requirementId:    params.id,
             requirementTitle: requirement.title,
             objects:          objectsWithContent,
             commitMessage:    `feat: save ${objectsWithContent.length} object${objectsWithContent.length !== 1 ? 's' : ''} to knowledge base`,
-          }).then(({ org, repo, branch }) => {
-            // Store branch on requirement if not already set
-            const repoName = repo
-            return Promise.all([
-              (prisma as any).requirement.update({
-                where: { id: params.id },
-                data:  { githubBranch: branch },
-              }),
-              requirement.tenant.githubRepo !== repoName
-                ? (prisma as any).tenant.update({
-                    where: { id: requirement.tenantId },
-                    data:  { githubRepo: repoName, githubOrg: org },
-                  })
-                : Promise.resolve(),
-            ])
           })
-        ).catch(e => console.error('[github] push failed (non-fatal):', e))
+          await Promise.all([
+            (prisma as any).requirement.update({
+              where: { id: params.id },
+              data:  { githubBranch: githubResult.branch },
+            }),
+            requirement.tenant.githubRepo !== githubResult.repo
+              ? (prisma as any).tenant.update({
+                  where: { id: requirement.tenantId },
+                  data:  { githubRepo: githubResult.repo, githubOrg: githubResult.org },
+                })
+              : Promise.resolve(),
+          ])
+        } catch (e: any) {
+          console.error('[github] push failed:', e)
+          githubError = e.message ?? 'GitHub push failed'
+        }
       }
+    } else {
+      githubError = 'GITHUB_CUSTOMER_REPOS_TOKEN not set'
     }
 
-    return NextResponse.json({ upserted: upserted.length, objects: upserted })
+    return NextResponse.json({
+      upserted: upserted.length,
+      objects: upserted,
+      github: githubResult ?? { error: githubError },
+    })
   }
 
   // ── multipart/form-data path: manual file upload (original behaviour) ─────
