@@ -26,6 +26,150 @@ import { prisma }                    from '@/lib/db'
 export const dynamic    = 'force-dynamic'
 export const maxDuration = 60  // bump to 300 on Vercel Pro
 
+// ── DEBUG mock C/AL content ───────────────────────────────────────────────────
+// Realistic sample with 3 objects, version lists, fields, and functions.
+// Exercises the full pipeline without a live BCAgent.
+const DEBUG_CAL = `OBJECT Codeunit 80 Sales-Post
+{
+  OBJECT-PROPERTIES
+  {
+    Date=20241015;
+    Time=120000T;
+    Modified=Yes;
+    Version List=NAVW17.10.00.45254,N.7.2.1;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+            PostDocument;
+          END;
+  }
+  CODE
+  {
+    VAR
+      SalesHeader@1000 : Record 36;
+      SalesLine@1001 : Record 37;
+      CustLedgEntry@1002 : Record 21;
+
+    PROCEDURE PostDocument@1();
+    BEGIN
+      SalesHeader.TESTFIELD(Status,SalesHeader.Status::Released);
+      CheckCustomerBlocked(SalesHeader);
+      PostLines(SalesHeader);
+      PostHeader(SalesHeader);
+    END;
+
+    LOCAL PROCEDURE CheckCustomerBlocked@2(VAR SalesHeader@1000 : Record 36);
+    VAR
+      Cust@1001 : Record 18;
+    BEGIN
+      Cust.GET(SalesHeader."Sell-to Customer No.");
+      IF Cust.Blocked <> Cust.Blocked::" " THEN
+        ERROR(Text001,Cust."No.",Cust.Blocked);
+      // N.7.2.1: Custom credit check added
+      IF Cust."Custom Credit Hold" THEN
+        ERROR(Text002,Cust."No.");
+    END;
+
+    LOCAL PROCEDURE PostLines@3(VAR SalesHeader@1000 : Record 36);
+    BEGIN
+      SalesLine.SETRANGE("Document Type",SalesHeader."Document Type");
+      SalesLine.SETRANGE("Document No.",SalesHeader."No.");
+      IF SalesLine.FINDSET THEN
+        REPEAT
+          PostLine(SalesLine);
+        UNTIL SalesLine.NEXT = 0;
+    END;
+
+    LOCAL PROCEDURE PostHeader@4(VAR SalesHeader@1000 : Record 36);
+    BEGIN
+      SalesHeader.Status := SalesHeader.Status::Open;
+      SalesHeader.MODIFY;
+    END;
+
+    BEGIN
+    Text001@1000 : TextConst 'ENU=Customer %1 is blocked (%2).';
+    Text002@1001 : TextConst 'ENU=Customer %1 is on credit hold (custom).';
+    END.
+  }
+}
+
+OBJECT Table 50100 Custom Approval Entry
+{
+  OBJECT-PROPERTIES
+  {
+    Date=20241001;
+    Time=090000T;
+    Modified=Yes;
+    Version List=N.7.2.1;
+  }
+  PROPERTIES
+  {
+    DataClassification=CustomerContent;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Entry No.;Integer;AutoIncrement=Yes }
+    { 2   ;   ;Document Type;Option;OptionString=Quote,Order,Invoice,Credit Memo }
+    { 3   ;   ;Document No.;Code20 }
+    { 4   ;   ;Approver ID;Code50;TableRelation=User."User Name" }
+    { 5   ;   ;Status;Option;OptionString=Open,Approved,Rejected,Delegated }
+    { 6   ;   ;Amount;Decimal }
+    { 7   ;   ;Due Date;Date }
+    { 8   ;   ;Delegated To;Code50;TableRelation=User."User Name" }
+    { 9   ;   ;Comments;Text250 }
+    { 10  ;   ;Created At;DateTime }
+    { 11  ;   ;Approved At;DateTime }
+  }
+  KEYS
+  {
+    {    ;Entry No.;Clustered=Yes }
+    {    ;Document Type,Document No. }
+    {    ;Approver ID,Status }
+  }
+}
+
+OBJECT Page 50300 Custom Approval List
+{
+  OBJECT-PROPERTIES
+  {
+    Date=20240901;
+    Time=110000T;
+    Modified=Yes;
+    Version List=N.7.2.1;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table50100;
+    SourceTableView=SORTING(Entry No.) ORDER(Descending);
+    PageType=List;
+    CardPageID=Page50301;
+    UsageCategory=Lists;
+    OnOpenPage=BEGIN
+                 SETRANGE("Approver ID",USERID);
+               END;
+  }
+  CONTROLS
+  {
+    { 1   ;0  ;Container;ContainerType=ContentArea }
+    { 2   ;1  ;Group    ;GroupType=Repeater }
+    { 3   ;2  ;Field    ;SourceExpr="Document Type" }
+    { 4   ;2  ;Field    ;SourceExpr="Document No." }
+    { 5   ;2  ;Field    ;SourceExpr=Amount }
+    { 6   ;2  ;Field    ;SourceExpr=Status }
+    { 7   ;2  ;Field    ;SourceExpr="Due Date" }
+    { 8   ;2  ;Field    ;SourceExpr="Created At" }
+  }
+  ACTIONCONTROLS
+  {
+    { 9   ;0  ;ActionContainer;ActionContainerType=ActionItems }
+    { 10  ;1  ;Action   ;Name=Approve;ShortCutKey=Ctrl+F9;OnAction=BEGIN SetStatus(Status::Approved); END }
+    { 11  ;1  ;Action   ;Name=Reject;OnAction=BEGIN SetStatus(Status::Rejected); END }
+    { 12  ;1  ;Action   ;Name=Delegate;OnAction=BEGIN DelegatePage.RUN; END }
+  }
+}
+`
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -33,6 +177,24 @@ export async function POST(
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // ── DEBUG — return sample zip without calling BCAgent ─────────────────────
+  if (process.env.SETTINGS_DEBUG === 'true') {
+    const { default: JSZip } = await import('jszip')
+    const zip = new JSZip()
+    zip.file('nav-objects-DEBUG.txt', DEBUG_CAL)
+    const buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+    return new NextResponse(buf as unknown as BodyInit, {
+      status: 200,
+      headers: {
+        'Content-Type':        'application/zip',
+        'Content-Disposition': 'attachment; filename="nav-objects-DEBUG.zip"',
+        'X-Debug-Mode':        'true',
+        'X-Object-Count':      '3',
+      },
+    })
+  }
+  // ── END DEBUG ─────────────────────────────────────────────────────────────
 
   // ── Load requirement → derive tenant (never use session tenant) ────────────
   const requirement = await (prisma as any).requirement.findUnique({

@@ -1213,7 +1213,7 @@ function AdminRequirementsTab() {
     finally { setGenPlan(false) }
   }
 
-  // ── BC Objects fetch + client-side split ──────────────────────────────────
+  // BC Objects fetch + client-side split ──────────────────────────────────
   async function fetchNavObjects() {
     if (!selected || fetchingObjs) return
     setFetchingObjs(true)
@@ -1249,6 +1249,8 @@ function AdminRequirementsTab() {
         throw new Error(e.error ?? `Agent returned ${res.status}`)
       }
 
+      const isDebug = res.headers.get('X-Debug-Mode') === 'true'
+
       // Client-side unzip + C/AL split
       const blob = await res.blob()
       const JSZip = (window as any).JSZip
@@ -1270,7 +1272,7 @@ function AdminRequirementsTab() {
         const m = line.match(HDR)
         if (m) {
           if (cur) { cur.content = buf.join('\n'); cur.sizeBytes = new TextEncoder().encode(cur.content).length; parsed.push(cur) }
-          cur = { objectType: m[1], objectId: parseInt(m[2]), objectName: m[3].trim().replace(/\r/g,''), versionList: null, content: '', sizeBytes: 0, selected: true, language: 'CAL' }
+          cur = { objectType: m[1], objectId: parseInt(m[2]), objectName: m[3].trim().replace(/\r/g,''), versionList: null, content: '', sizeBytes: 0, selected: true, language: 'CAL', _debug: isDebug }
           buf = [line]
         } else if (cur) {
           buf.push(line)
@@ -1691,11 +1693,17 @@ function AdminRequirementsTab() {
                       {splitObjects.length > 0 && (
                         <div style={{ marginTop: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{splitObjects.length} objects parsed — select to save</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>{splitObjects.length} objects parsed — select to save</span>
+                              {splitObjects[0]?._debug && (
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, background: '#FAEEDA', color: '#633806', border: '1px solid #EF9F27', borderRadius: 4, padding: '1px 6px' }}>🧪 DEBUG — sample data</span>
+                              )}
+                            </div>
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button onClick={() => setSplitObjects(p => p.map(o => ({...o, selected: true})))} style={{ ...btnStyle, fontSize: 9, padding: '3px 8px' }}>All</button>
                               <button onClick={() => setSplitObjects(p => p.map(o => ({...o, selected: false})))} style={{ ...btnStyle, fontSize: 9, padding: '3px 8px' }}>None</button>
                             </div>
+                          </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', border: '1px solid var(--fog)', borderRadius: 6, padding: 6 }}>
                             {splitObjects.map((o, i) => (
