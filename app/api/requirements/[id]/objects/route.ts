@@ -72,7 +72,10 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:  { id: params.id },
-    select: { tenantId: true, status: true },
+    select: {
+      tenantId: true, status: true, title: true,
+      tenant: { select: { name: true, githubOrg: true, githubRepo: true } },
+    },
   })
   if (!requirement) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -157,6 +160,38 @@ export async function POST(
     // Invalidate tenant context cache so new objects appear in AI calls immediately
     const { invalidateTenantContext } = await import('@/lib/tenant-context')
     invalidateTenantContext(requirement.tenantId)
+
+    // Push objects to GitHub (non-fatal — don't block the response)
+    if (process.env.GITHUB_CUSTOMER_REPOS_TOKEN) {
+      const objectsWithContent = inbound.filter(o => o.content)
+      if (objectsWithContent.length > 0) {
+        import('@/lib/github').then(({ pushObjectsToGitHub, branchName }) =>
+          pushObjectsToGitHub({
+            tenantName:       requirement.tenant.name,
+            tenantGithubOrg:  requirement.tenant.githubOrg,
+            requirementId:    params.id,
+            requirementTitle: requirement.title,
+            objects:          objectsWithContent,
+            commitMessage:    `feat: save ${objectsWithContent.length} object${objectsWithContent.length !== 1 ? 's' : ''} to knowledge base`,
+          }).then(({ org, repo, branch }) => {
+            // Store branch on requirement if not already set
+            const repoName = repo
+            return Promise.all([
+              (prisma as any).requirement.update({
+                where: { id: params.id },
+                data:  { githubBranch: branch },
+              }),
+              requirement.tenant.githubRepo !== repoName
+                ? (prisma as any).tenant.update({
+                    where: { id: requirement.tenantId },
+                    data:  { githubRepo: repoName, githubOrg: org },
+                  })
+                : Promise.resolve(),
+            ])
+          })
+        ).catch(e => console.error('[github] push failed (non-fatal):', e))
+      }
+    }
 
     return NextResponse.json({ upserted: upserted.length, objects: upserted })
   }
