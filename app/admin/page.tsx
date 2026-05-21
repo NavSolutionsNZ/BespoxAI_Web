@@ -952,7 +952,7 @@ function InstallerModal({ tenantName, loading, error, form, onChange, onDownload
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
-const btnStyle: React.CSSProperties = {
+const btnStyle = {
   background: 'var(--forest)', color: 'var(--white)', border: 'none',
   borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
   fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
@@ -1122,8 +1122,6 @@ interface AdminReq {
 }
 
 // ─── Deploy to Test Panel ──────────────────────────────────────────────────────
-// Extracted as a separate component to avoid SWC misparising the template
-// literal in the <pre> fallback block when it appears inside AdminRequirementsTab.
 
 interface DeployPanelProps {
   selected:        AdminReq
@@ -1138,14 +1136,23 @@ interface DeployPanelProps {
   onDeploy:        () => void
 }
 
-function DeployToTestPanel({
-  selected, writeLoading, writeSnapshotId, writeErr,
-  deployLoading, deployResults, deployDebug, deployErr,
-  onWrite, onDeploy,
-}: DeployPanelProps) {
-  const btnS: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--fog)', background: 'var(--white)', color: 'var(--ink)' }
+function DeployToTestPanel(props: DeployPanelProps) {
+  const { selected, writeLoading, writeSnapshotId, writeErr,
+          deployLoading, deployResults, deployDebug, deployErr,
+          onWrite, onDeploy } = props
 
-  const fallbackScript = [
+  const base: React.CSSProperties = {
+    fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px',
+    borderRadius: 6, cursor: 'pointer', border: '1px solid var(--fog)',
+    background: 'var(--white)', color: 'var(--ink)',
+  }
+
+  const deployedDate = selected.testDeployedAt
+    ? new Date(selected.testDeployedAt).toLocaleDateString('en-NZ') : ''
+  const approvedDate = selected.uatApprovedAt
+    ? new Date(selected.uatApprovedAt).toLocaleDateString('en-NZ') : ''
+
+  const scriptLines = [
     '# Run on the customer server (PowerShell):',
     'Import-NAVApplicationObject -DatabaseServer localhost \\',
     '  -DatabaseName "TEST_DB_NAME" \\',
@@ -1153,71 +1160,112 @@ function DeployToTestPanel({
     '  -ImportAction Overwrite -SynchronizeSchemaChanges Force',
     'Compile-NAVApplicationObject -DatabaseServer localhost \\',
     '  -DatabaseName "TEST_DB_NAME" -SynchronizeSchemaChanges Force',
-  ].join('\n')
+  ]
 
   return (
     <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px' }}>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 10 }}>Deploy to Test Environment</p>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 10 }}>
+        Deploy to Test Environment
+      </p>
 
-      {selected.uatApprovedAt && (
-        <div style={{ background: 'rgba(10,92,70,0.06)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', margin: 0 }}>✓ UAT approved by customer — {new Date(selected.uatApprovedAt).toLocaleDateString('en-NZ')}</p>
-        </div>
-      )}
-      {selected.uatRejectedAt && !selected.testDeployedAt && (
-        <div style={{ background: 'rgba(163,45,45,0.06)', border: '1px solid rgba(163,45,45,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginBottom: 4 }}>✕ UAT rejected — new deployment cycle required</p>
-          {selected.uatRejectionReason && <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', margin: 0 }}>Reason: {selected.uatRejectionReason}</p>}
-        </div>
-      )}
-      {selected.testDeployedAt && !selected.uatApprovedAt && (
-        <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9A6A00', margin: 0 }}>🧪 Deployed to test {new Date(selected.testDeployedAt).toLocaleDateString('en-NZ')} — awaiting customer UAT sign-off</p>
-        </div>
-      )}
+      {selected.uatApprovedAt
+        ? <div style={{ background: 'rgba(10,92,70,0.06)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', margin: 0 }}>
+              UAT approved — {approvedDate}
+            </p>
+          </div>
+        : null}
+
+      {(selected.uatRejectedAt && !selected.testDeployedAt)
+        ? <div style={{ background: 'rgba(163,45,45,0.06)', border: '1px solid rgba(163,45,45,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginBottom: 4 }}>
+              UAT rejected — new deployment cycle required
+            </p>
+            {selected.uatRejectionReason
+              ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', margin: 0 }}>
+                  Reason: {selected.uatRejectionReason}
+                </p>
+              : null}
+          </div>
+        : null}
+
+      {(selected.testDeployedAt && !selected.uatApprovedAt)
+        ? <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9A6A00', margin: 0 }}>
+              Deployed to test {deployedDate} — awaiting UAT sign-off
+            </p>
+          </div>
+        : null}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 1</span>
-        <button onClick={onWrite} disabled={writeLoading} style={{ ...btnS, background: writeSnapshotId ? 'var(--fog)' : 'var(--ink)', color: writeSnapshotId ? 'var(--slate)' : 'var(--cream)', border: 'none' }}>
-          {writeLoading ? '⟳ Writing…' : writeSnapshotId ? '✓ Files written — re-write' : '↑ Write files to server'}
+        <button
+          onClick={onWrite}
+          disabled={writeLoading}
+          style={{ ...base, background: writeSnapshotId ? 'var(--fog)' : 'var(--ink)', color: writeSnapshotId ? 'var(--slate)' : 'var(--cream)', border: 'none' }}
+        >
+          {writeLoading ? 'Writing…' : writeSnapshotId ? 'Files written — re-write' : 'Write files to server'}
         </button>
-        {writeSnapshotId && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>Snapshot: {writeSnapshotId}</span>}
+        {writeSnapshotId
+          ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>
+              {writeSnapshotId}
+            </span>
+          : null}
       </div>
-      {writeErr && <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '0 0 8px' }}>{writeErr}</p>}
+      {writeErr
+        ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '0 0 8px' }}>{writeErr}</p>
+        : null}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 2</span>
-        <button onClick={onDeploy} disabled={!writeSnapshotId || deployLoading} style={{ ...btnS, background: writeSnapshotId ? '#0A5C46' : 'var(--fog)', color: 'var(--cream)', border: 'none', opacity: writeSnapshotId ? 1 : 0.5 }}>
-          {deployLoading ? '⟳ Deploying…' : '→ Deploy + Compile to Test'}
+        <button
+          onClick={onDeploy}
+          disabled={!writeSnapshotId || deployLoading}
+          style={{ ...base, background: writeSnapshotId ? '#0A5C46' : 'var(--fog)', color: 'var(--cream)', border: 'none' }}
+        >
+          {deployLoading ? 'Deploying…' : 'Deploy + Compile to Test'}
         </button>
       </div>
-      {deployErr && <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p>}
+      {deployErr
+        ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p>
+        : null}
 
-      {deployResults && (
-        <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
-          {deployDebug && (
-            <div style={{ background: '#FAEEDA', borderBottom: '1px solid #EF9F27', padding: '4px 10px' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#633806' }}>🧪 DEBUG — simulated results, no real deployment occurred</span>
-            </div>
-          )}
-          {deployResults.map((r: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: i < deployResults.length - 1 ? '1px solid var(--fog)' : 'none', background: r.imported && r.compiled ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}>
-              <span style={{ fontSize: 10 }}>{r.imported && r.compiled ? '✓' : '✕'}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1 }}>{r.filename}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>imp {r.imported ? '✓' : '✕'}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>cmp {r.compiled ? '✓' : '✕'}</span>
-              {r.error && <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: '#A32D2D', maxWidth: 200 }} title={r.error}>⚠ {r.error.slice(0, 40)}…</span>}
-            </div>
-          ))}
-        </div>
-      )}
+      {deployResults
+        ? <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
+            {deployDebug
+              ? <div style={{ background: '#FAEEDA', borderBottom: '1px solid #EF9F27', padding: '4px 10px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#633806' }}>
+                    DEBUG — simulated results only
+                  </span>
+                </div>
+              : null}
+            {deployResults.map((r: any, i: number) => (
+              <div
+                key={i}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: (r.imported && r.compiled) ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}
+              >
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1 }}>{r.filename}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>
+                  imp {r.imported ? 'ok' : 'fail'}
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>
+                  cmp {r.compiled ? 'ok' : 'fail'}
+                </span>
+              </div>
+            ))}
+          </div>
+        : null}
 
-      {deployErr?.includes('timeout') && (
-        <details style={{ marginTop: 10, fontSize: 11 }}>
-          <summary style={{ cursor: 'pointer', color: 'var(--slate)', fontFamily: 'var(--font-mono)', fontSize: 9 }}>Manual deployment instructions</summary>
-          <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 9, background: 'var(--parchment)', padding: '8px 10px', borderRadius: 6, overflowX: 'auto', marginTop: 6, whiteSpace: 'pre-wrap' }}>{fallbackScript}</pre>
-        </details>
-      )}
+      {deployErr && deployErr.includes('timeout')
+        ? <details style={{ marginTop: 10 }}>
+            <summary style={{ cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>
+              Manual deployment instructions
+            </summary>
+            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 9, background: 'var(--parchment)', padding: '8px 10px', borderRadius: 6, marginTop: 6, whiteSpace: 'pre-wrap' }}>
+              {scriptLines.join('\n')}
+            </pre>
+          </details>
+        : null}
     </div>
   )
 }
