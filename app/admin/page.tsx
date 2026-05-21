@@ -1704,7 +1704,6 @@ function AdminRequirementsTab() {
                               <button onClick={() => setSplitObjects(p => p.map(o => ({...o, selected: false})))} style={{ ...btnStyle, fontSize: 9, padding: '3px 8px' }}>None</button>
                             </div>
                           </div>
-                          </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', border: '1px solid var(--fog)', borderRadius: 6, padding: 6 }}>
                             {splitObjects.map((o, i) => (
                               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 4px', borderRadius: 4, background: o.selected ? 'rgba(10,92,70,0.04)' : 'transparent' }}>
