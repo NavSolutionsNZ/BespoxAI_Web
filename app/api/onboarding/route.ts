@@ -83,13 +83,13 @@ export async function POST(req: NextRequest) {
   const tenantId = (session.user as any).tenantId as string
 
   const body = await req.json().catch(() => ({}))
-  const { persona, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
+  const { persona, userName, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
 
   const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 8048))
   const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 9099))
 
   await Promise.all([
-    prisma.user.update({ where: { id: userId }, data: { persona: persona ?? null, onboardingDone: true } }),
+    prisma.user.update({ where: { id: userId }, data: { persona: persona ?? null, onboardingDone: true, ...(userName ? { name: userName.trim() } : {}) } }),
     (prisma as any).tenant.update({
       where: { id: tenantId },
       data: {

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const user = await tx.user.create({
       data: {
         email:    signup.email,
-        name:     signup.companyName,
+        name:     null,  // user sets their own name during onboarding
         password: hashedPw,
         role:     'tenant_admin',
         tenantId: tenant.id,
