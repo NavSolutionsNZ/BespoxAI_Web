@@ -729,7 +729,7 @@ function DashboardInner() {
                         Your IT team needs to install the BCAgent on your server. It takes about 5 minutes and connects your system securely without opening any firewall ports.
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 16, paddingLeft: 12, borderLeft: '2px solid rgba(200,149,42,0.3)' }}>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>1. Go to <strong>Settings → BC Installer</strong></p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>1. Go to <a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>Settings → BC Installer</a></p>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>2. Enter your BC credentials and download the installer</p>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>3. Run the installer on your BC / NAV server as Administrator</p>
                       </div>
@@ -738,7 +738,7 @@ function DashboardInner() {
                           Go to BC Installer →
                         </a>
                         <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)' }}>
-                          Or use <strong>Customisations</strong> to plan changes while you set up
+                          Or use <button onClick={() => setActiveNav('customisations')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--forest)', fontWeight: 600, textDecoration: 'underline' }}>Customisations</button> to plan changes while you set up
                         </span>
                       </div>
                     </div>
