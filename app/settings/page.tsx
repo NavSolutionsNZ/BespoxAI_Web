@@ -68,6 +68,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
   onTestCredsChange: (username: string, password: string) => void
 }) {
   const [saving, setSaving]         = useState(false)
+  const [saved,   setSaved]           = useState(false)
   const [useProdCreds, setUseProdCreds] = useState(false)
   const refs = {
     testNavDatabaseServer: useRef<HTMLInputElement>(null),
@@ -102,7 +103,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
     }
     await onSave(vals)
     onSaved(vals)
-    setSaving(false)
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -133,7 +134,10 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
           </div>
         )}
       </div>
-      <div><button onClick={save} disabled={saving} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--forest)', color: 'var(--white)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Test Environment'}</button></div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+        {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+        <button onClick={save} disabled={saving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
+      </div>
     </div>
   )
 }
