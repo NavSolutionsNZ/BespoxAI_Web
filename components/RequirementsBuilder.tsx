@@ -1019,10 +1019,22 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
         <div style={{flex:1,overflowY:'auto',padding:'10px'}}>
           {filtered.length===0&&(
             <div style={{padding:'40px 20px',textAlign:'center'}}>
-              <div style={{fontSize:32,marginBottom:12}}>📋</div>
-              <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--slate)',lineHeight:1.6}}>
-                {reqs.length===0?'No customisation requests yet.\nClick "+ New Request" to get started.':'No requests match your filters.'}
-              </p>
+              {loading ? (
+                <>
+                  <div style={{fontSize:32,marginBottom:12}}>⏳</div>
+                  <p style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--slate)',letterSpacing:'0.05em'}}>Loading customisations…</p>
+                </>
+              ) : reqs.length===0 ? (
+                <>
+                  <div style={{fontSize:32,marginBottom:12}}>📋</div>
+                  <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--slate)',lineHeight:1.6}}>No customisation requests yet. Click &quot;+ New Request&quot; to get started.</p>
+                </>
+              ) : (
+                <>
+                  <div style={{fontSize:32,marginBottom:12}}>🔍</div>
+                  <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--slate)',lineHeight:1.6}}>No requests match your filters.</p>
+                </>
+              )}
             </div>
           )}
           {filtered.map(req=>{
