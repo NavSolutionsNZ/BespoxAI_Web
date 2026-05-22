@@ -2465,7 +2465,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
               <div style={{ background: 'rgba(10,92,70,0.05)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 8, padding: '12px 14px' }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Quote</p>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 500, color: 'var(--forest)', lineHeight: 1 }}>${parseFloat(selected.quote!).toLocaleString()}</p>
-                {selected.consultantNote && <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 8, lineHeight: 1.6 }}>{selected.consultantNote}</p>}
+                {selected.consultantNote && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 8, lineHeight: 1.7 }}>{renderMd(selected.consultantNote)}</div>}
                 {selected.quoteApprovedAt && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)', marginTop: 6 }}>✓ Approved {new Date(selected.quoteApprovedAt).toLocaleDateString('en-NZ')}</p>}
               </div>
             )}

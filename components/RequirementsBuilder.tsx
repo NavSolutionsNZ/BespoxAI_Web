@@ -1619,7 +1619,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     <span style={{fontFamily:'var(--font-display)',fontSize:30,fontWeight:500,color:'var(--forest)',lineHeight:1}}>${parseFloat(req.quote).toLocaleString()}</span>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--slate)'}}>NZD excl. GST</span>
                   </div>
-                  {req.consultantNote&&<p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.65,fontStyle:'italic',marginTop:10}}>{req.consultantNote}</p>}
+                  {req.consultantNote&&<p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.7,marginTop:10,whiteSpace:'pre-wrap'}}>{req.consultantNote}</p>}
                   {req.quoteApprovedAt&&<p style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--jade)',marginTop:8,letterSpacing:'0.08em'}}>✓ Accepted {new Date(req.quoteApprovedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</p>}
                   {req.depositAmount&&(
                     <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid var(--fog)',display:'flex',gap:20,flexWrap:'wrap'}}>
