@@ -108,7 +108,13 @@ export default function OnboardingPage() {
 
   // Step 4
   const [bcPort,    setBcPort]    = useState('8048')
-  const [agentPort, setAgentPort] = useState('8080')
+  const [agentPort, setAgentPort] = useState('9099')
+
+  const [bcInstance,        setBcInstance]        = useState('')
+  const [bcCompany,         setBcCompany]         = useState('')
+  const [navDatabaseServer, setNavDatabaseServer] = useState('localhost')
+  const [navDatabaseName,   setNavDatabaseName]   = useState('')
+  const [navServerInstance, setNavServerInstance] = useState('')
 
   const user = session?.user as any
 
@@ -132,8 +138,13 @@ export default function OnboardingPage() {
         if (p?.navProduct) setNavProduct(p.navProduct)
         if (p?.navVersion) setNavVersion(p.navVersion)
         if (p?.lastCU)     setLastCU(p.lastCU)
-        if (p?.bcPort)     setBcPort(String(p.bcPort))
-        if (p?.agentPort)  setAgentPort(String(p.agentPort))
+        if (p?.bcPort)            setBcPort(String(p.bcPort))
+        if (p?.agentPort)         setAgentPort(String(p.agentPort))
+        if (p?.bcInstance)        setBcInstance(p.bcInstance)
+        if (p?.bcCompany)         setBcCompany(p.bcCompany)
+        if (p?.navDatabaseServer) setNavDatabaseServer(p.navDatabaseServer)
+        if (p?.navDatabaseName)   setNavDatabaseName(p.navDatabaseName)
+        if (p?.navServerInstance) setNavServerInstance(p.navServerInstance)
         // Track where the version came from for contextual copy
         if (data.signupBcVersion && !data.prefill?.navProduct) setPrefillSource(null)
         else if (data.signupBcVersion) setPrefillSource('signup')
@@ -176,7 +187,8 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ persona, navProduct, navVersion, lastCU,
-          bcPort: parseInt(bcPort, 10) || 8048, agentPort: parseInt(agentPort, 10) || 8080, wantsToConnect }),
+          bcPort: parseInt(bcPort, 10) || 8048, agentPort: parseInt(agentPort, 10) || 9099, wantsToConnect,
+          bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance }),
       })
       if (!res.ok) throw new Error()
       await update()
@@ -389,39 +401,72 @@ export default function OnboardingPage() {
             {step === 4 && wantsToConnect && (
               <div>
                 <div style={eyebrow}>{stepLabel(4)}</div>
-                <h1 style={heading}>Port settings</h1>
+                <h1 style={heading}>BC Connection</h1>
                 <p style={subtext}>
-                  BespoxAI connects via a lightweight agent on your server. Confirm the ports below — these are pre-filled into the installer your IT team downloads from Settings.
+                  These details are saved and pre-filled into the installer your IT team downloads from Settings. The installer will connect your server directly to BespoxAI.
                 </p>
 
-                {isSaaS && (
+                {isSaaS ? (
                   <div style={{ background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 24 }}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 4 }}>BC SaaS detected</div>
-                    <p style={{ fontSize: 12, color: 'var(--slate)', lineHeight: 1.55 }}>Your version may support direct API / OAuth — our team will confirm the best approach. Enter on-prem ports below if applicable.</p>
+                    <p style={{ fontSize: 12, color: 'var(--slate)', lineHeight: 1.55 }}>Your version may support direct API / OAuth — our team will confirm the best approach. Enter on-prem details below if applicable.</p>
                   </div>
-                )}
+                ) : null}
 
                 <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                     <div>
-                      <Label>BC OData port</Label>
+                      <Label>BC Instance</Label>
+                      <input type="text" value={bcInstance} placeholder={navProduct === 'NAV' ? 'e.g. DynamicsNAV110' : 'e.g. BC'} onChange={e => setBcInstance(e.target.value)} style={inputStyle}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Your BC or NAV server instance name.</p>
+                    </div>
+                    <div>
+                      <Label>BC Company</Label>
+                      <input type="text" value={bcCompany} placeholder="e.g. CRONUS International Ltd." onChange={e => setBcCompany(e.target.value)} style={inputStyle}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Company name as it appears in the OData URL.</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                    <div>
+                      <Label>NAV Database Server</Label>
+                      <input type="text" value={navDatabaseServer} placeholder="localhost" onChange={e => setNavDatabaseServer(e.target.value)} style={inputStyle}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>SQL Server hosting the NAV/BC database.</p>
+                    </div>
+                    <div>
+                      <Label>NAV Database Name</Label>
+                      <input type="text" value={navDatabaseName} placeholder="e.g. Dynamics NAV 2017" onChange={e => setNavDatabaseName(e.target.value)} style={{ ...inputStyle, borderColor: navDatabaseName ? 'var(--fog)' : 'rgba(200,149,42,0.4)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        onBlur={e  => (e.target.style.borderColor = navDatabaseName ? 'var(--fog)' : 'rgba(200,149,42,0.4)')} />
+                      <p style={{ fontSize: 11, color: navDatabaseName ? 'var(--slate)' : 'var(--gold)', marginTop: 5 }}>Required for C/AL object export. Find in SQL Server Management Studio.</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, paddingTop: 16, borderTop: '1px solid var(--fog)' }}>
+                    <div>
+                      <Label optional>NAV Server Instance</Label>
+                      <input type="text" value={navServerInstance} placeholder="e.g. DynamicsNAV110" onChange={e => setNavServerInstance(e.target.value)} style={inputStyle}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                        onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                    </div>
+                    <div>
+                      <Label>BC OData Port</Label>
                       <input type="number" value={bcPort} onChange={e => setBcPort(e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
-                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Port BC exposes for OData services. Default: 8048.</p>
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Default: 8048</p>
                     </div>
                     <div>
-                      <Label>Agent port</Label>
+                      <Label>Agent Port</Label>
                       <input type="number" value={agentPort} onChange={e => setAgentPort(e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
-                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Port the BespoxAI agent listens on. Default: 8080.</p>
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Default: 9099</p>
                     </div>
-                  </div>
-                  <div style={{ borderTop: '1px solid var(--fog)', paddingTop: 14 }}>
-                    <p style={{ fontSize: 12, color: 'var(--slate)', lineHeight: 1.6, margin: 0 }}>
-                      These are saved and pre-filled in <strong>Settings → BC Installer</strong>. Your IT team enters BC credentials there and downloads a ready-to-run installer — no manual config needed.
-                    </p>
                   </div>
                 </div>
 
@@ -454,7 +499,9 @@ export default function OnboardingPage() {
                     ['Product',    navProduct === 'BC' ? 'Business Central' : navProduct === 'NAV' ? 'Microsoft NAV' : '—'],
                     ['Version',    navVersion || '—'],
                     ['Last CU',    lastCU     || '—'],
-                    ['Connection', wantsToConnect ? `Installer ready — ports ${bcPort} / ${agentPort}` : 'Set up later'],
+                    ['BC Instance',   bcInstance || '—'],
+                    ['Database',      navDatabaseName || '—'],
+                    ['Connection',    wantsToConnect ? 'Installer ready' : 'Set up later'],
                   ] as [string,string][]).map(([k, v]) => (
                     <div key={k} style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 10, padding: '12px 16px' }}>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{k}</div>

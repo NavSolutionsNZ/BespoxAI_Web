@@ -37,7 +37,7 @@ export async function GET() {
   const [tenant, user, signup] = await Promise.all([
     (prisma as any).tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, country: true, navProduct: true, navVersion: true, lastCU: true, bcPort: true, agentPort: true },
+      select: { name: true, country: true, navProduct: true, navVersion: true, lastCU: true, bcPort: true, agentPort: true, bcInstance: true, bcCompany: true, navDatabaseServer: true, navDatabaseName: true, navServerInstance: true },
     }),
     (prisma as any).user.findUnique({
       where: { id: userId },
@@ -57,11 +57,16 @@ export async function GET() {
     user:   { name: user?.name ?? session.user.name ?? null, email, persona: user?.persona ?? null },
     tenant: { name: tenant?.name ?? null, country: tenant?.country ?? 'NZ' },
     prefill: {
-      navProduct: tenant?.navProduct ?? fromSignup?.navProduct ?? null,
-      navVersion: tenant?.navVersion ?? fromSignup?.navVersion ?? null,
-      lastCU:     tenant?.lastCU     ?? null,
-      bcPort:     tenant?.bcPort     ?? 8048,
-      agentPort:  tenant?.agentPort  ?? 8080,
+      navProduct:        tenant?.navProduct        ?? fromSignup?.navProduct ?? null,
+      navVersion:        tenant?.navVersion        ?? fromSignup?.navVersion ?? null,
+      lastCU:            tenant?.lastCU            ?? null,
+      bcPort:            tenant?.bcPort            ?? 8048,
+      agentPort:         tenant?.agentPort         ?? 9099,
+      bcInstance:        tenant?.bcInstance        ?? null,
+      bcCompany:         tenant?.bcCompany         ?? null,
+      navDatabaseServer: tenant?.navDatabaseServer ?? null,
+      navDatabaseName:   tenant?.navDatabaseName   ?? null,
+      navServerInstance: tenant?.navServerInstance ?? null,
     },
     signupBcVersion: signup?.bcVersion ?? null,
   })
@@ -75,19 +80,24 @@ export async function POST(req: NextRequest) {
   const tenantId = (session.user as any).tenantId as string
 
   const body = await req.json().catch(() => ({}))
-  const { persona, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect } = body
+  const { persona, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
 
   const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 8048))
-  const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 8080))
+  const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 9099))
 
   await Promise.all([
     prisma.user.update({ where: { id: userId }, data: { persona: persona ?? null, onboardingDone: true } }),
     (prisma as any).tenant.update({
       where: { id: tenantId },
       data: {
-        ...(navProduct !== undefined && { navProduct }),
-        ...(navVersion !== undefined && { navVersion }),
-        ...(lastCU     !== undefined && { lastCU }),
+        ...(navProduct        !== undefined && { navProduct }),
+        ...(navVersion        !== undefined && { navVersion }),
+        ...(lastCU            !== undefined && { lastCU }),
+        ...(bcInstance        ? { bcInstance }        : {}),
+        ...(bcCompany         ? { bcCompany }         : {}),
+        ...(navDatabaseServer ? { navDatabaseServer } : {}),
+        ...(navDatabaseName   ? { navDatabaseName }   : {}),
+        ...(navServerInstance ? { navServerInstance } : {}),
         bcPort: safeBcPort, agentPort: safeAgentPort,
       },
     }),
