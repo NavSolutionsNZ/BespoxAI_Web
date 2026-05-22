@@ -41,23 +41,9 @@ function LoginForm() {
       overflow: 'hidden',
     }}>
 
-      {/* Precision grid background — matches brand element */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.4, pointerEvents: 'none' }}>
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--fog)" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-      </svg>
 
-      {/* Jade→Forest→Ink gradient orb */}
-      <div style={{
-        position: 'absolute', top: '-20%', right: '-10%',
-        width: 600, height: 600, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(26,146,114,0.07) 0%, rgba(10,92,70,0.04) 50%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
+
+
 
       {/* Back to site */}
       <div style={{ position: 'absolute', top: 28, left: 32 }}>
