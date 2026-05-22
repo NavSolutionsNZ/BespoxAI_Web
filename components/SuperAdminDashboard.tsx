@@ -568,14 +568,14 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               </div>
               {billing.totalLostMRR>0&&(
                 <div style={{ marginTop:12, padding:'8px 12px', background:'rgba(163,45,45,0.05)', border:'1px solid rgba(163,45,45,0.15)', borderRadius:8, fontFamily:'var(--font-mono)', fontSize:9, color:'#A32D2D' }}>
-                  Net lost MRR this month: −${billing.totalLostMRR.toLocaleString()}
+                  {'Net lost MRR this month: −$'+billing.totalLostMRR.toLocaleString()}
                 </div>
               )}
             </div>
           </div>{/* end grid */}
 
           {/* ── Customers by value ─────────────────────────────────────── */}
-          {billing.byTenant&&billing.byTenant.length>0&&(
+          {billing.byTenant&&billing.byTenant.length>0 ? (
             <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'20px 24px' }}>
               <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--slate)', marginBottom:16 }}>Customers by value</div>
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -613,7 +613,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
         </div>{/* end outer flex col */}
         )
       })()}
