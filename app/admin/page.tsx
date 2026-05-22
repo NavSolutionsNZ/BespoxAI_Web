@@ -1293,14 +1293,14 @@ interface ProdDeployPanelProps {
 }
 
 function DeployToProductionPanel({ selected, onSentApproval, onDeployed }: ProdDeployPanelProps) {
-  const [sendingDoc,    setSendingDoc]    = React.useState(false)
-  const [sendErr,       setSendErr]       = React.useState<string|null>(null)
-  const [deploying,     setDeploying]     = React.useState(false)
-  const [deployResults, setDeployResults] = React.useState<any[]|null>(null)
-  const [deployErr,     setDeployErr]     = React.useState<string|null>(null)
-  const [confirmDeploy, setConfirmDeploy] = React.useState(false)
+  const [sendingDoc,    setSendingDoc]    = useState(false)
+  const [sendErr,       setSendErr]       = useState<string|null>(null)
+  const [deploying,     setDeploying]     = useState(false)
+  const [deployResults, setDeployResults] = useState<any[]|null>(null)
+  const [deployErr,     setDeployErr]     = useState<string|null>(null)
+  const [confirmDeploy, setConfirmDeploy] = useState(false)
 
-  const base: React.CSSProperties = {
+  const base: { [k: string]: any } = {
     fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px',
     borderRadius: 6, cursor: 'pointer', border: '1px solid var(--fog)',
     background: 'var(--white)', color: 'var(--ink)',
