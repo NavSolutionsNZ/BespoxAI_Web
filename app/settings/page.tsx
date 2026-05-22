@@ -76,6 +76,7 @@ function SettingsInner() {
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
   const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
+  const hasLoaded = useRef(false)
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [testDbName,   setTestDbName]   = useState('')
   const [testInstance, setTestInstance] = useState('')
@@ -122,7 +123,8 @@ function SettingsInner() {
   }, [status, session, role])
 
   useEffect(() => {
-    if (!session) return
+    if (!session || hasLoaded.current) return
+    hasLoaded.current = true
     Promise.all([fetch('/api/settings').then(r => r.json()), fetch('/api/settings/users').then(r => r.json())])
       .then(([td, ud]) => {
         const t = td.tenant ?? null
@@ -140,6 +142,7 @@ function SettingsInner() {
         setTestDbName(t?.testNavDatabaseName ?? '')
         setTestInstance(t?.testBcInstance ?? '')
         setTestCompany(t?.testBcCompany ?? '')
+        // Note: these only run once due to hasLoaded guard above
         setTestEnv({
           testNavDatabaseServer: t?.testNavDatabaseServer ?? '',
           testNavDatabaseName:   t?.testNavDatabaseName   ?? '',
