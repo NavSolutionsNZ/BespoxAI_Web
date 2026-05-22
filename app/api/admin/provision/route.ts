@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const { name, tunnelSubdomain, bcInstance, bcCompany, agentPort = 8080 } = body
+  const { name, tunnelSubdomain, bcInstance, bcCompany, agentPort = 9099 } = body
 
   if (!name || !tunnelSubdomain) {
     return NextResponse.json({ error: 'name and tunnelSubdomain are required' }, { status: 400 })
