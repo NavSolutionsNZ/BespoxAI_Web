@@ -71,15 +71,6 @@ function SettingsInner() {
     console.log('[DEBUG] SettingsInner MOUNTED')
     return () => console.log('[DEBUG] SettingsInner UNMOUNTED')
   }, [])
-  useEffect(() => {
-    console.log('[DEBUG] tenant changed — id:', tenant?.id ?? 'null', '| loading:', loading)
-  }, [tenant])
-  useEffect(() => {
-    console.log('[DEBUG] loading changed →', loading, '| tenant.id:', tenant?.id ?? 'null')
-  }, [loading])
-  useEffect(() => {
-    console.log('[DEBUG] tab changed →', tab)
-  }, [tab])
   // ── END DEBUG ───────────────────────────────────────────────────────────────
 
   const [tab,          setTab]          = useState<Tab>('overview')
@@ -108,6 +99,18 @@ function SettingsInner() {
   const [profileSaved,  setProfileSaved]  = useState(false)
   const role       = user?.role as string ?? ''
   const initials   = (user?.name ?? user?.email ?? '?').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
+
+  // ── DEBUG state watchers (after all declarations) ───────────────────────────
+  useEffect(() => {
+    console.log('[DEBUG] tenant changed — id:', tenant?.id ?? 'null', '| loading:', loading)
+  }, [tenant])
+  useEffect(() => {
+    console.log('[DEBUG] loading changed →', loading, '| tenant.id:', tenant?.id ?? 'null')
+  }, [loading])
+  useEffect(() => {
+    console.log('[DEBUG] tab changed →', tab)
+  }, [tab])
+  // ── END DEBUG state watchers ─────────────────────────────────────────────────
 
   useEffect(() => {
     fetch('/api/settings/profile').then(r => r.json()).then(d => {
