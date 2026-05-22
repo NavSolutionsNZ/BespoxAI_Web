@@ -134,9 +134,9 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={save} disabled={saving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Test Environment'}</button>
         {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
-        <button onClick={save} disabled={saving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
   )
@@ -416,11 +416,11 @@ function SettingsInner() {
                 <input ref={profileRefs.preferredName} style={sharedInp} defaultValue={profile.preferredName} placeholder="e.g. Jay — leave blank to use first name" key={'pn-' + profile.preferredName}
                   onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
-                {profileSaved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <button onClick={saveProfile} disabled={profileSaving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: profileSaving ? 'default' : 'pointer', opacity: profileSaving ? 0.7 : 1 }}>
-                  {profileSaving ? 'Saving…' : 'Save'}
+                  {profileSaving ? 'Saving…' : 'Save Profile'}
                 </button>
+                {profileSaved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
               </div>
             </Card>
             <Card>
@@ -826,11 +826,11 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, paddingTop: 4 }}>
-        {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 4 }}>
         <button onClick={handleSave} disabled={saving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving…' : 'Save Production Environment'}
         </button>
+        {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
       </div>
     </div>
   )
