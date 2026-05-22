@@ -169,6 +169,14 @@ function DashboardInner() {
     const v = (searchParams.get('view') as NavItem | null) ?? 'assistant'
     setActiveNavState(v)
   }, [searchParams])
+
+  // When not connected and no explicit view chosen, default to customisations
+  // so new users aren't stranded on the CFO Assistant screen
+  useEffect(() => {
+    if (health.status === 'error' && !searchParams.get('view')) {
+      setActiveNav('customisations')
+    }
+  }, [health.status])
   const [question, setQuestion]   = useState('')
   const [history, setHistory]     = useState<QueryResult[]>([])
   const [showMeta, setShowMeta]   = useState<string | null>(null)
