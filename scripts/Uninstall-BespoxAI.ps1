@@ -11,12 +11,12 @@
       1. Stop + unregister BespoxAI-BCAgent scheduled task
       2. Stop + uninstall cloudflared Windows service
       3. Kill any orphaned BCAgent PowerShell processes
-      4. Release port 8080 (or custom) if still held
+      4. Release port 9099 (or custom) if still held
       5. Remove C:\BespoxAI directory tree (preserves Deployments/Regression
          by default -- pass -RemoveData to wipe everything)
 
 .PARAMETER AgentPort
-    Port the agent was listening on. Default: 8080
+    Port the agent was listening on. Default: 9099
     Used to find and kill any process still holding the port.
 
 .PARAMETER RemoveData
@@ -39,7 +39,7 @@
 
 [CmdletBinding()]
 param(
-    [int]    $AgentPort  = 8080,
+    [int]    $AgentPort  = 9099,
     [switch] $RemoveData
 )
 
