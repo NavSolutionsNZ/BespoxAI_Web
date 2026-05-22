@@ -160,7 +160,7 @@ function BillingPageInner() {
   if (status === 'loading') return null
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', fontFamily: 'var(--font-body)' }}>
+    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: 'var(--font-body)' }}>
 
       {/* Header */}
       <div style={{ borderBottom: '1px solid var(--fog)', background: 'var(--white)', padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

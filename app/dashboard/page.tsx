@@ -605,7 +605,7 @@ function DashboardInner() {
       </aside>
 
       {/* ── Main ─────────────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--cream)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#ffffff' }}>
 
         {/* Header */}
         <header style={{

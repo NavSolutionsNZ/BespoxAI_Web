@@ -363,7 +363,7 @@ export default function SettingsPage() {
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)', paddingTop: tenant?._debug ? 32 : 0 }}>
+      <main style={{ flex: 1, overflowY: 'auto', background: '#ffffff', paddingTop: tenant?._debug ? 32 : 0 }}>
         <div style={{ maxWidth: 820, margin: '0 auto', padding: '40px 32px' }}>
 
           {/* Overview */}

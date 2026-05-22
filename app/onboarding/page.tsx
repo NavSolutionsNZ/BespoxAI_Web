@@ -8,26 +8,29 @@ import { useRouter } from 'next/navigation'
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const BC_VERSIONS = [
-  'Business Central 2024 Wave 2 (BC25)',
-  'Business Central 2024 Wave 1 (BC24)',
-  'Business Central 2023 Wave 2 (BC23)',
-  'Business Central 2023 Wave 1 (BC22)',
-  'Business Central 2022 Wave 2 (BC21)',
-  'Business Central 2022 Wave 1 (BC20)',
-  'Business Central 2021 Wave 2 (BC19)',
-  'Business Central 2021 Wave 1 (BC18)',
-  'Business Central 2020 Wave 2 (BC17)',
-  'Business Central 2020 Wave 1 (BC16)',
-  'Business Central 14 — 2019 Wave 1',
+  'Business Central 2025 (BC25)',
+  'Business Central 2024 Wave 2 (BC24)',
+  'Business Central 2024 Wave 1 (BC23)',
+  'Business Central 2023 Wave 2 (BC22)',
+  'Business Central 2023 Wave 1 (BC21)',
+  'Business Central 2022 Wave 2 (BC20)',
+  'Business Central 2022 Wave 1 (BC19)',
+  'Business Central 2021 Wave 2 (BC18)',
+  'Business Central 2021 Wave 1 (BC17)',
+  'Business Central 2020 Wave 2 (BC16)',
+  'Business Central 2020 Wave 1 (BC15)',
+  'Business Central 2019 Wave 1 (BC14)',
   'Older / Not sure',
 ]
 const NAV_VERSIONS = [
-  'NAV 2018 (NAV 12)',
-  'NAV 2017 (NAV 11)',
-  'NAV 2016 (NAV 10)',
-  'NAV 2015 (NAV 9)',
-  'NAV 2013 R2 (NAV 8)',
-  'NAV 2013 (NAV 7)',
+  'Microsoft NAV 2018',
+  'Microsoft NAV 2017',
+  'Microsoft NAV 2016',
+  'Microsoft NAV 2015',
+  'Microsoft NAV 2013 R2',
+  'Microsoft NAV 2013',
+  'Microsoft NAV 2009 R2',
+  'Microsoft NAV 2009',
   'Older / Not sure',
 ]
 
@@ -243,7 +246,7 @@ export default function OnboardingPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
       <Sidebar />
-      <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)', display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column' }}>
 
         {/* Progress bar */}
         <div style={{ height: 3, background: 'var(--fog)', flexShrink: 0 }}>
