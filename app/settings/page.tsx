@@ -56,30 +56,20 @@ function RoleBadge({ role }: { role: string }) {
   return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
 }
 
-// Test environment form — full credentials + optional "use production credentials" checkbox
 const sharedInp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
 
-function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onTestCredsChange }: {
-  initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string; testAgentPort: string }
-  onSave: (data: Record<string, any>) => Promise<void>
+// Test environment form — same-server setup only (separate server handled below)
+function TestEnvForm({ initial, onSave, onSaved }: {
+  initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string }
+  onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string | null>) => void
-  prodUsername: string
-  prodPassword: string
-  onTestCredsChange: (username: string, password: string) => void
 }) {
-  const [saving, setSaving]         = useState(false)
-  const [saved,   setSaved]           = useState(false)
-  const [useProdCreds, setUseProdCreds] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
   const refs = {
-    testNavDatabaseServer: useRef<HTMLInputElement>(null),
-    testNavDatabaseName:   useRef<HTMLInputElement>(null),
-    testNavServerInstance: useRef<HTMLInputElement>(null),
-    testBcPort:            useRef<HTMLInputElement>(null),
-    testBcInstance:        useRef<HTMLInputElement>(null),
-    testBcCompany:         useRef<HTMLInputElement>(null),
-    testBcUsername:        useRef<HTMLInputElement>(null),
-    testBcPassword:        useRef<HTMLInputElement>(null),
-    testAgentPort:         useRef<HTMLInputElement>(null),
+    testNavDatabaseName: useRef<HTMLInputElement>(null),
+    testBcInstance:      useRef<HTMLInputElement>(null),
+    testBcCompany:       useRef<HTMLInputElement>(null),
   }
   const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
   const lbl = (text: string, required = false) => (
@@ -89,17 +79,10 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
   )
   async function save() {
     setSaving(true)
-    const username = useProdCreds ? prodUsername : (refs.testBcUsername.current?.value || '')
-    const password = useProdCreds ? prodPassword : (refs.testBcPassword.current?.value || '')
-    onTestCredsChange(username, password)
     const vals = {
-      testNavDatabaseServer: refs.testNavDatabaseServer.current?.value || null,
-      testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || null,
-      testNavServerInstance: refs.testNavServerInstance.current?.value || null,
-      testBcPort:            refs.testBcPort.current?.value            || null,
-      testBcInstance:        refs.testBcInstance.current?.value        || null,
-      testBcCompany:         refs.testBcCompany.current?.value         || null,
-      testAgentPort:         refs.testAgentPort.current?.value          || null,
+      testNavDatabaseName: refs.testNavDatabaseName.current?.value || null,
+      testBcInstance:      refs.testBcInstance.current?.value      || null,
+      testBcCompany:       refs.testBcCompany.current?.value       || null,
     }
     await onSave(vals)
     onSaved(vals)
@@ -107,32 +90,23 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>{lbl('Test Database Server')}<input ref={refs.testNavDatabaseServer} style={inp} type="text" defaultValue={initial.testNavDatabaseServer} placeholder="localhost" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
-        <div>{lbl('Test Database Name', true)}<input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
+      <div style={{ background: 'rgba(10,92,70,0.04)', border: '1px solid rgba(10,92,70,0.12)', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', lineHeight: 1.55 }}>
+        Uses the same server, ports, and credentials as production. Only configure what differs.
+      </div>
+      <div>
+        {lbl('Test Database Name', true)}
+        <input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" readOnly onFocus={e => e.target.removeAttribute('readOnly')} />
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>{lbl('Test Server Instance')}<input ref={refs.testNavServerInstance} style={inp} type="text" defaultValue={initial.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
-        <div>{lbl('Test BC Instance')}<input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance} placeholder="e.g. BC_Test" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>{lbl('Test BC Company')}<input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="e.g. Cronus NZ Test" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
-        <div>{lbl('Test BC OData Port')}<input ref={refs.testBcPort} style={inp} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>{lbl('Test Agent Port · default 9099')}<input ref={refs.testAgentPort} style={inp} type="number" defaultValue={initial.testAgentPort} placeholder="e.g. 8081" /></div>
-      </div>
-      <div style={{ borderTop: '1px solid rgba(10,92,70,0.15)', paddingTop: 14 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
-          <input type="checkbox" checked={useProdCreds} onChange={e => setUseProdCreds(e.target.checked)} style={{ accentColor: 'var(--forest)', width: 14, height: 14 }} />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>Use production credentials</span>
-        </label>
-        {!useProdCreds && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>{lbl('Test Username')}<input ref={refs.testBcUsername} style={inp} type="text" placeholder="DOMAIN\username" autoComplete="off" name="bc-test-username" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
-            <div>{lbl('Test Password')}<input ref={refs.testBcPassword} style={inp} type="password" placeholder="" autoComplete="new-password" readOnly onFocus={e => e.target.removeAttribute('readOnly')} /></div>
-          </div>
-        )}
+        <div>
+          {lbl('Test BC Instance')}
+          <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance} placeholder="Leave blank to use production instance" readOnly onFocus={e => e.target.removeAttribute('readOnly')} />
+        </div>
+        <div>
+          {lbl('Test BC Company')}
+          <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="Leave blank to use production company" readOnly onFocus={e => e.target.removeAttribute('readOnly')} />
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={save} disabled={saving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Test Environment'}</button>
@@ -680,12 +654,9 @@ function SettingsInner() {
                 </p>
                 <TestEnvForm
                   key={tenant?.id ?? 'testenv'}
-                  initial={testEnv}
+                  initial={{ testNavDatabaseName: testEnv.testNavDatabaseName, testBcInstance: testEnv.testBcInstance, testBcCompany: testEnv.testBcCompany }}
                   onSave={saveSystemConfig}
                   onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))}
-                  prodUsername={instForm.bcUsername}
-                  prodPassword={instForm.bcPassword}
-                  onTestCredsChange={(u, p) => setInstForm(f => ({ ...f, testBcUsername: u, testBcPassword: p }))}
                 />
               </Card>
             )}
