@@ -1064,6 +1064,34 @@ function mdInline(text: string): React.ReactNode[] {
   )
 }
 
+function mdInlineLight(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} style={{ fontWeight: 600, color: 'var(--ink)' }}>{part.slice(2, -2)}</strong>
+      : part
+  )
+}
+
+function renderMdLight(text: string): React.ReactNode {
+  const lines = text.split('\n')
+  return lines.map((line, i) => {
+    if (/^#{1,2} /.test(line))
+      return <p key={i} style={{ fontWeight: 700, fontSize: 12, color: 'var(--ink)', margin: '10px 0 2px', lineHeight: 1.3 }}>{mdInlineLight(line.replace(/^#+ /, ''))}</p>
+    if (/^### /.test(line))
+      return <p key={i} style={{ fontWeight: 600, fontSize: 11, color: 'var(--ink)', margin: '8px 0 2px', lineHeight: 1.3 }}>{mdInlineLight(line.slice(4))}</p>
+    if (line === '---')
+      return <hr key={i} style={{ border: 'none', borderTop: '1px solid var(--fog)', margin: '8px 0' }} />
+    if (/^[-–] /.test(line))
+      return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start', paddingLeft: 20 }}><span style={{ color: 'var(--forest)', flexShrink: 0, marginTop: 1 }}>–</span><span style={{ lineHeight: 1.6, color: 'var(--ink)' }}>{mdInlineLight(line.replace(/^[-–] /, ''))}</span></div>
+    if (/^\d+\. /.test(line)) {
+      const num = line.match(/^(\d+)/)?.[1]
+      return <div key={i} style={{ display: 'flex', gap: 8, margin: '4px 0 1px', alignItems: 'baseline' }}><span style={{ color: 'var(--forest)', flexShrink: 0, minWidth: 16, fontWeight: 600, textAlign: 'right' as const }}>{num}.</span><span style={{ lineHeight: 1.5, color: 'var(--ink)', fontWeight: 600 }}>{mdInlineLight(line.replace(/^\d+\.\s/, ''))}</span></div>
+    }
+    if (line === '') return <div key={i} style={{ height: 4 }} />
+    return <p key={i} style={{ margin: '2px 0', lineHeight: 1.7, color: 'var(--ink)' }}>{mdInlineLight(line)}</p>
+  })
+}
+
 function renderMd(text: string): React.ReactNode {
   const lines = text.split('\n')
   return lines.map((line, i) => {
@@ -2658,7 +2686,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
               <div style={{ background: 'rgba(10,92,70,0.05)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 8, padding: '12px 14px' }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Quote</p>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 500, color: 'var(--forest)', lineHeight: 1 }}>${parseFloat(selected.quote!).toLocaleString()}</p>
-                {selected.consultantNote && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 8, lineHeight: 1.7 }}>{renderMd(selected.consultantNote)}</div>}
+                {selected.consultantNote && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, marginTop: 8, lineHeight: 1.7 }}>{renderMdLight(selected.consultantNote)}</div>}
                 {selected.quoteApprovedAt && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)', marginTop: 6 }}>✓ Approved {new Date(selected.quoteApprovedAt).toLocaleDateString('en-NZ')}</p>}
               </div>
             )}
