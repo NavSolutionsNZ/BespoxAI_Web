@@ -371,7 +371,7 @@ export default function OnboardingPage() {
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
                   {[
-                    { value: true,  icon: '⚡', title: 'Connect now', desc: "We'll save your BC details. Your IT team downloads and runs the pre-configured installer from Settings → BC Installer." },
+                    { value: true,  icon: '⚡', title: 'Connect now', desc: "We'll save your port settings. Your IT team downloads and runs the pre-configured installer from Settings." },
                     { value: false, icon: '○',  title: 'Set up later', desc: 'Explore the platform first. Connect any time from Settings → BC Installer.' },
                   ].map(opt => {
                     const active = wantsToConnect === opt.value
@@ -491,7 +491,7 @@ export default function OnboardingPage() {
                 <p style={{ ...subtext, textAlign: 'center', maxWidth: 400, margin: '0 auto 24px' }}>
                   {wantsToConnect
                     ? 'Your BC connection details are saved. Your IT team can now download and run the pre-configured installer.'
-                    : <span>You can connect your system any time from <a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>Settings {'→'} BC Installer</a>.</span>}
+                    : 'You can connect your system any time from Settings → BC Installer.'}
                 </p>
                 {wantsToConnect ? (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
