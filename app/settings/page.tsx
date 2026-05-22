@@ -647,7 +647,7 @@ function SettingsInner() {
                   Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
                 </p>
                 <TestEnvForm
-                  key={tenant?.id ?? 'testenv'}
+                  key="testenv"
                   initial={{ testNavDatabaseName: testEnv.testNavDatabaseName, testBcInstance: testEnv.testBcInstance, testBcCompany: testEnv.testBcCompany }}
                   onSave={saveSystemConfig}
                   onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))}
