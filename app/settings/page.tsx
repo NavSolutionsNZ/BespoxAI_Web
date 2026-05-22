@@ -61,6 +61,29 @@ const sharedInp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-
 // Test environment form — same-server setup only (separate server handled below)
 
 
+// ─── Shared sub-components (module-level so their references are stable across
+// SettingsInner re-renders — defining them inside the component caused React to
+// see a new function type on every render and unmount/remount all children) ───
+function Label({ children }: { children: string }) {
+  return <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 14 }}>{children}</div>
+}
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={{ background: 'var(--white)', borderRadius: 14, padding: '24px 28px', border: '1px solid var(--fog)', marginBottom: 16, ...style }}>{children}</div>
+}
+function Btn({ onClick, disabled, full, children }: { onClick: () => void; disabled?: boolean; full?: boolean; children: React.ReactNode }) {
+  return <button onClick={onClick} disabled={disabled} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: full ? '11px' : '8px 20px', width: full ? '100%' : undefined, cursor: disabled ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: full ? 14 : 13, fontWeight: 500, opacity: disabled ? 0.6 : 1 }}>{children}</button>
+}
+function FieldInput({ label, field, type, placeholder, obj, set }: any) {
+  return (
+    <div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>{label}</div>
+      <input type={type} placeholder={placeholder} value={obj[field]} onChange={e => set((f: any) => ({ ...f, [field]: e.target.value }))}
+        style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
+        onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+    </div>
+  )
+}
+
 function SettingsInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -223,24 +246,7 @@ function SettingsInner() {
   const hOk = health.status === 'ok', hErr = health.status === 'error'
   const hColor = hOk ? 'var(--jade)' : hErr ? '#E24B4A' : 'rgba(214,217,212,0.4)'
 
-  // ─── Shared sub-components ────────────────────────────────────────────────
-  const Label = ({ children }: { children: string }) => (
-    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 14 }}>{children}</div>
-  )
-  const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-    <div style={{ background: 'var(--white)', borderRadius: 14, padding: '24px 28px', border: '1px solid var(--fog)', marginBottom: 16, ...style }}>{children}</div>
-  )
-  const Btn = ({ onClick, disabled, full, children }: { onClick: () => void; disabled?: boolean; full?: boolean; children: React.ReactNode }) => (
-    <button onClick={onClick} disabled={disabled} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: full ? '11px' : '8px 20px', width: full ? '100%' : undefined, cursor: disabled ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: full ? 14 : 13, fontWeight: 500, opacity: disabled ? 0.6 : 1 }}>{children}</button>
-  )
-  const FieldInput = ({ label, field, type, placeholder, obj, set }: any) => (
-    <div>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>{label}</div>
-      <input type={type} placeholder={placeholder} value={obj[field]} onChange={e => set((f: any) => ({ ...f, [field]: e.target.value }))}
-        style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-        onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-    </div>
-  )
+
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
