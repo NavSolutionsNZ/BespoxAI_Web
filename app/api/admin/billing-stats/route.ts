@@ -249,6 +249,53 @@ export async function GET() {
     })),
   }
 
+  // ── Customer lifetime value by tenant ───────────────────────────────────
+  // Aggregate: active MRR (annualised) + all dev deposits + all dev balances + all spec reviews
+  const tenantValue: Record<string, { name: string; mrr: number; devRevenue: number; reviewRevenue: number }> = {}
+
+  // Subscriptions — map Stripe customer ID to tenant name via metadata or email matching
+  // We approximate: group by customer email domain or name stored on Stripe customer
+  for (const sub of activeList) {
+    const cust = sub.customer as any
+    const name = cust?.name ?? cust?.email ?? 'Unknown'
+    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
+    tenantValue[name].mrr += mrrOf(sub.items.data[0]?.price?.id ?? null)
+  }
+
+  // Dev deposits (all time)
+  for (const r of paidDeposits as any[]) {
+    if (r.depositBypassed) continue
+    const name = r.tenant?.name ?? 'Unknown'
+    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
+    tenantValue[name].devRevenue += reqDepositAmt(r)
+  }
+
+  // Dev balances (all time)
+  for (const r of paidBalances as any[]) {
+    const name = r.tenant?.name ?? 'Unknown'
+    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
+    tenantValue[name].devRevenue += reqBalanceAmt(r)
+  }
+
+  // Spec reviews (all time)
+  for (const r of paidReviews as any[]) {
+    const name = r.tenant?.name ?? 'Unknown'
+    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
+    tenantValue[name].reviewRevenue += 249
+  }
+
+  const byTenant = Object.values(tenantValue)
+    .map(t => ({
+      name:          t.name,
+      mrr:           Math.round(t.mrr),
+      devRevenue:    Math.round(t.devRevenue),
+      reviewRevenue: Math.round(t.reviewRevenue),
+      total:         Math.round(t.mrr + t.devRevenue + t.reviewRevenue),
+    }))
+    .filter(t => t.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 15)
+
   return NextResponse.json({
     mrr,
     active:    activeList.length,
@@ -270,5 +317,6 @@ export async function GET() {
     totalLostMRR,
     reviews: reviewStats,
     dev:     devStats,
+    byTenant,
   })
 }

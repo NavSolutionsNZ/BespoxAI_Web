@@ -41,6 +41,7 @@ interface BillingStats {
     thisMonth: { count: number; revenueNZD: number }
     list: { id?: string; tenant: string; customer: string; title: string; paidAt: string; amountNZD: number }[]
   }
+  byTenant: { name: string; mrr: number; devRevenue: number; reviewRevenue: number; total: number }[]
   dev?: {
     allTime:   { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
     thisMonth: { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
@@ -379,7 +380,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
           - billing.totalLostMRR
 
         return (
-          <div style={{ display:'grid', gridTemplateColumns:'1.3fr 1fr', gap:14, marginBottom:24 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:24 }}><div style={{ display:'grid', gridTemplateColumns:'1.3fr 1fr', gap:14 }}>
 
             {/* Revenue composition */}
             <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'20px 24px' }}>
@@ -571,7 +572,49 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                 </div>
               )}
             </div>
-          </div>
+          </div>{/* end grid row 1 */}
+
+          {/* ── Customers by value ─────────────────────────────────────── */}
+          {billing.byTenant&&billing.byTenant.length>0&&(
+            <div style={{ background:'var(--white)', border:'1px solid var(--fog)', borderRadius:12, padding:'20px 24px' }}>
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--slate)', marginBottom:16 }}>Customers by value</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {billing.byTenant.map((t,i)=>{
+                  const max=billing.byTenant[0].total
+                  const mrrPct  = max>0?(t.mrr/max)*100:0
+                  const devPct  = max>0?(t.devRevenue/max)*100:0
+                  const revPct  = max>0?(t.reviewRevenue/max)*100:0
+                  return (
+                    <div key={t.name}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+                        <span style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink)', fontWeight:i===0?600:400 }}>{t.name}</span>
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--forest)', fontWeight:600 }}>${t.total.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display:'flex', height:6, borderRadius:3, overflow:'hidden', background:'var(--fog)' }}>
+                        {t.mrr>0&&<div style={{ width:`${mrrPct}%`, background:'#0A5C46' }} title={'MRR: $'+t.mrr+'/mo'} />}
+                        {t.devRevenue>0&&<div style={{ width:`${devPct}%`, background:'#1A9272' }} title={'Dev: $'+t.devRevenue} />}
+                        {t.reviewRevenue>0&&<div style={{ width:`${revPct}%`, background:'#C8952A' }} title={'Reviews: $'+t.reviewRevenue} />}
+                      </div>
+                      <div style={{ display:'flex', gap:12, marginTop:3 }}>
+                        {t.mrr>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#0A5C46' }}>{'$'+t.mrr+'/mo MRR'}</span>}
+                        {t.devRevenue>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#1A9272' }}>{'dev $'+t.devRevenue.toLocaleString()}</span>}
+                        {t.reviewRevenue>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#9A6A00' }}>{'reviews $'+t.reviewRevenue.toLocaleString()}</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ display:'flex', gap:16, marginTop:14, paddingTop:12, borderTop:'1px solid var(--fog)' }}>
+                {[['#0A5C46','MRR'],['#1A9272','Development'],['#C8952A','Spec reviews']].map(([col,lbl])=>(
+                  <div key={lbl} style={{ display:'flex', alignItems:'center', gap:5 }}>
+                    <div style={{ width:8, height:8, borderRadius:2, background:col }} />
+                    <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)' }}>{lbl}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>{/* end outer flex column */}
         )
       })()}
 
