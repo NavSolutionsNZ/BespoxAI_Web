@@ -51,7 +51,7 @@ const STEPS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function firstName(name: string | null | undefined) {
+function extractFirstName(name: string | null | undefined) {
   if (!name) return ''
   return name.split(' ')[0]
 }
@@ -208,7 +208,7 @@ export default function OnboardingPage() {
   const totalSteps    = wantsToConnect === false ? 4 : 5
   const versionOpts   = navProduct === 'BC' ? BC_VERSIONS : navProduct === 'NAV' ? NAV_VERSIONS : []
   const isSaaS        = navProduct === 'BC' && /2022|2023|2024/.test(navVersion)
-  const fname         = firstName(userDisplayName)
+  const fname         = extractFirstName(userDisplayName)
   const stepLabel     = (n: number) => `Step ${n} of ${totalSteps}`
 
   // ── Sidebar ─────────────────────────────────────────────────────────────────
