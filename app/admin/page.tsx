@@ -82,8 +82,8 @@ function AdminPageInner() {
 
   // New tenant form
   const [showNewTenant, setShowNewTenant]         = useState(false)
-  const [tenantForm, setTenantForm]               = useState({ name: '', tunnelSubdomain: '', bcInstance: 'BC', bcCompany: 'CRONUS International Ltd.' })
-  const [newTenantResult, setNewTenantResult]     = useState<{ apiKey: string; name: string; tenantId?: string; provisioned?: boolean } | null>(null)
+  const [tenantForm, setTenantForm]               = useState({ name: '', tunnelSubdomain: '', bcInstance: 'BC', bcCompany: 'CRONUS International Ltd.', customerEmail: '', customerName: '' })
+  const [newTenantResult, setNewTenantResult]     = useState<{ apiKey: string; name: string; tenantId?: string; provisioned?: boolean; customerEmail?: string; tempPassword?: string } | null>(null)
   const [provisionMode, setProvisionMode]         = useState(true)   // true = auto-provision, false = manual
   const [provisionSteps, setProvisionSteps]       = useState<string[]>([])
 
@@ -301,8 +301,8 @@ function AdminPageInner() {
     }
     if (data.steps) setProvisionSteps(data.steps)
     setTenants(prev => [...prev, { ...data.tenant, _count: { users: 0, queryLogs: 0 } }])
-    setNewTenantResult({ apiKey: data.apiKey, name: data.tenant.name, tenantId: data.tenant.id, provisioned: provisionMode })
-    setTenantForm({ name: '', tunnelSubdomain: '', bcInstance: 'BC', bcCompany: 'CRONUS International Ltd.' })
+    setNewTenantResult({ apiKey: data.apiKey, name: data.tenant.name, tenantId: data.tenant.id, provisioned: provisionMode, customerEmail: data.customerEmail, tempPassword: data.tempPassword })
+    setTenantForm({ name: '', tunnelSubdomain: '', bcInstance: 'BC', bcCompany: 'CRONUS International Ltd.', customerEmail: '', customerName: '' })
     setShowNewTenant(false)
     setSaving(false)
   }
@@ -446,6 +446,26 @@ function AdminPageInner() {
                   </>
                 )}
               </div>
+              {newTenantResult.provisioned && newTenantResult.tempPassword ? (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(200,149,42,0.2)' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 6 }}>
+                    {'Customer login — share securely:'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)', minWidth: 60 }}>Email</span>
+                      <code style={{ flex: 1, background: 'var(--parchment)', padding: '6px 10px', borderRadius: 6, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink)' }}>{newTenantResult.customerEmail}</code>
+                      <button onClick={() => navigator.clipboard.writeText(newTenantResult!.customerEmail!)} style={{ ...btnStyle, flexShrink: 0, fontSize: 11 }}>Copy</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)', minWidth: 60 }}>Password</span>
+                      <code style={{ flex: 1, background: 'var(--parchment)', padding: '6px 10px', borderRadius: 6, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink)' }}>{newTenantResult.tempPassword}</code>
+                      <button onClick={() => navigator.clipboard.writeText(newTenantResult!.tempPassword!)} style={{ ...btnStyle, flexShrink: 0, fontSize: 11 }}>Copy</button>
+                    </div>
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', margin: '8px 0 0' }}>Customer will be prompted to set a new password on first login.</p>
+                </div>
+              ) : null}
             </div>
           )}
           {newUserResult && (
@@ -478,6 +498,8 @@ function AdminPageInner() {
 
                   <FormRow label="Tenant name"><input style={inputStyle} value={tenantForm.name} onChange={e => setTenantForm(f => ({ ...f, name: e.target.value }))} placeholder="Acme Motors" /></FormRow>
                   <FormRow label="Tunnel subdomain"><input style={inputStyle} value={tenantForm.tunnelSubdomain} onChange={e => setTenantForm(f => ({ ...f, tunnelSubdomain: e.target.value }))} placeholder="acmemotors" /><span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', marginTop: 4, display: 'block' }}>→ {tenantForm.tunnelSubdomain || 'subdomain'}-agent.bespoxai.com</span></FormRow>
+                  <FormRow label="Customer email"><input style={inputStyle} type="email" value={tenantForm.customerEmail} onChange={e => setTenantForm(f => ({ ...f, customerEmail: e.target.value }))} placeholder="admin@acmemotors.co.nz" /></FormRow>
+                  <FormRow label="Customer name"><input style={inputStyle} value={tenantForm.customerName} onChange={e => setTenantForm(f => ({ ...f, customerName: e.target.value }))} placeholder="Jane Smith" /></FormRow>
                   <div style={{ display: 'flex', gap: 16 }}>
                     <FormRow label="BC instance" style={{ flex: 1 }}><input style={inputStyle} value={tenantForm.bcInstance} onChange={e => setTenantForm(f => ({ ...f, bcInstance: e.target.value }))} /></FormRow>
                     <FormRow label="BC company" style={{ flex: 1 }}><input style={inputStyle} value={tenantForm.bcCompany} onChange={e => setTenantForm(f => ({ ...f, bcCompany: e.target.value }))} /></FormRow>

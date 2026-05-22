@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createTunnel, configureTunnelIngress, createDnsRecord } from '@/lib/cloudflare'
 import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const { name, tunnelSubdomain, bcInstance, bcCompany, agentPort = 9099 } = body
+  const { name, tunnelSubdomain, bcInstance, bcCompany, agentPort = 9099, customerEmail, customerName } = body
 
   if (!name || !tunnelSubdomain) {
     return NextResponse.json({ error: 'name and tunnelSubdomain are required' }, { status: 400 })
@@ -76,12 +77,37 @@ export async function POST(req: NextRequest) {
     })
     steps.push(`✓ Tenant created in database`)
 
+    // Step 5: Create tenant_admin user if email provided
+    let tempPassword: string | null = null
+    if (customerEmail) {
+      const existing = await prisma.user.findUnique({ where: { email: customerEmail } })
+      if (existing) {
+        steps.push(`⚠ User ${customerEmail} already exists — skipped`)
+      } else {
+        tempPassword = crypto.randomBytes(5).toString('hex')
+        const hashed = await bcrypt.hash(tempPassword, 12)
+        await prisma.user.create({
+          data: {
+            email:          customerEmail.trim().toLowerCase(),
+            name:           customerName?.trim() || null,
+            password:       hashed,
+            role:           'tenant_admin',
+            tenantId:       tenant.id,
+            active:         true,
+            onboardingDone: false,
+          },
+        })
+        steps.push(`✓ tenant_admin user created: ${customerEmail}`)
+      }
+    }
+
     return NextResponse.json({
       tenant,
-      apiKey,   // shown once to admin
+      apiKey,
       tunnelId,
       hostname,
       steps,
+      ...(tempPassword ? { customerEmail, tempPassword } : {}),
     })
   } catch (dbErr: any) {
     return NextResponse.json({
