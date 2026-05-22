@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import React from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -136,7 +136,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
   )
 }
 
-export default function SettingsPage() {
+function SettingsInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -766,5 +766,13 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#ffffff' }} />}>
+      <SettingsInner />
+    </Suspense>
   )
 }
