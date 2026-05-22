@@ -66,6 +66,13 @@ function SettingsInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // ── DEBUG ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    console.log('[DEBUG] SettingsInner MOUNTED')
+    return () => console.log('[DEBUG] SettingsInner UNMOUNTED')
+  }, [])
+  // ── END DEBUG ───────────────────────────────────────────────────────────────
+
   const [tab,          setTab]          = useState<Tab>('overview')
   useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
@@ -112,13 +119,16 @@ function SettingsInner() {
   const toast$ = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500) }
 
   useEffect(() => {
+    console.log('[DEBUG] auth-guard fired — status:', status, '| role:', role, '| session:', !!session)
     if (status === 'loading') return
-    if (status === 'unauthenticated' || !session) { router.push('/login'); return }
-    if (role && role !== 'tenant_admin' && role !== 'superadmin') router.push('/dashboard')
+    if (status === 'unauthenticated' || !session) { console.log('[DEBUG] auth-guard → pushing /login'); router.push('/login'); return }
+    if (role && role !== 'tenant_admin' && role !== 'superadmin') { console.log('[DEBUG] auth-guard → pushing /dashboard (role:', role, ')'); router.push('/dashboard') }
   }, [status, session, role])
 
   useEffect(() => {
+    console.log('[DEBUG] data-load effect fired — session:', !!session, '| hasLoaded:', hasLoaded.current)
     if (!session || hasLoaded.current) return
+    console.log('[DEBUG] data-load RUNNING (fetching settings)')
     hasLoaded.current = true
     Promise.all([fetch('/api/settings').then(r => r.json()), fetch('/api/settings/users').then(r => r.json())])
       .then(([td, ud]) => {
@@ -150,6 +160,7 @@ function SettingsInner() {
   }, [])
 
   useEffect(() => {
+    console.log('[DEBUG] health-check effect fired — session present:', !!session)
     if (!session) return
     const check = async () => {
       const t0 = Date.now()
@@ -673,6 +684,13 @@ function TestEnvForm({ initial, onSave }: {
   initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string }
   onSave: (data: Record<string, any>) => Promise<void>
 }) {
+  // ── DEBUG ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    console.log('[DEBUG] TestEnvForm MOUNTED — initial.testNavDatabaseName:', initial.testNavDatabaseName)
+    return () => console.log('[DEBUG] TestEnvForm UNMOUNTED')
+  }, [])
+  // ── END DEBUG ───────────────────────────────────────────────────────────────
+
   const refs = {
     testNavDatabaseName: useRef<HTMLInputElement>(null),
     testBcInstance:      useRef<HTMLInputElement>(null),
@@ -740,6 +758,13 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
   onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string>) => void
 }) {
+  // ── DEBUG ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    console.log('[DEBUG] ProdEnvForm MOUNTED — initial.bcInstance:', initial.bcInstance)
+    return () => console.log('[DEBUG] ProdEnvForm UNMOUNTED')
+  }, [])
+  // ── END DEBUG ───────────────────────────────────────────────────────────────
+
   const refs = {
     navDatabaseServer: useRef<HTMLInputElement>(null),
     navDatabaseName:   useRef<HTMLInputElement>(null),
