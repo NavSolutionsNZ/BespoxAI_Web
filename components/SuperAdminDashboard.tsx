@@ -41,7 +41,7 @@ interface BillingStats {
     thisMonth: { count: number; revenueNZD: number }
     list: { id?: string; tenant: string; customer: string; title: string; paidAt: string; amountNZD: number }[]
   }
-  byTenant: { name: string; mrr: number; devRevenue: number; reviewRevenue: number; total: number }[]
+  byTenant: { name: string; mrr: number; deposits: number; balances: number; devRevenue: number; reviewRevenue: number; total: number }[]
   dev?: {
     allTime:   { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
     thisMonth: { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
@@ -341,7 +341,6 @@ function BillingCharts({ billing, onNavigate }: {
                 {billing.byTenant.map((t,i)=>{
                   const max=billing.byTenant[0].total
                   const mrrPct  = max>0?(t.mrr/max)*100:0
-                  const devPct  = max>0?(t.devRevenue/max)*100:0
                   const revPct  = max>0?(t.reviewRevenue/max)*100:0
                   const isOpen  = customerDrill === t.name
                   const deposits = (billing.dev?.recentDeposits??[]).filter(r=>r.tenant===t.name)
@@ -362,12 +361,14 @@ function BillingCharts({ billing, onNavigate }: {
                       </div>
                       <div style={{ display:'flex', height:6, borderRadius:3, overflow:'hidden', background:'var(--fog)' }}>
                         {t.mrr>0 ? <div style={{ width:mrrPct+'%', background:'#0A5C46' }} title={'MRR: $'+t.mrr+'/mo'} /> : null}
-                        {t.devRevenue>0 ? <div style={{ width:devPct+'%', background:'#1A9272' }} title={'Dev: $'+t.devRevenue} /> : null}
+                        {t.deposits>0 ? <div style={{ width:(max>0?(t.deposits/max)*100:0)+'%', background:'#1A9272' }} title={'Deposits: $'+t.deposits} /> : null}
+                        {t.balances>0 ? <div style={{ width:(max>0?(t.balances/max)*100:0)+'%', background:'#0F6E56' }} title={'Balances: $'+t.balances} /> : null}
                         {t.reviewRevenue>0 ? <div style={{ width:revPct+'%', background:'#C8952A' }} title={'Reviews: $'+t.reviewRevenue} /> : null}
                       </div>
                       <div style={{ display:'flex', gap:12, marginTop:3 }}>
                         {t.mrr>0 ? <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#0A5C46' }}>{'$'+t.mrr+'/mo MRR'}</span> : null}
-                        {t.devRevenue>0 ? <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#1A9272' }}>{'dev $'+t.devRevenue.toLocaleString()}</span> : null}
+                        {t.deposits>0 ? <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#1A9272' }}>{'deposits $'+t.deposits.toLocaleString()}</span> : null}
+                        {t.balances>0 ? <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#0F6E56' }}>{'balances $'+t.balances.toLocaleString()}</span> : null}
                         {t.reviewRevenue>0 ? <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#9A6A00' }}>{'reviews $'+t.reviewRevenue.toLocaleString()}</span> : null}
                       </div>
                       {isOpen && hasPayments ? (
@@ -406,7 +407,7 @@ function BillingCharts({ billing, onNavigate }: {
                 })}
               </div>
               <div style={{ display:'flex', gap:16, marginTop:14, paddingTop:12, borderTop:'1px solid var(--fog)' }}>
-                {[['#0A5C46','MRR'],['#1A9272','Development'],['#C8952A','Spec reviews']].map(([col,lbl])=>(
+                {[['#0A5C46','MRR'],['#1A9272','Deposits'],['#0F6E56','Balances'],['#C8952A','Spec reviews']].map(([col,lbl])=>(
                   <div key={lbl} style={{ display:'flex', alignItems:'center', gap:5 }}>
                     <div style={{ width:8, height:8, borderRadius:2, background:col }} />
                     <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)' }}>{lbl}</span>

@@ -65,7 +65,7 @@ export async function GET() {
   const todayStartUnix = Math.floor(todayStart.getTime() / 1000)
 
   // ── Fetch data from Stripe in parallel ───────────────────────────────────
-  const [activeSubs, cancelledSubs, updateEvents, paidReviews, paidDeposits, paidBalances] = await Promise.all([
+  const [activeSubs, cancelledSubs, updateEvents, paidReviews, paidDeposits, paidBalances, allTenants] = await Promise.all([
     stripe.subscriptions.list({ status: 'active',   limit: 100, expand: ['data.customer'] }),
     stripe.subscriptions.list({ status: 'canceled', limit: 100, expand: ['data.customer'] }),
     stripe.events.list({ type: 'customer.subscription.updated', created: { gte: monthStartUnix }, limit: 100 }),
@@ -83,6 +83,9 @@ export async function GET() {
       where: { balancePaidAt: { not: null } },
       orderBy: { balancePaidAt: 'desc' },
       select: { id: true, title: true, balancePaidAt: true, depositAmount: true, quote: true, tenant: { select: { name: true } } },
+    }).catch(() => [] as any[]),
+    prisma.tenant.findMany({
+      select: { id: true, name: true, stripeCustomerId: true, subscriptionStatus: true, stripePriceId: true },
     }).catch(() => [] as any[]),
   ])
 
@@ -250,51 +253,57 @@ export async function GET() {
   }
 
   // ── Customer lifetime value by tenant ───────────────────────────────────
-  // Aggregate: active MRR (annualised) + all dev deposits + all dev balances + all spec reviews
-  const tenantValue: Record<string, { name: string; mrr: number; devRevenue: number; reviewRevenue: number }> = {}
-
-  // Subscriptions — map Stripe customer ID to tenant name via metadata or email matching
-  // We approximate: group by customer email domain or name stored on Stripe customer
-  for (const sub of activeList) {
-    const cust = sub.customer as any
-    const name = cust?.name ?? cust?.email ?? 'Unknown'
-    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
-    tenantValue[name].mrr += mrrOf(sub.items.data[0]?.price?.id ?? null)
+  // Build a lookup: Stripe customerId → tenant name (most reliable mapping)
+  const stripeIdToTenant: Record<string, string> = {}
+  for (const t of allTenants as any[]) {
+    if (t.stripeCustomerId) stripeIdToTenant[t.stripeCustomerId] = t.name
   }
 
-  // Dev deposits (all time)
+  type TenantVal = { name: string; mrr: number; deposits: number; balances: number; reviews: number }
+  const tenantValue: Record<string, TenantVal> = {}
+
+  function tv(name: string): TenantVal {
+    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, deposits: 0, balances: 0, reviews: 0 }
+    return tenantValue[name]
+  }
+
+  // Subscriptions — match via stripeCustomerId first, fall back to Stripe customer name
+  for (const sub of activeList) {
+    const custId = typeof sub.customer === 'string' ? sub.customer : (sub.customer as any)?.id
+    const name   = stripeIdToTenant[custId] ?? (sub.customer as any)?.name ?? (sub.customer as any)?.email ?? 'Unknown'
+    tv(name).mrr += mrrOf(sub.items.data[0]?.price?.id ?? null)
+  }
+
+  // Dev deposits — all time (includes addendum deposits)
   for (const r of paidDeposits as any[]) {
     if (r.depositBypassed) continue
-    const name = r.tenant?.name ?? 'Unknown'
-    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
-    tenantValue[name].devRevenue += reqDepositAmt(r)
+    tv(r.tenant?.name ?? 'Unknown').deposits += reqDepositAmt(r)
   }
 
-  // Dev balances (all time)
+  // Dev balances — all time (includes addendum balances)
   for (const r of paidBalances as any[]) {
-    const name = r.tenant?.name ?? 'Unknown'
-    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
-    tenantValue[name].devRevenue += reqBalanceAmt(r)
+    tv(r.tenant?.name ?? 'Unknown').balances += reqBalanceAmt(r)
   }
 
-  // Spec reviews (all time)
+  // Spec reviews — all time
   for (const r of paidReviews as any[]) {
-    const name = r.tenant?.name ?? 'Unknown'
-    if (!tenantValue[name]) tenantValue[name] = { name, mrr: 0, devRevenue: 0, reviewRevenue: 0 }
-    tenantValue[name].reviewRevenue += 249
+    tv(r.tenant?.name ?? 'Unknown').reviews += 249
   }
 
   const byTenant = Object.values(tenantValue)
     .map(t => ({
-      name:          t.name,
-      mrr:           Math.round(t.mrr),
-      devRevenue:    Math.round(t.devRevenue),
-      reviewRevenue: Math.round(t.reviewRevenue),
-      total:         Math.round(t.mrr + t.devRevenue + t.reviewRevenue),
+      name:         t.name,
+      mrr:          Math.round(t.mrr),
+      deposits:     Math.round(t.deposits),
+      balances:     Math.round(t.balances),
+      reviews:      Math.round(t.reviews),
+      devRevenue:   Math.round(t.deposits + t.balances),
+      reviewRevenue: Math.round(t.reviews),
+      total:        Math.round(t.mrr + t.deposits + t.balances + t.reviews),
     }))
     .filter(t => t.total > 0)
     .sort((a, b) => b.total - a.total)
-    .slice(0, 15)
+    .slice(0, 20)
 
   return NextResponse.json({
     mrr,
