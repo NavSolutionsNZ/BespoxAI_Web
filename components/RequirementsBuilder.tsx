@@ -170,7 +170,7 @@ function renderMdLight(text: string): React.ReactNode {
     if (line === '---')
       return <hr key={i} style={{ border: 'none', borderTop: '1px solid var(--fog)', margin: '8px 0' }} />
     if (/^[-–] /.test(line))
-      return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start' }}><span style={{ color: 'var(--forest)', flexShrink: 0, marginTop: 1 }}>–</span><span style={{ lineHeight: 1.6, color: 'var(--ink)' }}>{mdInlineLight(line.replace(/^[-–] /, ''))}</span></div>
+      return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start', paddingLeft: 24 }}><span style={{ color: 'var(--forest)', flexShrink: 0, marginTop: 1 }}>–</span><span style={{ lineHeight: 1.6, color: 'var(--ink)' }}>{mdInlineLight(line.replace(/^[-–] /, ''))}</span></div>
     if (/^\d+\. /.test(line)) {
       const num = line.match(/^(\d+)/)?.[1]
       return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start' }}><span style={{ color: 'var(--forest)', flexShrink: 0, minWidth: 18, marginTop: 1, fontWeight: 600 }}>{num}.</span><span style={{ lineHeight: 1.6, color: 'var(--ink)' }}>{mdInlineLight(line.replace(/^\d+\.\s/, ''))}</span></div>
