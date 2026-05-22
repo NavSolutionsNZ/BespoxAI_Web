@@ -918,7 +918,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       <div style={{flex:1,display:'flex',overflow:'hidden'}}>
 
       {/* ── Left list ─────────────────────────────────────────────────────── */}
-      <div style={{width:panelOpen?360:'100%',flexShrink:0,display:'flex',flexDirection:'column',borderRight:panelOpen?'1px solid var(--fog)':'none',overflow:'hidden',transition:'width 0.2s'}}>
+      <div style={{width:'100%',flexShrink:0,display:(selected||showAddendum)?'none':'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'12px 14px',borderBottom:'1px solid var(--fog)',display:'flex',gap:8,background:'var(--white)',alignItems:'center',flexWrap:'wrap'}}>
           <button onClick={()=>{setShowCreate(true);setSelected(null)}} style={pBTN}>+ New Request</button>
           <select value={filterStatus} onChange={e=>setFS(e.target.value)} style={selSt}>
