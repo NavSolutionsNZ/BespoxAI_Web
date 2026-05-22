@@ -78,11 +78,6 @@ function SettingsInner() {
   const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
   const hasLoaded = useRef(false)
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
-  const [testDbName,   setTestDbName]   = useState('')
-  const [testInstance, setTestInstance] = useState('')
-  const [testCompany,  setTestCompany]  = useState('')
-  const [testEnvSaving, setTestEnvSaving] = useState(false)
-  const [testEnvSaved,  setTestEnvSaved]  = useState(false)
   const [instLoading,  setInstLoading]  = useState(false)
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
   const [inviteResult, setInviteResult] = useState<{ tempPassword: string; email: string } | null>(null)
@@ -139,9 +134,6 @@ function SettingsInner() {
         if (t?.testServerSeparate)  setInstForm(f => ({ ...f, testServerSeparate:  t.testServerSeparate        }))
         if (t?.testAgentUrl)        setInstForm(f => ({ ...f, testAgentUrl:        t.testAgentUrl              }))
         if (t?.testTunnelToken)     setInstForm(f => ({ ...f, testTunnelToken:     t.testTunnelToken           }))
-        setTestDbName(t?.testNavDatabaseName ?? '')
-        setTestInstance(t?.testBcInstance ?? '')
-        setTestCompany(t?.testBcCompany ?? '')
         // Note: these only run once due to hasLoaded guard above
         setTestEnv({
           testNavDatabaseServer: t?.testNavDatabaseServer ?? '',
@@ -166,13 +158,6 @@ function SettingsInner() {
     }
     check(); const iv = setInterval(check, 60000); return () => clearInterval(iv)
   }, [session])
-
-  async function saveTestEnv() {
-    setTestEnvSaving(true)
-    await saveSystemConfig({ testNavDatabaseName: testDbName || null, testBcInstance: testInstance || null, testBcCompany: testCompany || null })
-    setTestEnv(prev => ({ ...prev, testNavDatabaseName: testDbName, testBcInstance: testInstance, testBcCompany: testCompany }))
-    setTestEnvSaving(false); setTestEnvSaved(true); setTimeout(() => setTestEnvSaved(false), 2000)
-  }
 
   async function saveCountry() { setSaving(true); const r = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ country }) }); setSaving(false); toast$(r.ok ? 'Country updated' : 'Failed', r.ok) }
   async function saveSystemConfig(data: Record<string, any>) { const r = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); toast$(r.ok ? 'Saved' : 'Failed', r.ok) }
@@ -602,7 +587,7 @@ function SettingsInner() {
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.</p>
 
               <ProdEnvForm
-                key={instForm.navDatabaseName + instForm.bcInstance}
+                key={tenant?.id ?? 'loading'}
                 initial={instForm}
                 onSave={saveSystemConfig}
                 onSaved={vals => setInstForm(f => ({ ...f, ...vals }))}
@@ -615,30 +600,15 @@ function SettingsInner() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ background: 'rgba(10,92,70,0.04)', border: '1px solid rgba(10,92,70,0.12)', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', lineHeight: 1.55 }}>
-                    Uses the same server, ports, and credentials as production. Only configure what differs.
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Test Database Name <span style={{ color: '#A32D2D' }}>*</span></div>
-                    <input style={sharedInp} type="text" value={testDbName} onChange={e => setTestDbName(e.target.value)} placeholder="e.g. Dynamics NAV 2017 Test" autoComplete="off" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Test BC Instance</div>
-                      <input style={sharedInp} type="text" value={testInstance} onChange={e => setTestInstance(e.target.value)} placeholder="Leave blank to use production instance" autoComplete="off" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Test BC Company</div>
-                      <input style={sharedInp} type="text" value={testCompany} onChange={e => setTestCompany(e.target.value)} placeholder="Leave blank to use production company" autoComplete="off" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button onClick={saveTestEnv} disabled={testEnvSaving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: testEnvSaving ? 'default' : 'pointer', opacity: testEnvSaving ? 0.6 : 1 }}>{testEnvSaving ? 'Saving…' : 'Save Test Environment'}</button>
-                    {testEnvSaved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
-                  </div>
-                </div>
+                <TestEnvForm
+                  key={tenant?.id ?? 'loading'}
+                  initial={{
+                    testNavDatabaseName: tenant?.testNavDatabaseName ?? '',
+                    testBcInstance:      tenant?.testBcInstance      ?? '',
+                    testBcCompany:       tenant?.testBcCompany        ?? '',
+                  }}
+                  onSave={saveSystemConfig}
+                />
               </Card>
             )}
 
@@ -695,6 +665,72 @@ function SettingsInner() {
 
         </div>
       </main>
+    </div>
+  )
+}
+
+function TestEnvForm({ initial, onSave }: {
+  initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string }
+  onSave: (data: Record<string, any>) => Promise<void>
+}) {
+  const refs = {
+    testNavDatabaseName: useRef<HTMLInputElement>(null),
+    testBcInstance:      useRef<HTMLInputElement>(null),
+    testBcCompany:       useRef<HTMLInputElement>(null),
+  }
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    await onSave({
+      testNavDatabaseName: refs.testNavDatabaseName.current?.value || null,
+      testBcInstance:      refs.testBcInstance.current?.value      || null,
+      testBcCompany:       refs.testBcCompany.current?.value       || null,
+    })
+    setSaving(false); setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }
+  const lbl = (t: string) => <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>{t}</div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ background: 'rgba(10,92,70,0.04)', border: '1px solid rgba(10,92,70,0.12)', borderRadius: 8, padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', lineHeight: 1.55 }}>
+        Uses the same server, ports, and credentials as production. Only configure what differs.
+      </div>
+      <div>
+        {lbl('Test Database Name *')}
+        <input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName}
+          placeholder="e.g. Dynamics NAV 2017 Test" autoComplete="off"
+          onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+          onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>
+          {lbl('Test BC Instance')}
+          <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance}
+            placeholder="Leave blank to use production instance" autoComplete="off"
+            onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+            onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+        </div>
+        <div>
+          {lbl('Test BC Company')}
+          <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany}
+            placeholder="Leave blank to use production company" autoComplete="off"
+            onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+            onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={handleSave} disabled={saving}
+          style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving…' : 'Save Test Environment'}
+        </button>
+        {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+      </div>
     </div>
   )
 }
