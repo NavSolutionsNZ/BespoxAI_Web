@@ -137,7 +137,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data: updateData,
     include: {
       user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true } },
+      tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+      addenda: { orderBy: { createdAt: 'asc' }, select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true } },
     },
   })
 

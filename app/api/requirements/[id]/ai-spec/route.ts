@@ -372,7 +372,9 @@ export async function POST(
     data:  { aiSpec: JSON.stringify(specWithMeta), customerAnswers: answersToSave },
     include: {
       user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true } },
+      addenda: { orderBy: { createdAt: 'asc' }, select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true } },
+      tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+      addenda: { orderBy: { createdAt: 'asc' }, select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true } },
     },
   })
 
