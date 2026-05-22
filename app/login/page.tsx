@@ -75,6 +75,22 @@ function LoginForm() {
         </Link>
       </div>
 
+      {/* Request access — top right */}
+      <div style={{ position: 'absolute', top: 28, right: 32, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)' }}>New to BespoxAI?</span>
+        <Link href="/signup" style={{
+          fontFamily: 'var(--font-mono)', fontSize: 10,
+          letterSpacing: '0.12em', textTransform: 'uppercase',
+          color: 'var(--forest)', textDecoration: 'none', fontWeight: 600,
+          transition: 'color 0.15s',
+        }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--emerald)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--forest)')}
+        >
+          Request access →
+        </Link>
+      </div>
+
       {/* Card */}
       <div style={{
         width: '100%', maxWidth: 420, position: 'relative', zIndex: 1,
@@ -103,7 +119,7 @@ function LoginForm() {
             letterSpacing: '0.18em', textTransform: 'uppercase',
             color: 'var(--slate)',
           }}>
-            Financial Intelligence Portal
+            Business Central & Microsoft NAV Intelligence Portal
           </p>
         </div>
 
@@ -126,7 +142,7 @@ function LoginForm() {
             fontFamily: 'var(--font-body)', fontSize: 13,
             color: 'var(--slate)', marginBottom: 28, lineHeight: 1.5,
           }}>
-            Connected to your live Business Central data.
+            Connected to your live Business Central & NAV data.
           </p>
 
           {error && (
@@ -269,13 +285,7 @@ function LoginForm() {
           BespoxAI uses delegated authentication — we never store your ERP password.
         </p>
 
-        {/* Signup link */}
-        <p style={{ textAlign: 'center', marginTop: 18, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)' }}>
-          New to BespoxAI?{' '}
-          <Link href="/signup" style={{ color: 'var(--forest)', textDecoration: 'none', fontWeight: 500 }}>
-            Request access →
-          </Link>
-        </p>
+
       </div>
 
       <style>{`
