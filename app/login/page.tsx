@@ -31,7 +31,7 @@ function LoginForm() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--cream)',
+      background: '#ffffff',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -300,7 +300,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--cream)' }} />}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#ffffff' }} />}>
       <LoginForm />
     </Suspense>
   )
