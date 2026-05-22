@@ -17,7 +17,54 @@ interface Tenant {
   navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
   testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null
-  _debug?: boolean
+  _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
+}
+interface TenantUser {
+  id: string; name: string | null; email: string; role: string; active: boolean; createdAt: string
+}
+type Tab = 'overview' | 'users' | 'entities' | 'installer'
+
+const COUNTRY_OPTIONS = [
+  { code: 'NZ', label: 'New Zealand' }, { code: 'AU', label: 'Australia' },
+  { code: 'GB', label: 'United Kingdom' }, { code: 'US', label: 'United States' },
+  { code: 'SG', label: 'Singapore' }, { code: 'MY', label: 'Malaysia' },
+  { code: 'ID', label: 'Indonesia' },
+]
+const NAV: { id: Tab; icon: string; label: string }[] = [
+  { id: 'overview',  icon: '⚙️', label: 'Overview'     },
+  { id: 'users',     icon: '👥', label: 'Users'         },
+  { id: 'entities',  icon: '📊', label: 'Data Entities' },
+  { id: 'installer', icon: '⬇️', label: 'BC Installer'  },
+]
+
+function relTime(iso: string) {
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (d === 0) return 'Today'
+  if (d === 1) return 'Yesterday'
+  if (d < 30) return `${d}d ago`
+  return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const m: Record<string, [string, string, string]> = {
+    superadmin:   ['rgba(200,149,42,0.12)', 'var(--amber)',  'rgba(200,149,42,0.3)'],
+    tenant_admin: ['rgba(10,92,70,0.10)',   'var(--forest)', 'rgba(10,92,70,0.3)'  ],
+    user:         ['rgba(59,82,73,0.08)',   'var(--slate)',  'rgba(59,82,73,0.2)'  ],
+  }
+  const [bg, color, border] = m[role] ?? m.user
+  const label = role === 'superadmin' ? 'Super Admin' : role === 'tenant_admin' ? 'Admin' : 'User'
+  return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
+}
+
+const sharedInp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
+
+// Test environment form — same-server setup only (separate server handled below)
+
+
+function SettingsInner() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [tab, setTab] = useState<Tab>('overview')
   useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [])
@@ -66,8 +113,8 @@ interface Tenant {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (status === 'unauthenticated' || !session) {
-    if (role && role !== 'tenant_admin' && role !== 'superadmin') {
+    if (status === 'unauthenticated' || !session) { router.push('/login'); return }
+    if (role && role !== 'tenant_admin' && role !== 'superadmin') router.push('/dashboard')
   }, [status, session, role])
 
   useEffect(() => {
