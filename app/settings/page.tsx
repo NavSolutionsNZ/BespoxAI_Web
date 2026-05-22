@@ -64,13 +64,11 @@ function TestEnvForm({ initial, onSave, onSaved }: {
   onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string | null>) => void
 }) {
-  const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
-  const refs = {
-    testNavDatabaseName: useRef<HTMLInputElement>(null),
-    testBcInstance:      useRef<HTMLInputElement>(null),
-    testBcCompany:       useRef<HTMLInputElement>(null),
-  }
+  const [saving, setSaving]           = useState(false)
+  const [saved,  setSaved]            = useState(false)
+  const [dbName,   setDbName]         = useState(initial.testNavDatabaseName)
+  const [instance, setInstance]       = useState(initial.testBcInstance)
+  const [company,  setCompany]        = useState(initial.testBcCompany)
   const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
   const lbl = (text: string, required = false) => (
     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>
@@ -79,11 +77,7 @@ function TestEnvForm({ initial, onSave, onSaved }: {
   )
   async function save() {
     setSaving(true)
-    const vals = {
-      testNavDatabaseName: refs.testNavDatabaseName.current?.value || null,
-      testBcInstance:      refs.testBcInstance.current?.value      || null,
-      testBcCompany:       refs.testBcCompany.current?.value       || null,
-    }
+    const vals = { testNavDatabaseName: dbName || null, testBcInstance: instance || null, testBcCompany: company || null }
     await onSave(vals)
     onSaved(vals)
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
@@ -95,17 +89,17 @@ function TestEnvForm({ initial, onSave, onSaved }: {
       </div>
       <div>
         {lbl('Test Database Name', true)}
-        <input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" />
+        <input style={inp} type="text" value={dbName} onChange={e => setDbName(e.target.value)} placeholder="e.g. Dynamics NAV 2017 Test" />
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           {lbl('Test BC Instance')}
-          <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance} placeholder="Leave blank to use production instance" />
+          <input style={inp} type="text" value={instance} onChange={e => setInstance(e.target.value)} placeholder="Leave blank to use production instance" />
         </div>
         <div>
           {lbl('Test BC Company')}
-          <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="Leave blank to use production company" />
+          <input style={inp} type="text" value={company} onChange={e => setCompany(e.target.value)} placeholder="Leave blank to use production company" />
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -653,7 +647,7 @@ function SettingsInner() {
                   Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
                 </p>
                 <TestEnvForm
-                  key={testEnv.testNavDatabaseName + '|' + testEnv.testBcInstance + '|' + testEnv.testBcCompany}
+                  key={tenant?.id ?? 'testenv'}
                   initial={{ testNavDatabaseName: testEnv.testNavDatabaseName, testBcInstance: testEnv.testBcInstance, testBcCompany: testEnv.testBcCompany }}
                   onSave={saveSystemConfig}
                   onSaved={vals => setTestEnv(prev => ({ ...prev, ...Object.fromEntries(Object.entries(vals).map(([k,v]) => [k, v ?? ''])) }))}
