@@ -403,7 +403,7 @@ function SettingsInner() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.bcPort ?? 8048}</span>
                   <span style={{ color: 'var(--fog)', fontSize: 14 }}>·</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.agentPort ?? 9099}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <strong>BC Installer</strong> tab and reinstall BCAgent.</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <button onClick={() => setTab('installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>BC Installer</button> tab and reinstall BCAgent.</span>
                 </div>
               </div>
             </Card>
@@ -434,7 +434,7 @@ function SettingsInner() {
                   {!tenant?.testNavDatabaseName && (
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>No test environment configured.</p>
                   )}
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <strong>BC Installer</strong> tab.</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => setTab('installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>BC Installer</button> tab.</p>
                 </div>
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
