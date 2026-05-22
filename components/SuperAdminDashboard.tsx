@@ -217,7 +217,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               {attentionReqs.map(req => {
                 const s = ATTENTION[req.status]
                 return (
-                  <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'rgba(255,255,255,0.6)', borderRadius: 8, border: `1px solid ${s.border}` }}>
+                  <div key={req.id} onClick={() => onNavigate('requirements', req.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'rgba(255,255,255,0.6)', borderRadius: 8, border: `1px solid ${s.border}`, cursor: 'pointer' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, fontWeight: 600 }}>{s.label}</span>
@@ -501,7 +501,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
       {attentionReqs.map(req => {
         const s = ATTENTION[req.status]
         return (
-          <div key={req.id} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:10, padding:'14px 18px', marginBottom:8, display:'flex', alignItems:'center', gap:16 }}>
+          <div key={req.id} onClick={() => onNavigate('requirements', req.id)} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:10, padding:'14px 18px', marginBottom:8, display:'flex', alignItems:'center', gap:16, cursor:'pointer' }}>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontFamily:'var(--font-mono)', fontSize:8, letterSpacing:'0.1em', textTransform:'uppercase', color:s.color, fontWeight:600 }}>{s.label}</span>
@@ -565,7 +565,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
             </thead>
             <tbody>
               {billing.reviews.list.map((r,i) => (
-                <tr key={i} style={{ borderBottom: i < billing.reviews.list.length-1 ? '1px solid var(--fog)' : 'none' }}>
+                <tr key={i} onClick={() => (r as any).id && onNavigate('requirements', (r as any).id)} style={{ borderBottom: i < billing.reviews.list.length-1 ? '1px solid var(--fog)' : 'none', cursor:(r as any).id?'pointer':'default' }}>
                   <td style={{ padding:'10px 14px', color:'var(--ink)', fontWeight:500 }}>{r.tenant}</td>
                   <td style={{ padding:'10px 14px', color:'var(--slate)', fontFamily:'var(--font-mono)', fontSize:11 }}>{r.customer}</td>
                   <td style={{ padding:'10px 14px', color:'var(--slate)', maxWidth:260, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.title}</td>
