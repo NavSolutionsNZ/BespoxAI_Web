@@ -19,8 +19,6 @@ export const dynamic = 'force-dynamic'
 const ADDENDUM_ALLOWED_STATUSES = [
   'deposit_paid',
   'in_development',
-  'complete_pending_payment',
-  'fully_paid',
 ]
 
 export async function POST(

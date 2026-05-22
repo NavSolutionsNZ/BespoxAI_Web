@@ -1906,7 +1906,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 ) : null}
 
                 {/* ── Add Addendum — opens full create page ── */}
-                {!isSuperadmin && ['deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(req.status) ? (
+                {!isSuperadmin && ['deposit_paid','in_development'].includes(req.status) ? (
                   <button
                     onClick={()=>{ setAddendumParentId(req.id); setAddendumParentTitle(req.title); setAddendumForm({title:'',description:'',bcArea:req.bcArea,priority:req.priority}); setAddendumErr(''); setShowAddendum(true); setSelected(null); setShowCreate(false) }}
                     style={{...sBTN,fontSize:12,color:'var(--forest)',borderColor:'rgba(10,92,70,0.25)',alignSelf:'flex-start'}}
