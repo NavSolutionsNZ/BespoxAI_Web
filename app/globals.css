@@ -34,3 +34,15 @@ body {
 
 /* Placeholder */
 ::placeholder { color: var(--fog); opacity: 1; }
+
+input::placeholder,
+textarea::placeholder {
+  color: #8a9a8e;
+  opacity: 1;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8a9a8e;
+  opacity: 1;
+}
