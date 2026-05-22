@@ -1047,7 +1047,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {req.feasibility==='infeasible'&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',background:'rgba(163,45,45,0.07)',padding:'1px 5px',borderRadius:4}}>⚠ constrained</span>}
                   {spec&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--jade)'}}>✦ spec</span>}
                   {(spec?.questions?.length??0)>0&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#C8952A'}}>? {spec!.questions.length}q</span>}
-                  {req.quote&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',fontWeight:600}}>${parseFloat(req.quote).toLocaleString()}</span>}
+                  {isSuperadmin&&req.quote&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',fontWeight:600}}>${parseFloat(req.quote).toLocaleString()}</span>}
                   {/* Review payment / action-step indicators */}
                   {req.status==='draft'&&!spec&&(
                     <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',background:'rgba(59,82,73,0.07)',border:'1px solid rgba(59,82,73,0.14)',padding:'1px 6px',borderRadius:4}}>step 1: generate spec</span>
@@ -1058,13 +1058,13 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {req.status==='draft'&&spec&&(req.reviewPaidAt||req.reviewIncluded||req.reviewBypassed)&&(
                     <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--forest)',background:'rgba(10,92,70,0.09)',border:'1px solid rgba(10,92,70,0.22)',padding:'1px 6px',borderRadius:4}}>✓ paid · submit to proceed</span>
                   )}
-                  {req.status!=='draft'&&req.reviewPaidAt&&(
+                  {req.status!=='draft'&&req.reviewPaidAt&&['draft','submitted','needs_clarification','in_review','quoted','quote_rejected','deposit_required'].includes(req.status)&&(
                     <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--forest)',background:'rgba(10,92,70,0.08)',border:'1px solid rgba(10,92,70,0.18)',padding:'1px 6px',borderRadius:4}}>✓ review paid</span>
                   )}
-                  {req.status!=='draft'&&req.reviewIncluded&&!req.reviewPaidAt&&(
+                  {req.status!=='draft'&&req.reviewIncluded&&!req.reviewPaidAt&&['draft','submitted','needs_clarification','in_review','quoted','quote_rejected','deposit_required'].includes(req.status)&&(
                     <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--jade)',background:'rgba(26,146,114,0.08)',border:'1px solid rgba(26,146,114,0.2)',padding:'1px 6px',borderRadius:4}}>✓ included in plan</span>
                   )}
-                  {req.status!=='draft'&&req.reviewBypassed&&!req.reviewPaidAt&&!req.reviewIncluded&&(
+                  {req.status!=='draft'&&req.reviewBypassed&&!req.reviewPaidAt&&!req.reviewIncluded&&['draft','submitted','needs_clarification','in_review','quoted','quote_rejected','deposit_required'].includes(req.status)&&(
                     <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',background:'rgba(59,82,73,0.07)',border:'1px solid rgba(59,82,73,0.16)',padding:'1px 6px',borderRadius:4}}>✓ fee waived</span>
                   )}
                 </div>
@@ -1819,39 +1819,64 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     💳 {isMonthlyBilling(req.tenant.paymentTermsKey) ? 'View Payment Details' : 'Pay Balance Now'}
                   </button>
                 )}
-                {/* Customer invoice download — available once quote accepted */}
+                {/* ── Documents section (customer) ─────────────────────────── */}
                 {!isSuperadmin && req.quote && ['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(req.status) && (
-                  <button
-                    onClick={()=>{
-                      const depositAmt = Math.max(0, (parseFloat(req.quote!)*0.2) - (req.reviewPaidAt ? 249 : 0))
-                      const paidViaStripe = !!(req.depositStripeSessionId)
-                      generateInvoicePDF(req, '', depositAmt.toFixed(2), true, paidViaStripe ? 'stripe' : 'bank_transfer', req.depositPaidAt)
-                    }}
-                    style={{background:'none',border:'1px solid var(--fog)',color:'var(--slate)',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
-                  >
-                    📄 Deposit Invoice
-                  </button>
-                )}
-                {!isSuperadmin && req.reviewPaidAt && (
-                  <button
-                    onClick={()=>{ setReviewPoReq(req); setReviewPo('') }}
-                    style={{background:'none',border:'1px solid var(--fog)',color:'var(--slate)',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
-                  >
-                    📄 Review Invoice
-                  </button>
-                )}
-                {!isSuperadmin && req.balancePaidAt && req.status === 'fully_paid' && (
-                  <button
-                    onClick={()=>{
-                      const depositAmt = parseFloat(req.depositAmount ?? '0')
-                      const balanceAmt = (parseFloat(req.quote!)-depositAmt).toFixed(2)
-                      const paidViaStripe = !!(req.balanceStripeSessionId)
-                      generateInvoicePDF(req, '', balanceAmt, false, paidViaStripe ? 'stripe' : 'bank_transfer', req.balancePaidAt)
-                    }}
-                    style={{background:'none',border:'1px solid var(--fog)',color:'var(--slate)',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
-                  >
-                    📄 Balance Invoice
-                  </button>
+                  <div style={{width:'100%',borderTop:'1px solid var(--fog)',paddingTop:14,marginTop:4}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',marginBottom:10}}>Documents</p>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {/* Deposit invoice */}
+                      <button
+                        onClick={()=>{
+                          const depositAmt = Math.max(0, (parseFloat(req.quote!)*0.2) - (req.reviewPaidAt ? 249 : 0))
+                          const paidViaStripe = !!(req.depositStripeSessionId)
+                          generateInvoicePDF(req, '', depositAmt.toFixed(2), true, paidViaStripe ? 'stripe' : 'bank_transfer', req.depositPaidAt)
+                        }}
+                        style={{background:'var(--white)',border:'1px solid var(--fog)',color:'var(--ink)',borderRadius:7,padding:'7px 12px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
+                      >
+                        <span style={{fontSize:14}}>📄</span> Deposit Invoice
+                      </button>
+                      {/* Review invoice */}
+                      {req.reviewPaidAt && (
+                        <button
+                          onClick={()=>{ setReviewPoReq(req); setReviewPo('') }}
+                          style={{background:'var(--white)',border:'1px solid var(--fog)',color:'var(--ink)',borderRadius:7,padding:'7px 12px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
+                        >
+                          <span style={{fontSize:14}}>📄</span> Review Invoice
+                        </button>
+                      )}
+                      {/* Balance invoice — once fully paid */}
+                      {req.balancePaidAt && req.status === 'fully_paid' && (
+                        <button
+                          onClick={()=>{
+                            const depositAmt = parseFloat(req.depositAmount ?? '0')
+                            const balanceAmt = (parseFloat(req.quote!)-depositAmt).toFixed(2)
+                            const paidViaStripe = !!(req.balanceStripeSessionId)
+                            generateInvoicePDF(req, '', balanceAmt, false, paidViaStripe ? 'stripe' : 'bank_transfer', req.balancePaidAt)
+                          }}
+                          style={{background:'var(--white)',border:'1px solid var(--fog)',color:'var(--ink)',borderRadius:7,padding:'7px 12px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
+                        >
+                          <span style={{fontSize:14}}>📄</span> Balance Invoice
+                        </button>
+                      )}
+                      {/* Go-live document — once customer has approved go-live */}
+                      {req.prodGoLiveDoc && req.prodApprovalSentAt && (
+                        <button
+                          onClick={()=>{
+                            const blob = new Blob([req.prodGoLiveDoc!], { type: 'text/plain' })
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = 'go-live-' + req.id.slice(0,8) + '.txt'
+                            a.click()
+                            URL.revokeObjectURL(url)
+                          }}
+                          style={{background:'var(--white)',border:'1px solid var(--fog)',color:'var(--ink)',borderRadius:7,padding:'7px 12px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
+                        >
+                          <span style={{fontSize:14}}>📄</span> Go-Live Document
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )}
                 {isSuperadmin&&req.status==='deposit_required'&&(
                   <button onClick={()=>patch(req.id,{status:'deposit_paid'})} disabled={actLoading} style={{...pBTN,background:'#0F6E56'}}>✓ Confirm Deposit Received</button>
