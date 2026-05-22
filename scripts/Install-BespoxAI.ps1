@@ -48,7 +48,7 @@
     BC company name as used in OData URL. Default: CRONUS International Ltd.
 
 .PARAMETER AgentPort
-    Local port for BCAgent to listen on. Default: 8080
+    Local port for BCAgent to listen on. Default: 9099
     (Must match what BespoxAI expects — do not change unless instructed.)
 
 .EXAMPLE
@@ -70,7 +70,7 @@ param(
     [int]    $BCPort      = 8048,
     [string] $BCInstance  = 'BC',
     [string] $BCCompany   = 'CRONUS International Ltd.',
-    [int]    $AgentPort   = 8080,
+    [int]    $AgentPort   = 9099,
     [string] $NavDatabaseServer = 'localhost',
     [string] $NavDatabaseName   = '',
     [string] $NavServerInstance    = '',

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const { bcUsername, bcPassword, bcPort = 8048, agentPort = 8080, bcInstance, bcCompany,
+  const { bcUsername, bcPassword, bcPort = 8048, agentPort = 9099, bcInstance, bcCompany,
           navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',
           testNavDatabaseServer = '', testNavDatabaseName = '', testNavServerInstance = '',
           testBcInstance = '', testBcCompany = '', testBcPort = 0 } = body
@@ -75,7 +75,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
         ...(bcInstance ? { bcInstance } : {}),
         ...(bcCompany  ? { bcCompany  } : {}),
         bcPort:            parseInt(String(bcPort),    10) || 8048,
-        agentPort:         parseInt(String(agentPort), 10) || 8080,
+        agentPort:         parseInt(String(agentPort), 10) || 9099,
         ...(navDatabaseName   ? { navDatabaseName }   : {}),
         ...(navServerInstance ? { navServerInstance } : {}),
         navDatabaseServer: navDatabaseServer || 'localhost',
@@ -109,7 +109,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace('[int]    $BCPort      = 8048,',                 `[int]    $BCPort      = ${bcPort},`)
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${bcInstance || tenant.bcInstance}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${bcCompany || tenant.bcCompany}',`)
-    .replace('[int]    $AgentPort   = 8080,',                 `[int]    $AgentPort   = ${agentPort},`)
+    .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${agentPort},`)
     .replace("[string] $NavDatabaseServer = 'localhost',",    `[string] $NavDatabaseServer = '${navDatabaseServer}',`)
     .replace("[string] $NavDatabaseName   = '',",             `[string] $NavDatabaseName   = '${navDatabaseName}',`)
     .replace("[string] $NavServerInstance = '',",             `[string] $NavServerInstance = '${navServerInstance}',`)

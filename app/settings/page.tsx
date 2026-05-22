@@ -117,7 +117,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
         <div>{lbl('Test BC OData Port')}<input ref={refs.testBcPort} style={inp} type="number" defaultValue={initial.testBcPort} placeholder="e.g. 7048" /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>{lbl('Test Agent Port · default 8080')}<input ref={refs.testAgentPort} style={inp} type="number" defaultValue={initial.testAgentPort} placeholder="e.g. 8081" /></div>
+        <div>{lbl('Test Agent Port · default 9099')}<input ref={refs.testAgentPort} style={inp} type="number" defaultValue={initial.testAgentPort} placeholder="e.g. 8081" /></div>
       </div>
       <div style={{ borderTop: '1px solid rgba(10,92,70,0.15)', paddingTop: 14 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
@@ -148,7 +148,7 @@ export default function SettingsPage() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null)
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
-  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
+  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [instLoading,  setInstLoading]  = useState(false)
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
@@ -400,7 +400,7 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.bcPort ?? 8048}</span>
                   <span style={{ color: 'var(--fog)', fontSize: 14 }}>·</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.agentPort ?? 8080}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.agentPort ?? 9099}</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <strong>BC Installer</strong> tab and reinstall BCAgent.</span>
                 </div>
               </div>
@@ -682,7 +682,7 @@ export default function SettingsPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Agent Port · default 8080</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Agent Port · default 9099</div>
                   <input type="number" value={instForm.agentPort}
                     onChange={e => setInstForm(f => ({ ...f, agentPort: e.target.value }))}
                     style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
