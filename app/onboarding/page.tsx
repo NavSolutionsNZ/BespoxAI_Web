@@ -99,7 +99,8 @@ export default function OnboardingPage() {
   const [userDisplayName,  setUserDisplayName]  = useState('')
 
   // Step 1
-  const [persona, setPersona] = useState('')
+  const [persona,   setPersona]   = useState('')
+  const [userName,  setUserName]  = useState('')
 
   // Step 2
   const [navProduct, setNavProduct] = useState('')
@@ -137,6 +138,7 @@ export default function OnboardingPage() {
         setTenantName(data.tenant?.name ?? '')
         setUserDisplayName(data.user?.name ?? '')
         if (data.user?.persona) setPersona(data.user.persona)
+        if (data.user?.name)    setUserName(data.user.name)
         const p = data.prefill
         if (p?.navProduct) setNavProduct(p.navProduct)
         if (p?.navVersion) setNavVersion(p.navVersion)
@@ -189,7 +191,7 @@ export default function OnboardingPage() {
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persona, navProduct, navVersion, lastCU,
+        body: JSON.stringify({ persona, userName, navProduct, navVersion, lastCU,
           bcPort: parseInt(bcPort, 10) || 8048, agentPort: parseInt(agentPort, 10) || 9099, wantsToConnect,
           bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance }),
       })
@@ -261,13 +263,20 @@ export default function OnboardingPage() {
               <div>
                 <div style={eyebrow}>{stepLabel(1)}</div>
                 <h1 style={heading}>
-                  {fname ? `Welcome, ${fname}.` : 'Welcome.'}<br />
-                  What's your role?
+                  Welcome.<br />
+                  Let's get you set up.
                 </h1>
                 <p style={subtext}>
                   {tenantName ? `We've set up your workspace for ${tenantName}. ` : ''}
-                  Tell us your role so we can tailor the experience from day one.
+                  Tell us a bit about yourself so we can tailor the experience.
                 </p>
+                <div style={{ marginBottom: 24 }}>
+                  <Label>Your name</Label>
+                  <input type="text" value={userName} onChange={e => setUserName(e.target.value)} placeholder="e.g. Jane Smith"
+                    style={inputStyle}
+                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                    onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
                   {PERSONAS.map(p => {
                     const active = persona === p.id
@@ -504,6 +513,7 @@ export default function OnboardingPage() {
                 {/* Summary */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 36, textAlign: 'left' }}>
                   {([
+                    ['Name',       userName || '—'],
                     ['Role',       PERSONAS.find(p => p.id === persona)?.label ?? persona],
                     ['Company',    tenantName || '—'],
                     ['Product',    navProduct === 'BC' ? 'Business Central' : navProduct === 'NAV' ? 'Microsoft NAV' : '—'],
