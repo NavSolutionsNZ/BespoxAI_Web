@@ -160,8 +160,27 @@ function SettingsInner() {
   const [entitySaving, setEntitySaving] = useState(false)
 
   const user       = session?.user as any
+  const [profile, setProfile] = useState<{ firstName: string; lastName: string; preferredName: string }>({ firstName: '', lastName: '', preferredName: '' })
+  const profileRefs = { firstName: useRef<HTMLInputElement>(null), lastName: useRef<HTMLInputElement>(null), preferredName: useRef<HTMLInputElement>(null) }
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaved,  setProfileSaved]  = useState(false)
   const role       = user?.role as string ?? ''
   const initials   = (user?.name ?? user?.email ?? '?').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
+
+  useEffect(() => {
+    fetch('/api/settings/profile').then(r => r.json()).then(d => {
+      if (d.profile) setProfile({ firstName: d.profile.firstName || '', lastName: d.profile.lastName || '', preferredName: d.profile.preferredName || '' })
+    }).catch(() => {})
+  }, [])
+
+  async function saveProfile() {
+    setProfileSaving(true)
+    const vals = { firstName: profileRefs.firstName.current?.value || '', lastName: profileRefs.lastName.current?.value || '', preferredName: profileRefs.preferredName.current?.value || '' }
+    await fetch('/api/settings/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vals) })
+    setProfile(vals)
+    setProfileSaving(false); setProfileSaved(true)
+    setTimeout(() => setProfileSaved(false), 2000)
+  }
   const tenantName = user?.tenantName ?? tenant?.name ?? '…'
 
   const toast$ = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500) }
@@ -371,6 +390,33 @@ function SettingsInner() {
           {/* Overview */}
           {tab === 'overview' && <>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 28 }}>Overview</h1>
+            <Card>
+              <Label>Your Profile</Label>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>How you appear in the portal and how we address you.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>First Name</div>
+                  <input ref={profileRefs.firstName} style={inp} defaultValue={profile.firstName} placeholder="Jane" key={'fn-' + profile.firstName}
+                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Last Name</div>
+                  <input ref={profileRefs.lastName} style={inp} defaultValue={profile.lastName} placeholder="Smith" key={'ln-' + profile.lastName}
+                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Preferred Name <span style={{ fontWeight: 400, opacity: 0.6 }}>· optional</span></div>
+                <input ref={profileRefs.preferredName} style={inp} defaultValue={profile.preferredName} placeholder="e.g. Jay — leave blank to use first name" key={'pn-' + profile.preferredName}
+                  onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+                {profileSaved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+                <button onClick={saveProfile} disabled={profileSaving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: profileSaving ? 'default' : 'pointer', opacity: profileSaving ? 0.7 : 1 }}>
+                  {profileSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </Card>
             <Card>
               <Label>BC Connection</Label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 40px' }}>
