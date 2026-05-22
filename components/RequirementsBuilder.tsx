@@ -1364,7 +1364,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         })()}
                       </div>
                     </div>
-                    {(req.status==='draft'||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
+                    {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
                       const gc=getGenCount(req)
                       const atLimit=!isSuperadmin&&gc>=MAX_GENS
                       return atLimit ? (
@@ -1496,7 +1496,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                             Clarifying Questions — answer to refine the spec
                           </span>
                         </div>
-                        {(req.status==='draft'||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&showQAPanel?(
+                        {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&showQAPanel?(
                           <div style={{display:'flex',flexDirection:'column',gap:14}}>
                             {spec.questions.map((q,i)=>(
                               <div key={i}>
@@ -1708,6 +1708,14 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     </>
                   )}
                 </>}
+                {!isSuperadmin&&req.status==='submitted'&&!!req.parentId&&(
+                  <div style={{background:'rgba(10,92,70,0.04)',border:'1px solid rgba(10,92,70,0.15)',borderRadius:8,padding:'12px 14px'}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--forest)',marginBottom:4}}>Submitted for Review</p>
+                    <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6,margin:0}}>
+                      This addendum has been submitted. BespoxAI will review the scope and issue a quote. Use the refine panel above to clarify anything in the meantime.
+                    </p>
+                  </div>
+                )}
                 {!isSuperadmin&&req.status==='quoted'&&<>
                   <button onClick={()=>openDepositModal(req)} style={{...pBTN,background:'#085040'}}>{requiresDeposit(req.tenant.paymentTermsKey) ? '✓ Accept Quote & Proceed' : '✓ Accept & Begin Development'}</button>
                   <button onClick={()=>{setShowRQ(true)}} style={{background:'rgba(163,45,45,0.08)',border:'1px solid rgba(163,45,45,0.2)',color:'#A32D2D',borderRadius:8,padding:'9px 16px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:13}}>
