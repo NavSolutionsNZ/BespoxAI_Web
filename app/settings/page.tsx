@@ -113,8 +113,8 @@ function SettingsInner() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) { router.push('/login'); return }
-    if (role !== 'tenant_admin' && role !== 'superadmin') router.push('/dashboard')
+    if (status === 'unauthenticated' || !session) { router.push('/login'); return }
+    if (role && role !== 'tenant_admin' && role !== 'superadmin') router.push('/dashboard')
   }, [status, session, role])
 
   useEffect(() => {
@@ -157,7 +157,7 @@ function SettingsInner() {
       catch { setHealth({ status: 'error', ms: null }) }
     }
     check(); const iv = setInterval(check, 60000); return () => clearInterval(iv)
-  }, [session])
+  }, [!!session])
 
   async function saveCountry() { setSaving(true); const r = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ country }) }); setSaving(false); toast$(r.ok ? 'Country updated' : 'Failed', r.ok) }
   async function saveSystemConfig(data: Record<string, any>) { const r = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); toast$(r.ok ? 'Saved' : 'Failed', r.ok) }
