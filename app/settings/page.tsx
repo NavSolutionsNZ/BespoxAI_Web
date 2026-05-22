@@ -339,7 +339,7 @@ export default function SettingsPage() {
           })}
 
           <div style={{ margin: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }} />
-          <button onClick={() => router.back()}
+          <button onClick={() => router.push('/dashboard')}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>

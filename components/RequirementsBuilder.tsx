@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
 // ── Stripe surcharge helpers (mirrors lib/stripe-fees.ts for client-side preview) ──
 const STRIPE_DOMESTIC_PCT   = 0.0265
@@ -152,6 +153,9 @@ function getTermsText(cfg:BizConfig, k:string|null|undefined){
 
 export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [reqs, setReqs]             = useState<Requirement[]>([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState('')
@@ -160,6 +164,16 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [filterStatus, setFS]       = useState('all')
   const [filterArea, setFA]         = useState('all')
   const [bizConfig, setBizConfig]   = useState<BizConfig|null>(null)
+
+  // Sync selected requirement from URL — handles back/forward + deep links
+  useEffect(() => {
+    const reqId = searchParams.get('req')
+    if (!reqId) { setSelected(null); return }
+    if (reqs.length > 0) {
+      const target = reqs.find(r => r.id === reqId)
+      if (target) setSelected(target)
+    }
+  }, [searchParams, reqs])
 
   useEffect(() => {
     fetch('/api/business-config').then(r=>r.json()).then(d=>{ if(!d.error) setBizConfig(d) }).catch(()=>{})
@@ -279,6 +293,16 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     setAAD(''); setShowSB(false); setShowQF(false)
     setSpecErr(''); setFeasErr(''); setShowRQ(false); setRejectReason('')
     setRF({title:req.title,description:req.description,bcArea:req.bcArea,priority:req.priority,extraContext:''})
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('req', req.id)
+    router.push(pathname + '?' + params.toString(), { scroll: false })
+  }
+
+  function clearReq() {
+    setSelected(null)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('req')
+    router.push(pathname + '?' + params.toString(), { scroll: false })
   }
 
   function formatCostRange(r: string | null): string {
@@ -386,7 +410,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     const res = await fetch(`/api/requirements/${id}`,{method:'DELETE'})
     if (!res.ok) { alert('Delete failed'); return }
     setReqs(prev=>prev.filter(r=>r.id!==id))
-    if (selected?.id===id) setSelected(null)
+    if (selected?.id===id) clearReq()
   }
 
   async function generateSpec(
@@ -928,7 +952,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       {/* ── Left list ─────────────────────────────────────────────────────── */}
       <div style={{width:'100%',flexShrink:0,display:(selected||showAddendum)?'none':'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'12px 14px',borderBottom:'1px solid var(--fog)',display:'flex',gap:8,background:'var(--white)',alignItems:'center',flexWrap:'wrap'}}>
-          <button onClick={()=>{setShowCreate(true);setSelected(null)}} style={pBTN}>+ New Request</button>
+          <button onClick={()=>{setShowCreate(true);clearReq()}} style={pBTN}>+ New Request</button>
           <select value={filterStatus} onChange={e=>setFS(e.target.value)} style={selSt}>
             <option value="all">All statuses</option>
             {STATUS_PIPELINE.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
@@ -1134,7 +1158,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     {isSuperadmin&&<span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--jade)'}}>{req.tenant.name} · {req.user.name??req.user.email}</span>}
                   </div>
                 </div>
-                <button onClick={()=>setSelected(null)} style={xBTN}>✕</button>
+                <button onClick={()=>clearReq()} style={xBTN}>✕</button>
               </div>
 
               {/* Needs clarification banner */}
@@ -1972,7 +1996,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {/* ── Add Addendum — opens full create page ── */}
                 {!isSuperadmin && ['deposit_paid','in_development'].includes(req.status) ? (
                   <button
-                    onClick={()=>{ setAddendumParentId(req.id); setAddendumParentTitle(req.title); setAddendumForm({title:'',description:'',bcArea:req.bcArea,priority:req.priority}); setAddendumErr(''); setShowAddendum(true); setSelected(null); setShowCreate(false) }}
+                    onClick={()=>{ setAddendumParentId(req.id); setAddendumParentTitle(req.title); setAddendumForm({title:'',description:'',bcArea:req.bcArea,priority:req.priority}); setAddendumErr(''); setShowAddendum(true); clearReq(); setShowCreate(false) }}
                     style={{...sBTN,fontSize:12,color:'var(--forest)',borderColor:'rgba(10,92,70,0.25)',alignSelf:'flex-start'}}
                   >+ Add Addendum</button>
                 ) : null}

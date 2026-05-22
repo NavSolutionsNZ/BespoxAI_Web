@@ -164,7 +164,7 @@ function BillingPageInner() {
 
       {/* Header */}
       <div style={{ borderBottom: '1px solid var(--fog)', background: 'var(--white)', padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 6 }}>
           ← Back to Dashboard
         </button>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--ink)', fontWeight: 600 }}>
