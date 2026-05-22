@@ -1446,6 +1446,8 @@ function DeployToProductionPanel({ selected, onSentApproval, onDeployed }: ProdD
 
 function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelectReqId?: string|null; onAutoSelectDone?: () => void }) {
   const { data: session } = useSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const adminName  = (session?.user as any)?.name  ?? 'Admin'
   const adminEmail = (session?.user as any)?.email ?? ''
   const [reqs, setReqs]           = useState<AdminReq[]>([])
@@ -1499,6 +1501,13 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   const [codingCommitting, setCodingCommitting] = useState<number|null>(null)   // index of msg being committed
   const [codingCommitErr, setCodingCommitErr]   = useState('')
 
+  // Navigate to a requirement — updates URL so back button works
+  function selectReq(req: AdminReq | null) {
+    setSelected(req)
+    const url = req ? '/admin?tab=requirements&req=' + req.id : '/admin?tab=requirements'
+    router.push(url, { scroll: false })
+  }
+
   async function load() {
     setLoading(true)
     try {
@@ -1527,9 +1536,19 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   useEffect(() => {
     if (autoSelectReqId && reqs.length > 0) {
       const target = reqs.find(r => r.id === autoSelectReqId)
-      if (target) { setSelected(target); onAutoSelectDone?.() }
+      if (target) { selectReq(target); onAutoSelectDone?.() }
     }
   }, [autoSelectReqId, reqs])
+
+  // Sync selected requirement from URL (handles back/forward navigation)
+  useEffect(() => {
+    const reqId = searchParams.get('req')
+    if (!reqId) { setSelected(null); return }
+    if (reqs.length > 0) {
+      const target = reqs.find(r => r.id === reqId)
+      if (target) setSelected(target)
+    }
+  }, [searchParams, reqs])
 
   async function patch(id: string, body: object) {
     setAL(true)
@@ -1962,7 +1981,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
             <div
               key={req.id}
               onClick={() => {
-                setSelected(req)
+                selectReq(req)
                 setShowQF(false); setShowSB(false); setPlanErr('')
                 setShowObjectEditor(false); setNewObjectText('')
                 // Reset AI conversation when switching requirements
@@ -2015,7 +2034,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             {/* Back to list */}
             <button
-              onClick={() => { setSelected(null); setShowQF(false); setShowSB(false); setShowAiPanel(false); setDevHistory([]); setDevQuestion('') }}
+              onClick={() => { selectReq(null); setShowQF(false); setShowSB(false); setShowAiPanel(false); setDevHistory([]); setDevQuestion('') }}
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', marginBottom: 14, padding: 0, width: 'fit-content' }}
             >
               ← Back to list
@@ -2028,7 +2047,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(200,149,42,0.1)', color: '#9A6A00', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 5, padding: '2px 8px' }}>Addendum</span>
                     <button
-                      onClick={() => { const parent = reqs.find(r => r.id === selected.parentId); if (parent) setSelected(parent) }}
+                      onClick={() => { const parent = reqs.find(r => r.id === selected.parentId); if (parent) selectReq(parent) }}
                       style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                     >← Back to parent requirement</button>
                   </div>
@@ -2665,7 +2684,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                         <button
                           onClick={() => {
                             const fullAdd = reqs.find(r => r.id === add.id)
-                            if (fullAdd) setSelected(fullAdd)
+                            if (fullAdd) selectReq(fullAdd)
                           }}
                           style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
                         >View →</button>
