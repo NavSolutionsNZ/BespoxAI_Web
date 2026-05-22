@@ -97,11 +97,14 @@ function Card({ icon, title, body, footer, link }: {
 export default function VerifyPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--ink)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'var(--font-body)' }}>
-      <div style={{ marginBottom: 32, textAlign: 'center' }}>
+      <a href="/index.html" style={{ marginBottom: 32, textAlign: 'center', textDecoration: 'none', display: 'block' }}>
         <span style={{ fontFamily: 'var(--font-cormorant)', fontSize: 32, fontWeight: 600, color: '#F4EFE4' }}>
           Bespox<span style={{ color: '#C8952A' }}>AI</span>
         </span>
-      </div>
+        <p style={{ color: '#8a9a8e', fontSize: 14, marginTop: 6 }}>
+          CFO Intelligence for Business Central & Microsoft NAV
+        </p>
+      </a>
       <div style={{ background: '#ffffff', borderRadius: 16, padding: '36px 40px', width: '100%', maxWidth: 440, boxShadow: '0 8px 40px rgba(4,14,9,0.3)' }}>
         <Suspense fallback={<Card icon="⏳" title="Loading…" body="Please wait." />}>
           <VerifyContent />
