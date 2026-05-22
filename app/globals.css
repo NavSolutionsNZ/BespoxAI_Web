@@ -20,7 +20,7 @@
 
 body {
   font-family: var(--font-body);
-  background: var(--cream);
+  background: #ffffff;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
