@@ -488,11 +488,18 @@ export default function OnboardingPage() {
                 <h1 style={{ ...heading, textAlign: 'center' }}>
                   {fname ? `${fname}, you're all set.` : "You're all set."}
                 </h1>
-                <p style={{ ...subtext, textAlign: 'center', maxWidth: 400, margin: '0 auto 36px' }}>
+                <p style={{ ...subtext, textAlign: 'center', maxWidth: 400, margin: '0 auto 24px' }}>
                   {wantsToConnect
-                    ? 'Your port settings are saved. Head to Settings → BC Installer when your IT team is ready.'
+                    ? 'Your BC connection details are saved. Your IT team can now download and run the pre-configured installer.'
                     : 'You can connect your system any time from Settings → BC Installer.'}
                 </p>
+                {wantsToConnect ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
+                    <a href="/settings?tab=installer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--forest)', color: '#fff', borderRadius: 10, padding: '12px 24px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+                      Open BC Installer →
+                    </a>
+                  </div>
+                ) : null}
 
                 {/* Summary */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 36, textAlign: 'left' }}>

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import React from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -139,8 +139,10 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
 export default function SettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [tab,          setTab]          = useState<Tab>('overview')
+  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
   const [loading,      setLoading]      = useState(true)
