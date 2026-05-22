@@ -1287,7 +1287,7 @@ function DeployToTestPanel(props: DeployPanelProps) {
 // ─── Deploy to Production Panel ────────────────────────────────────────────────
 
 interface ProdDeployPanelProps {
-  selected:       Requirement
+  selected:       AdminReq
   onSentApproval: (goLiveDoc: string, sentAt: string) => void
   onDeployed:     (snapshotId: string, deployedAt: string) => void
 }
