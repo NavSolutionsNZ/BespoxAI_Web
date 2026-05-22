@@ -533,7 +533,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                             <div key={ui} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', borderBottom:ui<arr2.length-1?'1px solid var(--fog)':'none' }}>
                               <div>
                                 <div style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink)', fontWeight:500 }}>{u.customer}</div>
-                                <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', textTransform:'capitalize' }}>{u.from} → {u.to} · {relativeTime(u.at)}</div>
+                                <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', textTransform:'capitalize' }}>{u.from} → {u.to} · {relativeTime(u.changedAt)}</div>
                               </div>
                               {u.mrrDelta>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'var(--forest)', fontWeight:600 }}>+${u.mrrDelta}/mo</span>}
                             </div>
@@ -543,7 +543,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                             <div key={di} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', borderBottom:di<arr2.length-1?'1px solid var(--fog)':'none' }}>
                               <div>
                                 <div style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink)', fontWeight:500 }}>{d.customer}</div>
-                                <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', textTransform:'capitalize' }}>{d.from} → {d.to} · {relativeTime(d.at)}</div>
+                                <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)', textTransform:'capitalize' }}>{d.from} → {d.to} · {relativeTime(d.changedAt)}</div>
                               </div>
                               {d.mrrDelta<0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'#A32D2D', fontWeight:600 }}>−${Math.abs(d.mrrDelta)}/mo</span>}
                             </div>
