@@ -196,7 +196,7 @@ export async function GET() {
       count:      reviewsThisMonth.length,
       revenueNZD: reviewsThisMonth.length * REVIEW_FEE,
     },
-    list: paidReviews.slice(0, 20).map(r => ({
+    list: paidReviews.slice(0, 100).map(r => ({
       id:        r.id,
       tenant:    r.tenant.name,
       customer:  r.user.name || r.user.email,
@@ -236,14 +236,14 @@ export async function GET() {
       balances:   { count: balancesThisMonth.length,  revenueNZD: Math.round(moBalanceRev) },
       totalNZD:   Math.round(moDepositRev + moBalanceRev),
     },
-    recentDeposits: paidDeposits.slice(0, 10).map((r: any) => ({
+    recentDeposits: paidDeposits.map((r: any) => ({
       id:        r.id,
       tenant:    r.tenant.name,
       title:     r.title,
       paidAt:    r.depositPaidAt!.toISOString(),
       amountNZD: Math.round(reqDepositAmt(r)),
     })),
-    recentBalances: paidBalances.slice(0, 10).map((r: any) => ({
+    recentBalances: paidBalances.map((r: any) => ({
       id:        r.id,
       tenant:    r.tenant.name,
       title:     r.title,
