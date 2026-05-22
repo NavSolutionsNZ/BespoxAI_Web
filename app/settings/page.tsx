@@ -57,6 +57,8 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 // Test environment form — full credentials + optional "use production credentials" checkbox
+const sharedInp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
+
 function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onTestCredsChange }: {
   initial: { testNavDatabaseServer: string; testNavDatabaseName: string; testNavServerInstance: string; testBcPort: string; testBcInstance: string; testBcCompany: string; testAgentPort: string }
   onSave: (data: Record<string, any>) => Promise<void>
@@ -396,18 +398,18 @@ function SettingsInner() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>First Name</div>
-                  <input ref={profileRefs.firstName} style={inp} defaultValue={profile.firstName} placeholder="Jane" key={'fn-' + profile.firstName}
+                  <input ref={profileRefs.firstName} style={sharedInp} defaultValue={profile.firstName} placeholder="Jane" key={'fn-' + profile.firstName}
                     onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Last Name</div>
-                  <input ref={profileRefs.lastName} style={inp} defaultValue={profile.lastName} placeholder="Smith" key={'ln-' + profile.lastName}
+                  <input ref={profileRefs.lastName} style={sharedInp} defaultValue={profile.lastName} placeholder="Smith" key={'ln-' + profile.lastName}
                     onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Preferred Name <span style={{ fontWeight: 400, opacity: 0.6 }}>· optional</span></div>
-                <input ref={profileRefs.preferredName} style={inp} defaultValue={profile.preferredName} placeholder="e.g. Jay — leave blank to use first name" key={'pn-' + profile.preferredName}
+                <input ref={profileRefs.preferredName} style={sharedInp} defaultValue={profile.preferredName} placeholder="e.g. Jay — leave blank to use first name" key={'pn-' + profile.preferredName}
                   onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
