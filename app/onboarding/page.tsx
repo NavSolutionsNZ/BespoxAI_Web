@@ -99,8 +99,10 @@ export default function OnboardingPage() {
   const [userDisplayName,  setUserDisplayName]  = useState('')
 
   // Step 1
-  const [persona,   setPersona]   = useState('')
-  const [userName,  setUserName]  = useState('')
+  const [persona,       setPersona]       = useState('')
+  const [firstName,     setFirstName]     = useState('')
+  const [lastName,      setLastName]      = useState('')
+  const [preferredName, setPreferredName] = useState('')
 
   // Step 2
   const [navProduct, setNavProduct] = useState('')
@@ -138,7 +140,9 @@ export default function OnboardingPage() {
         setTenantName(data.tenant?.name ?? '')
         setUserDisplayName(data.user?.name ?? '')
         if (data.user?.persona) setPersona(data.user.persona)
-        if (data.user?.name)    setUserName(data.user.name)
+        if (data.user?.firstName)     setFirstName(data.user.firstName)
+        if (data.user?.lastName)      setLastName(data.user.lastName)
+        if (data.user?.preferredName) setPreferredName(data.user.preferredName)
         const p = data.prefill
         if (p?.navProduct) setNavProduct(p.navProduct)
         if (p?.navVersion) setNavVersion(p.navVersion)
@@ -191,7 +195,7 @@ export default function OnboardingPage() {
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persona, userName, navProduct, navVersion, lastCU,
+        body: JSON.stringify({ persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU,
           bcPort: parseInt(bcPort, 10) || 8048, agentPort: parseInt(agentPort, 10) || 9099, wantsToConnect,
           bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance }),
       })
@@ -270,9 +274,25 @@ export default function OnboardingPage() {
                   {tenantName ? `We've set up your workspace for ${tenantName}. ` : ''}
                   Tell us a bit about yourself so we can tailor the experience.
                 </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <Label>First name</Label>
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jane"
+                      style={inputStyle}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                  </div>
+                  <div>
+                    <Label>Last name</Label>
+                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith"
+                      style={inputStyle}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                      onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+                  </div>
+                </div>
                 <div style={{ marginBottom: 24 }}>
-                  <Label>Your name</Label>
-                  <input type="text" value={userName} onChange={e => setUserName(e.target.value)} placeholder="e.g. Jane Smith"
+                  <Label optional>Preferred name</Label>
+                  <input type="text" value={preferredName} onChange={e => setPreferredName(e.target.value)} placeholder="e.g. Jay (leave blank to use first name)"
                     style={inputStyle}
                     onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                     onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
@@ -513,7 +533,7 @@ export default function OnboardingPage() {
                 {/* Summary */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 36, textAlign: 'left' }}>
                   {([
-                    ['Name',       userName || '—'],
+                    ['Name', (preferredName || firstName) ? (preferredName || firstName) + ' ' + lastName : '—'],
                     ['Role',       PERSONAS.find(p => p.id === persona)?.label ?? persona],
                     ['Company',    tenantName || '—'],
                     ['Product',    navProduct === 'BC' ? 'Business Central' : navProduct === 'NAV' ? 'Microsoft NAV' : '—'],

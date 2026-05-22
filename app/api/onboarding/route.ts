@@ -44,7 +44,7 @@ export async function GET() {
     }),
     (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { name: true, persona: true },
+      select: { name: true, persona: true, firstName: true, lastName: true, preferredName: true },
     }),
     prisma.signupRequest.findFirst({
       where: { email },
@@ -57,7 +57,7 @@ export async function GET() {
   const fromSignup = signup?.bcVersion ? BC_VERSION_MAP[signup.bcVersion] : null
 
   return NextResponse.json({
-    user:   { name: user?.name ?? session.user.name ?? null, email, persona: user?.persona ?? null },
+    user:   { name: user?.name ?? session.user.name ?? null, email, persona: user?.persona ?? null, firstName: user?.firstName ?? null, lastName: user?.lastName ?? null, preferredName: user?.preferredName ?? null },
     tenant: { name: tenant?.name ?? null, country: tenant?.country ?? 'NZ' },
     prefill: {
       navProduct:        tenant?.navProduct        ?? fromSignup?.navProduct ?? null,
@@ -83,13 +83,20 @@ export async function POST(req: NextRequest) {
   const tenantId = (session.user as any).tenantId as string
 
   const body = await req.json().catch(() => ({}))
-  const { persona, userName, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
+  const { persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
 
   const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 8048))
   const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 9099))
 
   await Promise.all([
-    prisma.user.update({ where: { id: userId }, data: { persona: persona ?? null, onboardingDone: true, ...(userName ? { name: userName.trim() } : {}) } }),
+    prisma.user.update({ where: { id: userId }, data: {
+        persona: persona ?? null,
+        onboardingDone: true,
+        ...(firstName     ? { firstName:     firstName.trim()     } : {}),
+        ...(lastName      ? { lastName:      lastName.trim()      } : {}),
+        ...(preferredName ? { preferredName: preferredName.trim() } : {}),
+        name: [firstName, lastName].filter(Boolean).join(' ').trim() || null,
+      } }),
     (prisma as any).tenant.update({
       where: { id: tenantId },
       data: {

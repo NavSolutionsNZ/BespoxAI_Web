@@ -245,7 +245,7 @@ function DashboardInner() {
 
   // ── Greeting ────────────────────────────────────────────────────────────────
 
-  const firstName   = user?.name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
+  const displayFirst = user?.preferredName || user?.firstName || user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'there'
   const hour        = new Date().getHours()
   const greeting    = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const tenantName  = user?.tenantName ?? 'Your Company'
@@ -707,7 +707,7 @@ function DashboardInner() {
                       </span>
                     </div>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.7 }}>
-                      {greeting}, {firstName}.{' '}
+                      {greeting}, {displayFirst}.{' '}
                       {isConnected
                         ? <>I&apos;m connected to <strong>{tenantName}</strong> and ready to answer questions about your finances. What would you like to know?</>
                         : <>I&apos;m your BC financial assistant. <a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>Connect your Business Central or NAV system</a> to start querying your live data.</>
