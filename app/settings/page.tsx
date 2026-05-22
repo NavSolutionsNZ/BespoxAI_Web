@@ -17,67 +17,9 @@ interface Tenant {
   navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
   testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null
-  _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
-}
-interface TenantUser {
-  id: string; name: string | null; email: string; role: string; active: boolean; createdAt: string
-}
-type Tab = 'overview' | 'users' | 'entities' | 'installer'
+  _debug?: boolean
 
-const COUNTRY_OPTIONS = [
-  { code: 'NZ', label: 'New Zealand' }, { code: 'AU', label: 'Australia' },
-  { code: 'GB', label: 'United Kingdom' }, { code: 'US', label: 'United States' },
-  { code: 'SG', label: 'Singapore' }, { code: 'MY', label: 'Malaysia' },
-  { code: 'ID', label: 'Indonesia' },
-]
-const NAV: { id: Tab; icon: string; label: string }[] = [
-  { id: 'overview',  icon: '⚙️', label: 'Overview'     },
-  { id: 'users',     icon: '👥', label: 'Users'         },
-  { id: 'entities',  icon: '📊', label: 'Data Entities' },
-  { id: 'installer', icon: '⬇️', label: 'BC Installer'  },
-]
-
-function relTime(iso: string) {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
-  if (d === 0) return 'Today'
-  if (d === 1) return 'Yesterday'
-  if (d < 30) return `${d}d ago`
-  return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function RoleBadge({ role }: { role: string }) {
-  const m: Record<string, [string, string, string]> = {
-    superadmin:   ['rgba(200,149,42,0.12)', 'var(--amber)',  'rgba(200,149,42,0.3)'],
-    tenant_admin: ['rgba(10,92,70,0.10)',   'var(--forest)', 'rgba(10,92,70,0.3)'  ],
-    user:         ['rgba(59,82,73,0.08)',   'var(--slate)',  'rgba(59,82,73,0.2)'  ],
-  }
-  const [bg, color, border] = m[role] ?? m.user
-  const label = role === 'superadmin' ? 'Super Admin' : role === 'tenant_admin' ? 'Admin' : 'User'
-  return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
-}
-
-const sharedInp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
-
-// Test environment form — same-server setup only (separate server handled below)
-
-
-function SettingsInner() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // ── DEBUG ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    console.log('[DEBUG] SettingsInner MOUNTED')
-    return () => console.log('[DEBUG] SettingsInner UNMOUNTED')
-  }, [])
-  // ── END DEBUG ───────────────────────────────────────────────────────────────
-
-  const [tab, _setTab] = useState<Tab>('overview')
-  const setTab = (t: Tab) => {
-    console.log('[DEBUG] setTab called →', t, '| was:', tab, '| caller:', new Error().stack?.split('\n').slice(1, 4).map(s => s.trim()).join(' >> '))
-    _setTab(t)
-  }
+  const [tab, setTab] = useState<Tab>('overview')
   useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
@@ -104,18 +46,6 @@ function SettingsInner() {
   const role       = user?.role as string ?? ''
   const initials   = (user?.name ?? user?.email ?? '?').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
 
-  // ── DEBUG state watchers (after all declarations) ───────────────────────────
-  useEffect(() => {
-    console.log('[DEBUG] tenant changed — id:', tenant?.id ?? 'null', '| loading:', loading)
-  }, [tenant])
-  useEffect(() => {
-    console.log('[DEBUG] loading changed →', loading, '| tenant.id:', tenant?.id ?? 'null')
-  }, [loading])
-  useEffect(() => {
-    console.log('[DEBUG] tab changed →', tab)
-  }, [tab])
-  // ── END DEBUG state watchers ─────────────────────────────────────────────────
-
   useEffect(() => {
     fetch('/api/settings/profile').then(r => r.json()).then(d => {
       if (d.profile) setProfile({ firstName: d.profile.firstName || '', lastName: d.profile.lastName || '', preferredName: d.profile.preferredName || '' })
@@ -135,16 +65,13 @@ function SettingsInner() {
   const toast$ = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500) }
 
   useEffect(() => {
-    console.log('[DEBUG] auth-guard fired — status:', status, '| role:', role, '| session:', !!session)
     if (status === 'loading') return
-    if (status === 'unauthenticated' || !session) { console.log('[DEBUG] auth-guard → pushing /login'); router.push('/login'); return }
-    if (role && role !== 'tenant_admin' && role !== 'superadmin') { console.log('[DEBUG] auth-guard → pushing /dashboard (role:', role, ')'); router.push('/dashboard') }
+    if (status === 'unauthenticated' || !session) {
+    if (role && role !== 'tenant_admin' && role !== 'superadmin') {
   }, [status, session, role])
 
   useEffect(() => {
-    console.log('[DEBUG] data-load effect fired — session:', !!session, '| hasLoaded:', hasLoaded.current)
     if (!session || hasLoaded.current) return
-    console.log('[DEBUG] data-load RUNNING (fetching settings)')
     hasLoaded.current = true
     Promise.all([fetch('/api/settings').then(r => r.json()), fetch('/api/settings/users').then(r => r.json())])
       .then(([td, ud]) => {
@@ -176,7 +103,6 @@ function SettingsInner() {
   }, [])
 
   useEffect(() => {
-    console.log('[DEBUG] health-check effect fired — session present:', !!session)
     if (!session) return
     const check = async () => {
       const t0 = Date.now()
@@ -235,7 +161,12 @@ function SettingsInner() {
     setInstLoading(false)
   }
 
-  if (loading || status === 'loading') return (
+  // NOTE: intentionally only gating on `loading` (our own data-load flag), NOT on
+  // `status === 'loading'`. NextAuth briefly sets status→'loading' every ~60s during
+  // its silent session refresh. Including it here caused the entire content tree to
+  // unmount and remount each time, clearing all form fields. The auth guard effect
+  // handles unauthenticated users via router.push, so we don't need status here.
+  if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--ink)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.4)' }}>Loading…</span>
     </div>
@@ -612,8 +543,6 @@ function SettingsInner() {
             <Card style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)' }}>
               <Label>Production Environment</Label>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.</p>
-
-              {console.log('[DEBUG] rendering ProdEnvForm with key:', tenant?.id ?? 'loading', '| loading:', loading) as any}
               <ProdEnvForm
                 key={tenant?.id ?? 'loading'}
                 initial={instForm}
@@ -628,7 +557,6 @@ function SettingsInner() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
                 </p>
-                {console.log('[DEBUG] rendering TestEnvForm with key:', tenant?.id ?? 'loading') as any}
                 <TestEnvForm
                   key={tenant?.id ?? 'loading'}
                   initial={{
@@ -702,12 +630,6 @@ function TestEnvForm({ initial, onSave }: {
   initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string }
   onSave: (data: Record<string, any>) => Promise<void>
 }) {
-  // ── DEBUG ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    console.log('[DEBUG] TestEnvForm MOUNTED — initial.testNavDatabaseName:', initial.testNavDatabaseName, '| t:', Date.now())
-    return () => console.log('[DEBUG] TestEnvForm UNMOUNTED | t:', Date.now())
-  }, [])
-  // ── END DEBUG ───────────────────────────────────────────────────────────────
 
   const refs = {
     testNavDatabaseName: useRef<HTMLInputElement>(null),
@@ -776,12 +698,6 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
   onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string>) => void
 }) {
-  // ── DEBUG ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    console.log('[DEBUG] ProdEnvForm MOUNTED — initial.bcInstance:', initial.bcInstance, '| t:', Date.now())
-    return () => console.log('[DEBUG] ProdEnvForm UNMOUNTED | t:', Date.now())
-  }, [])
-  // ── END DEBUG ───────────────────────────────────────────────────────────────
 
   const refs = {
     navDatabaseServer: useRef<HTMLInputElement>(null),
