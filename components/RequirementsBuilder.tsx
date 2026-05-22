@@ -1554,7 +1554,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 </div>
               ):(
                 <div style={{...crd,textAlign:'center',padding:'22px 20px'}}>
-                  {genSpec ? (
+                  {feasLoadingId===req.id ? null : genSpec ? (
                     <>
                       <div style={{fontSize:28,marginBottom:10}}>✦</div>
                       <p style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--forest)',letterSpacing:'0.1em',marginBottom:6}}>Generating AI spec…</p>
