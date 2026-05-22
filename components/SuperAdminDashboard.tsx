@@ -615,7 +615,6 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
             </div>
           )}
         </div>{/* end outer flex column */}
-        )
       })()}
 
       {/* ── Needs attention ─────────────────────────────────────────────── */}
