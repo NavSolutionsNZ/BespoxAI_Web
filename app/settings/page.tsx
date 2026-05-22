@@ -95,17 +95,17 @@ function TestEnvForm({ initial, onSave, onSaved }: {
       </div>
       <div>
         {lbl('Test Database Name', true)}
-        <input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" readOnly onFocus={e => e.target.removeAttribute('readOnly')} />
+        <input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={initial.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test" />
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           {lbl('Test BC Instance')}
-          <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance} placeholder="Leave blank to use production instance" readOnly onFocus={e => e.target.removeAttribute('readOnly')} />
+          <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance} placeholder="Leave blank to use production instance" />
         </div>
         <div>
           {lbl('Test BC Company')}
-          <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="Leave blank to use production company" readOnly onFocus={e => e.target.removeAttribute('readOnly')} />
+          <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany} placeholder="Leave blank to use production company" />
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -285,7 +285,7 @@ function SettingsInner() {
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>{label}</div>
       <input type={type} placeholder={placeholder} value={obj[field]} onChange={e => set((f: any) => ({ ...f, [field]: e.target.value }))}
         style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-        readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+        onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
     </div>
   )
 
@@ -377,18 +377,18 @@ function SettingsInner() {
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>First Name</div>
                   <input ref={profileRefs.firstName} style={sharedInp} defaultValue={profile.firstName} placeholder="Jane" key={'fn-' + profile.firstName}
-                    readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Last Name</div>
                   <input ref={profileRefs.lastName} style={sharedInp} defaultValue={profile.lastName} placeholder="Smith" key={'ln-' + profile.lastName}
-                    readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                    onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Preferred Name <span style={{ fontWeight: 400, opacity: 0.6 }}>· optional</span></div>
                 <input ref={profileRefs.preferredName} style={sharedInp} defaultValue={profile.preferredName} placeholder="e.g. Jay — leave blank to use first name" key={'pn-' + profile.preferredName}
-                  readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                  onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <button onClick={saveProfile} disabled={profileSaving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: profileSaving ? 'default' : 'pointer', opacity: profileSaving ? 0.7 : 1 }}>
@@ -420,7 +420,7 @@ function SettingsInner() {
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Last CU</div>
-                  <input type="text" defaultValue={tenant?.lastCU ?? ''} placeholder="e.g. CU3" onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ lastCU: e.target.value }) }} style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} />
+                  <input type="text" defaultValue={tenant?.lastCU ?? ''} placeholder="e.g. CU3" onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ lastCU: e.target.value }) }} style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} />
                 </div>
               </div>
               <div>
@@ -468,7 +468,7 @@ function SettingsInner() {
                     <input type="text" value={testEnv.testNavDatabaseServer} placeholder="localhost (defaults to production server)"
                       onChange={e => setTestEnv(f => ({ ...f, testNavDatabaseServer: e.target.value }))}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavDatabaseServer: e.target.value }) }}
-                      readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                   </div>
                   <div>
@@ -476,7 +476,7 @@ function SettingsInner() {
                     <input type="text" value={testEnv.testNavDatabaseName} placeholder="e.g. Dynamics NAV 2017 Test"
                       onChange={e => setTestEnv(f => ({ ...f, testNavDatabaseName: e.target.value }))}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavDatabaseName: e.target.value }) }}
-                      readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                   </div>
                   <div>
@@ -484,7 +484,7 @@ function SettingsInner() {
                     <input type="text" value={testEnv.testNavServerInstance} placeholder="e.g. DynamicsNAV110_Test"
                       onChange={e => setTestEnv(f => ({ ...f, testNavServerInstance: e.target.value }))}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testNavServerInstance: e.target.value }) }}
-                      readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                   </div>
                   <div style={{ display: 'flex', gap: 12 }}>
@@ -493,7 +493,7 @@ function SettingsInner() {
                       <input type="number" value={testEnv.testBcPort} placeholder="e.g. 7048"
                         onChange={e => setTestEnv(f => ({ ...f, testBcPort: e.target.value }))}
                         onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ testBcPort: e.target.value }) }}
-                        readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -501,7 +501,7 @@ function SettingsInner() {
                       <input type="text" value={testEnv.testBcCompany} placeholder="e.g. Cronus NZ Test"
                         onChange={e => setTestEnv(f => ({ ...f, testBcCompany: e.target.value }))}
                         onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testBcCompany: e.target.value }) }}
-                        readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                     </div>
                   </div>
@@ -531,7 +531,7 @@ function SettingsInner() {
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>{label}</div>
                     <input type={type} value={(inviteForm as any)[field]} onChange={e => setInviteForm(f => ({ ...f, [field]: e.target.value }))}
                       style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '7px 12px', outline: 'none', width: 190 }}
-                      readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                   </div>
                 ))}
                 <div>
@@ -684,7 +684,7 @@ function SettingsInner() {
                     <input type="text" placeholder="e.g. http://test-server:8080" value={instForm.testAgentUrl}
                       onChange={e => setInstForm(f => ({ ...f, testAgentUrl: e.target.value }))}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                      readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testAgentUrl: e.target.value }) }} />
                     <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>URL of the BCAgent running on the test server. Set after installing the test agent below.</p>
                   </div>
@@ -693,7 +693,7 @@ function SettingsInner() {
                     <input type="password" placeholder="" value={instForm.testTunnelToken}
                       onChange={e => setInstForm(f => ({ ...f, testTunnelToken: e.target.value }))}
                       style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-                      readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                       onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testTunnelToken: e.target.value }) }} />
                     <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>From your Cloudflare Zero Trust dashboard — separate tunnel for the test server.</p>
                   </div>
@@ -771,29 +771,29 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>{lbl('Database Server')}<input ref={refs.navDatabaseServer} style={inp} defaultValue={initial.navDatabaseServer} placeholder="localhost" readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-        <div>{lbl('Database Name')}<input ref={refs.navDatabaseName} style={inp} defaultValue={initial.navDatabaseName} placeholder="e.g. Dynamics NAV 2017" readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('Database Server')}<input ref={refs.navDatabaseServer} style={inp} defaultValue={initial.navDatabaseServer} placeholder="localhost" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('Database Name')}<input ref={refs.navDatabaseName} style={inp} defaultValue={initial.navDatabaseName} placeholder="e.g. Dynamics NAV 2017" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>{lbl('Server Instance')}<input ref={refs.navServerInstance} style={inp} defaultValue={initial.navServerInstance} placeholder="e.g. DynamicsNAV110" readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-        <div>{lbl('BC Instance Name')}<input ref={refs.bcInstance} style={inp} defaultValue={initial.bcInstance} placeholder="e.g. BC" readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('Server Instance')}<input ref={refs.navServerInstance} style={inp} defaultValue={initial.navServerInstance} placeholder="e.g. DynamicsNAV110" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('BC Instance Name')}<input ref={refs.bcInstance} style={inp} defaultValue={initial.bcInstance} placeholder="e.g. BC" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>{lbl('BC Company Name')}<input ref={refs.bcCompany} style={inp} defaultValue={initial.bcCompany} placeholder="e.g. CRONUS International Ltd." readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('BC Company Name')}<input ref={refs.bcCompany} style={inp} defaultValue={initial.bcCompany} placeholder="e.g. CRONUS International Ltd." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>{lbl('BC OData Port')}<input ref={refs.bcPort} style={inp} type="number" defaultValue={initial.bcPort} readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-          <div>{lbl('Agent Port')}<input ref={refs.agentPort} style={inp} type="number" defaultValue={initial.agentPort} readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+          <div>{lbl('BC OData Port')}<input ref={refs.bcPort} style={inp} type="number" defaultValue={initial.bcPort} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+          <div>{lbl('Agent Port')}<input ref={refs.agentPort} style={inp} type="number" defaultValue={initial.agentPort} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
           {lbl('BC Username')}
-          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\\username" autoComplete="off" name="bc-username" readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\\username" autoComplete="off" name="bc-username" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows / BC service account with OData access.</p>
         </div>
         <div>
           {lbl('BC Password')}
-          <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} autoComplete="new-password" name="bc-password" readOnly onFocus={e => { e.target.removeAttribute('readOnly'); e.target.style.borderColor = 'var(--forest)' }} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} autoComplete="new-password" name="bc-password" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
         </div>
       </div>
