@@ -132,7 +132,27 @@ if ($killed -eq 0) { Write-Warn 'No BCAgent processes found -- skipping' }
 
 # -- Step 4: Release port if still held ---------------------------------------
 
-Write-Step "Checking port $AgentPort"
+Write-Step "Clearing HTTP.sys reservation for port $AgentPort"
+
+# HttpListener registers with HTTP.sys (PID 4 / System) -- cannot be killed.
+# Must remove the URL ACL reservation via netsh instead.
+try {
+    $urlacls = & netsh http show urlacl 2>&1 | Select-String "http://\+:$AgentPort/"
+    if ($urlacls) {
+        foreach ($entry in $urlacls) {
+            $url = ($entry.ToString().Trim() -split '\s+')[-1]
+            Write-Info "Removing HTTP.sys reservation: $url"
+            & netsh http delete urlacl url=$url 2>&1 | ForEach-Object { Write-Info $_ }
+        }
+        Write-OK "HTTP.sys URL reservations removed for port $AgentPort"
+    } else {
+        Write-OK "No HTTP.sys reservation found for port $AgentPort"
+    }
+} catch {
+    Write-Warn "Could not clear HTTP.sys reservations: $_"
+}
+
+Write-Step "Checking port $AgentPort for other processes"
 
 try {
     $netstatOut = & netstat -ano 2>&1
@@ -141,7 +161,7 @@ try {
         foreach ($line in $netstatLines) {
             $parts = ($line.ToString().Trim()) -split '\s+'
             $pidStr = $parts[-1]
-            if ($pidStr -match '^\d+$' -and [int]$pidStr -gt 0) {
+            if ($pidStr -match '^\d+$' -and [int]$pidStr -gt 4) {
                 $proc = Get-Process -Id ([int]$pidStr) -ErrorAction SilentlyContinue
                 if ($proc) {
                     Write-Warn "Port $AgentPort held by PID $pidStr ($($proc.Name)) -- killing..."
@@ -149,6 +169,8 @@ try {
                     Start-Sleep -Seconds 1
                     Write-OK "Killed PID $pidStr"
                 }
+            } elseif ($pidStr -eq '4') {
+                Write-Warn "Port $AgentPort still shows PID 4 (HTTP.sys) -- will clear after reboot if netsh did not take effect"
             }
         }
     } else {
