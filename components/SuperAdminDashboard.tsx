@@ -117,7 +117,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div style={{ fontFamily:'var(--font-mono)', fontSize:9, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--slate)', marginBottom:12, marginTop:28 }}>{children}</div>
 }
 
-export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
+export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: string, reqId?: string) => void }) {
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [enquiries,    setEnquiries]    = useState<MigrationEnquiry[]>([])
   const [tenants,      setTenants]      = useState<Tenant[]>([])
@@ -226,7 +226,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                       <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{req.title}</div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', marginTop: 2 }}>{req.user.name || req.user.email} · updated {relativeTime(req.updatedAt)}</div>
                     </div>
-                    <button onClick={e => { e.stopPropagation(); onNavigate('requirements') }} style={{ flexShrink: 0, background: 'none', border: `1px solid ${s.border}`, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, color: s.color, whiteSpace: 'nowrap' }}>
+                    <button onClick={e => { e.stopPropagation(); onNavigate('requirements', req.id) }} style={{ flexShrink: 0, background: 'none', border: `1px solid ${s.border}`, borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, color: s.color, whiteSpace: 'nowrap' }}>
                       {s.action} →
                     </button>
                   </div>
@@ -511,7 +511,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               <div style={{ fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, color:'var(--ink)', marginBottom:2 }}>{req.title}</div>
               <div style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--slate)' }}>{req.user.name||req.user.email} · updated {relativeTime(req.updatedAt)}</div>
             </div>
-            <button onClick={() => onNavigate('requirements')} style={{ flexShrink:0, background:'none', border:`1px solid ${s.border}`, borderRadius:7, padding:'6px 14px', cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:9, color:s.color, whiteSpace:'nowrap' }}>
+            <button onClick={() => onNavigate('requirements', req.id)} style={{ flexShrink:0, background:'none', border:`1px solid ${s.border}`, borderRadius:7, padding:'6px 14px', cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:9, color:s.color, whiteSpace:'nowrap' }}>
               {s.action} →
             </button>
           </div>

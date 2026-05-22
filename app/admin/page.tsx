@@ -50,6 +50,7 @@ function AdminPageInner() {
   // Tab is tracked in the URL (?tab=xxx) so the browser back button works
   const tabParam = (searchParams.get('tab') as Tab | null) ?? 'overview'
   const [tab, setTabState] = useState<Tab>(tabParam)
+  const [autoSelectReqId, setAutoSelectReqId] = useState<string|null>(null)
 
   function setTab(id: Tab) {
     setTabState(id)
@@ -458,7 +459,7 @@ function AdminPageInner() {
 
           {/* ── Overview tab ─────────────────────────────────────────────── */}
           {tab === 'overview' && (
-<SuperAdminDashboard onNavigate={(t) => setTab(t as any)} />
+<SuperAdminDashboard onNavigate={(t, reqId) => { setTab(t as any); if (reqId) setAutoSelectReqId(reqId) }} />
           )}
           {/* ── Tenants tab ───────────────────────────────────────────────── */}
           {tab === 'tenants' && (
@@ -734,7 +735,7 @@ function AdminPageInner() {
 
         {/* ── Requirements tab ──────────────────────────────────────────────── */}
         {tab === 'requirements' && (
-          <AdminRequirementsTab />
+          <AdminRequirementsTab autoSelectReqId={autoSelectReqId} onAutoSelectDone={() => setAutoSelectReqId(null)} />
         )}
 
         {/* ── AI Setup tab ──────────────────────────────────────────────────── */}
@@ -1278,7 +1279,7 @@ function DeployToTestPanel(props: DeployPanelProps) {
 
 // ─── Admin Requirements Tab ────────────────────────────────────────────────────
 
-function AdminRequirementsTab() {
+function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelectReqId?: string|null; onAutoSelectDone?: () => void }) {
   const { data: session } = useSession()
   const adminName  = (session?.user as any)?.name  ?? 'Admin'
   const adminEmail = (session?.user as any)?.email ?? ''
@@ -1356,6 +1357,14 @@ function AdminRequirementsTab() {
     }
   }
   useState(() => { load() })
+
+  // Auto-select a requirement when navigated from overview attention card
+  useEffect(() => {
+    if (autoSelectReqId && reqs.length > 0) {
+      const target = reqs.find(r => r.id === autoSelectReqId)
+      if (target) { setSelected(target); onAutoSelectDone?.() }
+    }
+  }, [autoSelectReqId, reqs])
 
   async function patch(id: string, body: object) {
     setAL(true)
