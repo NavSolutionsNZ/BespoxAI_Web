@@ -193,7 +193,7 @@ function SettingsInner() {
         if (t?.bcCompany)  setInstForm(f => ({ ...f, bcCompany:  t.bcCompany         }))
         setLoading(false)
       }).catch(() => setLoading(false))
-  }, [session])
+  }, [])
 
   useEffect(() => {
     if (!session) return
