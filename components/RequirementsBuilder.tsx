@@ -449,6 +449,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   }
 
   const filtered = reqs.filter(r=>{
+    if (r.parentId) return false   // addenda are navigated via parent — not shown in main list
     if (filterStatus!=='all'&&r.status!==filterStatus) return false
     if (filterArea!=='all'&&r.bcArea!==filterArea) return false
     return true

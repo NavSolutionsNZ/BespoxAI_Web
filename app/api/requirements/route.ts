@@ -35,12 +35,11 @@ export async function GET() {
       },
     })
 
-    // Only show top-level requirements in the list — addenda appear nested under their parent
-    const topLevel = isSuperadmin ? requirements : requirements.filter((r: any) => !r.parentId)
-
+    // Return all requirements (incl. addenda) so customers can navigate into them.
+    // The UI filters the displayed list to top-level only; addenda are reachable via parent's addenda list.
     const sanitised = isSuperadmin
-      ? topLevel
-      : topLevel.map(({ devPlan, ...rest }: any) => rest)
+      ? requirements
+      : requirements.map(({ devPlan, ...rest }: any) => rest)
 
     return NextResponse.json({ requirements: sanitised })
   } catch (err: any) {
