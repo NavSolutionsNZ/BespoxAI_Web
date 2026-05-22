@@ -74,5 +74,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   await prisma.user.delete({ where: { id: params.id } })
+
+  // Clean up associated signup request
+  await prisma.signupRequest.deleteMany({ where: { email: target.email } }).catch(() => {})
+
   return NextResponse.json({ ok: true })
 }

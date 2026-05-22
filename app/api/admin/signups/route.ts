@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
   // Try Prisma client first (requires table named exactly "SignupRequest")
   try {
     const signups = await prisma.signupRequest.findMany({
+      where: { activatedAt: null },
       orderBy: { createdAt: 'desc' },
     })
     console.log(`[signups] prisma returned ${signups.length} records`)
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
   // Fallback: raw SQL tolerates any casing of the table name
   try {
     const rows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT * FROM "SignupRequest" ORDER BY "createdAt" DESC`
+      `SELECT * FROM "SignupRequest" WHERE "activatedAt" IS NULL ORDER BY "createdAt" DESC`
     )
     // Normalize: manually-created tables may use snake_case columns
     const signups = rows.map(r => ({
