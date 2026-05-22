@@ -128,26 +128,29 @@ function AdminPageInner() {
   }, [])
 
   useEffect(() => {
-    if (tab === 'signups' && !signupsLoaded) {
-      setSignupsError(null)
-      fetch('/api/admin/signups')
-        .then(async r => {
-          if (!r.ok) {
-            const d = await r.json().catch(() => ({}))
-            throw new Error(d.error ?? `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(data => {
-          setSignups(data.signups ?? [])
-          setSignupsLoaded(true)
-        })
-        .catch(e => {
-          setSignupsError(e.message)
-          setSignupsLoaded(true)
-        })
-    }
+    if (tab === 'signups' && !signupsLoaded) { loadSignups() }
   }, [tab, signupsLoaded])
+
+  function loadSignups() {
+    setSignupsError(null)
+    setSignupsLoaded(false)
+    fetch('/api/admin/signups')
+      .then(async r => {
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}))
+          throw new Error(d.error ?? 'HTTP ' + r.status)
+        }
+        return r.json()
+      })
+      .then(data => {
+        setSignups(data.signups ?? [])
+        setSignupsLoaded(true)
+      })
+      .catch(e => {
+        setSignupsError(e.message)
+        setSignupsLoaded(true)
+      })
+  }
 
   async function toggleTenant(id: string, active: boolean) {
     await fetch(`/api/admin/tenants/${id}`, {
@@ -663,7 +666,7 @@ function AdminPageInner() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h3 style={{ fontFamily: 'var(--font-cormorant)', fontSize: 22, margin: 0 }}>Signup Requests</h3>
               <button
-                onClick={() => { setSignupsLoaded(false) }}
+                onClick={() => loadSignups()}
                 style={{ background: 'transparent', border: '1px solid var(--fog)', borderRadius: 6, padding: '6px 14px', fontSize: 12, color: 'var(--slate)', cursor: 'pointer' }}
               >
                 ↻ Refresh
@@ -749,12 +752,16 @@ function AdminPageInner() {
                             <button
                               onClick={async () => {
                                 if (!confirm('Delete signup request for ' + s.email + '? This cannot be undone.')) return
-                                const res = await fetch(`/api/admin/signups/${s.id}`, { method: 'DELETE' })
-                                if (res.ok) {
-                                  setSignups(prev => prev.filter(x => x.id !== s.id))
-                                } else {
-                                  const data = await res.json()
-                                  alert(data.error ?? 'Delete failed')
+                                try {
+                                  const res = await fetch('/api/admin/signups/' + s.id, { method: 'DELETE' })
+                                  if (res.ok) {
+                                    setSignups(prev => prev.filter(x => x.id !== s.id))
+                                  } else {
+                                    const data = await res.json().catch(() => ({}))
+                                    alert(data.error ?? 'Delete failed — HTTP ' + res.status)
+                                  }
+                                } catch (e: any) {
+                                  alert('Delete failed: ' + e.message)
                                 }
                               }}
                               style={{ background: 'transparent', color: '#A32D2D', border: '1px solid rgba(163,45,45,0.3)', borderRadius: 6, padding: '5px 12px', fontSize: 11, cursor: 'pointer' }}
