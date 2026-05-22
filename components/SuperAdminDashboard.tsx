@@ -41,7 +41,7 @@ interface BillingStats {
     thisMonth: { count: number; revenueNZD: number }
     list: { id?: string; tenant: string; customer: string; title: string; paidAt: string; amountNZD: number }[]
   }
-  byTenant: { name: string; mrr: number; deposits: number; balances: number; devRevenue: number; reviewRevenue: number; total: number }[]
+  byTenant: { name: string; mrr: number; deposits: number; balances: number; reviews: number; devRevenue: number; reviewRevenue: number; total: number }[]
   dev?: {
     allTime:   { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
     thisMonth: { deposits: { count: number; revenueNZD: number }; balances: { count: number; revenueNZD: number }; totalNZD: number }
