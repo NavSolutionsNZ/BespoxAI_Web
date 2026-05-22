@@ -161,7 +161,12 @@ try {
         foreach ($line in $netstatLines) {
             $parts = ($line.ToString().Trim()) -split '\s+'
             $pidStr = $parts[-1]
-            if ($pidStr -match '^\d+$' -and [int]$pidStr -gt 4) {
+            if ($pidStr -eq '4') {
+                # PID 4 is the Windows kernel (System) -- never kill it.
+                # The netsh urlacl step above should have cleared the HTTP.sys
+                # reservation. If it still shows here, a reboot will fully release it.
+                Write-Warn "Port $AgentPort still shows PID 4 (HTTP.sys kernel). The netsh step should have cleared it -- if it persists, a reboot will release it. Safe to continue install."
+            } elseif ($pidStr -match '^\d+$' -and [int]$pidStr -gt 4) {
                 $proc = Get-Process -Id ([int]$pidStr) -ErrorAction SilentlyContinue
                 if ($proc) {
                     Write-Warn "Port $AgentPort held by PID $pidStr ($($proc.Name)) -- killing..."
@@ -169,8 +174,6 @@ try {
                     Start-Sleep -Seconds 1
                     Write-OK "Killed PID $pidStr"
                 }
-            } elseif ($pidStr -eq '4') {
-                Write-Warn "Port $AgentPort still shows PID 4 (HTTP.sys) -- will clear after reboot if netsh did not take effect"
             }
         }
     } else {
