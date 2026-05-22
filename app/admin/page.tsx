@@ -745,6 +745,23 @@ function AdminPageInner() {
                               {activating === s.id ? 'Activating…' : 'Activate →'}
                             </button>
                           )}
+                          {!s.activatedAt && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Delete signup request for ' + s.email + '? This cannot be undone.')) return
+                                const res = await fetch(`/api/admin/signups/${s.id}`, { method: 'DELETE' })
+                                if (res.ok) {
+                                  setSignups(prev => prev.filter(x => x.id !== s.id))
+                                } else {
+                                  const data = await res.json()
+                                  alert(data.error ?? 'Delete failed')
+                                }
+                              }}
+                              style={{ background: 'transparent', color: '#A32D2D', border: '1px solid rgba(163,45,45,0.3)', borderRadius: 6, padding: '5px 12px', fontSize: 11, cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
