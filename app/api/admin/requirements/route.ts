@@ -33,15 +33,23 @@ export async function GET() {
         user:              { select: { name: true, email: true } },
         tenant:            { select: { name: true } },
         assignedDeveloper: { select: { id: true, name: true, email: true } },
+        addenda: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
+        },
       },
     })
 
-    const statusCounts = requirements.reduce((acc: Record<string, number>, r) => {
+    // Separate top-level from addenda (admin sees both but addenda are nested)
+    const topLevel = requirements.filter((r: any) => !r.parentId)
+    const allAddenda = requirements.filter((r: any) => !!r.parentId)
+
+    const statusCounts = topLevel.reduce((acc: Record<string, number>, r: any) => {
       acc[r.status] = (acc[r.status] ?? 0) + 1
       return acc
     }, {})
 
-    return NextResponse.json({ requirements, statusCounts })
+    return NextResponse.json({ requirements: topLevel, allAddenda, statusCounts })
   } catch (err: any) {
     console.error('[admin/requirements] DB error:', err?.message)
     return NextResponse.json({ error: 'Database error — schema may need migration. Run: npx prisma db push', details: err?.message }, { status: 500 })

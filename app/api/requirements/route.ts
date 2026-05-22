@@ -27,12 +27,19 @@ export async function GET() {
       include: {
         user:   { select: { name: true, email: true } },
         tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+        addenda: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
+        },
       },
     })
 
+    // Only show top-level requirements in the list — addenda appear nested under their parent
+    const topLevel = isSuperadmin ? requirements : requirements.filter((r: any) => !r.parentId)
+
     const sanitised = isSuperadmin
-      ? requirements
-      : requirements.map(({ devPlan, ...rest }: any) => rest)
+      ? topLevel
+      : topLevel.map(({ devPlan, ...rest }: any) => rest)
 
     return NextResponse.json({ requirements: sanitised })
   } catch (err: any) {

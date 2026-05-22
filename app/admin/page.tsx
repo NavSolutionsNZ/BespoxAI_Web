@@ -1120,6 +1120,8 @@ interface AdminReq {
   uatRejectionAnalysis: any | null
   assignedDeveloper:    { id: string; name: string | null; email: string } | null
   githubBranch:         string | null
+  parentId:             string | null
+  addenda:              { id: string; title: string; status: string; quote: string | null; createdAt: string; parentId: string }[]
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string }
@@ -2444,6 +2446,38 @@ function AdminRequirementsTab() {
                 {selected.quoteApprovedAt && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)', marginTop: 6 }}>✓ Approved {new Date(selected.quoteApprovedAt).toLocaleDateString('en-NZ')}</p>}
               </div>
             )}
+
+            {/* ── Addenda list ── */}
+            {selected.addenda && selected.addenda.length > 0 ? (
+              <div style={{ background: 'var(--ink)', borderRadius: 8, padding: '12px 14px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.5)', margin: '0 0 8px' }}>
+                  Addenda ({selected.addenda.length})
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {selected.addenda.map(add => {
+                    const STATUS_COLORS: Record<string, string> = {
+                      submitted: '#C8952A', in_review: '#9A6A00', quoted: '#0A5C46',
+                      in_development: '#0A5C46', fully_paid: '#0A5240', rejected: '#A32D2D',
+                    }
+                    const col = STATUS_COLORS[add.status] ?? 'rgba(214,217,212,0.5)'
+                    return (
+                      <div key={add.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.85)', flex: 1 }}>{add.title}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.07em', textTransform: 'uppercase', color: col, whiteSpace: 'nowrap' }}>{add.status.replace(/_/g, ' ')}</span>
+                        {add.quote ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--amber)' }}>${parseFloat(add.quote).toLocaleString()}</span> : null}
+                        <button
+                          onClick={() => {
+                            const fullAdd = reqs.find(r => r.id === add.id)
+                            if (fullAdd) setSelected(fullAdd)
+                          }}
+                          style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--slate)', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
+                        >View →</button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             {/* ── AI Developer Assistant — visible during review & quoting ── */}
             {['in_review', 'quote_rejected', 'submitted', 'in_development'].includes(selected.status) && (

@@ -50,6 +50,8 @@ export interface Requirement {
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string; country: string | null; paymentTermsKey: string | null }
+  parentId: string | null
+  addenda: { id: string; title: string; status: string; quote: string | null; createdAt: string; parentId: string }[]
 }
 
 interface AiSpec {
@@ -173,6 +175,12 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   const [actLoading, setAL]       = useState(false)
   const [showQF, setShowQF]       = useState(false)
+  // Addendum
+  const [showAddendum, setShowAddendum] = useState(false)
+  const [addendumReqId, setAddendumReqId] = useState<string|null>(null)
+  const [addendumForm, setAddendumForm] = useState({title:'',description:'',bcArea:'Finance',priority:'important'})
+  const [addendumLoading, setAddendumLoading] = useState(false)
+  const [addendumErr, setAddendumErr] = useState('')
   // UAT sign-off / rejection
   const [showUATReject, setShowUATReject]     = useState(false)
   const [uatRejectReason, setUATRejectReason] = useState('')
@@ -319,6 +327,31 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       runFeasibility(d.requirement)
     } catch(e:any) { setFE(e.message) }
     finally { setSaving(false) }
+  }
+
+  async function submitAddendum(parentId: string) {
+    const { title, description, bcArea, priority } = addendumForm
+    if (!title.trim() || !description.trim()) { setAddendumErr('Title and description are required'); return }
+    setAddendumLoading(true); setAddendumErr('')
+    try {
+      const res = await fetch(`/api/requirements/${parentId}/addendum`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), description: description.trim(), bcArea, priority }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error)
+      // Add the new addendum to the parent's addenda list in state
+      setReqs(prev => prev.map(r => r.id === parentId
+        ? { ...r, addenda: [...(r.addenda ?? []), { id: d.requirement.id, title: d.requirement.title, status: d.requirement.status, quote: d.requirement.quote, createdAt: d.requirement.createdAt, parentId }] }
+        : r
+      ))
+      if (selected?.id === parentId) setSelected((prev: any) => prev ? { ...prev, addenda: [...(prev.addenda ?? []), { id: d.requirement.id, title: d.requirement.title, status: d.requirement.status, quote: d.requirement.quote, createdAt: d.requirement.createdAt, parentId }] } : prev)
+      setShowAddendum(false)
+      setAddendumReqId(null)
+      setAddendumForm({ title: '', description: '', bcArea: 'Finance', priority: 'important' })
+    } catch (e: any) { setAddendumErr(e.message ?? 'Failed to submit addendum') }
+    finally { setAddendumLoading(false) }
   }
 
   async function patch(id:string, body:object) {
@@ -1793,6 +1826,68 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {isSuperadmin&&!['fully_paid','rejected'].includes(req.status)&&(
                   <button onClick={()=>patch(req.id,{status:'rejected'})} disabled={actLoading} style={{...sBTN,color:'#A32D2D'}}>✕ Reject</button>
                 )}
+
+                {/* ── Addenda list (shown if any exist) ── */}
+                {req.addenda && req.addenda.length > 0 ? (
+                  <div style={{marginTop:8,borderTop:'1px solid var(--fog)',paddingTop:12,display:'flex',flexDirection:'column',gap:6}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',margin:0}}>Addenda ({req.addenda.length})</p>
+                    {req.addenda.map(add => {
+                      const sc = STATUS_COLOR[add.status] ?? STATUS_COLOR.draft
+                      return (
+                        <div key={add.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:6,background:'rgba(255,255,255,0.04)',border:'1px solid var(--fog)'}}>
+                          <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'rgba(244,239,228,0.85)',flex:1,lineHeight:1.3}}>{add.title}</span>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:`1px solid ${sc.border}`,padding:'2px 7px',borderRadius:6,whiteSpace:'nowrap'}}>{add.status.replace(/_/g,' ')}</span>
+                          {add.quote ? <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--amber)',whiteSpace:'nowrap'}}>${parseFloat(add.quote).toLocaleString()}</span> : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : null}
+
+                {/* ── Add Addendum button (customer only, in development+) ── */}
+                {!isSuperadmin && ['deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(req.status) ? (
+                  <div style={{marginTop:4}}>
+                    {showAddendum && addendumReqId === req.id ? (
+                      <div style={{...crd,background:'rgba(200,149,42,0.04)',borderColor:'rgba(200,149,42,0.25)',display:'flex',flexDirection:'column',gap:10}}>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--amber)',margin:0}}>Add Addendum</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',margin:0,lineHeight:1.5}}>Describe the additional requirement you would like to add to this customisation. This will be reviewed and quoted separately.</p>
+                        <input
+                          value={addendumForm.title}
+                          onChange={e=>setAddendumForm(f=>({...f,title:e.target.value}))}
+                          placeholder="Short title for the addendum"
+                          style={{...iSt,fontSize:12}}
+                        />
+                        <textarea
+                          value={addendumForm.description}
+                          onChange={e=>setAddendumForm(f=>({...f,description:e.target.value}))}
+                          placeholder="Describe what you need in detail…"
+                          rows={4}
+                          style={{...iSt,fontSize:12,resize:'vertical'}}
+                        />
+                        <div style={{display:'flex',gap:8}}>
+                          <select value={addendumForm.bcArea} onChange={e=>setAddendumForm(f=>({...f,bcArea:e.target.value}))} style={{...iSt,flex:1,fontSize:12}}>
+                            {BC_AREAS.map(a=><option key={a} value={a}>{a}</option>)}
+                          </select>
+                          <select value={addendumForm.priority} onChange={e=>setAddendumForm(f=>({...f,priority:e.target.value}))} style={{...iSt,flex:1,fontSize:12}}>
+                            {PRIORITIES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
+                          </select>
+                        </div>
+                        {addendumErr ? <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#A32D2D',margin:0}}>{addendumErr}</p> : null}
+                        <div style={{display:'flex',gap:8}}>
+                          <button onClick={()=>submitAddendum(req.id)} disabled={addendumLoading||!addendumForm.title.trim()||!addendumForm.description.trim()} style={{...pBTN,background:'#9A6A00',opacity:addendumLoading?0.7:1}}>
+                            {addendumLoading ? 'Submitting…' : '+ Submit Addendum'}
+                          </button>
+                          <button onClick={()=>{setShowAddendum(false);setAddendumReqId(null);setAddendumErr('')}} style={sBTN}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={()=>{setShowAddendum(true);setAddendumReqId(req.id);setAddendumForm({title:'',description:'',bcArea:'Finance',priority:'important'})}}
+                        style={{...sBTN,fontSize:11,color:'var(--amber)',borderColor:'rgba(200,149,42,0.25)'}}
+                      >+ Add Addendum</button>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               {/* Deployed Objects — superadmin upload after fully_paid */}

@@ -203,6 +203,11 @@ model Requirement {
   reviewIncluded        Boolean  @default(false) // Covered by Manager/Executive monthly allowance
   reviewSubmittedAt     DateTime?          // When review was submitted (any payment method)
 
+  // ── Addendum (child requirements linked to a parent) ──────────────────────
+  parentId  String?           // set on addenda; null on top-level requirements
+  parent    Requirement?      @relation("RequirementAddenda", fields: [parentId], references: [id], onDelete: SetNull)
+  addenda   Requirement[]     @relation("RequirementAddenda")
+
   tenant  Tenant             @relation(fields: [tenantId], references: [id])
   user    User               @relation(fields: [userId], references: [id])
   objects TenantObjectFile[]
