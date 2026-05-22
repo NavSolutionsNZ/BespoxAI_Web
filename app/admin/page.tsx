@@ -106,7 +106,7 @@ function AdminPageInner() {
 
   // Installer download form
   const [installerTenantId, setInstallerTenantId] = useState<string | null>(null)
-  const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080' })
+  const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099' })
   const [installerLoading, setInstallerLoading]   = useState(false)
   const [installerError, setInstallerError]       = useState('')
 
@@ -189,7 +189,7 @@ function AdminPageInner() {
           bcUsername: installerForm.bcUsername,
           bcPassword: installerForm.bcPassword,
           bcPort:     parseInt(installerForm.bcPort) || 8048,
-          agentPort:  parseInt(installerForm.agentPort) || 8080,
+          agentPort:  parseInt(installerForm.agentPort) || 9099,
         }),
       })
       if (!res.ok) {
@@ -210,7 +210,7 @@ function AdminPageInner() {
       document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 30_000)
       setInstallerTenantId(null)
-      setInstallerForm({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '8080' })
+      setInstallerForm({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099' })
     } catch (e: any) { setInstallerError(e.message) }
     setInstallerLoading(false)
   }
