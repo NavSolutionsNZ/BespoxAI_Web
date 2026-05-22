@@ -129,8 +129,8 @@ function BillingCharts({ billing, onNavigate }: {
   billing: BillingStats
   onNavigate: (tab: string, reqId?: string) => void
 }) {
-  const [financeDrill, setFinanceDrill] = React.useState<string|null>(null)
-  const [customerDrill, setCustomerDrill] = React.useState<string|null>(null)
+  const [financeDrill, setFinanceDrill] = useState<string|null>(null)
+  const [customerDrill, setCustomerDrill] = useState<string|null>(null)
 
   const subRev     = billing.newMonth.valueNZD
   const revFees    = billing.reviews.thisMonth.revenueNZD
