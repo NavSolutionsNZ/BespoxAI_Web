@@ -1342,7 +1342,9 @@ function AdminRequirementsTab() {
       ])
       const data = await reqRes.json()
       if (!reqRes.ok) throw new Error(data.error)
-      setReqs(data.requirements)
+      // Merge addenda into flat list so they appear in requirements tab and get action buttons
+      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null }))
+      setReqs([...data.requirements, ...addenda])
       if (usersRes.ok) {
         const ud = await usersRes.json()
         setDevelopers((ud.users ?? []).filter((u: any) => u.role === 'developer'))
@@ -1549,7 +1551,7 @@ function AdminRequirementsTab() {
       if (data.success) {
         // Refresh requirement to show testDeployedAt
         const reqRes = await fetch('/api/admin/requirements')
-        if (reqRes.ok) { const d = await reqRes.json(); setReqs(d.requirements) }
+        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null })); setReqs([...d.requirements, ...add2]) }
       } else {
         setDeployErr('Some objects failed — check results below')
       }
@@ -1800,7 +1802,10 @@ function AdminRequirementsTab() {
               style={{ background: isAct ? 'rgba(10,92,70,0.04)' : 'var(--white)', border: `1px solid ${isAct ? 'rgba(10,92,70,0.2)' : 'var(--fog)'}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.15s' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 7 }}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)', margin: 0, lineHeight: 1.3, flex: 1 }}>{req.title}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {req.parentId ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 7, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9A6A00', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 4, padding: '1px 6px', marginBottom: 4, display: 'inline-block' }}>Addendum</span> : null}
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)', margin: 0, lineHeight: 1.3 }}>{req.title}</p>
+                </div>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, padding: '2px 8px', borderRadius: 6, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text, textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>
                   {req.status.replace(/_/g, ' ')}
                 </span>
@@ -1845,6 +1850,15 @@ function AdminRequirementsTab() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
+                {selected.parentId ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(200,149,42,0.1)', color: '#9A6A00', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 5, padding: '2px 8px' }}>Addendum</span>
+                    <button
+                      onClick={() => { const parent = reqs.find(r => r.id === selected.parentId); if (parent) setSelected(parent) }}
+                      style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >← Back to parent requirement</button>
+                  </div>
+                ) : null}
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 500, color: 'var(--ink)', margin: 0, lineHeight: 1.3 }}>{selected.title}</h3>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   {(() => { const sc = STATUS_COLOR_ADMIN[selected.status] ?? STATUS_COLOR_ADMIN.draft; return (

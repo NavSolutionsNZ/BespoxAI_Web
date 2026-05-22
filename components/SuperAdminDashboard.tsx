@@ -136,7 +136,9 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
       fetch('/api/admin/signups').then(r => r.json()),
       fetch('/api/admin/billing-stats').then(r => r.json()),
     ]).then(([reqs, enqs, ten, sigs, bil]) => {
-      setRequirements(reqs.requirements ?? [])
+      // Merge top-level + addenda so attention and revenue counts include them
+      const addenda = (reqs.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [] }))
+      setRequirements([...(reqs.requirements ?? []), ...addenda])
       setEnquiries(enqs.enquiries ?? [])
       setTenants(ten.tenants ?? [])
       setSignups((sigs.signups ?? []).filter((s: SignupRequest) => s.verifiedAt && !s.activatedAt))
@@ -503,6 +505,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontFamily:'var(--font-mono)', fontSize:8, letterSpacing:'0.1em', textTransform:'uppercase', color:s.color, fontWeight:600 }}>{s.label}</span>
+                {(req as any).parentId ? <span style={{ fontFamily:'var(--font-mono)', fontSize:7, letterSpacing:'0.08em', textTransform:'uppercase', color:'#9A6A00', background:'rgba(200,149,42,0.1)', border:'1px solid rgba(200,149,42,0.2)', borderRadius:4, padding:'1px 6px' }}>Addendum</span> : null}
                 <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)' }}>· {req.tenant.name}</span>
               </div>
               <div style={{ fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, color:'var(--ink)', marginBottom:2 }}>{req.title}</div>
