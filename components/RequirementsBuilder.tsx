@@ -175,12 +175,13 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   const [actLoading, setAL]       = useState(false)
   const [showQF, setShowQF]       = useState(false)
-  // Addendum
-  const [showAddendum, setShowAddendum] = useState(false)
-  const [addendumReqId, setAddendumReqId] = useState<string|null>(null)
+  // Addendum — full page flow (same as create, linked to parent)
+  const [showAddendum, setShowAddendum]         = useState(false)
+  const [addendumParentId, setAddendumParentId] = useState<string|null>(null)
+  const [addendumParentTitle, setAddendumParentTitle] = useState('')
   const [addendumForm, setAddendumForm] = useState({title:'',description:'',bcArea:'Finance',priority:'important'})
-  const [addendumLoading, setAddendumLoading] = useState(false)
-  const [addendumErr, setAddendumErr] = useState('')
+  const [addendumSaving, setAddendumSaving]     = useState(false)
+  const [addendumErr, setAddendumErr]           = useState('')
   // UAT sign-off / rejection
   const [showUATReject, setShowUATReject]     = useState(false)
   const [uatRejectReason, setUATRejectReason] = useState('')
@@ -329,29 +330,36 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     finally { setSaving(false) }
   }
 
-  async function submitAddendum(parentId: string) {
+  async function submitAddendum() {
+    if (!addendumParentId) return
     const { title, description, bcArea, priority } = addendumForm
     if (!title.trim() || !description.trim()) { setAddendumErr('Title and description are required'); return }
-    setAddendumLoading(true); setAddendumErr('')
+    setAddendumSaving(true); setAddendumErr('')
     try {
-      const res = await fetch(`/api/requirements/${parentId}/addendum`, {
+      const res = await fetch(`/api/requirements/${addendumParentId}/addendum`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), description: description.trim(), bcArea, priority }),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error)
-      // Add the new addendum to the parent's addenda list in state
-      setReqs(prev => prev.map(r => r.id === parentId
-        ? { ...r, addenda: [...(r.addenda ?? []), { id: d.requirement.id, title: d.requirement.title, status: d.requirement.status, quote: d.requirement.quote, createdAt: d.requirement.createdAt, parentId }] }
-        : r
-      ))
-      if (selected?.id === parentId) setSelected((prev: any) => prev ? { ...prev, addenda: [...(prev.addenda ?? []), { id: d.requirement.id, title: d.requirement.title, status: d.requirement.status, quote: d.requirement.quote, createdAt: d.requirement.createdAt, parentId }] } : prev)
+      // Add to flat list and to parent's addenda array
+      setReqs(prev => {
+        const updated = prev.map(r => r.id === addendumParentId
+          ? { ...r, addenda: [...(r.addenda ?? []), { id: d.requirement.id, title: d.requirement.title, status: d.requirement.status, quote: d.requirement.quote, createdAt: d.requirement.createdAt, parentId: addendumParentId }] }
+          : r
+        )
+        return [d.requirement, ...updated]
+      })
       setShowAddendum(false)
-      setAddendumReqId(null)
+      setAddendumParentId(null)
+      setAddendumParentTitle('')
       setAddendumForm({ title: '', description: '', bcArea: 'Finance', priority: 'important' })
+      selectReq(d.requirement)
+      // Run feasibility immediately — same as new requirement
+      runFeasibility(d.requirement)
     } catch (e: any) { setAddendumErr(e.message ?? 'Failed to submit addendum') }
-    finally { setAddendumLoading(false) }
+    finally { setAddendumSaving(false) }
   }
 
   async function patch(id:string, body:object) {
@@ -447,7 +455,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   })
   const needsClarifCount = reqs.filter(r=>r.status==='needs_clarification').length
   const quoteRejCount    = reqs.filter(r=>r.status==='quote_rejected').length
-  const panelOpen = selected||showCreate
+  const panelOpen = selected||showCreate||showAddendum
 
   const iSt:React.CSSProperties = {width:'100%',background:'var(--cream)',border:'1px solid var(--fog)',borderRadius:8,padding:'9px 12px',fontSize:13,fontFamily:'var(--font-body)',color:'var(--ink)',outline:'none',boxSizing:'border-box'}
   const fo = (e:any) => e.target.style.borderColor='var(--forest)'
@@ -1009,6 +1017,45 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       {panelOpen&&(
         <div style={{flex:1,overflowY:'auto',background:'var(--cream)',padding:'22px 26px',display:'flex',flexDirection:'column',gap:18}}>
 
+          {/* ADDENDUM — full create flow linked to parent */}
+          {showAddendum&&<>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <h2 style={{fontFamily:'var(--font-display)',fontSize:22,fontWeight:500,color:'var(--ink)',lineHeight:1,margin:0}}>Add Addendum</h2>
+                <p style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',margin:'6px 0 0',letterSpacing:'0.08em'}}>
+                  {'Linked to: '}{addendumParentTitle}
+                </p>
+              </div>
+              <button onClick={()=>{setShowAddendum(false);setAddendumParentId(null);setAddendumParentTitle('');setAddendumErr('')}} style={xBTN}>✕</button>
+            </div>
+            <div style={crd}>
+              <label style={lbl}>Title <span style={{color:'#A32D2D'}}>*</span></label>
+              <input placeholder="e.g. Also add approval for purchase credit memos" value={addendumForm.title} onChange={e=>setAddendumForm(f=>({...f,title:e.target.value}))} style={iSt} onFocus={fo} onBlur={bl}/>
+            </div>
+            <div style={crd}>
+              <label style={lbl}>Describe what you need <span style={{color:'#A32D2D'}}>*</span></label>
+              <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginBottom:10,lineHeight:1.55}}>
+                Describe the additional work clearly — what is missing from the original scope, why it is needed, and what success looks like. BespoxAI will scope it and it will be quoted separately.
+              </p>
+              <textarea placeholder="e.g. We realised we also need the same approval logic applied to purchase credit memos, not just purchase orders. The approvers and thresholds should be the same…" value={addendumForm.description} onChange={e=>setAddendumForm(f=>({...f,description:e.target.value}))} rows={7} style={{...iSt,resize:'vertical',lineHeight:1.65}} onFocus={fo} onBlur={bl}/>
+            </div>
+            <div style={{display:'flex',gap:12}}>
+              <div style={{...crd,flex:1}}>
+                <label style={lbl}>BC Area</label>
+                <select value={addendumForm.bcArea} onChange={e=>setAddendumForm(f=>({...f,bcArea:e.target.value}))} style={{...iSt,cursor:'pointer'}}>{BC_AREAS.map(a=><option key={a} value={a}>{a}</option>)}</select>
+              </div>
+              <div style={{...crd,flex:1}}>
+                <label style={lbl}>Priority</label>
+                <select value={addendumForm.priority} onChange={e=>setAddendumForm(f=>({...f,priority:e.target.value}))} style={{...iSt,cursor:'pointer'}}>{PRIORITIES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}</select>
+              </div>
+            </div>
+            {addendumErr&&<p style={{fontFamily:'var(--font-body)',fontSize:12,color:'#A32D2D'}}>{addendumErr}</p>}
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={submitAddendum} disabled={addendumSaving} style={{...pBTN,opacity:addendumSaving?0.7:1}}>{addendumSaving?'Saving…':'Save & Scope →'}</button>
+              <button onClick={()=>{setShowAddendum(false);setAddendumParentId(null);setAddendumParentTitle('');setAddendumErr('')}} style={sBTN}>Cancel</button>
+            </div>
+          </>}
+
           {/* CREATE */}
           {showCreate&&<>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -1062,6 +1109,15 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Header */}
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
                 <div style={{flex:1}}>
+                  {req.parentId ? (
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.1em',textTransform:'uppercase',background:'rgba(200,149,42,0.1)',color:'#9A6A00',border:'1px solid rgba(200,149,42,0.25)',borderRadius:5,padding:'2px 8px'}}>Addendum</span>
+                      <button
+                        onClick={()=>{ const parent=reqs.find(r=>r.id===req.parentId); if(parent) selectReq(parent) }}
+                        style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',background:'none',border:'none',cursor:'pointer',padding:0,textDecoration:'underline'}}
+                      >{'← Back to original requirement'}</button>
+                    </div>
+                  ) : null}
                   <h2 style={{fontFamily:'var(--font-display)',fontSize:21,fontWeight:500,color:'var(--ink)',lineHeight:1.3,marginBottom:10}}>{req.title}</h2>
                   <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:`1px solid ${sc.border}`,padding:'3px 10px',borderRadius:20}}>{statusLabel(req.status)}</span>
@@ -1827,66 +1883,34 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   <button onClick={()=>patch(req.id,{status:'rejected'})} disabled={actLoading} style={{...sBTN,color:'#A32D2D'}}>✕ Reject</button>
                 )}
 
-                {/* ── Addenda list (shown if any exist) ── */}
+                {/* ── Addenda list ── */}
                 {req.addenda && req.addenda.length > 0 ? (
-                  <div style={{marginTop:8,borderTop:'1px solid var(--fog)',paddingTop:12,display:'flex',flexDirection:'column',gap:6}}>
-                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',margin:0}}>Addenda ({req.addenda.length})</p>
+                  <div style={{borderTop:'1px solid var(--fog)',paddingTop:12,display:'flex',flexDirection:'column',gap:6}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',margin:'0 0 4px'}}>Addenda ({req.addenda.length})</p>
                     {req.addenda.map(add => {
                       const sc = STATUS_COLOR[add.status] ?? STATUS_COLOR.draft
                       return (
-                        <div key={add.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:6,background:'rgba(255,255,255,0.04)',border:'1px solid var(--fog)'}}>
-                          <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'rgba(244,239,228,0.85)',flex:1,lineHeight:1.3}}>{add.title}</span>
+                        <button
+                          key={add.id}
+                          onClick={()=>{ const full = reqs.find(r=>r.id===add.id); if(full) selectReq(full) }}
+                          style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:6,background:'var(--white)',border:'1px solid var(--fog)',cursor:'pointer',textAlign:'left',width:'100%'}}
+                        >
+                          <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',flex:1,lineHeight:1.3}}>{add.title}</span>
                           <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:`1px solid ${sc.border}`,padding:'2px 7px',borderRadius:6,whiteSpace:'nowrap'}}>{add.status.replace(/_/g,' ')}</span>
-                          {add.quote ? <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--amber)',whiteSpace:'nowrap'}}>${parseFloat(add.quote).toLocaleString()}</span> : null}
-                        </div>
+                          {add.quote ? <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',whiteSpace:'nowrap',fontWeight:600}}>${parseFloat(add.quote).toLocaleString()}</span> : null}
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>→</span>
+                        </button>
                       )
                     })}
                   </div>
                 ) : null}
 
-                {/* ── Add Addendum button (customer only, in development+) ── */}
+                {/* ── Add Addendum — opens full create page ── */}
                 {!isSuperadmin && ['deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(req.status) ? (
-                  <div style={{marginTop:4}}>
-                    {showAddendum && addendumReqId === req.id ? (
-                      <div style={{...crd,background:'rgba(200,149,42,0.04)',borderColor:'rgba(200,149,42,0.25)',display:'flex',flexDirection:'column',gap:10}}>
-                        <p style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--amber)',margin:0}}>Add Addendum</p>
-                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',margin:0,lineHeight:1.5}}>Describe the additional requirement you would like to add to this customisation. This will be reviewed and quoted separately.</p>
-                        <input
-                          value={addendumForm.title}
-                          onChange={e=>setAddendumForm(f=>({...f,title:e.target.value}))}
-                          placeholder="Short title for the addendum"
-                          style={{...iSt,fontSize:12}}
-                        />
-                        <textarea
-                          value={addendumForm.description}
-                          onChange={e=>setAddendumForm(f=>({...f,description:e.target.value}))}
-                          placeholder="Describe what you need in detail…"
-                          rows={4}
-                          style={{...iSt,fontSize:12,resize:'vertical'}}
-                        />
-                        <div style={{display:'flex',gap:8}}>
-                          <select value={addendumForm.bcArea} onChange={e=>setAddendumForm(f=>({...f,bcArea:e.target.value}))} style={{...iSt,flex:1,fontSize:12}}>
-                            {BC_AREAS.map(a=><option key={a} value={a}>{a}</option>)}
-                          </select>
-                          <select value={addendumForm.priority} onChange={e=>setAddendumForm(f=>({...f,priority:e.target.value}))} style={{...iSt,flex:1,fontSize:12}}>
-                            {PRIORITIES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
-                          </select>
-                        </div>
-                        {addendumErr ? <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#A32D2D',margin:0}}>{addendumErr}</p> : null}
-                        <div style={{display:'flex',gap:8}}>
-                          <button onClick={()=>submitAddendum(req.id)} disabled={addendumLoading||!addendumForm.title.trim()||!addendumForm.description.trim()} style={{...pBTN,background:'#9A6A00',opacity:addendumLoading?0.7:1}}>
-                            {addendumLoading ? 'Submitting…' : '+ Submit Addendum'}
-                          </button>
-                          <button onClick={()=>{setShowAddendum(false);setAddendumReqId(null);setAddendumErr('')}} style={sBTN}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={()=>{setShowAddendum(true);setAddendumReqId(req.id);setAddendumForm({title:'',description:'',bcArea:'Finance',priority:'important'})}}
-                        style={{...sBTN,fontSize:11,color:'var(--amber)',borderColor:'rgba(200,149,42,0.25)'}}
-                      >+ Add Addendum</button>
-                    )}
-                  </div>
+                  <button
+                    onClick={()=>{ setAddendumParentId(req.id); setAddendumParentTitle(req.title); setAddendumForm({title:'',description:'',bcArea:req.bcArea,priority:req.priority}); setAddendumErr(''); setShowAddendum(true); setSelected(null); setShowCreate(false) }}
+                    style={{...sBTN,fontSize:12,color:'var(--forest)',borderColor:'rgba(10,92,70,0.25)',alignSelf:'flex-start'}}
+                  >+ Add Addendum</button>
                 ) : null}
               </div>
 
