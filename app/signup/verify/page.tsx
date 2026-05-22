@@ -1,15 +1,26 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { Suspense, useEffect } from 'react'
 
 function VerifyContent() {
   const params = useSearchParams()
+  const router = useRouter()
   const status = params.get('status')
   const token  = params.get('token')
 
-  // If there's a raw token in the URL, the API redirect hasn't happened yet
-  // (user landed here directly — shouldn't happen in normal flow)
+  // If there's a raw token, call the verify API and redirect to status page
+  useEffect(() => {
+    if (!token || status) return
+    // API always redirects to /signup/verify?status=xxx -- follow it and land on the result
+    fetch('/api/signup/verify?token=' + token)
+      .then(r => {
+        const url = new URL(r.url)
+        router.replace(url.pathname + url.search)
+      })
+      .catch(() => router.replace('/signup/verify?status=error'))
+  }, [token, status])
+
   if (token && !status) {
     return (
       <Card icon="⏳" title="Verifying…" body="Please wait while we verify your email address." />
