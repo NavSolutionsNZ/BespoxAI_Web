@@ -8,6 +8,7 @@ import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import { getPlanByPriceId } from '@/lib/stripe-prices'
 import type Stripe from 'stripe'
+import { notifyAdminsDepositPaid } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -148,13 +149,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (paymentType === 'requirement_deposit') {
     const requirementId = metadata.requirementId
     if (!requirementId) return
-    await (prisma as any).requirement.update({
-      where: { id: requirementId },
-      data: {
-        depositPaidAt: new Date(),
-        depositStripeSessionId: session.id,
-        status: 'deposit_paid',
-      },
+    const updatedReq = await (prisma as any).requirement.update({
+      where:   { id: requirementId },
+      data:    { depositPaidAt: new Date(), depositStripeSessionId: session.id, status: 'deposit_paid' },
+      include: { user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
+    })
+    // Notify superadmins
+    notifyAdminsDepositPaid({
+      title:         updatedReq.title,
+      tenantName:    updatedReq.tenant?.name ?? '',
+      customerName:  updatedReq.user?.name ?? updatedReq.user?.email ?? 'Customer',
+      depositAmount: updatedReq.depositAmount ? parseFloat(updatedReq.depositAmount.toString()) : 0,
     })
   }
 

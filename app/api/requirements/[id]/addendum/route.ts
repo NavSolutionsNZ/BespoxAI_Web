@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
+import { notifyAdminsNewRequirement } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,6 +74,17 @@ export async function POST(
       tenant: { select: { name: true, country: true, paymentTermsKey: true } },
       addenda: true,
     },
+  })
+
+  // Notify superadmins — fire and forget
+  notifyAdminsNewRequirement({
+    requirementId: addendum.id,
+    title:         addendum.title,
+    tenantName:    (addendum as any).tenant?.name ?? '',
+    customerName:  (addendum as any).user?.name ?? (addendum as any).user?.email ?? '',
+    customerEmail: (addendum as any).user?.email ?? '',
+    isAddendum:    true,
+    parentTitle:   parent.title,
   })
 
   return NextResponse.json({ requirement: addendum }, { status: 201 })

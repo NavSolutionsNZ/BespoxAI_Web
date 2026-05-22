@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import {
+  notifyAdminsAnswered,
+  notifyAdminsQuoteRejected,
+  notifyCustomerNeedsClarif,
+  notifyCustomerQuoted,
+  notifyCustomerInDevelopment,
+  notifyCustomerBalanceDue,
+} from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,6 +139,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       tenant: { select: { name: true } },
     },
   })
+
+  // ── Fire-and-forget notifications ─────────────────────────────────────────
+  const customerName  = updated.user?.name  ?? updated.user?.email ?? 'Customer'
+  const customerEmail = updated.user?.email ?? ''
+  const tenantName    = updated.tenant?.name ?? ''
+  const reqTitle      = updated.title
+
+  if (isSuperadmin) {
+    // Admin → customer notifications
+    if (updateData.status === 'needs_clarification' && updateData.adminQuestions) {
+      notifyCustomerNeedsClarif({ customerEmail, customerName, title: reqTitle, tenantName, questions: updateData.adminQuestions })
+    }
+    if (updateData.status === 'quoted' && updateData.quote !== undefined) {
+      const quoteAmt = typeof updateData.quote === 'number' ? updateData.quote : parseFloat(updateData.quote ?? '0')
+      notifyCustomerQuoted({ customerEmail, customerName, title: reqTitle, tenantName, quoteAmount: quoteAmt, consultantNote: updateData.consultantNote })
+    }
+    if (updateData.status === 'in_development') {
+      notifyCustomerInDevelopment({ customerEmail, customerName, title: reqTitle, tenantName })
+    }
+    if (updateData.status === 'complete_pending_payment') {
+      const balance = updated.quote ? parseFloat(updated.quote.toString()) * 0.8 : 0
+      notifyCustomerBalanceDue({ customerEmail, customerName, title: reqTitle, tenantName, balanceAmount: balance })
+    }
+  } else {
+    // Customer → admin notifications
+    if (updateData.status === 'submitted' && existing.status === 'needs_clarification') {
+      notifyAdminsAnswered({ requirementId: params.id, title: reqTitle, tenantName, customerName })
+    }
+    if (updateData.status === 'quote_rejected') {
+      notifyAdminsQuoteRejected({ title: reqTitle, tenantName, customerName, rejectionReason: updateData.quoteRejectionReason })
+    }
+  }
 
   return NextResponse.json({ requirement: updated })
 }
