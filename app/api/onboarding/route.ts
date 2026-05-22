@@ -7,23 +7,26 @@ export const dynamic = 'force-dynamic'
 
 // Maps SignupRequest.bcVersion codes → navProduct + navVersion strings
 const BC_VERSION_MAP: Record<string, { navProduct: string; navVersion: string }> = {
-  BC25: { navProduct: 'BC', navVersion: 'Business Central 2024 Wave 2 (BC25)' },
-  BC24: { navProduct: 'BC', navVersion: 'Business Central 2024 Wave 1 (BC24)' },
-  BC23: { navProduct: 'BC', navVersion: 'Business Central 2023 Wave 2 (BC23)' },
-  BC22: { navProduct: 'BC', navVersion: 'Business Central 2023 Wave 1 (BC22)' },
-  BC21: { navProduct: 'BC', navVersion: 'Business Central 2022 Wave 2 (BC21)' },
-  BC20: { navProduct: 'BC', navVersion: 'Business Central 2022 Wave 1 (BC20)' },
-  BC19: { navProduct: 'BC', navVersion: 'Business Central 2021 Wave 2 (BC19)' },
-  BC18: { navProduct: 'BC', navVersion: 'Business Central 2021 Wave 1 (BC18)' },
-  BC17: { navProduct: 'BC', navVersion: 'Business Central 2020 Wave 2 (BC17)' },
-  BC16: { navProduct: 'BC', navVersion: 'Business Central 2020 Wave 1 (BC16)' },
-  BC14: { navProduct: 'BC', navVersion: 'Business Central 14 — 2019 Wave 1'   },
+  BC25: { navProduct: 'BC', navVersion: 'Business Central 2025 (BC25)'        },
+  BC24: { navProduct: 'BC', navVersion: 'Business Central 2024 Wave 2 (BC24)' },
+  BC23: { navProduct: 'BC', navVersion: 'Business Central 2024 Wave 1 (BC23)' },
+  BC22: { navProduct: 'BC', navVersion: 'Business Central 2023 Wave 2 (BC22)' },
+  BC21: { navProduct: 'BC', navVersion: 'Business Central 2023 Wave 1 (BC21)' },
+  BC20: { navProduct: 'BC', navVersion: 'Business Central 2022 Wave 2 (BC20)' },
+  BC19: { navProduct: 'BC', navVersion: 'Business Central 2022 Wave 1 (BC19)' },
+  BC18: { navProduct: 'BC', navVersion: 'Business Central 2021 Wave 2 (BC18)' },
+  BC17: { navProduct: 'BC', navVersion: 'Business Central 2021 Wave 1 (BC17)' },
+  BC16: { navProduct: 'BC', navVersion: 'Business Central 2020 Wave 2 (BC16)' },
+  BC15: { navProduct: 'BC', navVersion: 'Business Central 2020 Wave 1 (BC15)' },
+  BC14: { navProduct: 'BC', navVersion: 'Business Central 2019 Wave 1 (BC14)' },
   NAV2018:   { navProduct: 'NAV', navVersion: 'NAV 2018 (NAV 12)'   },
   NAV2017:   { navProduct: 'NAV', navVersion: 'NAV 2017 (NAV 11)'   },
   NAV2016:   { navProduct: 'NAV', navVersion: 'NAV 2016 (NAV 10)'   },
   NAV2015:   { navProduct: 'NAV', navVersion: 'NAV 2015 (NAV 9)'    },
   NAV2013R2: { navProduct: 'NAV', navVersion: 'NAV 2013 R2 (NAV 8)' },
   NAV2013:   { navProduct: 'NAV', navVersion: 'NAV 2013 (NAV 7)'    },
+  NAV2009R2: { navProduct: 'NAV', navVersion: 'NAV 2009 R2 (NAV 6)' },
+  NAV2009:   { navProduct: 'NAV', navVersion: 'NAV 2009 (NAV 6)'    },
 }
 
 export async function GET() {

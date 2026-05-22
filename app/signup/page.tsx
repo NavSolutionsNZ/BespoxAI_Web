@@ -13,10 +13,29 @@ const COUNTRIES = [
 ]
 
 const BC_VERSIONS = [
-  { value: 'BC25', label: 'Business Central 2025' },
-  { value: 'BC24', label: 'Business Central 2024' },
-  { value: 'BC23', label: 'Business Central 2023' },
-  { value: 'BC22', label: 'Business Central 2022' },
+  { value: 'BC25', label: 'Business Central 2025 (BC25)' },
+  { value: 'BC24', label: 'Business Central 2024 Wave 2 (BC24)' },
+  { value: 'BC23', label: 'Business Central 2024 Wave 1 (BC23)' },
+  { value: 'BC22', label: 'Business Central 2023 Wave 2 (BC22)' },
+  { value: 'BC21', label: 'Business Central 2023 Wave 1 (BC21)' },
+  { value: 'BC20', label: 'Business Central 2022 Wave 2 (BC20)' },
+  { value: 'BC19', label: 'Business Central 2022 Wave 1 (BC19)' },
+  { value: 'BC18', label: 'Business Central 2021 Wave 2 (BC18)' },
+  { value: 'BC17', label: 'Business Central 2021 Wave 1 (BC17)' },
+  { value: 'BC16', label: 'Business Central 2020 Wave 2 (BC16)' },
+  { value: 'BC15', label: 'Business Central 2020 Wave 1 (BC15)' },
+  { value: 'BC14', label: 'Business Central 2019 Wave 1 (BC14)' },
+]
+
+const NAV_VERSIONS = [
+  { value: 'NAV2018',   label: 'Microsoft NAV 2018' },
+  { value: 'NAV2017',   label: 'Microsoft NAV 2017' },
+  { value: 'NAV2016',   label: 'Microsoft NAV 2016' },
+  { value: 'NAV2015',   label: 'Microsoft NAV 2015' },
+  { value: 'NAV2013R2', label: 'Microsoft NAV 2013 R2' },
+  { value: 'NAV2013',   label: 'Microsoft NAV 2013' },
+  { value: 'NAV2009R2', label: 'Microsoft NAV 2009 R2' },
+  { value: 'NAV2009',   label: 'Microsoft NAV 2009' },
 ]
 
 export default function SignupPage() {
@@ -75,7 +94,7 @@ export default function SignupPage() {
           Bespox<span style={{ color: '#C8952A' }}>AI</span>
         </span>
         <p style={{ color: '#8a9a8e', fontSize: 14, marginTop: 6 }}>
-          CFO Intelligence for Business Central
+          CFO Intelligence for Business Central & Microsoft NAV
         </p>
       </a>
 
@@ -149,15 +168,22 @@ export default function SignupPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>Business Central version</label>
+                <label style={labelStyle}>BC / NAV version</label>
                 <select
                   style={inputStyle}
                   value={form.bcVersion}
                   onChange={e => update('bcVersion', e.target.value)}
                 >
-                  {BC_VERSIONS.map(v => (
-                    <option key={v.value} value={v.value}>{v.label}</option>
-                  ))}
+                  <optgroup label="Business Central">
+                    {BC_VERSIONS.map(v => (
+                      <option key={v.value} value={v.value}>{v.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Microsoft NAV">
+                    {NAV_VERSIONS.map(v => (
+                      <option key={v.value} value={v.value}>{v.label}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
