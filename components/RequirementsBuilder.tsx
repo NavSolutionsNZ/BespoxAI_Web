@@ -47,6 +47,13 @@ export interface Requirement {
   uatApprovedAt: string | null; uatApprovedById: string | null
   uatRejectedAt: string | null; uatRejectionReason: string | null
   uatRejectionAnalysis: any | null
+  // Production deployment
+  prodApprovalSentAt: string | null
+  prodGoLiveDoc: string | null
+  prodApprovedAt: string | null
+  prodApprovedById: string | null
+  prodDeployedAt: string | null
+  prodDeploySnapshotId: string | null
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string; country: string | null; paymentTermsKey: string | null }
@@ -1892,6 +1899,44 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     )}
                   </div>
                 )}
+                {/* ── Production Deployment — go-live doc & approval (customer) ── */}
+                {!isSuperadmin&&req.prodApprovalSentAt&&!req.prodDeployedAt&&(
+                  <div style={{...crd,borderColor:req.prodApprovedAt?'rgba(10,92,70,0.3)':'rgba(200,149,42,0.3)',background:req.prodApprovedAt?'rgba(10,92,70,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
+                    {req.prodApprovedAt?(
+                      <div>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#0A5C46',fontWeight:600,marginBottom:4}}>✓ Go-Live Approved</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',margin:0}}>Approved {''+new Date(req.prodApprovedAt).toLocaleDateString('en-NZ')+''} — our team will schedule the production deployment shortly.</p>
+                      </div>
+                    ):(
+                      <div>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#9A6A00',fontWeight:600,letterSpacing:'0.08em',marginBottom:8}}>PRODUCTION GO-LIVE APPROVAL REQUIRED</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',lineHeight:1.6,marginBottom:12}}>Please review the go-live document below and approve when you are ready to proceed with production deployment.</p>
+                        {req.prodGoLiveDoc&&(
+                          <div style={{background:'var(--white)',border:'1px solid rgba(200,149,42,0.2)',borderRadius:6,padding:'14px 16px',marginBottom:14,fontSize:13,lineHeight:1.75,color:'var(--ink)',whiteSpace:'pre-wrap'}}>
+                            {req.prodGoLiveDoc}
+                          </div>
+                        )}
+                        <button
+                          onClick={async()=>{
+                            if(!confirm('Approve production deployment? This confirms you have reviewed the go-live document and are ready for the changes to go live.'))return
+                            const r=await fetch('/api/requirements/'+req.id+'/prod-approve',{method:'POST'})
+                            if(r.ok){const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,prodApprovedAt:d.approvedAt}:x))}
+                          }}
+                          style={{...pBTN,background:'#0A5C46',color:'var(--cream)',fontSize:12}}
+                        >✓ Approve Go-Live</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Production deployed confirmation */}
+                {!isSuperadmin&&req.prodDeployedAt&&(
+                  <div style={{...crd,borderColor:'rgba(10,92,70,0.35)',background:'rgba(10,92,70,0.05)',marginTop:12}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#0A5C46',fontWeight:600,marginBottom:4}}>🚀 Live in Production</p>
+                    <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',margin:0}}>{'Deployed '+new Date(req.prodDeployedAt).toLocaleDateString('en-NZ')+'. Your customisation is now live in Business Central.'}</p>
+                  </div>
+                )}
+
                 {isSuperadmin&&req.status==='complete_pending_payment'&&(
                   <button onClick={()=>patch(req.id,{status:'fully_paid'})} disabled={actLoading} style={{...pBTN,background:'#085040'}}>✓ Confirm Balance Received</button>
                 )}

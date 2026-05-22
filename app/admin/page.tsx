@@ -1119,6 +1119,13 @@ interface AdminReq {
   uatRejectedAt:        string | null
   uatRejectionReason:   string | null
   uatRejectionAnalysis: any | null
+  // Production deployment
+  prodApprovalSentAt:   string | null
+  prodGoLiveDoc:        string | null
+  prodApprovedAt:       string | null
+  prodApprovedById:     string | null
+  prodDeployedAt:       string | null
+  prodDeploySnapshotId: string | null
   assignedDeveloper:    { id: string; name: string | null; email: string } | null
   githubBranch:         string | null
   parentId:             string | null
@@ -1277,6 +1284,164 @@ function DeployToTestPanel(props: DeployPanelProps) {
   )
 }
 
+// ─── Deploy to Production Panel ────────────────────────────────────────────────
+
+interface ProdDeployPanelProps {
+  selected:       Requirement
+  onSentApproval: (goLiveDoc: string, sentAt: string) => void
+  onDeployed:     (snapshotId: string, deployedAt: string) => void
+}
+
+function DeployToProductionPanel({ selected, onSentApproval, onDeployed }: ProdDeployPanelProps) {
+  const [sendingDoc,    setSendingDoc]    = React.useState(false)
+  const [sendErr,       setSendErr]       = React.useState<string|null>(null)
+  const [deploying,     setDeploying]     = React.useState(false)
+  const [deployResults, setDeployResults] = React.useState<any[]|null>(null)
+  const [deployErr,     setDeployErr]     = React.useState<string|null>(null)
+  const [confirmDeploy, setConfirmDeploy] = React.useState(false)
+
+  const base: React.CSSProperties = {
+    fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px',
+    borderRadius: 6, cursor: 'pointer', border: '1px solid var(--fog)',
+    background: 'var(--white)', color: 'var(--ink)',
+  }
+
+  const uatDate     = selected.uatApprovedAt       ? new Date(selected.uatApprovedAt).toLocaleDateString('en-NZ')       : ''
+  const sentDate    = selected.prodApprovalSentAt   ? new Date(selected.prodApprovalSentAt).toLocaleDateString('en-NZ')  : ''
+  const approveDate = selected.prodApprovedAt       ? new Date(selected.prodApprovedAt).toLocaleDateString('en-NZ')      : ''
+  const deployDate  = selected.prodDeployedAt       ? new Date(selected.prodDeployedAt).toLocaleDateString('en-NZ')      : ''
+
+  async function handleSendApproval() {
+    setSendingDoc(true); setSendErr(null)
+    try {
+      const res = await fetch('/api/requirements/' + selected.id + '/prod-approval', { method: 'POST' })
+      if (!res.ok) { const e = await res.json(); setSendErr(e.error ?? 'Failed'); return }
+      const d = await res.json()
+      onSentApproval(d.goLiveDoc, d.sentAt)
+    } catch (e: any) {
+      setSendErr(e.message ?? 'Network error')
+    } finally {
+      setSendingDoc(false)
+    }
+  }
+
+  async function handleDeploy() {
+    if (!selected.testDeploySnapshotId) { setDeployErr('No test snapshot ID — deploy to test first'); return }
+    setDeploying(true); setDeployErr(null); setConfirmDeploy(false)
+    try {
+      const res = await fetch('/api/requirements/' + selected.id + '/objects/deploy-prod', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshotId: selected.testDeploySnapshotId }),
+      })
+      const d = await res.json()
+      if (!res.ok) { setDeployErr(d.error ?? 'Failed'); return }
+      setDeployResults(d.results ?? [])
+      if (d.success) onDeployed(d.snapshotId, d.deployedAt)
+    } catch (e: any) {
+      setDeployErr(e.message ?? 'Network error')
+    } finally {
+      setDeploying(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--white)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 8, padding: '12px 14px', marginTop: 12 }}>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00', marginBottom: 10 }}>
+        Production Deployment
+      </p>
+
+      {selected.prodDeployedAt ? (
+        <div style={{ background: 'rgba(10,92,70,0.06)', border: '1px solid rgba(10,92,70,0.25)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', margin: 0 }}>
+            {'Deployed to production \u2014 ' + deployDate + ' (snapshot: ' + (selected.prodDeploySnapshotId ?? '') + ')'}
+          </p>
+        </div>
+      ) : null}
+
+      {(selected.uatApprovedAt && !selected.prodDeployedAt) ? (
+        <div style={{ background: 'rgba(10,92,70,0.04)', border: '1px solid rgba(10,92,70,0.15)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', margin: 0 }}>
+            {'UAT approved ' + uatDate + ' \u2014 ready for go-live'}
+          </p>
+        </div>
+      ) : null}
+
+      {!selected.prodDeployedAt ? (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 1</span>
+            <button
+              onClick={handleSendApproval}
+              disabled={sendingDoc}
+              style={{ ...base, background: selected.prodApprovalSentAt ? 'var(--fog)' : '#C8952A', color: selected.prodApprovalSentAt ? 'var(--slate)' : '#fff', border: 'none' }}
+            >
+              {sendingDoc ? 'Generating\u2026' : selected.prodApprovalSentAt ? ('Go-live doc sent ' + sentDate + ' \u2014 resend') : 'Generate & Send Go-Live Doc'}
+            </button>
+          </div>
+          {sendErr ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '0 0 8px 68px' }}>{sendErr}</p> : null}
+
+          {selected.prodApprovalSentAt ? (
+            <div style={{ marginLeft: 68, marginBottom: 10 }}>
+              {selected.prodApprovedAt ? (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', margin: 0 }}>
+                  {'\u2713 Customer approved ' + approveDate}
+                </p>
+              ) : (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9A6A00', margin: 0 }}>
+                  Awaiting customer approval…
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 2</span>
+            {confirmDeploy ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={handleDeploy}
+                  disabled={deploying}
+                  style={{ ...base, background: '#A32D2D', color: '#fff', border: 'none', fontWeight: 600 }}
+                >
+                  {deploying ? 'Deploying…' : '⚠ DEPLOY TO PRODUCTION'}
+                </button>
+                <button onClick={() => setConfirmDeploy(false)} style={{ ...base }}>Cancel</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDeploy(true)}
+                disabled={!selected.prodApprovedAt || deploying}
+                style={{ ...base, background: selected.prodApprovedAt ? '#0A5C46' : 'var(--fog)', color: selected.prodApprovedAt ? '#fff' : 'var(--slate)', border: 'none' }}
+              >
+                Deploy to Production
+              </button>
+            )}
+          </div>
+          {!selected.prodApprovedAt ? (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', margin: '4px 0 0 68px' }}>
+              Waiting for customer to approve go-live doc
+            </p>
+          ) : null}
+          {deployErr ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p> : null}
+
+          {deployResults ? (
+            <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
+              {deployResults.map((r: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderBottom: i < deployResults.length - 1 ? '1px solid var(--fog)' : 'none', background: r.error ? 'rgba(163,45,45,0.04)' : 'var(--white)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.error ? '#A32D2D' : '#0A5C46', minWidth: 12 }}>{r.error ? '\u2715' : '\u2713'}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.filename}</span>
+                  {r.error ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: '#A32D2D' }}>{r.error}</span> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 // ─── Admin Requirements Tab ────────────────────────────────────────────────────
 
 function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelectReqId?: string|null; onAutoSelectDone?: () => void }) {
@@ -1344,7 +1509,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       const data = await reqRes.json()
       if (!reqRes.ok) throw new Error(data.error)
       // Merge addenda into flat list so they appear in requirements tab and get action buttons
-      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null }))
+      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null }))
       setReqs([...data.requirements, ...addenda])
       if (usersRes.ok) {
         const ud = await usersRes.json()
@@ -1560,7 +1725,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       if (data.success) {
         // Refresh requirement to show testDeployedAt
         const reqRes = await fetch('/api/admin/requirements')
-        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null })); setReqs([...d.requirements, ...add2]) }
+        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null })); setReqs([...d.requirements, ...add2]) }
       } else {
         setDeployErr('Some objects failed — check results below')
       }
@@ -2164,6 +2329,15 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                 onDeploy={deployToTest}
               />
             )}
+
+            {/* ── Deploy to Production (when UAT approved) ── */}
+            {(selected.uatApprovedAt || selected.prodApprovalSentAt || selected.prodDeployedAt) ? (
+              <DeployToProductionPanel
+                selected={selected}
+                onSentApproval={(goLiveDoc, sentAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodGoLiveDoc: goLiveDoc, prodApprovalSentAt: sentAt, prodApprovedAt: null } : x))}
+                onDeployed={(snapshotId, deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: snapshotId } : x))}
+              />
+            ) : null}
 
             {/* ── Coding Assistant (in_development with github branch) ── */}
             {selected.status === 'in_development' ? (

@@ -282,3 +282,72 @@ export async function notifyCustomerBalanceDue(params: {
     `),
   }).catch(e => console.error('[notify] customer balance due:', e))
 }
+
+// ── Production deployment notifications ───────────────────────────────────────
+
+export async function notifyCustomerProdApproval(params: {
+  customerEmail: string
+  customerName:  string
+  title:         string
+  tenantName:    string
+  goLiveDoc:     string
+}) {
+  await sendEmail({
+    to:      params.customerEmail,
+    subject: 'Go-live approval required — ' + params.title,
+    html: wrap(`
+      <p>Hi ${params.customerName || 'there'},</p>
+      <p>Your customisation is ready for production deployment. Please review the go-live summary below and approve when you're ready to proceed.</p>
+      ${reqBlock(params.title, params.tenantName)}
+      <div style="background:#fff;border:1px solid #e0dbd4;border-radius:8px;padding:20px 24px;margin:16px 0;line-height:1.75">
+        <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.05em">Go-live summary</p>
+        <div style="font-size:14px;white-space:pre-wrap;color:#2a3a2e">${params.goLiveDoc}</div>
+      </div>
+      <p>Log in to your portal to review and approve. Once approved, we will schedule the production deployment.</p>
+      ${cta('Review & Approve Go-Live', PORTAL)}
+    `),
+  }).catch(e => console.error('[notify] customer prod approval:', e))
+}
+
+export async function notifyAdminsProdApproved(params: {
+  title:        string
+  tenantName:   string
+  customerName: string
+}) {
+  const admins = await getSuperadmins()
+  await Promise.all(admins.map(admin =>
+    sendEmail({
+      to:      admin.email,
+      subject: '✓ Go-Live Approved — ' + params.title + ' (' + params.tenantName + ')',
+      html: wrap(`
+        <p>Hi ${admin.name ?? 'there'},</p>
+        <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has approved the go-live document for:</p>
+        ${reqBlock(params.title, params.tenantName)}
+        <p>The requirement is ready for production deployment. Log in to admin to deploy when convenient.</p>
+        ${cta('Deploy in admin', PORTAL + '/admin')}
+      `),
+    }).catch(e => console.error('[notify] admin prod approved:', e))
+  ))
+}
+
+export async function notifyCustomerProdDeployed(params: {
+  customerEmail: string
+  customerName:  string
+  title:         string
+  tenantName:    string
+}) {
+  await sendEmail({
+    to:      params.customerEmail,
+    subject: '🚀 Live in production — ' + params.title,
+    html: wrap(`
+      <p>Hi ${params.customerName || 'there'},</p>
+      <p>Your customisation has been successfully deployed to production:</p>
+      ${reqBlock(params.title, params.tenantName)}
+      <div style="background:rgba(10,92,70,0.06);border:1px solid rgba(10,92,70,0.25);border-radius:8px;padding:14px 18px;margin:16px 0">
+        <p style="margin:0;font-size:14px;color:#0A5C46;font-weight:600">✓ Your changes are now live in Business Central.</p>
+      </div>
+      <p>If you notice anything unexpected, please get in touch with us right away.</p>
+      ${cta('Open your portal', PORTAL)}
+    `),
+  }).catch(e => console.error('[notify] customer prod deployed:', e))
+}
