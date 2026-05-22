@@ -85,6 +85,25 @@ async function getCustomerEmail(requirementId: string): Promise<{ email: string;
 
 // ── Superadmin notifications ──────────────────────────────────────────────────
 
+export async function notifyAdminsSignupVerified(params: {
+  companyName: string
+  email:       string
+}) {
+  const admins = await getSuperadmins()
+  await Promise.all(admins.map(admin =>
+    sendEmail({
+      to:      admin.email,
+      subject: `New signup verified — ${params.companyName}`,
+      html: wrap(`
+        <p>Hi ${admin.name ?? 'there'},</p>
+        <p><strong>${params.companyName}</strong> has verified their email address and is awaiting account activation.</p>
+        <p style="margin:0">Email: ${params.email}</p>
+        ${cta('Review signups', `${PORTAL}/admin?tab=signups`)}
+      `),
+    })
+  ))
+}
+
 export async function notifyAdminsNewRequirement(params: {
   requirementId: string
   title:         string

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { notifyAdminsSignupVerified } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +33,9 @@ export async function GET(req: NextRequest) {
     where: { verifyToken: token },
     data:  { verifiedAt: new Date() },
   })
+
+  // Fire-and-forget — notify superadmins that action is required
+  notifyAdminsSignupVerified({ companyName: signup.companyName, email: signup.email }).catch(() => {})
 
   return NextResponse.redirect(new URL('/signup/verify?status=success', req.url))
 }
