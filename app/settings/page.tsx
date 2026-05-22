@@ -73,7 +73,11 @@ function SettingsInner() {
   }, [])
   // ── END DEBUG ───────────────────────────────────────────────────────────────
 
-  const [tab,          setTab]          = useState<Tab>('overview')
+  const [tab, _setTab] = useState<Tab>('overview')
+  const setTab = (t: Tab) => {
+    console.log('[DEBUG] setTab called →', t, '| was:', tab, '| caller:', new Error().stack?.split('\n').slice(1, 4).map(s => s.trim()).join(' >> '))
+    _setTab(t)
+  }
   useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
