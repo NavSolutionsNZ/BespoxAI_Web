@@ -413,7 +413,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                         <div key={t} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                           <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', width:72, flexShrink:0, textTransform:'capitalize' }}>{t} ×{billing.byTier[t]}</span>
                           <div style={{ flex:1, height:4, background:'var(--fog)', borderRadius:2 }}>
-                            <div style={{ height:'100%', width:`${pct}%`, background:TC[t], borderRadius:2 }} />
+                            <div style={{ height:'100%', width:(pct)+'%', background:TC[t], borderRadius:2 }} />
                           </div>
                           <span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'var(--slate)', width:36, textAlign:'right' }}>${val}</span>
                         </div>
@@ -572,7 +572,7 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                 </div>
               )}
             </div>
-          </div>{/* end grid row 1 */}
+          </div>{/* end grid */}
 
           {/* ── Customers by value ─────────────────────────────────────── */}
           {billing.byTenant&&billing.byTenant.length>0&&(
@@ -591,9 +591,9 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
                         <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--forest)', fontWeight:600 }}>${t.total.toLocaleString()}</span>
                       </div>
                       <div style={{ display:'flex', height:6, borderRadius:3, overflow:'hidden', background:'var(--fog)' }}>
-                        {t.mrr>0&&<div style={{ width:`${mrrPct}%`, background:'#0A5C46' }} title={'MRR: $'+t.mrr+'/mo'} />}
-                        {t.devRevenue>0&&<div style={{ width:`${devPct}%`, background:'#1A9272' }} title={'Dev: $'+t.devRevenue} />}
-                        {t.reviewRevenue>0&&<div style={{ width:`${revPct}%`, background:'#C8952A' }} title={'Reviews: $'+t.reviewRevenue} />}
+                        {t.mrr>0&&<div style={{ width:mrrPct+'%', background:'#0A5C46' }} title={'MRR: $'+t.mrr+'/mo'} />}
+                        {t.devRevenue>0&&<div style={{ width:devPct+'%', background:'#1A9272' }} title={'Dev: $'+t.devRevenue} />}
+                        {t.reviewRevenue>0&&<div style={{ width:revPct+'%', background:'#C8952A' }} title={'Reviews: $'+t.reviewRevenue} />}
                       </div>
                       <div style={{ display:'flex', gap:12, marginTop:3 }}>
                         {t.mrr>0&&<span style={{ fontFamily:'var(--font-mono)', fontSize:8, color:'#0A5C46' }}>{'$'+t.mrr+'/mo MRR'}</span>}
@@ -614,7 +614,8 @@ export default function SuperAdminDashboard({ onNavigate }: { onNavigate: (tab: 
               </div>
             </div>
           )}
-        </div>{/* end outer flex column */}
+        </div>{/* end outer flex col */}
+        )
       })()}
 
       {/* ── Needs attention ─────────────────────────────────────────────── */}
