@@ -565,7 +565,7 @@ function AdminPageInner() {
 
           {/* ── Users tab ─────────────────────────────────────────────────── */}
           {tab === 'users' && (
-            <div style={{ maxWidth: 860 }}>
+            <div>
               {showNewUser && (
                 <FormCard title="Invite user" onCancel={() => setShowNewUser(false)} onSave={createUser} saving={saving} error={error}>
                   <div style={{ display: 'flex', gap: 16 }}>
@@ -591,7 +591,7 @@ function AdminPageInner() {
               )}
 
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 620 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--fog)' }}>
                       {['User', 'Email', 'Tenant', 'Role', 'Joined', 'Status', 'Actions'].map(h => (
@@ -603,7 +603,7 @@ function AdminPageInner() {
                     {users.map(u => (
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--fog)' }}>
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ fontWeight: 500 }}>{u.name || '—'}</span></td>
-                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
+                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{u.email}</td>
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant.name}</td>
                         <td style={tdStyle}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : u.role === 'developer' ? 'rgba(59,82,163,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : u.role === 'developer' ? '#3B52A3' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : u.role === 'developer' ? 'rgba(59,82,163,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
@@ -795,7 +795,7 @@ function AdminPageInner() {
         )}
 
         {tab === 'entities' && (
-            <div style={{ maxWidth: 860 }}>
+            <div>
               {/* Tenant selector */}
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Select tenant to scan</div>
