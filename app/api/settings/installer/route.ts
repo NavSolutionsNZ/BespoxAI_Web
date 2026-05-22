@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { getTunnelToken } from '@/lib/cloudflare'
+import { createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken } from '@/lib/cloudflare'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
@@ -61,39 +61,60 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
+  let tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
-  if (!tenant.tunnelId) return NextResponse.json({
-    error: 'No tunnel configured for this tenant. Contact support@bespoxai.com to provision a tunnel.',
-  }, { status: 400 })
 
-  // Persist any updated bcInstance/bcCompany from the form
-  if (bcInstance || bcCompany) {
-    await (prisma as any).tenant.update({
-      where: { id: tenantId },
-      data: {
-        ...(bcInstance ? { bcInstance } : {}),
-        ...(bcCompany  ? { bcCompany  } : {}),
-        bcPort:            parseInt(String(bcPort),    10) || 8048,
-        agentPort:         parseInt(String(agentPort), 10) || 9099,
-        ...(navDatabaseName   ? { navDatabaseName }   : {}),
-        ...(navServerInstance ? { navServerInstance } : {}),
-        navDatabaseServer: navDatabaseServer || 'localhost',
-        ...(testNavDatabaseServer ? { testNavDatabaseServer } : {}),
-        ...(testNavDatabaseName   ? { testNavDatabaseName }   : {}),
-        ...(testNavServerInstance ? { testNavServerInstance } : {}),
-        ...(testBcInstance        ? { testBcInstance }        : {}),
-        ...(testBcCompany         ? { testBcCompany }         : {}),
-        ...(testBcPort            ? { testBcPort: parseInt(String(testBcPort), 10) || null } : {}),
-      },
-    })
+  // ── Auto-provision tunnel on first installer download ─────────────────────
+  // This is the activation event — no separate admin step required.
+  if (!tenant.tunnelId) {
+    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_ZONE_ID) {
+      return NextResponse.json({ error: 'Cloudflare environment variables not configured — contact support@bespoxai.com' }, { status: 500 })
+    }
+    // Derive subdomain from existing value or generate from tenant name
+    const subdomain = (tenant.tunnelSubdomain || tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20))
+    const hostname   = subdomain + '-agent.bespoxai.com'
+    const tunnelName = 'bespoxai-' + subdomain
+    try {
+      const newTunnel = await createTunnel(tunnelName)
+      await configureTunnelIngress(newTunnel.id, hostname, 'http://localhost:' + agentPort)
+      await createDnsRecord(hostname, newTunnel.id)
+      tenant = await (prisma as any).tenant.update({
+        where: { id: tenantId },
+        data:  { tunnelId: newTunnel.id, tunnelSubdomain: subdomain },
+      })
+    } catch (e: any) {
+      return NextResponse.json({ error: 'Could not create Cloudflare tunnel: ' + e.message }, { status: 502 })
+    }
   }
+  // ── End auto-provision ────────────────────────────────────────────────────
+
+  // Persist BC config from the form
+  await (prisma as any).tenant.update({
+    where: { id: tenantId },
+    data: {
+      ...(bcInstance ? { bcInstance } : {}),
+      ...(bcCompany  ? { bcCompany  } : {}),
+      bcPort:            parseInt(String(bcPort),    10) || 8048,
+      agentPort:         parseInt(String(agentPort), 10) || 9099,
+      ...(navDatabaseName   ? { navDatabaseName }   : {}),
+      ...(navServerInstance ? { navServerInstance } : {}),
+      navDatabaseServer: navDatabaseServer || 'localhost',
+      ...(testNavDatabaseServer ? { testNavDatabaseServer } : {}),
+      ...(testNavDatabaseName   ? { testNavDatabaseName }   : {}),
+      ...(testNavServerInstance ? { testNavServerInstance } : {}),
+      ...(testBcInstance        ? { testBcInstance }        : {}),
+      ...(testBcCompany         ? { testBcCompany }         : {}),
+      ...(testBcPort            ? { testBcPort: parseInt(String(testBcPort), 10) || null } : {}),
+    },
+  })
+  // Re-fetch to get latest tunnelId after possible update above
+  tenant = await prisma.tenant.findUnique({ where: { id: tenantId } }) as any
 
   let tunnelToken: string
   try {
-    tunnelToken = await getTunnelToken(tenant.tunnelId)
+    tunnelToken = await getTunnelToken(tenant!.tunnelId!)
   } catch (e: any) {
-    return NextResponse.json({ error: `Could not fetch tunnel token: ${e.message}` }, { status: 502 })
+    return NextResponse.json({ error: 'Could not fetch tunnel token: ' + e.message }, { status: 502 })
   }
 
   const scriptPath = join(process.cwd(), 'scripts', 'Install-BespoxAI.ps1')
