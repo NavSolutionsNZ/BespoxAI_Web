@@ -205,7 +205,7 @@ if (-not (Test-Path $ConfigPath)) {
 }
 
 $Config     = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-$ListenPort    = if ($Config.listenPort) { $Config.listenPort } else { 8080 }
+$ListenPort    = if ($Config.listenPort) { $Config.listenPort } else { 9099 }
 $ApiKey        = $Config.apiKey
 $BCBase        = $Config.bcBaseUrl   # e.g. http://localhost:8048
 $BCUser        = $Config.bcUsername
