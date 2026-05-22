@@ -234,7 +234,7 @@ $Listener.Prefixes.Add("http://+:$ListenPort/")
 
 try {
     $Listener.Start()
-    Write-Log "BCAgent v2.2 started — listening on port $ListenPort"
+    Write-Log "BCAgent v2.4 started — listening on port $ListenPort"
 } catch {
     Write-Log "FATAL: Could not start listener on port ${ListenPort}: $_"
     exit 1
@@ -481,7 +481,9 @@ while ($Listener.IsListening) {
                 $bodyBytes = New-Object byte[] $bodyLen
                 [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
                 $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
-                $objects = $body.objects
+                $objects       = $body.objects
+                $requirementId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { 'unknown' }
+                $timestamp     = Get-Date -Format 'yyyyMMdd_HHmmss'
 
                 if (-not $NavDbName) { throw 'navDatabaseName not configured. Set it in the BC Installer tab and regenerate the installer.' }
                 if (-not $objects -or $objects.Count -eq 0) { throw 'No objects specified.' }
@@ -630,7 +632,7 @@ $Config = [ordered]@{
     navDatabaseServer = $NavDatabaseServer
     navDatabaseName   = $NavDatabaseName
     navServerInstance = $NavServerInstance
-    version           = '2.3'
+    version           = '2.4'
     installedAt       = (Get-Date -Format 'o')
 }
 
