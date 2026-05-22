@@ -108,11 +108,13 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     },
   })
   // Re-fetch to get latest tunnelId after possible update above
-  tenant = await prisma.tenant.findUnique({ where: { id: tenantId } }) as any
+  const freshTenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
+  if (!freshTenant) return NextResponse.json({ error: 'Tenant not found after provisioning' }, { status: 404 })
+  tenant = freshTenant
 
   let tunnelToken: string
   try {
-    tunnelToken = await getTunnelToken(tenant!.tunnelId!)
+    tunnelToken = await getTunnelToken(tenant.tunnelId!)
   } catch (e: any) {
     return NextResponse.json({ error: 'Could not fetch tunnel token: ' + e.message }, { status: 502 })
   }
