@@ -12,7 +12,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
-import { notifyAdminsNewRequirement } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +44,7 @@ export async function POST(
   // Parent must be far enough along
   if (!ADDENDUM_ALLOWED_STATUSES.includes(parent.status))
     return NextResponse.json(
-      { error: `Addenda can only be added to requirements that are in development or later (current status: ${parent.status})` },
+      { error: `Addenda can only be added to requirements that are in active development (current status: ${parent.status})` },
       { status: 400 },
     )
 
@@ -65,24 +64,13 @@ export async function POST(
       description: description.trim(),
       bcArea,
       priority,
-      status:      'submitted',   // skip draft — go straight to submitted
+      status:      'draft',       // start as draft — customer generates spec then submits
     },
     include: {
       user:   { select: { name: true, email: true } },
       tenant: { select: { name: true, country: true, paymentTermsKey: true } },
       addenda: true,
     },
-  })
-
-  // Notify superadmins — fire and forget
-  notifyAdminsNewRequirement({
-    requirementId: addendum.id,
-    title:         addendum.title,
-    tenantName:    (addendum as any).tenant?.name ?? '',
-    customerName:  (addendum as any).user?.name ?? (addendum as any).user?.email ?? '',
-    customerEmail: (addendum as any).user?.email ?? '',
-    isAddendum:    true,
-    parentTitle:   parent.title,
   })
 
   return NextResponse.json({ requirement: addendum }, { status: 201 })

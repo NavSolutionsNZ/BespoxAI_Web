@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import {
+  notifyAdminsNewRequirement,
   notifyAdminsAnswered,
   notifyAdminsQuoteRejected,
   notifyCustomerNeedsClarif,
@@ -166,6 +167,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // Customer → admin notifications
     if (updateData.status === 'submitted' && existing.status === 'needs_clarification') {
       notifyAdminsAnswered({ requirementId: params.id, title: reqTitle, tenantName, customerName })
+    }
+    if (updateData.status === 'submitted' && existing.status === 'draft') {
+      notifyAdminsNewRequirement({
+        requirementId: params.id,
+        title:         reqTitle,
+        tenantName,
+        customerName,
+        customerEmail,
+        isAddendum:    !!existing.parentId,
+        parentTitle:   existing.parentId ? existing.title : undefined,
+      })
     }
     if (updateData.status === 'quote_rejected') {
       notifyAdminsQuoteRejected({ title: reqTitle, tenantName, customerName, rejectionReason: updateData.quoteRejectionReason })
