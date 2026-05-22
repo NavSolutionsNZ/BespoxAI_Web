@@ -71,6 +71,15 @@ function SettingsInner() {
     console.log('[DEBUG] SettingsInner MOUNTED')
     return () => console.log('[DEBUG] SettingsInner UNMOUNTED')
   }, [])
+  useEffect(() => {
+    console.log('[DEBUG] tenant changed — id:', tenant?.id ?? 'null', '| loading:', loading)
+  }, [tenant])
+  useEffect(() => {
+    console.log('[DEBUG] loading changed →', loading, '| tenant.id:', tenant?.id ?? 'null')
+  }, [loading])
+  useEffect(() => {
+    console.log('[DEBUG] tab changed →', tab)
+  }, [tab])
   // ── END DEBUG ───────────────────────────────────────────────────────────────
 
   const [tab,          setTab]          = useState<Tab>('overview')
@@ -597,6 +606,7 @@ function SettingsInner() {
               <Label>Production Environment</Label>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.</p>
 
+              {console.log('[DEBUG] rendering ProdEnvForm with key:', tenant?.id ?? 'loading', '| loading:', loading) as any}
               <ProdEnvForm
                 key={tenant?.id ?? 'loading'}
                 initial={instForm}
@@ -611,6 +621,7 @@ function SettingsInner() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. These details will be included the next time you generate the installer below.
                 </p>
+                {console.log('[DEBUG] rendering TestEnvForm with key:', tenant?.id ?? 'loading') as any}
                 <TestEnvForm
                   key={tenant?.id ?? 'loading'}
                   initial={{
@@ -686,8 +697,8 @@ function TestEnvForm({ initial, onSave }: {
 }) {
   // ── DEBUG ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    console.log('[DEBUG] TestEnvForm MOUNTED — initial.testNavDatabaseName:', initial.testNavDatabaseName)
-    return () => console.log('[DEBUG] TestEnvForm UNMOUNTED')
+    console.log('[DEBUG] TestEnvForm MOUNTED — initial.testNavDatabaseName:', initial.testNavDatabaseName, '| t:', Date.now())
+    return () => console.log('[DEBUG] TestEnvForm UNMOUNTED | t:', Date.now())
   }, [])
   // ── END DEBUG ───────────────────────────────────────────────────────────────
 
@@ -760,8 +771,8 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
 }) {
   // ── DEBUG ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    console.log('[DEBUG] ProdEnvForm MOUNTED — initial.bcInstance:', initial.bcInstance)
-    return () => console.log('[DEBUG] ProdEnvForm UNMOUNTED')
+    console.log('[DEBUG] ProdEnvForm MOUNTED — initial.bcInstance:', initial.bcInstance, '| t:', Date.now())
+    return () => console.log('[DEBUG] ProdEnvForm UNMOUNTED | t:', Date.now())
   }, [])
   // ── END DEBUG ───────────────────────────────────────────────────────────────
 
