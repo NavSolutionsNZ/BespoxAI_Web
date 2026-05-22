@@ -621,17 +621,17 @@ function SettingsInner() {
                   </div>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Test Database Name <span style={{ color: '#A32D2D' }}>*</span></div>
-                    <input style={sharedInp} type="text" value={testDbName} onChange={e => setTestDbName(e.target.value)} placeholder="e.g. Dynamics NAV 2017 Test" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                    <input style={sharedInp} type="text" value={testDbName} onChange={e => setTestDbName(e.target.value)} placeholder="e.g. Dynamics NAV 2017 Test" autoComplete="off" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Test BC Instance</div>
-                      <input style={sharedInp} type="text" value={testInstance} onChange={e => setTestInstance(e.target.value)} placeholder="Leave blank to use production instance" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                      <input style={sharedInp} type="text" value={testInstance} onChange={e => setTestInstance(e.target.value)} placeholder="Leave blank to use production instance" autoComplete="off" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                     </div>
                     <div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>Test BC Company</div>
-                      <input style={sharedInp} type="text" value={testCompany} onChange={e => setTestCompany(e.target.value)} placeholder="Leave blank to use production company" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+                      <input style={sharedInp} type="text" value={testCompany} onChange={e => setTestCompany(e.target.value)} placeholder="Leave blank to use production company" autoComplete="off" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
