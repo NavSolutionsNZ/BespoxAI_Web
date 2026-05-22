@@ -129,7 +129,7 @@ function TestEnvForm({ initial, onSave, onSaved, prodUsername, prodPassword, onT
         </label>
         {!useProdCreds && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>{lbl('Test Username')}<input ref={refs.testBcUsername} style={inp} type="text" placeholder="DOMAIN\username" /></div>
+            <div>{lbl('Test Username')}<input ref={refs.testBcUsername} style={inp} type="text" placeholder="DOMAIN\username" autoComplete="off" name="bc-test-username" /></div>
             <div>{lbl('Test Password')}<input ref={refs.testBcPassword} style={inp} type="password" placeholder="" /></div>
           </div>
         )}
@@ -817,12 +817,12 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
           {lbl('BC Username')}
-          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\\username" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\\username" autoComplete="off" name="bc-username" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows / BC service account with OData access.</p>
         </div>
         <div>
           {lbl('BC Password')}
-          <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} autoComplete="new-password" name="bc-password" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
         </div>
       </div>
