@@ -551,12 +551,22 @@ while ($Listener.IsListening) {
                     $tempLog = Join-Path $tempDir "$tempId.log"
                     $chunks  = [System.Collections.Generic.List[string]]::new()
 
+                    # Group objects by type — one finsql call per type with combined ID filter.
+                    # e.g. Type=Table;ID=27|37 instead of two separate finsql launches.
+                    # This reduces connection overhead against the remote SQL server significantly.
+                    $byType = @{}
                     foreach ($obj in $objects) {
-                        $chunkFile = Join-Path $tempDir "$tempId-$($obj.type)$($obj.id).txt"
-                        $filter    = "Type=$($obj.type);ID=$($obj.id)"
+                        if (-not $byType.ContainsKey($obj.type)) { $byType[$obj.type] = [System.Collections.Generic.List[string]]::new() }
+                        $byType[$obj.type].Add([string]$obj.id)
+                    }
+
+                    foreach ($objType in $byType.Keys) {
+                        $idList    = $byType[$objType] -join '|'
+                        $filter    = "Type=$objType;ID=$idList"
+                        $chunkFile = Join-Path $tempDir "$tempId-$objType.txt"
                         Write-Log "NAV export (finsql): $filter"
-                        $args = "command=ExportObjects,id=BespoxAI,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=$filter,file=$chunkFile,logfile=$tempLog"
-                        $proc = Start-Process -FilePath $finsql -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+                        $finsqlArgs = "command=ExportObjects,id=BespoxAI,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=$filter,file=$chunkFile,logfile=$tempLog"
+                        $proc = Start-Process -FilePath $finsql -ArgumentList $finsqlArgs -Wait -PassThru -WindowStyle Hidden
                         if ($proc.ExitCode -ne 0 -or -not (Test-Path $chunkFile) -or (Get-Item $chunkFile).Length -eq 0) {
                             $logMsg = if (Test-Path $tempLog) { Get-Content $tempLog -Raw } else { 'no log' }
                             Write-Log "Skip $filter (exit $($proc.ExitCode)): $logMsg"

@@ -24,7 +24,7 @@ import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
 
 export const dynamic    = 'force-dynamic'
-export const maxDuration = 60  // bump to 300 on Vercel Pro
+export const maxDuration = 300 // Vercel Pro max — finsql on remote SQL needs time
 
 // ── DEBUG mock C/AL content ───────────────────────────────────────────────────
 // Realistic sample with 3 objects, version lists, fields, and functions.
@@ -243,7 +243,8 @@ export async function POST(
         'Content-Type':    'application/json',
         'X-BespoxAI-Key':  tenant.apiKey,
       },
-      body: JSON.stringify({ requirementId: params.id, objects }),
+      body:   JSON.stringify({ requirementId: params.id, objects }),
+      signal: AbortSignal.timeout(120_000), // 120s — finsql on remote SQL can be slow
     })
 
     if (!agentRes.ok) {
