@@ -688,7 +688,16 @@ Start-Sleep -Seconds 2
 
 $cfSvc = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
 if (-not $cfSvc) {
-    Write-Fail "cloudflared service was not created (exit code $cfExitCode) — check the tunnel token and try again"
+    Write-Fail "cloudflared service was not created (exit code $cfExitCode) -- check the tunnel token and try again"
+}
+
+# Force HTTP/2 protocol -- QUIC (UDP) is commonly blocked for the SYSTEM service account
+# in corporate environments. HTTP/2 over TCP port 7844 is reliable in all tested configs.
+$cfSvcPath = (Get-WmiObject Win32_Service -Filter "Name='cloudflared'").PathName
+if ($cfSvcPath -notlike '*--protocol*') {
+    $cfNewPath = $cfSvcPath -replace '(cloudflared\.exe)\s+tunnel', '$1 --protocol http2 tunnel'
+    & sc.exe config cloudflared binPath= $cfNewPath 2>&1 | Out-Null
+    Write-Host '    Patched cloudflared service to use HTTP/2 (TCP) -- avoids QUIC/UDP blocks on SYSTEM account'
 }
 Write-OK 'cloudflared service installed'
 
