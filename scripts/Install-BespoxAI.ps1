@@ -547,7 +547,7 @@ while ($Listener.IsListening) {
                         $chunkFile = Join-Path $tempDir "$tempId-$($obj.type)$($obj.id).txt"
                         $filter    = "Type=$($obj.type);ID=$($obj.id)"
                         Write-Log "NAV export (finsql): $filter"
-                        $args = "command=ExportObjects,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=`"$filter`",file=$chunkFile,logfile=$tempLog"
+                        $args = "command=ExportObjects,id=BespoxAI,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=$filter,file=$chunkFile,logfile=$tempLog"
                         $proc = Start-Process -FilePath $finsql -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
                         if ($proc.ExitCode -ne 0 -or -not (Test-Path $chunkFile) -or (Get-Item $chunkFile).Length -eq 0) {
                             $logMsg = if (Test-Path $tempLog) { Get-Content $tempLog -Raw } else { 'no log' }
