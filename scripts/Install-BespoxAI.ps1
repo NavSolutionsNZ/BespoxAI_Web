@@ -243,9 +243,12 @@ try {
     exit 1
 }
 
-# Credential for NTLM
-$SecPass = ConvertTo-SecureString $BCPass -AsPlainText -Force
-$Cred    = [System.Net.NetworkCredential]::new($BCUser, $SecPass)
+# Credential for NTLM -- split domain\username so NTLM gets separate fields
+$SecPass    = ConvertTo-SecureString $BCPass -AsPlainText -Force
+$userParts  = $BCUser -split '\\', 2
+$userDomain = if ($userParts.Count -eq 2) { $userParts[0] } else { $env:USERDOMAIN }
+$userName   = if ($userParts.Count -eq 2) { $userParts[1] } else { $BCUser }
+$Cred       = [System.Net.NetworkCredential]::new($userName, $SecPass, $userDomain)
 
 while ($Listener.IsListening) {
     try {
@@ -565,7 +568,7 @@ while ($Listener.IsListening) {
         # Forward with NTLM
         $handler = [System.Net.Http.HttpClientHandler]::new()
         $handler.Credentials = $Cred
-        $handler.PreAuthenticate = $true
+        $handler.PreAuthenticate = $false  # false = allow NTLM challenge-response; true can cause mid-handshake connection failures
 
         $client = [System.Net.Http.HttpClient]::new($handler)
         $client.Timeout = [TimeSpan]::FromSeconds(60)
