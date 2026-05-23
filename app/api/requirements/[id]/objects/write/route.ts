@@ -106,5 +106,14 @@ export async function POST(
   const snapshotId = data.snapshotId
     ?? (rawText.match(/"snapshotId"\s*:\s*"([^"]+)"/) ?? [])[1]
     ?? null
+
+  // Persist snapshotId to DB so "Deploy + Compile to Test" stays available across sessions
+  if (snapshotId) {
+    await (prisma as any).requirement.update({
+      where: { id: params.id },
+      data:  { testDeploySnapshotId: snapshotId },
+    }).catch(() => { /* non-fatal */ })
+  }
+
   return NextResponse.json({ snapshotId, path: data.path, objectCount: data.objectCount })
 }

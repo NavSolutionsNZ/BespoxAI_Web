@@ -1886,13 +1886,14 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
     setDeployErr('')
     setDeployResults(null)
     try {
-      const res = await fetch(`/api/requirements/${selected.id}/objects/deploy-test`, {
+      const res = await fetch('/api/requirements/' + selected.id + '/objects/deploy-test', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ snapshotId: writeSnapshotId }),
       })
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
-      const data = await res.json()
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Deploy API returned invalid response — the operation may have timed out (60s limit). Check BCAgent logs.') }
+      if (!res.ok) throw new Error(data.error ?? 'Deploy failed (' + res.status + ')')
       setDeployResults(data.results ?? [])
       setDeployDebug(!!data._debug)
       if (data.success) {
