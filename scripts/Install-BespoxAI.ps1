@@ -240,12 +240,9 @@ try {
     exit 1
 }
 
-# Credential for NTLM -- split domain\username so NTLM gets separate fields
-$SecPass    = ConvertTo-SecureString $BCPass -AsPlainText -Force
-$userParts  = $BCUser -split '\\', 2
-$userDomain = if ($userParts.Count -eq 2) { $userParts[0] } else { $env:USERDOMAIN }
-$userName   = if ($userParts.Count -eq 2) { $userParts[1] } else { $BCUser }
-$Cred       = [System.Net.NetworkCredential]::new($userName, $SecPass, $userDomain)
+# BCAgent runs as the BC user account (set in scheduled task).
+# UseDefaultCredentials lets Windows handle NTLM/Kerberos via the process token --
+# same mechanism as browser SSO, no explicit credential injection needed.
 
 while ($Listener.IsListening) {
     try {
@@ -566,7 +563,7 @@ while ($Listener.IsListening) {
         # HttpClient/.NET NTLM has known handshake issues with NAV/BC -- HttpWebRequest does not.
         $webReq = [System.Net.HttpWebRequest]::Create($targetUrl)
         $webReq.Method      = $req.HttpMethod
-        $webReq.Credentials = $Cred
+        $webReq.UseDefaultCredentials = $true  # uses the BC user Windows token (process runs as BCUser)
         $webReq.Accept      = 'application/json'
         $webReq.Headers.Add('Accept-Encoding', 'identity')
         $webReq.Timeout     = 60000
@@ -742,7 +739,9 @@ $Settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -RunOnlyIfNetworkAvailable:$false
 
-$Principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+# Run BCAgent as the BC user so Windows token auth works natively against localhost BC OData
+# SYSTEM cannot authenticate via NTLM/Kerberos with explicit credentials on loopback.
+$Principal = New-ScheduledTaskPrincipal -UserId $BCUser -LogonType Password -RunLevel Highest
 
 Register-ScheduledTask `
     -TaskName  $TaskName `
@@ -750,9 +749,10 @@ Register-ScheduledTask `
     -Trigger   $Trigger `
     -Settings  $Settings `
     -Principal $Principal `
+    -Password  $BCPass `
     -Force | Out-Null
 
-Write-OK "Scheduled task '$TaskName' created (runs as SYSTEM at startup)"
+Write-OK "Scheduled task '$TaskName' created (runs as $BCUser at startup)"
 
 # ── Step 8: Start services ─────────────────────────────────────────────────────
 
