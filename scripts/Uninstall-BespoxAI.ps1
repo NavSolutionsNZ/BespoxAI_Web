@@ -109,6 +109,13 @@ if ($cfSvc) {
     Write-Warn 'cloudflared service not found -- skipping'
 }
 
+# Remove stale event log registry key so reinstalls do not fail with exit code 1
+$cfEvtKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Cloudflared'
+if (Test-Path $cfEvtKey) {
+    Remove-Item -Path $cfEvtKey -Force -ErrorAction SilentlyContinue
+    Write-OK 'Cloudflared event log registry key removed'
+}
+
 # -- Step 3: Kill any orphaned BCAgent PowerShell processes --------------------
 
 Write-Step 'Killing any orphaned BCAgent processes'

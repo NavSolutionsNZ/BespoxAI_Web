@@ -658,24 +658,34 @@ $cfSvc = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
 if ($cfSvc) {
     Write-Host '    Removing existing cloudflared service...' -NoNewline
     if ($cfSvc.Status -eq 'Running') { Stop-Service -Name 'cloudflared' -Force }
+    $ErrorActionPreference = 'Continue'
     & $CloudflaredExe service uninstall 2>&1 | Out-Null
+    $ErrorActionPreference = 'Stop'
     Start-Sleep -Seconds 2
     Write-Host ' done.'
 }
 
+# Remove stale event log registry key left by prior installs — cloudflared exits 1
+# if this key already exists, even though the service itself installs successfully.
+$cfEvtKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Cloudflared'
+if (Test-Path $cfEvtKey) {
+    Remove-Item -Path $cfEvtKey -Force -ErrorAction SilentlyContinue
+    Write-Host '    Removed stale Cloudflared event log registry key'
+}
+
 # Install tunnel with token
 # cloudflared writes INFO logs to stderr; temporarily allow non-terminating errors
-# so that $ErrorActionPreference = 'Stop' does not throw a NativeCommandError
+# so that $ErrorActionPreference = 'Stop' does not throw a NativeCommandError.
+# We verify success by checking whether the service was created, not by exit code alone.
 $ErrorActionPreference = 'Continue'
 & $CloudflaredExe service install $TunnelToken 2>&1 | ForEach-Object { Write-Host "    $_" }
 $cfExitCode = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
-if ($cfExitCode -ne 0) { Write-Fail "cloudflared service install failed (exit code $cfExitCode)" }
 Start-Sleep -Seconds 2
 
 $cfSvc = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
 if (-not $cfSvc) {
-    Write-Fail 'cloudflared service was not created — check the tunnel token and try again'
+    Write-Fail "cloudflared service was not created (exit code $cfExitCode) — check the tunnel token and try again"
 }
 Write-OK 'cloudflared service installed'
 
