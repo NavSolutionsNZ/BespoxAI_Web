@@ -42,7 +42,9 @@ export async function POST() {
   if (!tenant) return NextResponse.json({ error: 'Tenant not configured' }, { status: 404 })
 
   // Fetch OData $metadata — returns XML listing all published entity sets
-  const metadataUrl = buildODataUrl(tenant, '$metadata')
+  // NOTE: $metadata lives at the OData service root, NOT under Company(x)/
+  // buildODataUrl() always appends Company(x)/ so we build the URL manually here.
+  const metadataUrl = tenant.agentBaseUrl + '/' + tenant.bcInstance + '/ODataV4/$metadata'
   let metadataXml: string
   try {
     const res = await fetch(metadataUrl, {
