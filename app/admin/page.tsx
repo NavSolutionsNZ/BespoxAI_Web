@@ -1360,6 +1360,9 @@ function DeployToTestPanel(props: DeployPanelProps) {
         >
           {deployLoading ? 'Deploying…' : 'Deploy + Compile to Test'}
         </button>
+        {writeSnapshotId
+          ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>{writeSnapshotId}</span>
+          : null}
       </div>
       {deployErr
         ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p>
