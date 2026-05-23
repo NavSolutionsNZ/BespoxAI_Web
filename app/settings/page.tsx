@@ -600,6 +600,7 @@ function SettingsInner() {
               <ProdEnvForm
                 key={tenant?.id ?? 'loading'}
                 initial={instForm}
+                erpLabel={erpLabel}
                 onSave={saveSystemConfig}
                 onSaved={vals => setInstForm(f => ({ ...f, ...vals }))}
               />
@@ -618,6 +619,7 @@ function SettingsInner() {
                     testBcInstance:      tenant?.testBcInstance      ?? '',
                     testBcCompany:       tenant?.testBcCompany        ?? '',
                   }}
+                  erpLabel={erpLabel}
                   onSave={saveSystemConfig}
                 />
               </Card>
@@ -680,9 +682,10 @@ function SettingsInner() {
   )
 }
 
-function TestEnvForm({ initial, onSave }: {
+function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
   initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string }
   onSave: (data: Record<string, any>) => Promise<void>
+  erpLabel?: string
 }) {
 
   const refs = {
@@ -747,10 +750,11 @@ function TestEnvForm({ initial, onSave }: {
   )
 }
 
-function ProdEnvForm({ initial, onSave, onSaved }: {
+function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
   initial: { navDatabaseServer: string; navDatabaseName: string; navServerInstance: string; bcInstance: string; bcCompany: string; bcPort: string; agentPort: string; bcUsername: string; bcPassword: string }
   onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string>) => void
+  erpLabel?: string
 }) {
 
   const refs = {
