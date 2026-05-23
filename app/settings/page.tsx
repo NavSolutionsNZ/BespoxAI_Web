@@ -152,6 +152,7 @@ function SettingsInner() {
         if (t?.bcPort)              setInstForm(f => ({ ...f, bcPort:              String(t.bcPort)            }))
         if (t?.agentPort)           setInstForm(f => ({ ...f, agentPort:           String(t.agentPort)         }))
         if (t?.bcInstance)          setInstForm(f => ({ ...f, bcInstance:          t.bcInstance                }))
+        if (t?.bcUsername)          setInstForm(f => ({ ...f, bcUsername:          t.bcUsername                }))
         if (t?.navDatabaseServer)   setInstForm(f => ({ ...f, navDatabaseServer:   t.navDatabaseServer         }))
         if (t?.navDatabaseName)     setInstForm(f => ({ ...f, navDatabaseName:     t.navDatabaseName           }))
         if (t?.navServerInstance)   setInstForm(f => ({ ...f, navServerInstance:   t.navServerInstance         }))

@@ -47,7 +47,7 @@ export async function GET() {
     where: { id: tenantId },
     select: {
       id: true, name: true, tunnelSubdomain: true, bcInstance: true,
-      bcCompany: true, active: true, country: true, entityConfig: true,
+      bcCompany: true, bcUsername: true, active: true, country: true, entityConfig: true,
       tunnelId: true, createdAt: true,
       navProduct: true, navVersion: true, lastCU: true,
       bcPort: true, agentPort: true,

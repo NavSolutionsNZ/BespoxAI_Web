@@ -92,7 +92,8 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   await (prisma as any).tenant.update({
     where: { id: tenantId },
     data: {
-      ...(bcInstance ? { bcInstance } : {}),
+      ...(bcInstance  ? { bcInstance  } : {}),
+      ...(bcUsername  ? { bcUsername  } : {}),
       ...(bcCompany  ? { bcCompany  } : {}),
       bcPort:            parseInt(String(bcPort),    10) || 8048,
       agentPort:         parseInt(String(agentPort), 10) || 9099,
