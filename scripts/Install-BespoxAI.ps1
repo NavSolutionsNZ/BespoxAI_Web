@@ -228,6 +228,9 @@ function Write-Log {
     Write-Host $line
 }
 
+# Required for HttpClientHandler/HttpClient in PowerShell 5.1 running as SYSTEM scheduled task
+Add-Type -AssemblyName System.Net.Http
+
 # HTTP listener
 $Listener = [System.Net.HttpListener]::new()
 $Listener.Prefixes.Add("http://+:$ListenPort/")
