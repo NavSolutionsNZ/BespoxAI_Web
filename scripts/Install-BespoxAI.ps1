@@ -664,7 +664,13 @@ if ($cfSvc) {
 }
 
 # Install tunnel with token
+# cloudflared writes INFO logs to stderr; temporarily allow non-terminating errors
+# so that $ErrorActionPreference = 'Stop' does not throw a NativeCommandError
+$ErrorActionPreference = 'Continue'
 & $CloudflaredExe service install $TunnelToken 2>&1 | ForEach-Object { Write-Host "    $_" }
+$cfExitCode = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($cfExitCode -ne 0) { Write-Fail "cloudflared service install failed (exit code $cfExitCode)" }
 Start-Sleep -Seconds 2
 
 $cfSvc = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
