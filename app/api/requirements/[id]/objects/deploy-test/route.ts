@@ -84,25 +84,33 @@ export async function POST(
   // Use separate test agent URL if configured, otherwise use production agent
   const agentBase = (tenant.testServerSeparate && tenant.testAgentUrl)
     ? tenant.testAgentUrl.replace(/\/$/, '')
-    : `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`
+    : 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com'
 
-  const agentRes = await fetch(`${agentBase}/bespoxai/objects/deploy`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
-    body:    JSON.stringify({
-      requirementId: params.id,
-      snapshotId,
-      environment: 'test',
-    }),
-  })
+  let agentRes: Response
+  try {
+    agentRes = await fetch(agentBase + '/bespoxai/objects/deploy', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
+      body:    JSON.stringify({
+        requirementId: params.id,
+        snapshotId,
+        environment: 'test',
+      }),
+    })
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Could not reach BCAgent: ' + (e.message ?? 'network error') }, { status: 502 })
+  }
 
   if (!agentRes.ok) {
-    let msg = `BCAgent returned ${agentRes.status}`
+    let msg = 'BCAgent returned ' + agentRes.status
     try { const e = await agentRes.json(); msg = e.error ?? msg } catch {}
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 
-  const data = await agentRes.json()
+  // Read as text first — BCAgent may return malformed JSON (e.g. unescaped paths)
+  const rawText = await agentRes.text()
+  let data: any = {}
+  try { data = JSON.parse(rawText) } catch { /* malformed JSON from agent — continue with partial data */ }
 
   if (data.success) {
     // Update requirement — set testDeployedAt, clear any previous UAT state
