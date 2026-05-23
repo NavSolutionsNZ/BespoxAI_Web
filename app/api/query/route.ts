@@ -231,6 +231,7 @@ needsData=false for: accounting concepts, BC how-to questions, ratio definitions
         ...conversationHistory,
         { role: 'user', content: resolvedQuestion },
       ],
+      { jsonMode: true },
     )
 
     const routeRaw  = routeRes.content || '{}'
@@ -343,6 +344,7 @@ For time-series / "by month" / "over last N months" / trend questions:
         ...conversationHistory,
         { role: 'user', content: resolvedQuestion },
       ],
+      { jsonMode: true },
     )
 
     const planText = planRes.content
