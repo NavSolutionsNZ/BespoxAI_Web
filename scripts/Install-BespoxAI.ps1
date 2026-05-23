@@ -343,14 +343,18 @@ while ($Listener.IsListening) {
                 $deployDir = "C:\BespoxAI\Deployments\$requirementId\$snapshotId"
                 if (-not (Test-Path $deployDir)) { throw "Snapshot folder not found: $deployDir" }
 
-                # Load NAV management module
-                $navPaths = @(
+                # Load NAV modules (management + model tools)
+                $navModules = @(
                     'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1'
+                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\NavModelTools.ps1',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\NavModelTools.ps1'
                 )
-                foreach ($pat in $navPaths) {
+                foreach ($pat in $navModules) {
                     $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
-                    if ($f) { . $f.FullName; break }
+                    if ($f) { . $f.FullName }
                 }
 
                 $results = @()
@@ -488,14 +492,20 @@ while ($Listener.IsListening) {
                 if (-not $NavDbName) { throw 'navDatabaseName not configured. Set it in the BC Installer tab and regenerate the installer.' }
                 if (-not $objects -or $objects.Count -eq 0) { throw 'No objects specified.' }
 
-                # Try to load NAV management module from standard paths
-                $navPaths = @(
+                # Load NAV modules. NavAdminTool = server management.
+                # NavModelTools = object export (Export-NAVApplicationObject).
+                # Load all found -- do NOT break after first match.
+                $navModules = @(
                     'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1'
+                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\NavModelTools.ps1',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\NavModelTools.ps1'
                 )
-                foreach ($pat in $navPaths) {
+                foreach ($pat in $navModules) {
                     $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
-                    if ($f) { . $f.FullName; break }
+                    if ($f) { . $f.FullName }
                 }
 
                 $tempId  = [System.Guid]::NewGuid().ToString('N')
