@@ -979,7 +979,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       <div style={{flex:1,display:'flex',overflow:'hidden'}}>
 
       {/* ── Left list ─────────────────────────────────────────────────────── */}
-      <div style={{width:'100%',flexShrink:0,display:(selected||showAddendum)?'none':'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{width:'100%',flexShrink:0,display:(selected||showAddendum||showCreate)?'none':'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'12px 14px',borderBottom:'1px solid var(--fog)',display:'flex',gap:8,background:'var(--white)',alignItems:'center',flexWrap:'wrap'}}>
           <button onClick={()=>{
             setSelected(null)
