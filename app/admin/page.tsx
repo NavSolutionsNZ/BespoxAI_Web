@@ -1228,6 +1228,9 @@ interface AdminReq {
 
 interface DeployPanelProps {
   selected:        AdminReq
+  syncLoading:     boolean
+  syncResult:      string
+  syncErr:         string
   writeLoading:    boolean
   writeSnapshotId: string | null
   writeErr:        string
@@ -1235,14 +1238,16 @@ interface DeployPanelProps {
   deployResults:   any[] | null
   deployDebug:     boolean
   deployErr:       string
+  onSync:          () => void
   onWrite:         () => void
   onDeploy:        () => void
 }
 
 function DeployToTestPanel(props: DeployPanelProps) {
-  const { selected, writeLoading, writeSnapshotId, writeErr,
+  const { selected, syncLoading, syncResult, syncErr,
+          writeLoading, writeSnapshotId, writeErr,
           deployLoading, deployResults, deployDebug, deployErr,
-          onWrite, onDeploy } = props
+          onSync, onWrite, onDeploy } = props
 
   const base: React.CSSProperties = {
     fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px',
@@ -1299,6 +1304,33 @@ function DeployToTestPanel(props: DeployPanelProps) {
             </p>
           </div>
         : null}
+
+      {/* ── Sync from GitHub ─────────────────────────────────────── */}
+      <div style={{ background: 'rgba(26,146,114,0.04)', border: '1px solid rgba(26,146,114,0.15)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>
+          Sync from GitHub
+        </p>
+        {selected.githubBranch
+          ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', marginBottom: 8 }}>
+              {'Branch: ' + selected.githubBranch}
+            </p>
+          : <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', marginBottom: 8 }}>
+              No GitHub branch — fetch objects from BCAgent first
+            </p>}
+        <button
+          onClick={onSync}
+          disabled={syncLoading || !selected.githubBranch}
+          style={{ ...base, background: selected.githubBranch ? 'var(--ink)' : 'var(--fog)', color: selected.githubBranch ? 'var(--cream)' : 'var(--slate)', border: 'none', fontSize: 11 }}
+        >
+          {syncLoading ? 'Syncing…' : 'Pull latest from GitHub → DB'}
+        </button>
+        {syncResult
+          ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', marginTop: 6, marginBottom: 0 }}>{syncResult}</p>
+          : null}
+        {syncErr
+          ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', marginTop: 6, marginBottom: 0 }}>{syncErr}</p>
+          : null}
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 1</span>
@@ -1573,6 +1605,9 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   const [savingObjs, setSavingObjs]             = useState(false)
   const [savedObjCount, setSavedObjCount]       = useState(0)
   // Deployment workflow
+  const [syncLoading, setSyncLoading]           = useState(false)
+  const [syncResult, setSyncResult]             = useState('')
+  const [syncErr, setSyncErr]                   = useState('')
   const [writeLoading, setWriteLoading]         = useState(false)
   const [writeSnapshotId, setWriteSnapshotId]   = useState<string|null>(null)
   const [writeErr, setWriteErr]                 = useState('')
@@ -1785,6 +1820,24 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
     }
   }
 
+  async function syncFromGitHub() {
+    if (!selected || syncLoading) return
+    setSyncLoading(true)
+    setSyncResult('')
+    setSyncErr('')
+    try {
+      const res = await fetch('/api/requirements/' + selected.id + '/objects/sync-from-github', { method: 'POST' })
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Sync API returned invalid response') }
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed (' + res.status + ')')
+      setSyncResult('Synced ' + data.synced + ' file' + (data.synced !== 1 ? 's' : '') + ' from ' + data.branch)
+    } catch(e: any) {
+      setSyncErr(e.message)
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
   async function writeObjectsToServer() {
     if (!selected || writeLoading) return
     setWriteLoading(true)
@@ -1794,19 +1847,21 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
     setDeployDebug(false)
     try {
       // Load object file IDs for this requirement that have content
-      const filesRes = await fetch(`/api/requirements/${selected.id}/objects`)
-      if (!filesRes.ok) throw new Error('Could not load object files')
-      const filesData = await filesRes.json()
+      const filesRes = await fetch('/api/requirements/' + selected.id + '/objects')
+      let filesData: any
+      try { filesData = await filesRes.json() } catch { throw new Error('Objects API returned invalid response — check test DB name is set in Settings') }
+      if (!filesRes.ok) throw new Error(filesData.error ?? 'Could not load object files (' + filesRes.status + ')')
       const fileIds = (filesData.objects ?? []).filter((f: any) => f.hasContent).map((f: any) => f.id)
-      if (!fileIds.length) throw new Error('No object files with content found. Fetch objects from BCAgent first.')
+      if (!fileIds.length) throw new Error('No object files with content found. Sync from GitHub or fetch from BCAgent first.')
 
-      const res = await fetch(`/api/requirements/${selected.id}/objects/write`, {
+      const res = await fetch('/api/requirements/' + selected.id + '/objects/write', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ fileIds }),
       })
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
-      const data = await res.json()
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Write API returned invalid response') }
+      if (!res.ok) throw new Error(data.error ?? 'Write failed (' + res.status + ')')
       setWriteSnapshotId(data.snapshotId)
     } catch(e: any) {
       setWriteErr(e.message)
@@ -2426,6 +2481,9 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
             {selected.status === 'in_development' && (
               <DeployToTestPanel
                 selected={selected}
+                syncLoading={syncLoading}
+                syncResult={syncResult}
+                syncErr={syncErr}
                 writeLoading={writeLoading}
                 writeSnapshotId={writeSnapshotId}
                 writeErr={writeErr}
@@ -2433,6 +2491,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                 deployResults={deployResults}
                 deployDebug={deployDebug}
                 deployErr={deployErr}
+                onSync={syncFromGitHub}
                 onWrite={writeObjectsToServer}
                 onDeploy={deployToTest}
               />
