@@ -358,7 +358,7 @@ function SettingsInner() {
               </div>
             </Card>
             <Card>
-              <Label>{erpLabel} Connection</Label>
+              <Label>{erpLabel + ' Connection'}</Label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 40px' }}>
                 {([['Tenant Name', tenant?.name], [(erpLabel + ' Instance'), tenant?.bcInstance], [(erpLabel + ' Company'), tenant?.bcCompany], ['Agent URL', `https://${tenant?.tunnelSubdomain}-agent.bespoxai.com`], ['Status', hOk ? `Connected · ${health.ms}ms` : hErr ? 'Offline' : 'Checking…'], ['Member Since', tenant ? relTime(tenant.createdAt) : '—']] as [string, string|undefined][]).map(([k, v]) => (
                   <div key={k}>
