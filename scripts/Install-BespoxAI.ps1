@@ -760,15 +760,15 @@ $Settings = New-ScheduledTaskSettingsSet `
 
 # Run BCAgent as the BC user so Windows token auth works natively against localhost BC OData
 # SYSTEM cannot authenticate via NTLM/Kerberos with explicit credentials on loopback.
-$Principal = New-ScheduledTaskPrincipal -UserId $BCUsername -LogonType Password -RunLevel Highest
-
+# Note: -Principal and -Password are in different parameter sets -- use -User/-Password/-RunLevel directly.
 Register-ScheduledTask `
     -TaskName  $TaskName `
     -Action    $Action `
     -Trigger   $Trigger `
     -Settings  $Settings `
-    -Principal $Principal `
+    -User      $BCUsername `
     -Password  $BCPassword `
+    -RunLevel  Highest `
     -Force | Out-Null
 
 Write-OK "Scheduled task '$TaskName' created (runs as $BCUsername at startup)"
