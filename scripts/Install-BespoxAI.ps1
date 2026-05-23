@@ -343,14 +343,16 @@ while ($Listener.IsListening) {
                 $deployDir = "C:\BespoxAI\Deployments\$requirementId\$snapshotId"
                 if (-not (Test-Path $deployDir)) { throw "Snapshot folder not found: $deployDir" }
 
-                # Load NAV modules (management + model tools)
+                # Load NAV/BC modules (management + model tools). BC14 paths first.
                 $navModules = @(
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
                     'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
                     'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\NavModelTools.ps1',
-                    'C:\Program Files\Microsoft Dynamics NAV\*\NavModelTools.ps1'
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1'
                 )
                 foreach ($pat in $navModules) {
                     $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -492,16 +494,19 @@ while ($Listener.IsListening) {
                 if (-not $NavDbName) { throw 'navDatabaseName not configured. Set it in the BC Installer tab and regenerate the installer.' }
                 if (-not $objects -or $objects.Count -eq 0) { throw 'No objects specified.' }
 
-                # Load NAV modules. NavAdminTool = server management.
-                # NavModelTools = object export (Export-NAVApplicationObject).
-                # Load all found -- do NOT break after first match.
+                # Load NAV/BC management + model tools modules.
+                # Searches both legacy NAV and BC14+ paths. Loads all found.
+                # BC14 path: Microsoft Dynamics 365 Business Central\140\...
+                # NAV path:  Microsoft Dynamics NAV\<ver>\...
                 $navModules = @(
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
                     'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
+                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
                     'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\NavModelTools.ps1',
-                    'C:\Program Files\Microsoft Dynamics NAV\*\NavModelTools.ps1'
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1'
                 )
                 foreach ($pat in $navModules) {
                     $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -528,9 +533,12 @@ while ($Listener.IsListening) {
                     }
                 } else {
                     # finsql.exe path -- NAV 2013 / 2013 R2
+                    # BC14 paths first (higher priority), then legacy NAV
                     $finsqlPaths = @(
-                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
+                        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
                     )
                     $finsql = $null
                     foreach ($fp in $finsqlPaths) {
