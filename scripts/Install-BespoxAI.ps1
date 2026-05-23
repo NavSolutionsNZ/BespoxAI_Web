@@ -776,7 +776,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "    Warning: could not set task user ($stResult) -- running as SYSTEM" -ForegroundColor Yellow
     Write-Host "    BCAgent will use explicit credentials from agent.config.json instead" -ForegroundColor Yellow
 } else {
-    Write-Log "Task user set to $BCUsername via schtasks.exe"
+    Write-OK "Task user set to $BCUsername"
 }
 
 Write-OK "Scheduled task '$TaskName' created (runs as $BCUsername at startup)"
