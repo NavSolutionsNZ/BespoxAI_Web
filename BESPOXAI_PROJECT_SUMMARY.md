@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespokeAI_Web (GitHub)
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** May 23, 2026 (Session 3)
+**Last Updated:** May 23, 2026 (Session 4)
 
 ---
 
@@ -18,7 +18,7 @@
 - Stripe billing
 - Cloudflare tunnel for BC/NAV connectivity
 - Multiple API routes
-- Anthropic Claude API (provider switchable — use fetch pattern, not SDK)
+- AI provider switchable (OpenAI or Anthropic — use fetch pattern, not SDK)
 - GitHub per-customer repos
 
 **Marketing pages:** `public/index.html` — the LIVE homepage
@@ -42,12 +42,12 @@
 - **Never run** `prisma migrate`
 
 ### Known Test IDs
-- **Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz`
+- **TestCo1 Tenant ID:** `cmpgqbg8l0001tqej9wpqsx6g` (tunnelSubdomain: testco1, agentPort: 9099)
+- **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev — NOT the test tenant)
 - **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
 
 ### Key Schema Changes (Session 3)
 ```sql
--- Run these if not already applied:
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "firstName" TEXT;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastName" TEXT;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "preferredName" TEXT;
@@ -58,8 +58,6 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "preferredName" TEXT;
 ## Settings Page — CRITICAL Input Pattern
 
 **All form inputs in `app/settings/page.tsx` use refs + defaultValue.**
-
-This was the fix for a persistent input-reset bug. Never use controlled inputs (value/onChange) in this file.
 
 ```tsx
 // CORRECT — refs pattern
@@ -74,16 +72,57 @@ const [val, setVal] = useState('')
 
 ---
 
-## BCAgent — Session 3 Changes
+## BCAgent — Session 4 Changes (CRITICAL)
 
-- **Default port: 9099** everywhere (was 8080)
-- **Version: 2.4**
-- **Uninstaller:** `scripts/Uninstall-BespoxAI.ps1` — run before reinstall
-- **Auto-tunnel:** First installer download creates Cloudflare tunnel automatically
+- **Version: 2.4** — fully tested and working end-to-end
+- **Default port: 9099** everywhere
+- **Scheduled task runs as BC user account** (not SYSTEM) — required for NTLM/Kerberos auth to BC OData
+- **UseDefaultCredentials = true** in HttpWebRequest — uses Windows token like browser SSO
+- **HttpWebRequest** (not HttpClient) — HttpClient has NTLM handshake issues on Windows Server
+- **No Add-Type System.Net.Http** — HttpWebRequest uses native WinHTTP, no assembly load needed
+- **--protocol http2** on cloudflared service — QUIC/UDP blocked for SYSTEM account in corporate networks
+- **Service recovery** configured — auto-restart cloudflared on failure (5s/10s/30s)
+- **Cloudflared event log registry key** cleaned up on install and uninstall
+- **Uninstall-BespoxAI.bat** — right-click Run as Administrator shim for the PS1 uninstaller
+
+### BCAgent Architecture
+```
+Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
+  → cloudflared (Windows service, --protocol http2, runs as SYSTEM)
+  → localhost:9099 (BCAgent scheduled task, runs as BC user account)
+  → localhost:8048 (BC/NAV OData, NTLM via UseDefaultCredentials)
+```
+
+### Why BCAgent runs as BC user (not SYSTEM)
+SYSTEM cannot authenticate to BC OData via NTLM/Kerberos with explicit credentials on loopback.
+Running as the BC user (e.g. incadea\9lancasterr) allows UseDefaultCredentials=true to use the
+Windows token — same mechanism as browser SSO. Password stored in agent.config.json and
+Windows Task Scheduler credential store.
+
+### Known NAV v14 OData Limitations (affects CFO assistant planner)
+- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice — returns 400
+- `$filter` on Posting_Date NOT supported on posted documents — returns 400
+- `$apply`, `groupby`, `aggregate()` NOT supported — returns 400
 
 ---
 
-## Customer Onboarding Flow (NEW Session 3)
+## CFO Assistant Query Pipeline (Session 4 Fixes)
+
+1. **Router** (classify needsData) — now uses `jsonMode: true` to force JSON from gpt-4o
+2. **Planner** (pick entity + OData params) — now uses `jsonMode: true` to force JSON from gpt-4o
+3. **OData fetch** — via tunnel → BCAgent → BC
+4. **Answerer** — formats response
+
+### Bad Query Steering
+The router uses `__BAD_QUERY__` entries from QueryLog to steer away from known-bad queries.
+If CFO assistant routes everything as generic, check for stale bad query entries:
+```sql
+DELETE FROM "QueryLog" WHERE "tenantId" = '{tenantId}' AND entity = '__BAD_QUERY__';
+```
+
+---
+
+## Customer Onboarding Flow
 
 1. Sign up → select BC or NAV version → verify email
 2. Email triggers `notifyAdminsSignupVerified` to superadmins
@@ -91,7 +130,7 @@ const [val, setVal] = useState('')
 4. Customer receives temp credentials
 5. Login → onboarding (name fields, BC connection details)
 6. Settings → BC Installer → Download (auto-creates tunnel first time)
-7. Run installer on Windows server (port 9099)
+7. Run installer on Windows server as Administrator (port 9099)
 
 ---
 
@@ -119,21 +158,22 @@ const [val, setVal] = useState('')
 
 ---
 
-## Key Commits (Session 3 — May 23, 2026)
+## Key Commits (Session 4 — May 23, 2026)
 
 | Area | Description |
 |------|-------------|
-| BCAgent | Port 9099, bug fixes (requirementId in export, version stamps) |
-| Uninstaller | New script, HTTP.sys handling, pure ASCII |
-| Installer | Auto-provision tunnel on first download |
-| Signup/Verify | NAV versions, verify useEffect fix, notification to admins |
-| Onboarding | Name fields, full BC connection fields, step 5 CTA |
-| Settings | White backgrounds, profile card, refs pattern fix, test env simplified |
-| Dashboard | White bg, unconnected banner with links, greeting logic |
-| Login | White bg, updated branding, request access top-right |
-| Admin | Signups cleanup (delete, hide activated), users table full width |
-| User model | firstName, lastName, preferredName fields |
-| Port | 9099 default everywhere |
+| BCAgent installer | NativeCommandError fix (ErrorActionPreference around cloudflared install) |
+| BCAgent installer | Stale Cloudflared event log registry key cleanup |
+| BCAgent installer | Add-Type System.Net.Http removed (HttpWebRequest uses WinHTTP natively) |
+| BCAgent installer | HttpClient → HttpWebRequest for NTLM (HttpClient breaks NTLM on Windows Server) |
+| BCAgent installer | Scheduled task runs as BC user (not SYSTEM) — fixes NTLM loopback auth |
+| BCAgent installer | UseDefaultCredentials=true — Windows token auth like browser SSO |
+| BCAgent installer | --protocol http2 on cloudflared service (QUIC/UDP blocked on SYSTEM account) |
+| BCAgent installer | cloudflared service auto-restart on failure |
+| BCAgent installer | NTLM domain\username split (superseded by UseDefaultCredentials) |
+| Uninstaller | Registry key cleanup, Uninstall-BespoxAI.bat right-click Run as Admin shim |
+| lib/tenants.ts | agentPort fallback 8080 → 9099 |
+| app/api/query/route.ts | jsonMode:true on router + planner callAI (gpt-4o prose fix) |
 
 ---
 
