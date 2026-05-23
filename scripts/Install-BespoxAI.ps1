@@ -228,6 +228,22 @@ function Write-Log {
     Write-Host $line
 }
 
+# Read full request body — Stream.Read() may return fewer bytes than requested
+# on large payloads, so we loop until all bytes are consumed.
+function Read-RequestBody {
+    param($req)
+    $bodyLen = $req.ContentLength64
+    if ($bodyLen -le 0) { return '' }
+    $bodyBytes = New-Object byte[] $bodyLen
+    $offset = 0
+    while ($offset -lt $bodyLen) {
+        $read = $req.InputStream.Read($bodyBytes, $offset, $bodyLen - $offset)
+        if ($read -le 0) { break }
+        $offset += $read
+    }
+    return [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset)
+}
+
 # HTTP listener
 $Listener = [System.Net.HttpListener]::new()
 $Listener.Prefixes.Add("http://+:$ListenPort/")
@@ -278,8 +294,8 @@ while ($Listener.IsListening) {
             try {
                 $bodyLen   = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
-                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
-                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $offset = 0; while ($offset -lt $bodyLen) { $read = $req.InputStream.Read($bodyBytes, $offset, $bodyLen - $offset); if ($read -le 0) { break }; $offset += $read }
+                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset) | ConvertFrom-Json
                 $objects = $body.objects          # [{filename, content}]
                 $requirementId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { 'unknown' }
                 $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
@@ -326,8 +342,8 @@ while ($Listener.IsListening) {
             try {
                 $bodyLen   = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
-                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
-                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $offset = 0; while ($offset -lt $bodyLen) { $read = $req.InputStream.Read($bodyBytes, $offset, $bodyLen - $offset); if ($read -le 0) { break }; $offset += $read }
+                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset) | ConvertFrom-Json
                 $requirementId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { 'unknown' }
                 $snapshotId    = $body.snapshotId -replace '[^a-zA-Z0-9_-]',''
                 $environment   = if ($body.environment) { $body.environment } else { 'test' }
@@ -454,8 +470,8 @@ while ($Listener.IsListening) {
             try {
                 $bodyLen = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
-                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
-                $body = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $offset = 0; while ($offset -lt $bodyLen) { $read = $req.InputStream.Read($bodyBytes, $offset, $bodyLen - $offset); if ($read -le 0) { break }; $offset += $read }
+                $body = [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset) | ConvertFrom-Json
                 $reqId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { '' }
                 $deleted = 0
                 foreach ($base in @('C:\BespoxAI\Regression','C:\BespoxAI\Deployments')) {
@@ -485,8 +501,8 @@ while ($Listener.IsListening) {
             try {
                 $bodyLen   = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
-                [void]$req.InputStream.Read($bodyBytes, 0, $bodyLen)
-                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes) | ConvertFrom-Json
+                $offset = 0; while ($offset -lt $bodyLen) { $read = $req.InputStream.Read($bodyBytes, $offset, $bodyLen - $offset); if ($read -le 0) { break }; $offset += $read }
+                $body    = [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset) | ConvertFrom-Json
                 $objects       = $body.objects
                 $requirementId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { 'unknown' }
                 $timestamp     = Get-Date -Format 'yyyyMMdd_HHmmss'
@@ -659,11 +675,11 @@ while ($Listener.IsListening) {
         if ($req.HttpMethod -notin @('GET','HEAD','OPTIONS')) {
             if ($req.ContentLength64 -gt 0) {
                 $bodyBytes = New-Object byte[] $req.ContentLength64
-                [void]$req.InputStream.Read($bodyBytes, 0, $bodyBytes.Length)
+                $offset = 0; $bLen = $req.ContentLength64; while ($offset -lt $bLen) { $read = $req.InputStream.Read($bodyBytes, $offset, $bLen - $offset); if ($read -le 0) { break }; $offset += $read }
                 $webReq.ContentType   = if ($req.ContentType) { $req.ContentType } else { 'application/json' }
-                $webReq.ContentLength = $bodyBytes.Length
+                $webReq.ContentLength = $offset
                 $reqStream = $webReq.GetRequestStream()
-                $reqStream.Write($bodyBytes, 0, $bodyBytes.Length)
+                $reqStream.Write($bodyBytes, 0, $offset)
                 $reqStream.Close()
             }
         }
