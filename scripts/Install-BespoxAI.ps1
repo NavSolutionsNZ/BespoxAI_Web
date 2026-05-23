@@ -513,14 +513,68 @@ while ($Listener.IsListening) {
                 $tempTxt = Join-Path $tempDir "$tempId.txt"
                 $tempZip = Join-Path $tempDir "$tempId.zip"
 
-                $exportArgs = @{ DatabaseServer = $NavDbServer; DatabaseName = $NavDbName; Path = $tempTxt; Force = $true }
-                if ($NavServerInst) { $exportArgs['ServerInstance'] = $NavServerInst }
+                # Try Export-NAVApplicationObject (NAV 2015+)
+                # Fall back to finsql.exe (NAV 2013 / 2013 R2) if cmdlet not available.
+                $hasExportCmdlet = [bool](Get-Command Export-NAVApplicationObject -ErrorAction SilentlyContinue)
 
-                foreach ($obj in $objects) {
-                    $filter = "Type=$($obj.type);Id=$($obj.id)"
-                    Write-Log "NAV export: $filter"
-                    try { Export-NAVApplicationObject @exportArgs -Filter $filter -ErrorAction Stop }
-                    catch { Write-Log "Skip $filter`: $_" }
+                if ($hasExportCmdlet) {
+                    $exportArgs = @{ DatabaseServer = $NavDbServer; DatabaseName = $NavDbName; Path = $tempTxt; Force = $true }
+                    if ($NavServerInst) { $exportArgs['ServerInstance'] = $NavServerInst }
+                    foreach ($obj in $objects) {
+                        $filter = "Type=$($obj.type);Id=$($obj.id)"
+                        Write-Log "NAV export (cmdlet): $filter"
+                        try { Export-NAVApplicationObject @exportArgs -Filter $filter -ErrorAction Stop }
+                        catch { Write-Log "Skip $filter`: $_" }
+                    }
+                } else {
+                    # finsql.exe path -- NAV 2013 / 2013 R2
+                    $finsqlPaths = @(
+                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
+                    )
+                    $finsql = $null
+                    foreach ($fp in $finsqlPaths) {
+                        $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($ff) { $finsql = $ff.FullName; break }
+                    }
+                    if (-not $finsql) { throw 'Neither Export-NAVApplicationObject nor finsql.exe found. Check NAV installation.' }
+                    Write-Log "Using finsql.exe: $finsql"
+
+                    $tempLog = Join-Path $tempDir "$tempId.log"
+                    $chunks  = [System.Collections.Generic.List[string]]::new()
+
+                    foreach ($obj in $objects) {
+                        $chunkFile = Join-Path $tempDir "$tempId-$($obj.type)$($obj.id).txt"
+                        $filter    = "Type=$($obj.type);ID=$($obj.id)"
+                        Write-Log "NAV export (finsql): $filter"
+                        $args = "command=ExportObjects,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=`"$filter`",file=$chunkFile,logfile=$tempLog"
+                        $proc = Start-Process -FilePath $finsql -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+                        if ($proc.ExitCode -ne 0 -or -not (Test-Path $chunkFile) -or (Get-Item $chunkFile).Length -eq 0) {
+                            $logMsg = if (Test-Path $tempLog) { Get-Content $tempLog -Raw } else { 'no log' }
+                            Write-Log "Skip $filter (exit $($proc.ExitCode)): $logMsg"
+                        } else {
+                            $chunks.Add($chunkFile)
+                        }
+                    }
+
+                    if ($chunks.Count -gt 0) {
+                        # Concatenate all chunk files into tempTxt
+                        $sb = [System.Text.StringBuilder]::new()
+                        foreach ($chunk in $chunks) {
+                            $bytes = [System.IO.File]::ReadAllBytes($chunk)
+                            # Strip BOM from each chunk before joining
+                            $start = 0
+                            if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { $start = 2 }
+                            elseif ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $start = 3 }
+                            $text = [System.Text.Encoding]::Unicode.GetString($bytes, $start, $bytes.Length - $start)
+                            [void]$sb.AppendLine($text.TrimEnd())
+                            Remove-Item $chunk -Force -ErrorAction SilentlyContinue
+                        }
+                        $utf8NoBomEarly = New-Object System.Text.UTF8Encoding $false
+                        [System.IO.File]::WriteAllText($tempTxt, $sb.ToString(), $utf8NoBomEarly)
+                        Write-Log "finsql export joined $($chunks.Count) object(s) to UTF-8"
+                    }
+                    Remove-Item $tempLog -Force -ErrorAction SilentlyContinue
                 }
 
                 if (-not (Test-Path $tempTxt) -or (Get-Item $tempTxt).Length -eq 0) {
