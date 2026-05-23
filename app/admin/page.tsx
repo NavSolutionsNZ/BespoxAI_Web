@@ -12,6 +12,7 @@ import SuperAdminDashboard from '@/components/SuperAdminDashboard'
 interface Tenant {
   id: string; name: string; tunnelSubdomain: string
   bcInstance: string; bcCompany: string; active: boolean
+  tunnelId: string | null
   tier?: string; trialEndsAt?: string | null
   createdAt: string
   _count: { users: number; queryLogs: number }
@@ -527,7 +528,7 @@ function AdminPageInner() {
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{t.bcInstance}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t._count.users}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t._count.queryLogs}</td>
-                        <td style={tdStyle}><StatusPill active={t.active} /></td>
+                        <td style={tdStyle}><StatusPill connected={!!t.tunnelId} /></td>
                         <td style={tdStyle}>
                           <select
                             value={(t as any).tier ?? 'trial'}
@@ -1033,16 +1034,18 @@ const inputStyle: React.CSSProperties = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusPill({ active }: { active: boolean }) {
+function StatusPill({ connected, active }: { connected?: boolean; active?: boolean }) {
+  const on = connected !== undefined ? connected : !!active
+  const label = connected !== undefined ? (on ? 'Connected' : 'Not Connected') : (on ? 'Active' : 'Inactive')
   return (
     <span style={{
       fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em',
       textTransform: 'uppercase', padding: '2px 8px', borderRadius: 8,
-      background: active ? 'rgba(26,146,114,0.08)' : 'rgba(163,45,45,0.06)',
-      color: active ? 'var(--forest)' : '#A32D2D',
-      border: `1px solid ${active ? 'rgba(26,146,114,0.2)' : 'rgba(163,45,45,0.2)'}`,
+      background: on ? 'rgba(26,146,114,0.08)' : 'rgba(163,45,45,0.06)',
+      color: on ? 'var(--forest)' : '#A32D2D',
+      border: `1px solid ${on ? 'rgba(26,146,114,0.2)' : 'rgba(163,45,45,0.2)'}`,
     }}>
-      {active ? 'Active' : 'Inactive'}
+      {label}
     </span>
   )
 }
