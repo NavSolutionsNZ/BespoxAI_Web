@@ -228,12 +228,10 @@ if (-not (Test-Path $InstallRoot)) {
 
 Write-Step 'Final port verification'
 
-Start-Sleep -Seconds 1
-try {
-    $tcp = [System.Net.Sockets.TcpClient]::new('localhost', $AgentPort)
-    $tcp.Close()
+$portInUse = netstat -ano 2>&1 | Select-String ":$AgentPort\s"
+if ($portInUse) {
     Write-Warn "Port $AgentPort is STILL in use -- check with: netstat -ano | findstr :$AgentPort"
-} catch {
+} else {
     Write-OK "Port $AgentPort is clear -- ready for fresh install"
 }
 
