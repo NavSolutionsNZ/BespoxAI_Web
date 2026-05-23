@@ -1628,6 +1628,13 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   // Navigate to a requirement — updates URL so back button works
   function selectReq(req: AdminReq | null) {
     setSelected(req)
+    // Pre-populate writeSnapshotId so Step 2 is available without re-writing
+    setWriteSnapshotId(req?.testDeploySnapshotId ?? null)
+    setSyncResult('')
+    setSyncErr('')
+    setWriteErr('')
+    setDeployResults(null)
+    setDeployErr('')
     const url = req ? '/admin?tab=requirements&req=' + req.id : '/admin?tab=requirements'
     router.push(url, { scroll: false })
   }
@@ -1670,7 +1677,10 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
     if (!reqId) { setSelected(null); return }
     if (reqs.length > 0) {
       const target = reqs.find(r => r.id === reqId)
-      if (target) setSelected(target)
+      if (target) {
+        setSelected(target)
+        setWriteSnapshotId(prev => prev ?? target.testDeploySnapshotId ?? null)
+      }
     }
   }, [searchParams, reqs])
 
