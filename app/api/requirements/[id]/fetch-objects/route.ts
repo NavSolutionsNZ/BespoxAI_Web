@@ -222,7 +222,8 @@ export async function POST(
   const agentBase = `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`
 
   // ── NAV / BC14 path ────────────────────────────────────────────────────────
-  if (tenant.navProduct === 'NAV' || tenant.navProduct === null) {
+  // NAV, BC14 hybrid, and null (unset) all use C/AL — only 'BC' v15+ uses AL
+  if (tenant.navProduct === 'NAV' || tenant.navProduct === 'BC' || tenant.navProduct === null) {
     if (!objects || objects.length === 0)
       return NextResponse.json({ error: 'No objects specified' }, { status: 400 })
 

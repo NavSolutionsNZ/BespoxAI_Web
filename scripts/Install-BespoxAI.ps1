@@ -525,6 +525,25 @@ while ($Listener.IsListening) {
                 if (Test-Path $tempTxt) { Copy-Item $tempTxt -Destination $regressionDir -Force }
                 Write-Log "Regression saved: $regressionDir"
 
+                # Normalize encoding to UTF-8 before zipping.
+                # Export-NAVApplicationObject writes UTF-16 LE (BOM FF FE) by default.
+                # JSZip reads zip entries as Latin-1, so UTF-16 LE produces garbled text
+                # and OBJECT headers never match. Re-encode here so the client gets clean UTF-8.
+                $fileBytes = [System.IO.File]::ReadAllBytes($tempTxt)
+                $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                if ($fileBytes.Length -ge 2 -and $fileBytes[0] -eq 0xFF -and $fileBytes[1] -eq 0xFE) {
+                    # UTF-16 LE with BOM
+                    $rawContent = [System.Text.Encoding]::Unicode.GetString($fileBytes, 2, $fileBytes.Length - 2)
+                    [System.IO.File]::WriteAllText($tempTxt, $rawContent, $utf8NoBom)
+                    Write-Log 'Re-encoded C/AL output: UTF-16 LE -> UTF-8'
+                } elseif ($fileBytes.Length -ge 3 -and $fileBytes[0] -eq 0xEF -and $fileBytes[1] -eq 0xBB -and $fileBytes[2] -eq 0xBF) {
+                    # UTF-8 with BOM -- strip it so the first line starts cleanly with OBJECT
+                    $rawContent = [System.Text.Encoding]::UTF8.GetString($fileBytes, 3, $fileBytes.Length - 3)
+                    [System.IO.File]::WriteAllText($tempTxt, $rawContent, $utf8NoBom)
+                    Write-Log 'Stripped UTF-8 BOM from C/AL output'
+                }
+                # else: no BOM -- assume ANSI/UTF-8, leave as-is
+
                 Compress-Archive -Path $tempTxt -DestinationPath $tempZip -Force
                 $zipBytes = [System.IO.File]::ReadAllBytes($tempZip)
                 Remove-Item $tempTxt, $tempZip -ErrorAction SilentlyContinue
