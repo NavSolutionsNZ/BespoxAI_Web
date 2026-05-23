@@ -564,19 +564,18 @@ while ($Listener.IsListening) {
                 }
 
                 if ($chunks.Count -gt 0) {
-                    # Concatenate chunk files, strip BOM from each, join as UTF-8
-                    $sb = [System.Text.StringBuilder]::new()
+                    # Concatenate chunk files into a single UTF-8 file.
+                    # Use Get-Content -Raw which auto-detects BOM (UTF-16 LE/BE, UTF-8)
+                    # and falls back to ANSI if no BOM. Avoids manual byte-decode errors
+                    # where finsql writes ANSI but we were treating it as UTF-16 LE.
+                    $utf8NoBomEarly = New-Object System.Text.UTF8Encoding $false
+                    $combined = [System.Text.StringBuilder]::new()
                     foreach ($chunk in $chunks) {
-                        $bytes = [System.IO.File]::ReadAllBytes($chunk)
-                        $start = 0
-                        if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { $start = 2 }
-                        elseif ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $start = 3 }
-                        $text = [System.Text.Encoding]::Unicode.GetString($bytes, $start, $bytes.Length - $start)
-                        [void]$sb.AppendLine($text.TrimEnd())
+                        $text = Get-Content $chunk -Raw
+                        [void]$combined.AppendLine($text.TrimEnd())
                         Remove-Item $chunk -Force -ErrorAction SilentlyContinue
                     }
-                    $utf8NoBomEarly = New-Object System.Text.UTF8Encoding $false
-                    [System.IO.File]::WriteAllText($tempTxt, $sb.ToString(), $utf8NoBomEarly)
+                    [System.IO.File]::WriteAllText($tempTxt, $combined.ToString(), $utf8NoBomEarly)
                     Write-Log "finsql export joined $($chunks.Count) type(s) to UTF-8"
                 }
                 Remove-Item $tempLog -Force -ErrorAction SilentlyContinue
