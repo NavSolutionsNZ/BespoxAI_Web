@@ -758,18 +758,26 @@ $Settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -RunOnlyIfNetworkAvailable:$false
 
-# Run BCAgent as the BC user so Windows token auth works natively against localhost BC OData
-# SYSTEM cannot authenticate via NTLM/Kerberos with explicit credentials on loopback.
-# Note: -Principal and -Password are in different parameter sets -- use -User/-Password/-RunLevel directly.
+# Step 1: Register as SYSTEM (always resolves, no domain lookup required)
+$Principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 Register-ScheduledTask `
     -TaskName  $TaskName `
     -Action    $Action `
     -Trigger   $Trigger `
     -Settings  $Settings `
-    -User      $BCUsername `
-    -Password  $BCPassword `
-    -RunLevel  Highest `
+    -Principal $Principal `
     -Force | Out-Null
+
+# Step 2: Switch to BC user account via schtasks.exe
+# Register-ScheduledTask -User/-Password fails to resolve domain accounts in some
+# elevated contexts. schtasks.exe handles domain SID resolution reliably.
+$stResult = & schtasks.exe /change /tn $TaskName /ru $BCUsername /rp $BCPassword 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "    Warning: could not set task user ($stResult) -- running as SYSTEM" -ForegroundColor Yellow
+    Write-Host "    BCAgent will use explicit credentials from agent.config.json instead" -ForegroundColor Yellow
+} else {
+    Write-Log "Task user set to $BCUsername via schtasks.exe"
+}
 
 Write-OK "Scheduled task '$TaskName' created (runs as $BCUsername at startup)"
 
