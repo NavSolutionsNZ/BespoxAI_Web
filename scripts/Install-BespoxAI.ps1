@@ -523,7 +523,23 @@ while ($Listener.IsListening) {
                 $hasExportCmdlet = [bool](Get-Command Export-NAVApplicationObject -ErrorAction SilentlyContinue)
 
                 if ($hasExportCmdlet) {
-                    $exportArgs = @{ DatabaseServer = $NavDbServer; DatabaseName = $NavDbName; Path = $tempTxt; Force = $true }
+                    # Export-NAVApplicationObject requires $NavIde = path to finsql.exe
+                    # Find it across BC14 and legacy NAV paths
+                    $finsqlSearchPaths = @(
+                        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
+                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
+                    )
+                    $NavIde = $null
+                    foreach ($fp in $finsqlSearchPaths) {
+                        $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Sort-Object { $_.VersionInfo.FileVersion } -Descending | Select-Object -First 1
+                        if ($ff) { $NavIde = $ff.FullName; break }
+                    }
+                    if (-not $NavIde) { throw 'finsql.exe not found — required by Export-NAVApplicationObject. Check NAV/BC installation.' }
+                    Write-Log "NavIde set to: $NavIde"
+
+                    $exportArgs = @{ DatabaseServer = $NavDbServer; DatabaseName = $NavDbName; Path = $tempTxt; Force = $true; NavIde = $NavIde }
                     if ($NavServerInst) { $exportArgs['ServerInstance'] = $NavServerInst }
                     foreach ($obj in $objects) {
                         $filter = "Type=$($obj.type);Id=$($obj.id)"
