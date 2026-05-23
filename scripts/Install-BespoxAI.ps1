@@ -565,47 +565,63 @@ while ($Listener.IsListening) {
         $targetUrl = $BCBase.TrimEnd('/') + $rawUrl
         Write-Log "→ $($req.HttpMethod) $targetUrl"
 
-        # Forward with NTLM
-        $handler = [System.Net.Http.HttpClientHandler]::new()
-        $handler.Credentials = $Cred
-        $handler.PreAuthenticate = $false  # false = allow NTLM challenge-response; true can cause mid-handshake connection failures
+        # Forward with NTLM via HttpWebRequest (WinHTTP-backed, reliable NTLM on Windows Server)
+        # HttpClient/.NET NTLM has known handshake issues with NAV/BC -- HttpWebRequest does not.
+        $webReq = [System.Net.HttpWebRequest]::Create($targetUrl)
+        $webReq.Method      = $req.HttpMethod
+        $webReq.Credentials = $Cred
+        $webReq.Accept      = 'application/json'
+        $webReq.Headers.Add('Accept-Encoding', 'identity')
+        $webReq.Timeout     = 60000
+        $webReq.PreAuthenticate = $false
 
-        $client = [System.Net.Http.HttpClient]::new($handler)
-        $client.Timeout = [TimeSpan]::FromSeconds(60)
-
-        $fwdReq = [System.Net.Http.HttpRequestMessage]::new(
-            [System.Net.Http.HttpMethod]::new($req.HttpMethod),
-            $targetUrl
-        )
-        $fwdReq.Headers.TryAddWithoutValidation('Accept', 'application/json') | Out-Null
-        $fwdReq.Headers.TryAddWithoutValidation('Accept-Encoding', 'identity') | Out-Null  # v2.1 gzip fix
-
-        # v2.2: Forward request body for POST/PATCH/PUT (enables BC management/automation APIs)
+        # v2.2: Forward request body for POST/PATCH/PUT
         if ($req.HttpMethod -notin @('GET','HEAD','OPTIONS')) {
             if ($req.ContentLength64 -gt 0) {
                 $bodyBytes = New-Object byte[] $req.ContentLength64
                 [void]$req.InputStream.Read($bodyBytes, 0, $bodyBytes.Length)
-                $bodyContent = [System.Net.Http.ByteArrayContent]::new($bodyBytes)
-                $ctHeader = if ($req.ContentType) { $req.ContentType } else { 'application/json' }
-                $bodyContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse($ctHeader)
-                $fwdReq.Content = $bodyContent
+                $webReq.ContentType   = if ($req.ContentType) { $req.ContentType } else { 'application/json' }
+                $webReq.ContentLength = $bodyBytes.Length
+                $reqStream = $webReq.GetRequestStream()
+                $reqStream.Write($bodyBytes, 0, $bodyBytes.Length)
+                $reqStream.Close()
             }
         }
 
-        $fwdRes  = $client.SendAsync($fwdReq).GetAwaiter().GetResult()
-        $bytes   = $fwdRes.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-        $ct      = if ($fwdRes.Content.Headers.ContentType) { $fwdRes.Content.Headers.ContentType.ToString() } else { 'application/json' }
+        $statusCode = 200
+        $ct         = 'application/json'
+        $bytes      = @()
+        try {
+            $webRes     = $webReq.GetResponse()
+            $statusCode = [int]$webRes.StatusCode
+            $ct         = if ($webRes.ContentType) { $webRes.ContentType } else { 'application/json' }
+            $stream     = $webRes.GetResponseStream()
+            $ms         = [System.IO.MemoryStream]::new()
+            $stream.CopyTo($ms)
+            $bytes      = $ms.ToArray()
+            $stream.Close()
+            $webRes.Close()
+        } catch [System.Net.WebException] {
+            $errRes = $_.Exception.Response
+            if ($errRes) {
+                $statusCode = [int]$errRes.StatusCode
+                $ct         = if ($errRes.ContentType) { $errRes.ContentType } else { 'application/json' }
+                $stream     = $errRes.GetResponseStream()
+                $ms         = [System.IO.MemoryStream]::new()
+                $stream.CopyTo($ms)
+                $bytes      = $ms.ToArray()
+                $stream.Close()
+                $errRes.Close()
+            } else { throw }
+        }
 
-        Write-Log "← $([int]$fwdRes.StatusCode) ($($bytes.Length) bytes)"
+        Write-Log "<- $statusCode ($($bytes.Length) bytes)"
 
-        $res.StatusCode      = [int]$fwdRes.StatusCode
+        $res.StatusCode      = $statusCode
         $res.ContentType     = $ct
         $res.ContentLength64 = $bytes.Length
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
         $res.Close()
-
-        $client.Dispose()
-        $handler.Dispose()
 
     } catch {
         Write-Log "ERROR handling request: $_"
