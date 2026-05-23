@@ -518,98 +518,68 @@ while ($Listener.IsListening) {
                 $tempTxt = Join-Path $tempDir "$tempId.txt"
                 $tempZip = Join-Path $tempDir "$tempId.zip"
 
-                # Try Export-NAVApplicationObject (NAV 2015+)
-                # Fall back to finsql.exe (NAV 2013 / 2013 R2) if cmdlet not available.
-                $hasExportCmdlet = [bool](Get-Command Export-NAVApplicationObject -ErrorAction SilentlyContinue)
-
-                if ($hasExportCmdlet) {
-                    # Export-NAVApplicationObject requires $NavIde = path to finsql.exe
-                    # Find it across BC14 and legacy NAV paths
-                    $finsqlSearchPaths = @(
-                        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
-                    )
-                    $NavIde = $null
-                    foreach ($fp in $finsqlSearchPaths) {
-                        $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Sort-Object { $_.VersionInfo.FileVersion } -Descending | Select-Object -First 1
-                        if ($ff) { $NavIde = $ff.FullName; break }
-                    }
-                    if (-not $NavIde) { throw 'finsql.exe not found — required by Export-NAVApplicationObject. Check NAV/BC installation.' }
-                    Write-Log "NavIde set to: $NavIde"
-
-                    $exportArgs = @{ DatabaseServer = $NavDbServer; DatabaseName = $NavDbName; Path = $tempTxt; Force = $true; NavIde = $NavIde }
-                    if ($NavServerInst) { $exportArgs['ServerInstance'] = $NavServerInst }
-                    foreach ($obj in $objects) {
-                        $filter = "Type=$($obj.type);Id=$($obj.id)"
-                        Write-Log "NAV export (cmdlet): $filter"
-                        try { Export-NAVApplicationObject @exportArgs -Filter $filter -ErrorAction Stop }
-                        catch { Write-Log "Skip $filter`: $_" }
-                    }
-                } else {
-                    # finsql.exe path -- NAV 2013 / 2013 R2
-                    # BC14 paths first (higher priority), then legacy NAV
-                    $finsqlPaths = @(
-                        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
-                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
-                    )
-                    $finsql = $null
-                    foreach ($fp in $finsqlPaths) {
-                        $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Select-Object -First 1
-                        if ($ff) { $finsql = $ff.FullName; break }
-                    }
-                    if (-not $finsql) { throw 'Neither Export-NAVApplicationObject nor finsql.exe found. Check NAV installation.' }
-                    Write-Log "Using finsql.exe: $finsql"
-
-                    $tempLog = Join-Path $tempDir "$tempId.log"
-                    $chunks  = [System.Collections.Generic.List[string]]::new()
-
-                    # Group objects by type — one finsql call per type with combined ID filter.
-                    # e.g. Type=Table;ID=27|37 instead of two separate finsql launches.
-                    # This reduces connection overhead against the remote SQL server significantly.
-                    $byType = @{}
-                    foreach ($obj in $objects) {
-                        if (-not $byType.ContainsKey($obj.type)) { $byType[$obj.type] = [System.Collections.Generic.List[string]]::new() }
-                        $byType[$obj.type].Add([string]$obj.id)
-                    }
-
-                    foreach ($objType in $byType.Keys) {
-                        $idList    = $byType[$objType] -join '|'
-                        $filter    = "Type=$objType;ID=$idList"
-                        $chunkFile = Join-Path $tempDir "$tempId-$objType.txt"
-                        Write-Log "NAV export (finsql): $filter"
-                        $finsqlArgs = "command=ExportObjects,id=BespoxAI,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=$filter,file=$chunkFile,logfile=$tempLog"
-                        $proc = Start-Process -FilePath $finsql -ArgumentList $finsqlArgs -Wait -PassThru -WindowStyle Hidden
-                        if ($proc.ExitCode -ne 0 -or -not (Test-Path $chunkFile) -or (Get-Item $chunkFile).Length -eq 0) {
-                            $logMsg = if (Test-Path $tempLog) { Get-Content $tempLog -Raw } else { 'no log' }
-                            Write-Log "Skip $filter (exit $($proc.ExitCode)): $logMsg"
-                        } else {
-                            $chunks.Add($chunkFile)
-                        }
-                    }
-
-                    if ($chunks.Count -gt 0) {
-                        # Concatenate all chunk files into tempTxt
-                        $sb = [System.Text.StringBuilder]::new()
-                        foreach ($chunk in $chunks) {
-                            $bytes = [System.IO.File]::ReadAllBytes($chunk)
-                            # Strip BOM from each chunk before joining
-                            $start = 0
-                            if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { $start = 2 }
-                            elseif ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $start = 3 }
-                            $text = [System.Text.Encoding]::Unicode.GetString($bytes, $start, $bytes.Length - $start)
-                            [void]$sb.AppendLine($text.TrimEnd())
-                            Remove-Item $chunk -Force -ErrorAction SilentlyContinue
-                        }
-                        $utf8NoBomEarly = New-Object System.Text.UTF8Encoding $false
-                        [System.IO.File]::WriteAllText($tempTxt, $sb.ToString(), $utf8NoBomEarly)
-                        Write-Log "finsql export joined $($chunks.Count) object(s) to UTF-8"
-                    }
-                    Remove-Item $tempLog -Force -ErrorAction SilentlyContinue
+                # Use finsql.exe directly for C/AL export — proven reliable across NAV and BC14.
+                # Export-NAVApplicationObject is version-dependent and requires $NavIde anyway,
+                # so finsql direct is simpler and more predictable.
+                # BC14 paths first (highest version), then legacy NAV.
+                $finsqlPaths = @(
+                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
+                )
+                $finsql = $null
+                foreach ($fp in $finsqlPaths) {
+                    $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Sort-Object { $_.VersionInfo.FileVersion } -Descending | Select-Object -First 1
+                    if ($ff) { $finsql = $ff.FullName; break }
                 }
+                if (-not $finsql) { throw 'finsql.exe not found. Check NAV/BC installation.' }
+                Write-Log "Using finsql.exe: $finsql"
+
+                $tempLog = Join-Path $tempDir "$tempId.log"
+                $chunks  = [System.Collections.Generic.List[string]]::new()
+
+                # Group objects by type — one finsql call per type with combined ID filter.
+                # e.g. Type=Table;ID=27|37 instead of two separate launches.
+                # Reduces remote SQL connection overhead significantly.
+                $byType = @{}
+                foreach ($obj in $objects) {
+                    if (-not $byType.ContainsKey($obj.type)) { $byType[$obj.type] = [System.Collections.Generic.List[string]]::new() }
+                    $byType[$obj.type].Add([string]$obj.id)
+                }
+
+                foreach ($objType in $byType.Keys) {
+                    $idList    = $byType[$objType] -join '|'
+                    $filter    = "Type=$objType;ID=$idList"
+                    $chunkFile = Join-Path $tempDir "$tempId-$objType.txt"
+                    Write-Log "NAV export (finsql): $filter"
+                    $finsqlArgs = "command=ExportObjects,id=BespoxAI,database=$NavDbName,servername=$NavDbServer,ntauthentication=yes,filter=$filter,file=$chunkFile,logfile=$tempLog"
+                    $proc = Start-Process -FilePath $finsql -ArgumentList $finsqlArgs -Wait -PassThru -WindowStyle Hidden
+                    if ($proc.ExitCode -ne 0 -or -not (Test-Path $chunkFile) -or (Get-Item $chunkFile).Length -eq 0) {
+                        $logMsg = if (Test-Path $tempLog) { Get-Content $tempLog -Raw } else { 'no log' }
+                        Write-Log "Skip $filter (exit $($proc.ExitCode)): $logMsg"
+                    } else {
+                        $chunks.Add($chunkFile)
+                    }
+                }
+
+                if ($chunks.Count -gt 0) {
+                    # Concatenate chunk files, strip BOM from each, join as UTF-8
+                    $sb = [System.Text.StringBuilder]::new()
+                    foreach ($chunk in $chunks) {
+                        $bytes = [System.IO.File]::ReadAllBytes($chunk)
+                        $start = 0
+                        if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { $start = 2 }
+                        elseif ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $start = 3 }
+                        $text = [System.Text.Encoding]::Unicode.GetString($bytes, $start, $bytes.Length - $start)
+                        [void]$sb.AppendLine($text.TrimEnd())
+                        Remove-Item $chunk -Force -ErrorAction SilentlyContinue
+                    }
+                    $utf8NoBomEarly = New-Object System.Text.UTF8Encoding $false
+                    [System.IO.File]::WriteAllText($tempTxt, $sb.ToString(), $utf8NoBomEarly)
+                    Write-Log "finsql export joined $($chunks.Count) type(s) to UTF-8"
+                }
+                Remove-Item $tempLog -Force -ErrorAction SilentlyContinue
 
                 if (-not (Test-Path $tempTxt) -or (Get-Item $tempTxt).Length -eq 0) {
                     throw 'Export produced no output. Check object IDs, database name, and that the NAV management module is installed.'
