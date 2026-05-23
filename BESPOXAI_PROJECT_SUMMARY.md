@@ -35,6 +35,44 @@
 
 ---
 
+## Session 4 Key Changes (May 24, 2026)
+
+### C/AL Export Pipeline — Fully Working
+- End-to-end tested on GWM: fetch → parse → GitHub repo → object push ✅
+- finsql.exe used directly (Export-NAVApplicationObject removed in BC14)
+- BC14 path: `C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\140\RoleTailored Client\finsql.exe`
+- finsql writes ANSI/ASCII (no BOM) — read with `Get-Content -Raw`
+- Objects grouped by type: one finsql launch per type (Type=Table;ID=27|37)
+- id=BespoxAI prevents ZUP file conflicts on multi-instance servers
+- navDatabaseServer must be real SQL Server IP (GWM: 10.24.244.19, not localhost)
+
+### Installer Fixes
+- Scheduled task: SYSTEM first + schtasks.exe /change for domain accounts
+- Register-ScheduledTask -User fails with domain SIDs in BAT RunAs context
+- Write-Log/Write-OK/BCUser/BCPass scope issues all resolved
+- bcUsername saved to Tenant on installer download (pre-fills form)
+- Uninstaller port check: netstat instead of blocking TcpClient
+
+### Portal Fixes
+- New Request button: showCreate added to left panel hide condition
+- BC/NAV labels: erpLabel derived from navProduct throughout portal
+- navProduct passed as string (not boolean) through JWT/session
+- bcConnected now actually passed to RequirementsBuilder
+- Entity discovery: $metadata URL fixed (no Company() segment)
+- Tenant interface in settings/page.tsx: bcUsername field added
+
+### GWM Server Details (for reference)
+- NAV version: BC14 (Microsoft Dynamics 365 Business Central 140)
+- SQL Server: 10.24.244.19
+- Database: GWM_Dev_DB
+- BC instance: GWM_Dev
+- NavModelTools: C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\140\RoleTailored Client\NavModelTools.ps1
+- NavAdminTool: C:\Program Files\Microsoft Dynamics 365 Business Central\140\Service\NavAdminTool.ps1
+- CustomSettings.config: C:\Program Files\Microsoft Dynamics 365 Business Central\140\Service\Instances\GWM_Dev\CustomSettings.config
+
+
+---
+
 ## Database
 
 - **Provider:** PostgreSQL via Vercel Postgres

@@ -10,6 +10,14 @@
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
 - BCAgent v2.4 — PowerShell HttpListener service, full deployment workflow
+- C/AL export uses **finsql.exe directly** (not Export-NAVApplicationObject — removed in BC14)
+- finsql found via wildcard path search (BC14 paths first, then legacy NAV)
+- finsql writes ANSI/ASCII — read with Get-Content -Raw (not ReadAllBytes+Unicode decode)
+- Objects grouped by type for finsql (one launch per type, e.g. Type=Table;ID=27|37)
+- finsql needs id=BespoxAI to avoid ZUP file conflicts on multi-instance servers
+- SQL server address for finsql comes from navDatabaseServer in agent.config.json (NOT localhost)
+- GWM_Dev DB server: 10.24.244.19 (read from CustomSettings.config)
+- NavModelTools.ps1 location: C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\140\RoleTailored Client\
 - GitHub per-customer repos — `lib/github.ts`, classic PAT stored as `GITHUB_CUSTOMER_REPOS_TOKEN`
 - Default agent port is **9099**
 

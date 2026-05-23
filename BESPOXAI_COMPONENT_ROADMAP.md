@@ -8,6 +8,25 @@
 
 ### ✅ Production & Working
 
+**C/AL Export Pipeline (Session 4)**
+- [x] finsql.exe direct export (BC14 compatible)
+- [x] Grouped by type (one launch per type)
+- [x] ANSI encoding fix (Get-Content -Raw)
+- [x] ZUP isolation (id=BespoxAI)
+- [x] End-to-end: fetch → parse → GitHub → push
+
+**Portal Fixes (Session 4)**
+- [x] New Request button (showCreate in left panel condition)
+- [x] erpLabel throughout portal (BC/NAV aware)
+- [x] bcConnected passed to RequirementsBuilder
+- [x] Entity discovery metadata URL fix
+- [x] bcUsername saved/pre-filled on installer download
+
+**Installer Fixes (Session 4)**
+- [x] Scheduled task: SYSTEM + schtasks /change (domain SID fix)
+- [x] Uninstaller port check: netstat (non-blocking)
+- [x] All scope issues resolved (Write-Log, BCUser, BCPass)
+
 **Infrastructure**
 - [x] Next.js app deployed to Vercel (auto-deploy from GitHub main)
 - [x] NextAuth authentication
