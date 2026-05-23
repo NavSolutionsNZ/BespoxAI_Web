@@ -701,6 +701,10 @@ if ($cfSvcPath -notlike '*--protocol*') {
 }
 Write-OK 'cloudflared service installed'
 
+# Configure service recovery -- auto-restart cloudflared if it crashes or drops
+& sc.exe failure cloudflared reset= 86400 actions= restart/5000/restart/10000/restart/30000 2>&1 | Out-Null
+Write-Host '    Service recovery configured (auto-restart on failure)'
+
 # ── Step 7: Install BCAgent as a scheduled task ────────────────────────────────
 
 Write-Step 'Installing BCAgent scheduled task'
