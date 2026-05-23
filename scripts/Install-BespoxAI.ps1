@@ -321,7 +321,8 @@ while ($Listener.IsListening) {
                 Set-Content -Path "$deployDir\_manifest.json" -Value $manifest -Encoding UTF8
                 Write-Log "Deployment written: $deployDir ($($objects.Count) objects)"
 
-                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"snapshotId`":`"${timestamp}_deploy`",`"path`":`"$deployDir`",`"objectCount`":$($objects.Count)}")
+                $deployDirEsc = $deployDir.Replace('\','\\')
+                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"snapshotId`":`"${timestamp}_deploy`",`"path`":`"$deployDirEsc`",`"objectCount`":$($objects.Count)}")
                 $res.StatusCode = 200; $res.ContentType = 'application/json'
                 $res.ContentLength64 = $resp.Length
                 $res.OutputStream.Write($resp, 0, $resp.Length)

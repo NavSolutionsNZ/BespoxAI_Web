@@ -98,6 +98,13 @@ export async function POST(
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 
-  const data = await agentRes.json()
-  return NextResponse.json({ snapshotId: data.snapshotId, path: data.path, objectCount: data.objectCount })
+  // BCAgent may return malformed JSON (e.g. unescaped backslashes in Windows paths).
+  // Read as text first, then parse — fall back to regex extraction of snapshotId.
+  const rawText = await agentRes.text()
+  let data: any = {}
+  try { data = JSON.parse(rawText) } catch { /* malformed JSON from agent */ }
+  const snapshotId = data.snapshotId
+    ?? (rawText.match(/"snapshotId"\s*:\s*"([^"]+)"/) ?? [])[1]
+    ?? null
+  return NextResponse.json({ snapshotId, path: data.path, objectCount: data.objectCount })
 }
