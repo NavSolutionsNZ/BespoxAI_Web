@@ -981,7 +981,15 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       {/* ── Left list ─────────────────────────────────────────────────────── */}
       <div style={{width:'100%',flexShrink:0,display:(selected||showAddendum)?'none':'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{padding:'12px 14px',borderBottom:'1px solid var(--fog)',display:'flex',gap:8,background:'var(--white)',alignItems:'center',flexWrap:'wrap'}}>
-          <button onClick={()=>{setShowCreate(true);clearReq()}} style={pBTN}>+ New Request</button>
+          <button onClick={()=>{
+            setSelected(null)
+            setShowCreate(true)
+            if (searchParams.get('req')) {
+              const p = new URLSearchParams(searchParams.toString())
+              p.delete('req')
+              router.replace(pathname + '?' + p.toString(), { scroll: false })
+            }
+          }} style={pBTN}>+ New Request</button>
           <select value={filterStatus} onChange={e=>setFS(e.target.value)} style={selSt}>
             <option value="all">All statuses</option>
             {STATUS_PIPELINE.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
