@@ -17,6 +17,7 @@ interface Tenant {
   navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
   testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null
+  bcUsername: string | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
