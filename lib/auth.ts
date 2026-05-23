@@ -37,7 +37,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name ?? user.email,
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
-          navProduct: user.tenant.navProduct ?? false,
+          navProduct: user.tenant.navProduct ?? null,
           role: user.role,
           persona: user.persona,
           onboardingDone: user.onboardingDone,
@@ -52,7 +52,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.tenantId      = (user as any).tenantId
         token.tenantName    = (user as any).tenantName
-        token.navProduct    = (user as any).navProduct ?? false
+        token.navProduct    = (user as any).navProduct ?? null
         token.role          = (user as any).role
         token.persona       = (user as any).persona ?? null
         token.onboardingDone = (user as any).onboardingDone ?? false
@@ -75,7 +75,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id             = token.sub
         ;(session.user as any).tenantId      = token.tenantId
         ;(session.user as any).tenantName    = token.tenantName
-        ;(session.user as any).navProduct    = token.navProduct ?? false
+        ;(session.user as any).navProduct    = token.navProduct ?? null
         ;(session.user as any).role          = token.role
         ;(session.user as any).persona       = token.persona
         ;(session.user as any).onboardingDone = token.onboardingDone

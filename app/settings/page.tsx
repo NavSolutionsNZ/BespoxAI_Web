@@ -131,6 +131,7 @@ function SettingsInner() {
     setTimeout(() => setProfileSaved(false), 2000)
   }
   const tenantName = user?.tenantName ?? tenant?.name ?? '…'
+  const erpLabel   = tenant?.navProduct === 'NAV' ? 'NAV' : 'BC'
 
   const toast$ = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500) }
 
@@ -218,7 +219,7 @@ function SettingsInner() {
   }
 
   async function downloadInstaller() {
-    if (!instForm.bcUsername || !instForm.bcPassword) { toast$('BC username and password required', false); return }
+    if (!instForm.bcUsername || !instForm.bcPassword) { toast$(erpLabel + ' username and password required', false); return }
     setInstLoading(true)
     // Persist port values to tenant so they're remembered
     await saveSystemConfig({ bcPort: instForm.bcPort, agentPort: instForm.agentPort })
@@ -292,7 +293,7 @@ function SettingsInner() {
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
                 <span style={{ fontSize: 14 }}>{item.icon}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active ? 600 : 400, color: active ? 'var(--cream)' : 'rgba(214,217,212,0.55)' }}>{item.label}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active ? 600 : 400, color: active ? 'var(--cream)' : 'rgba(214,217,212,0.55)' }}>{item.id === 'installer' ? erpLabel + ' Installer' : item.label}</span>
                 {active && <div style={{ marginLeft: 'auto', width: 3, height: 3, borderRadius: '50%', background: 'var(--jade)' }} />}
               </button>
             )
@@ -357,9 +358,9 @@ function SettingsInner() {
               </div>
             </Card>
             <Card>
-              <Label>BC Connection</Label>
+              <Label>{erpLabel} Connection</Label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 40px' }}>
-                {([['Tenant Name', tenant?.name], ['BC Instance', tenant?.bcInstance], ['BC Company', tenant?.bcCompany], ['Agent URL', `https://${tenant?.tunnelSubdomain}-agent.bespoxai.com`], ['Status', hOk ? `Connected · ${health.ms}ms` : hErr ? 'Offline' : 'Checking…'], ['Member Since', tenant ? relTime(tenant.createdAt) : '—']] as [string, string|undefined][]).map(([k, v]) => (
+                {([['Tenant Name', tenant?.name], [(erpLabel + ' Instance'), tenant?.bcInstance], [(erpLabel + ' Company'), tenant?.bcCompany], ['Agent URL', `https://${tenant?.tunnelSubdomain}-agent.bespoxai.com`], ['Status', hOk ? `Connected · ${health.ms}ms` : hErr ? 'Offline' : 'Checking…'], ['Member Since', tenant ? relTime(tenant.createdAt) : '—']] as [string, string|undefined][]).map(([k, v]) => (
                   <div key={k}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{k}</div>
                     <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)' }}>{v ?? '—'}</div>
@@ -369,7 +370,7 @@ function SettingsInner() {
             </Card>
             <Card>
               <Label>System Configuration</Label>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.65 }}>Your BC or NAV version details help us tailor compatibility checks and support.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.65 }}>{'Your ' + erpLabel + ' version details help us tailor compatibility checks and support.'}</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Product</div>
@@ -406,9 +407,9 @@ function SettingsInner() {
                     { label: 'Test Database Server',   val: tenant?.testNavDatabaseServer },
                     { label: 'Test Database Name',     val: tenant?.testNavDatabaseName   },
                     { label: 'Test Server Instance',   val: tenant?.testNavServerInstance },
-                    { label: 'Test BC Port',           val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
-                    { label: 'Test BC Instance',       val: tenant?.testBcInstance },
-                    { label: 'Test BC Company',        val: tenant?.testBcCompany },
+                    { label: 'Test ' + erpLabel + ' Port',           val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
+                    { label: 'Test ' + erpLabel + ' Instance',       val: tenant?.testBcInstance },
+                    { label: 'Test ' + erpLabel + ' Company',        val: tenant?.testBcCompany },
                     { label: 'Test Agent Port',         val: tenant?.testAgentPort ? String(tenant.testAgentPort) : null },
                   ].map(({ label, val }) => val ? (
                     <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -419,7 +420,7 @@ function SettingsInner() {
                   {!tenant?.testNavDatabaseName && (
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>No test environment configured.</p>
                   )}
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => setTab('installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>BC Installer</button> tab.</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => setTab('installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
                 </div>
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
@@ -448,7 +449,7 @@ function SettingsInner() {
                   </div>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test BC Port <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(OData, optional)</span></div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>{'Test ' + erpLabel + ' Port'} <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(OData, optional)</span></div>
                       <input type="number" value={testEnv.testBcPort} placeholder="e.g. 7048"
                         onChange={e => setTestEnv(f => ({ ...f, testBcPort: e.target.value }))}
                         onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; if (e.target.value) await saveSystemConfig({ testBcPort: e.target.value }) }}
@@ -456,7 +457,7 @@ function SettingsInner() {
                         style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test BC Company <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(optional)</span></div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>{'Test ' + erpLabel + ' Company'} <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>(optional)</span></div>
                       <input type="text" value={testEnv.testBcCompany} placeholder="e.g. Cronus NZ Test"
                         onChange={e => setTestEnv(f => ({ ...f, testBcCompany: e.target.value }))}
                         onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ testBcCompany: e.target.value }) }}
@@ -561,7 +562,7 @@ function SettingsInner() {
                   setEntitySaving(false)
                 }} disabled={entitySaving}
                   style={{ background: 'none', color: 'var(--forest)', border: '1px solid var(--forest)', borderRadius: 8, padding: '8px 16px', cursor: entitySaving ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, opacity: entitySaving ? 0.6 : 1 }}>
-                  {entitySaving ? 'Working…' : '⟳ Discover from BC'}
+                  {entitySaving ? 'Working…' : '⟳ Discover from ' + erpLabel}
                 </button>
                 <Btn onClick={saveEntities} disabled={entitySaving}>{entitySaving ? 'Saving…' : 'Save Changes'}</Btn>
               </div>
@@ -590,12 +591,12 @@ function SettingsInner() {
 
           {/* Installer */}
           {tab === 'installer' && <>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 10 }}>BC Agent Installer</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 10 }}>{erpLabel} Agent Installer</h1>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 28, lineHeight: 1.65 }}>Download a pre-configured installer for the BespoxAI BCAgent. Run it on the Windows Server hosting Business Central — it installs the agent, configures the Cloudflare tunnel, and starts the service automatically.</p>
 
             <Card style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)' }}>
               <Label>Production Environment</Label>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>Production BC connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>{'Production ' + erpLabel + ' connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.'}</p>
               <ProdEnvForm
                 key={tenant?.id ?? 'loading'}
                 initial={instForm}
@@ -670,7 +671,7 @@ function SettingsInner() {
             <button onClick={downloadInstaller} disabled={instLoading} style={{ marginTop: 8, width: '100%', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: instLoading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, opacity: instLoading ? 0.7 : 1 }}>
               {instLoading ? 'Generating…' : '⬇ Download Installer (.zip)'}
             </button>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>BC credentials are embedded in the installer and never stored by BespoxAI.</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>{erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}</p>
           </>}
 
         </div>
@@ -721,14 +722,14 @@ function TestEnvForm({ initial, onSave }: {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          {lbl('Test BC Instance')}
+          {lbl('Test ' + erpLabel + ' Instance')}
           <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance}
             placeholder="Leave blank to use production instance" autoComplete="off"
             onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
             onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
         </div>
         <div>
-          {lbl('Test BC Company')}
+          {lbl('Test ' + erpLabel + ' Company')}
           <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany}
             placeholder="Leave blank to use production company" autoComplete="off"
             onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
@@ -816,12 +817,12 @@ function ProdEnvForm({ initial, onSave, onSaved }: {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
-          {lbl('BC Username')}
+          {lbl(erpLabel + ' Username')}
           <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\username" autoComplete="off" name="bc-username" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows / BC service account with OData access.</p>
+          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{'Windows / ' + erpLabel + ' service account with OData access.'}</p>
         </div>
         <div>
-          {lbl('BC Password')}
+          {lbl(erpLabel + ' Password')}
           <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} autoComplete="new-password" name="bc-password" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
         </div>

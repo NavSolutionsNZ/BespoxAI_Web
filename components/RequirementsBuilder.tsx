@@ -1015,7 +1015,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             </div>
           ))}
           {!bcConnected&&!isSuperadmin&&(
-            <span style={{marginLeft:'auto',fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.08em',textTransform:'uppercase',color:'var(--slate)',background:'rgba(59,82,73,0.05)',border:'1px solid var(--fog)',padding:'2px 8px',borderRadius:20,cursor:'default'}} title="Connect your BC instance in Settings for AI-assisted planning">
+            <span style={{marginLeft:'auto',fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.08em',textTransform:'uppercase',color:'var(--slate)',background:'rgba(59,82,73,0.05)',border:'1px solid var(--fog)',padding:'2px 8px',borderRadius:20,cursor:'default'}} title={'Connect your ' + erpLabel + ' instance in Settings for AI-assisted planning'}>
               {'🔌 ' + erpLabel + ' not connected'}
             </span>
           )}
@@ -1123,7 +1123,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             </div>
             <div style={{display:'flex',gap:12}}>
               <div style={{...crd,flex:1}}>
-                <label style={lbl}>BC Area</label>
+                <label style={lbl}>{erpLabel} Area</label>
                 <select value={addendumForm.bcArea} onChange={e=>setAddendumForm(f=>({...f,bcArea:e.target.value}))} style={{...iSt,cursor:'pointer'}}>{BC_AREAS.map(a=><option key={a} value={a}>{a}</option>)}</select>
               </div>
               <div style={{...crd,flex:1}}>
@@ -1157,7 +1157,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             </div>
             <div style={{display:'flex',gap:12}}>
               <div style={{...crd,flex:1}}>
-                <label style={lbl}>BC Area</label>
+                <label style={lbl}>{erpLabel} Area</label>
                 <select value={form.bcArea} onChange={e=>setForm(f=>({...f,bcArea:e.target.value}))} style={{...iSt,cursor:'pointer'}}>{BC_AREAS.map(a=><option key={a} value={a}>{a}</option>)}</select>
               </div>
               <div style={{...crd,flex:1}}>
@@ -1271,7 +1271,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     </div>
                     <div style={{display:'flex',gap:12}}>
                       <div style={{flex:1}}>
-                        <label style={lbl}>BC Area</label>
+                        <label style={lbl}>{erpLabel} Area</label>
                         <select value={resubmitForm.bcArea} onChange={e=>setRF(f=>({...f,bcArea:e.target.value}))} style={{...iSt,cursor:'pointer'}}>{BC_AREAS.map(a=><option key={a} value={a}>{a}</option>)}</select>
                       </div>
                       <div style={{flex:1}}>
@@ -1553,7 +1553,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     </Sect>
 
                     {spec.bcObjects?.length>0&&(
-                      <Sect title="BC Objects Affected">
+                      <Sect title={erpLabel + ' Objects Affected'}>
                         <div style={{display:'flex',flexDirection:'column',gap:4}}>
                           {spec.bcObjects.map((o,i)=><span key={i} style={{fontFamily:'var(--font-mono)',fontSize:10,background:'var(--parchment)',border:'1px solid var(--fog)',borderRadius:6,padding:'4px 10px',color:'var(--slate)',display:'inline-block'}}>{o}</span>)}
                         </div>
@@ -1641,7 +1641,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       <div style={{fontSize:28,marginBottom:10}}>✦</div>
                       <p style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--forest)',letterSpacing:'0.1em',marginBottom:6}}>Generating AI spec…</p>
                       <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6}}>
-                        Analysing your requirement as a senior BC consultant. This takes 10–20 seconds.
+                        {'Analysing your requirement as a senior ' + erpLabel + ' consultant.'} This takes 10–20 seconds.
                       </p>
                     </>
                   ) : (
@@ -1776,7 +1776,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       <div style={{background:'rgba(10,92,70,0.04)',border:'1px solid rgba(10,92,70,0.15)',borderRadius:8,padding:'12px 14px'}}>
                         <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--forest)',marginBottom:5}}>Senior Developer Review — {reviewAllowance&&reviewAllowance.remaining>0?'Included with your plan':'$249 NZD excl. GST'}</p>
                         <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6,margin:0}}>
-                          Every specification is reviewed by a senior BC developer before a quote is issued.
+                          {'Every specification is reviewed by a senior ' + erpLabel + ' developer before a quote is issued.'}
                           {reviewAllowance&&reviewAllowance.remaining>0
                             ? ` You have ${reviewAllowance.remaining} included review${reviewAllowance.remaining!==1?'s':''} remaining this month.`
                             : ' This fee is credited in full against development costs if you proceed.'}
@@ -2081,7 +2081,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {isSuperadmin&&req.status==='fully_paid'&&(
                 <div style={{...crd,borderColor:'rgba(10,92,70,0.2)',background:'rgba(10,92,70,0.02)'}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-                    <label style={{...lbl,marginBottom:0,color:'var(--forest)'}}>Deployed BC Objects</label>
+                    <label style={{...lbl,marginBottom:0,color:'var(--forest)'}}>{erpLabel} Objects Deployed</label>
                     <button
                       onClick={()=>objInputRef.current?.click()}
                       disabled={objUploading}

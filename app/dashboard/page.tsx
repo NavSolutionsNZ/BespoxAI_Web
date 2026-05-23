@@ -249,7 +249,8 @@ function DashboardInner() {
   const hour        = new Date().getHours()
   const greeting    = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const tenantName  = user?.tenantName ?? 'Your Company'
-  const erpLabel    = user?.navProduct ? 'NAV' : 'BC'
+  const erpLabel    = user?.navProduct === 'NAV' ? 'NAV' : 'BC'
+  const erpFullName = user?.navProduct === 'NAV' ? 'Microsoft NAV' : 'Business Central'
   const isConnected = health.status === 'ok'
 
   // ── Query ───────────────────────────────────────────────────────────────────
@@ -711,7 +712,7 @@ function DashboardInner() {
                       {greeting}, {displayFirst}.{' '}
                       {isConnected
                         ? <>I&apos;m connected to <strong>{tenantName}</strong> and ready to answer questions about your finances. What would you like to know?</>
-                        : <>I&apos;m your BC financial assistant. <a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>Connect your Business Central or NAV system</a> to start querying your live data.</>
+                        : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
                       }
                     </p>
                   </div>
@@ -724,19 +725,19 @@ function DashboardInner() {
                     <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' not connected'}</p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
-                        Connect your Business Central or NAV system to get started
+                        {'Connect your ' + erpFullName + ' system to get started'}
                       </p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.65, marginBottom: 16 }}>
                         Your IT team needs to install the BCAgent on your server. It takes about 5 minutes and connects your system securely without opening any firewall ports.
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 16, paddingLeft: 12, borderLeft: '2px solid rgba(200,149,42,0.3)' }}>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>1. Go to <a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>Settings → BC Installer</a></p>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>2. Enter your BC credentials and download the installer</p>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>3. Run the installer on your BC / NAV server as Administrator</p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>1. Go to <a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Settings → ' + erpLabel + ' Installer'}</a></p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>{'2. Enter your ' + erpLabel + ' credentials and download the installer'}</p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', margin: 0 }}>{'3. Run the installer on your ' + erpLabel + ' server as Administrator'}</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <a href="/settings?tab=installer" style={{ display: 'inline-block', background: 'var(--forest)', color: '#fff', borderRadius: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                          Go to BC Installer →
+                          {'Go to ' + erpLabel + ' Installer →'}
                         </a>
                         <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)' }}>
                           Or use <button onClick={() => setActiveNav('customisations')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--forest)', fontWeight: 600, textDecoration: 'underline' }}>Customisations</button> to plan changes while you set up
