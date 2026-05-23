@@ -70,7 +70,7 @@ function mapTenant(tenant: {
     navVersion: tenant.navVersion ?? null,
     lastCU:     tenant.lastCU ?? null,
     bcPort:     tenant.bcPort ?? 8048,
-    agentPort:  tenant.agentPort ?? 8080,
+    agentPort:  tenant.agentPort ?? 9099,
   }
 }
 
