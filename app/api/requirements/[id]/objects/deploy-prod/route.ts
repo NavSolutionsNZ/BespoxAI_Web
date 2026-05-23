@@ -76,15 +76,20 @@ export async function POST(
 
   const agentBase = 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com'
 
-  const agentRes = await fetch(agentBase + '/bespoxai/objects/deploy', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
-    body:    JSON.stringify({
-      requirementId: params.id,
-      snapshotId,
-      environment: 'production',
-    }),
-  })
+  let agentRes: Response
+  try {
+    agentRes = await fetch(agentBase + '/bespoxai/objects/deploy', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
+      body:    JSON.stringify({
+        requirementId: params.id,
+        snapshotId,
+        environment: 'production',
+      }),
+    })
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Could not reach BCAgent: ' + (e.message ?? 'network error') }, { status: 502 })
+  }
 
   if (!agentRes.ok) {
     let msg = 'BCAgent returned ' + agentRes.status
@@ -92,7 +97,10 @@ export async function POST(
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 
-  const data = await agentRes.json()
+  // Read as text first — BCAgent may return malformed JSON (e.g. unescaped paths)
+  const rawText = await agentRes.text()
+  let data: any = {}
+  try { data = JSON.parse(rawText) } catch { /* malformed JSON from agent — continue with partial data */ }
 
   if (data.success) {
     const now = new Date()
