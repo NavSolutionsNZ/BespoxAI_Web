@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
-          include: { tenant: { select: { id: true, name: true, active: true } } },
+          include: { tenant: { select: { id: true, name: true, active: true, navProduct: true } } },
         })
 
         if (!user || !user.tenant.active || !user.active) return null
@@ -37,6 +37,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name ?? user.email,
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
+          navProduct: user.tenant.navProduct ?? false,
           role: user.role,
           persona: user.persona,
           onboardingDone: user.onboardingDone,
@@ -51,6 +52,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.tenantId      = (user as any).tenantId
         token.tenantName    = (user as any).tenantName
+        token.navProduct    = (user as any).navProduct ?? false
         token.role          = (user as any).role
         token.persona       = (user as any).persona ?? null
         token.onboardingDone = (user as any).onboardingDone ?? false
@@ -73,6 +75,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id             = token.sub
         ;(session.user as any).tenantId      = token.tenantId
         ;(session.user as any).tenantName    = token.tenantName
+        ;(session.user as any).navProduct    = token.navProduct ?? false
         ;(session.user as any).role          = token.role
         ;(session.user as any).persona       = token.persona
         ;(session.user as any).onboardingDone = token.onboardingDone

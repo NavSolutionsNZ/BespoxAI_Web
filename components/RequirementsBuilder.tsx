@@ -128,6 +128,7 @@ interface Props {
   userRole:string
   tenantId:string
   bcConnected?:boolean
+  erpLabel?:string
   paymentSuccess?: 'deposit' | 'review' | 'balance' | null
   onPaymentSuccessDismiss?: () => void
 }
@@ -180,7 +181,7 @@ function renderMdLight(text: string): React.ReactNode {
   })
 }
 
-export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, paymentSuccess, onPaymentSuccessDismiss }:Props) {
+export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1015,7 +1016,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
           ))}
           {!bcConnected&&!isSuperadmin&&(
             <span style={{marginLeft:'auto',fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.08em',textTransform:'uppercase',color:'var(--slate)',background:'rgba(59,82,73,0.05)',border:'1px solid var(--fog)',padding:'2px 8px',borderRadius:20,cursor:'default'}} title="Connect your BC instance in Settings for AI-assisted planning">
-              🔌 BC not connected
+              {'🔌 ' + erpLabel + ' not connected'}
             </span>
           )}
           {(needsClarifCount>0||quoteRejCount>0)&&!isSuperadmin&&(

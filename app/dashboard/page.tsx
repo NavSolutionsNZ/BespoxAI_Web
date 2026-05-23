@@ -249,6 +249,7 @@ function DashboardInner() {
   const hour        = new Date().getHours()
   const greeting    = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const tenantName  = user?.tenantName ?? 'Your Company'
+  const erpLabel    = user?.navProduct ? 'NAV' : 'BC'
   const isConnected = health.status === 'ok'
 
   // ── Query ───────────────────────────────────────────────────────────────────
@@ -661,7 +662,7 @@ function DashboardInner() {
                 textTransform: 'uppercase',
                 color: health.status === 'ok' ? 'var(--forest)' : health.status === 'error' ? '#A32D2D' : 'var(--slate)',
               }}>
-                {health.status === 'ok' ? 'BC connected' : health.status === 'error' ? 'Agent offline' : 'Checking…'}
+                {health.status === 'ok' ? erpLabel + ' connected' : health.status === 'error' ? 'Agent offline' : 'Checking…'}
               </span>
             </div>
             {/* Last checked + latency */}
@@ -721,7 +722,7 @@ function DashboardInner() {
                   {/* Not connected — setup prompt */}
                   {!isConnected && health.status !== 'checking' && (
                     <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00', marginBottom: 10 }}>🔌 BC / NAV not connected</p>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' not connected'}</p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
                         Connect your Business Central or NAV system to get started
                       </p>
@@ -1009,6 +1010,8 @@ function DashboardInner() {
           <RequirementsBuilder
             userRole={user?.role ?? 'user'}
             tenantId={user?.tenantId ?? ''}
+            bcConnected={isConnected}
+            erpLabel={erpLabel}
             paymentSuccess={paymentSuccess}
             onPaymentSuccessDismiss={() => setPaymentSuccess(null)}
           />
