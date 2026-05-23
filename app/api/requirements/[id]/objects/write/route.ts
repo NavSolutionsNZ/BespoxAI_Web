@@ -37,10 +37,10 @@ export async function POST(
   // ── DEBUG ──
   if (process.env.SETTINGS_DEBUG === 'true') {
     const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)
-    const snapshotId = `${ts}_deploy_DEBUG`
+    const snapshotId = ts + '_deploy_DEBUG'
     return NextResponse.json({
       snapshotId,
-      path:        `C:\\BespoxAI\\Deployments\\${params.id}\\${snapshotId}`,
+      path:        'C:\\BespoxAI\\Deployments\\' + params.id + '\\' + snapshotId,
       objectCount: fileIds.length,
       _debug:      true,
     })
@@ -58,7 +58,7 @@ export async function POST(
   })
 
   if (!files.length)
-    return NextResponse.json({ error: 'No files found with content. Fetch objects from BCAgent first.' }, { status: 400 })
+    return NextResponse.json({ error: 'No files found with content. Sync from GitHub or fetch from BCAgent first.' }, { status: 400 })
 
   const tenant = await (prisma as any).tenant.findUnique({
     where:  { id: requirement.tenantId },
@@ -69,24 +69,31 @@ export async function POST(
 
   if (!tenant.testNavDatabaseName)
     return NextResponse.json({
-      error: 'Test NAV database not configured. Add it in the BC Installer tab.',
+      error: 'Test NAV database not configured. Add it in Settings \u2192 BC Installer \u2192 Test Environment.',
     }, { status: 400 })
 
-  const agentBase = `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`
+  const agentBase = 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com'
 
-  const objects = files.map((f: any) => ({
-    filename: `${f.objectType}_${f.objectId ?? 'X'}_${f.objectName.replace(/[^a-zA-Z0-9_\-. ]/g, '_')}.txt`,
+  const objects = (files as any[]).map((f: any) => ({
+    filename: f.objectType + '_' + (f.objectId ?? 'X') + '_' + f.objectName.replace(/[^a-zA-Z0-9_\-. ]/g, '_') + '.txt',
     content:  f.content,
   }))
 
-  const agentRes = await fetch(`${agentBase}/bespoxai/objects/write`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
-    body:    JSON.stringify({ requirementId: params.id, objects }),
-  })
+  let agentRes: Response
+  try {
+    agentRes = await fetch(agentBase + '/bespoxai/objects/write', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
+      body:    JSON.stringify({ requirementId: params.id, objects }),
+    })
+  } catch (e: any) {
+    return NextResponse.json({
+      error: 'Could not reach BCAgent at ' + agentBase + '. Is the agent running? (' + (e.message ?? 'network error') + ')',
+    }, { status: 502 })
+  }
 
   if (!agentRes.ok) {
-    let msg = `BCAgent returned ${agentRes.status}`
+    let msg = 'BCAgent returned ' + agentRes.status
     try { const e = await agentRes.json(); msg = e.error ?? msg } catch {}
     return NextResponse.json({ error: msg }, { status: 502 })
   }
