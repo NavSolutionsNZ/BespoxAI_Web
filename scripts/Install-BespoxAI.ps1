@@ -349,7 +349,6 @@ while ($Listener.IsListening) {
                 $snapshotId    = $body.snapshotId -replace '[^a-zA-Z0-9_-]',''
                 $environment   = if ($body.environment) { $body.environment } else { 'test' }
 
-                # Select database based on environment
                 if ($environment -eq 'production') {
                     $dbServer = $NavDbServer; $dbName = $NavDbName; $dbInst = $NavServerInst
                 } else {
@@ -360,65 +359,67 @@ while ($Listener.IsListening) {
                 $deployDir = "C:\BespoxAI\Deployments\$requirementId\$snapshotId"
                 if (-not (Test-Path $deployDir)) { throw "Snapshot folder not found: $deployDir" }
 
-                # Load NAV/BC modules (management + model tools). BC14 paths first.
-                $navModules = @(
-                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
-                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
-                    'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
-                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1'
-                )
-                foreach ($pat in $navModules) {
-                    $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
-                    if ($f) { . $f.FullName }
-                }
+                # Generate job ID and status file — return immediately, run async
+                $jobId      = [System.Guid]::NewGuid().ToString('N').Substring(0,12)
+                $statusDir  = 'C:\BespoxAI\Jobs'
+                New-Item -ItemType Directory -Path $statusDir -Force | Out-Null
+                $statusFile = "$statusDir\$jobId.json"
+                '{"status":"running","results":[],"error":""}' | Set-Content $statusFile -Encoding UTF8
+                Write-Log "Deploy job $jobId started: $deployDir -> $dbName"
 
-                $results = @()
-                $txtFiles = Get-ChildItem -Path $deployDir -Filter '*.txt' -File
-
-                foreach ($file in $txtFiles) {
-                    $fileResult = @{ filename = $file.Name; imported = $false; compiled = $false; error = '' }
-                    try {
-                        # Import
-                        Import-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
-                            -Path $file.FullName -ImportAction Overwrite -SynchronizeSchemaChanges Force `
-                            -ErrorAction Stop
-                        $fileResult.imported = $true
-                        Write-Log "Imported: $($file.Name) → $dbName"
-
-                        # Parse type+id from filename (Type_Id_Name.txt)
-                        $parts = $file.BaseName -split '_'
-                        if ($parts.Count -ge 2) {
-                            $objType = $parts[0]; $objId = $parts[1]
-                            $filter = "Type=$objType;Id=$objId"
-                            Compile-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
-                                -Filter $filter -SynchronizeSchemaChanges Force -ErrorAction Stop
-                            $fileResult.compiled = $true
-                            Write-Log "Compiled: $filter"
-                        }
-                    } catch {
-                        $fileResult.error = $_.ToString() -replace '[\r\n]+',' '
-                        Write-Log "Deploy error ($($file.Name)): $_"
+                $jobScript = {
+                    param($deployDir, $dbServer, $dbName, $environment, $statusFile, $logFile)
+                    function Write-Log { param($msg); Add-Content -Path $logFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" -ErrorAction SilentlyContinue }
+                    $navModules = @(
+                        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
+                        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
+                        'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+                        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
+                        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\NavModelTools.ps1',
+                        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1',
+                        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\NavModelTools.ps1'
+                    )
+                    foreach ($pat in $navModules) {
+                        $f = Get-Item -Path $pat -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($f) { . $f.FullName }
                     }
-                    $results += $fileResult
+                    $results = @()
+                    $txtFiles = Get-ChildItem -Path $deployDir -Filter '*.txt' -File
+                    foreach ($file in $txtFiles) {
+                        $fileResult = @{ filename = $file.Name; imported = $false; compiled = $false; error = '' }
+                        try {
+                            Import-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
+                                -Path $file.FullName -ImportAction Overwrite -SynchronizeSchemaChanges Force -ErrorAction Stop
+                            $fileResult.imported = $true
+                            Write-Log "Imported: $($file.Name) -> $dbName"
+                            $parts = $file.BaseName -split '_'
+                            if ($parts.Count -ge 2) {
+                                $objType = $parts[0]; $objId = $parts[1]
+                                $filter = "Type=$objType;Id=$objId"
+                                Compile-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
+                                    -Filter $filter -SynchronizeSchemaChanges Force -ErrorAction Stop
+                                $fileResult.compiled = $true
+                                Write-Log "Compiled: $filter"
+                            }
+                        } catch {
+                            $fileResult.error = $_.ToString() -replace '[\r\n]+',' '
+                            Write-Log "Deploy error ($($file.Name)): $_"
+                        }
+                        $results += $fileResult
+                        $interim = @{ status = 'running'; results = $results; error = '' } | ConvertTo-Json -Compress
+                        Set-Content $statusFile -Value $interim -Encoding UTF8
+                    }
+                    $success = ($results | Where-Object { -not $_.imported }).Count -eq 0
+                    $final = @{ status = 'done'; success = $success; environment = $environment; results = $results; error = '' } | ConvertTo-Json -Compress
+                    Set-Content $statusFile -Value $final -Encoding UTF8
+                    Write-Log "Deploy job complete: success=$success"
                 }
 
-                # Update manifest with deploy result
-                $manifestPath = "$deployDir\_manifest.json"
-                if (Test-Path $manifestPath) {
-                    $mf = Get-Content $manifestPath | ConvertFrom-Json
-                    $mf | Add-Member -NotePropertyName "${environment}DeployedAt" -NotePropertyValue (Get-Date -Format 'o') -Force
-                    $mf | Add-Member -NotePropertyName "status" -NotePropertyValue "deployed_$environment" -Force
-                    $mf | ConvertTo-Json | Set-Content $manifestPath -Encoding UTF8
-                }
+                Start-Job -ScriptBlock $jobScript -ArgumentList $deployDir,$dbServer,$dbName,$environment,$statusFile,$LogFile | Out-Null
 
-                $success = ($results | Where-Object { -not $_.imported }).Count -eq 0
-                $resultsJson = $results | ConvertTo-Json -Compress
-                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"success`":$($success.ToString().ToLower()),`"environment`":`"$environment`",`"results`":$resultsJson}")
-                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"jobId`":`"$jobId`",`"status`":`"running`"}")
+                $res.StatusCode = 202; $res.ContentType = 'application/json'
                 $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
             } catch {
                 Write-Log "Deploy ERROR: $_"
@@ -459,6 +460,31 @@ while ($Listener.IsListening) {
                 $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
                 $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
                 $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
+        # BCAgent-local: Deploy job status polling
+        if ($rawUrl -like '/bespoxai/objects/deploy-status*' -and $req.HttpMethod -eq 'GET') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $jobId = ([System.Uri]::new('http://x' + $rawUrl)).Query -replace '^\?','' -split '&' | ForEach-Object {
+                    if ($_ -like 'jobId=*') { $_ -replace 'jobId=','' }
+                } | Select-Object -First 1
+                if (-not $jobId) { throw 'jobId parameter required' }
+                $jobId = $jobId -replace '[^a-zA-Z0-9]',''
+                $statusFile = "C:\BespoxAI\Jobs\$jobId.json"
+                if (-not (Test-Path $statusFile)) { throw "Job not found: $jobId" }
+                $statusJson = Get-Content $statusFile -Raw -Encoding UTF8
+                $resp = [System.Text.Encoding]::UTF8.GetBytes($statusJson)
+                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
+            } catch {
+                $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 404; $res.ContentType = 'application/json'
                 $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
             }
             $res.Close(); continue

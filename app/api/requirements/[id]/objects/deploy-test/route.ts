@@ -110,22 +110,22 @@ export async function POST(
   // Read as text first — BCAgent may return malformed JSON (e.g. unescaped paths)
   const rawText = await agentRes.text()
   let data: any = {}
-  try { data = JSON.parse(rawText) } catch { /* malformed JSON from agent — continue with partial data */ }
+  try { data = JSON.parse(rawText) } catch { /* malformed JSON from agent */ }
+
+  // BCAgent returned async job ID (202) — pass through to client for polling
+  if (agentRes.status === 202 || data.jobId) {
+    return NextResponse.json({ jobId: data.jobId, status: 'running' }, { status: 202 })
+  }
 
   if (data.success) {
-    // Update requirement — set testDeployedAt, clear any previous UAT state
     await (prisma as any).requirement.update({
       where: { id: params.id },
       data:  {
         testDeployedAt:       new Date(),
         testDeploySnapshotId: snapshotId,
-        // Clear previous UAT cycle on new deployment
-        uatApprovedAt:        null,
-        uatApprovedById:      null,
-        uatRejectedAt:        null,
-        uatRejectedById:      null,
-        uatRejectionReason:   null,
-        uatRejectionAnalysis: null,
+        uatApprovedAt:        null, uatApprovedById:      null,
+        uatRejectedAt:        null, uatRejectedById:      null,
+        uatRejectionReason:   null, uatRejectionAnalysis: null,
       },
     })
   }
