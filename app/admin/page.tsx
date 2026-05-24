@@ -52,10 +52,23 @@ function AdminPageInner() {
   const tabParam = (searchParams.get('tab') as Tab | null) ?? 'overview'
   const [tab, setTabState] = useState<Tab>(tabParam)
   const [autoSelectReqId, setAutoSelectReqId] = useState<string|null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   function setTab(id: Tab) {
     setTabState(id)
-    router.push(`/admin?tab=${id}`)
+    if (isMobile) setSidebarOpen(false)
+    router.push('/admin?tab=' + id)
   }
 
   // Sync state when URL changes (back/forward navigation)
@@ -338,8 +351,13 @@ function AdminPageInner() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
 
+      {/* Mobile backdrop */}
+      {isMobile && sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 199 }} />
+      )}
+
       {/* Sidebar */}
-      <aside style={{ width: 220, flexShrink: 0, background: 'var(--ink)', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+      <aside style={{ width: sidebarOpen ? 220 : 0, flexShrink: 0, background: 'var(--ink)', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden', transition: 'width 0.2s ease', position: isMobile ? 'fixed' : 'relative', top: 0, left: 0, height: '100vh', zIndex: isMobile ? 200 : 'auto' as any }}>
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: 'var(--cream)', letterSpacing: '-0.3px' }}>Bespox</span>
@@ -398,10 +416,13 @@ function AdminPageInner() {
 
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#ffffff' }}>
-        <header style={{ padding: '0 32px', height: 60, flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--fog)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20, color: 'var(--ink)' }}>
-            {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : tab === 'business' ? 'Business Settings' : 'Entities'}
-          </h1>
+        <header style={{ padding: isMobile ? '0 14px' : '0 32px', height: 60, flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--fog)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontSize: 16, padding: 4 }}>☰</button>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: isMobile ? 16 : 20, color: 'var(--ink)' }}>
+              {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : tab === 'business' ? 'Business Settings' : 'Entities'}
+            </h1>
+          </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {tab === 'tenants' && (
               <button onClick={() => { setShowNewTenant(true); setError('') }} style={btnStyle}>

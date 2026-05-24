@@ -92,6 +92,12 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check(); window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Step 0 — password change
   const [newPw,     setNewPw]     = useState('')
@@ -279,15 +285,15 @@ export default function OnboardingPage() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
-      <Sidebar />
+      {!isMobile && <Sidebar />}
       <main style={{ flex: 1, overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column' }}>
 
         {/* Progress bar */}
         <div style={{ height: 3, background: 'var(--fog)', flexShrink: 0 }}>
-          <div style={{ height: '100%', background: 'var(--forest)', width: `${(step / totalSteps) * 100}%`, transition: 'width 0.4s ease' }} />
+          <div style={{ height: '100%', background: 'var(--forest)', width: (step / totalSteps * 100) + '%', transition: 'width 0.4s ease' }} />
         </div>
 
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 32px' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '32px 20px' : '48px 32px' }}>
           <div style={{ width: '100%', maxWidth: 520 }}>
 
             {/* ── Step 0: Change temporary password ── */}
