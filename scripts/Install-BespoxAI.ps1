@@ -410,7 +410,7 @@ while ($Listener.IsListening) {
                             $objType = $parts[0]; $objId = $parts[1]
                             $filter = "Type=$objType;Id=$objId"
                             Compile-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
-                                -Filter $filter -SynchronizeSchemaChanges Force -Confirm:$false -ErrorAction Stop
+                                -Filter $filter -SynchronizeSchemaChanges Force -ErrorAction Stop
                             $fileResult.compiled = $true
                             Write-Log "Compiled: $filter"
                         }
