@@ -409,8 +409,19 @@ while ($Listener.IsListening) {
                         if ($parts.Count -ge 2) {
                             $objType = $parts[0]; $objId = $parts[1]
                             $filter = "Type=$objType;Id=$objId"
-                            Compile-NAVApplicationObject -DatabaseServer $dbServer -DatabaseName $dbName `
-                                -Filter $filter -SynchronizeSchemaChanges Force -ErrorAction Stop
+                            $compileParams = @{
+                                DatabaseServer           = $dbServer
+                                DatabaseName             = $dbName
+                                Filter                   = $filter
+                                SynchronizeSchemaChanges = 'Force'
+                                ErrorAction              = 'Stop'
+                            }
+                            if ($dbInst) {
+                                $compileParams['NavServerName']           = 'localhost'
+                                $compileParams['NavServerInstance']       = $dbInst
+                                $compileParams['NavServerManagementPort'] = 7045
+                            }
+                            Compile-NAVApplicationObject @compileParams
                             $fileResult.compiled = $true
                             Write-Log "Compiled: $filter"
                         }
