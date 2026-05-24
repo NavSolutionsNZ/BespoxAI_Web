@@ -271,6 +271,16 @@ function SettingsInner() {
     if (r.ok) { setUsers(p => p.filter(u => u.id !== id)); toast$('User deleted') } else toast$('Failed', false)
   }
 
+  const [syncLoading, setSyncLoading] = useState(false)
+
+  async function syncConfig() {
+    setSyncLoading(true)
+    const r = await fetch('/api/settings/sync-config', { method: 'POST' })
+    setSyncLoading(false)
+    const json = await r.json().catch(() => ({}))
+    toast$(r.ok ? 'Config synced to agent' : (json.error || 'Sync failed'), r.ok)
+  }
+
   async function downloadInstaller() {
     if (!instForm.bcUsername || !instForm.bcPassword) { toast$(erpLabel + ' username and password required', false); return }
     setInstLoading(true)
@@ -759,6 +769,15 @@ function SettingsInner() {
                 </div>
               )}
             </Card>
+
+            <button onClick={syncConfig} disabled={syncLoading || !tenant?.tunnelSubdomain} style={{ marginTop: 8, width: '100%', background: tenant?.tunnelSubdomain ? 'var(--forest)' : 'var(--fog)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: (syncLoading || !tenant?.tunnelSubdomain) ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, opacity: syncLoading ? 0.7 : 1 }}>
+              {syncLoading ? 'Syncing…' : '↑ Sync Config to Agent'}
+            </button>
+            {!tenant?.tunnelSubdomain ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 6, textAlign: 'center' }}>Download the installer first to provision your tunnel.</p>
+            ) : (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 6, lineHeight: 1.5, textAlign: 'center' }}>Pushes your current settings to the running agent immediately — no reinstall needed. Credentials stay unchanged on the server.</p>
+            )}
 
             <button onClick={downloadInstaller} disabled={instLoading} style={{ marginTop: 8, width: '100%', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: instLoading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, opacity: instLoading ? 0.7 : 1 }}>
               {instLoading ? 'Generating…' : '⬇ Download Installer (.zip)'}

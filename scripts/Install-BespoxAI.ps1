@@ -649,6 +649,58 @@ while ($Listener.IsListening) {
             $res.Close(); continue
         }
 
+        # BCAgent-local: Sync config from portal (v2.4)
+        if ($rawUrl -like '/bespoxai/update-config*' -and $req.HttpMethod -eq 'POST') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+            try {
+                $bodyStr = Read-RequestBody $req
+                $newCfg  = $bodyStr | ConvertFrom-Json
+
+                # Read current config into a hashtable so we can merge
+                $cfgObj  = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+                $cfgHash = @{}
+                $cfgObj.PSObject.Properties | ForEach-Object { $cfgHash[$_.Name] = $_.Value }
+
+                # Fields we allow the portal to update (no credentials)
+                $updatable = @('bcBaseUrl','bcInstance','bcCompany','bcPort','agentPort',
+                               'navDatabaseServer','navDatabaseName','navServerInstance',
+                               'testNavDatabaseServer','testNavDatabaseName','testNavServerInstance',
+                               'testBcInstance','testBcCompany','testBcPort')
+
+                foreach ($f in $updatable) {
+                    $val = $newCfg.$f
+                    if ($null -ne $val -and $val -ne '') { $cfgHash[$f] = $val }
+                }
+
+                $cfgHash | ConvertTo-Json -Depth 5 | Out-File -FilePath $ConfigPath -Encoding UTF8 -Force
+
+                # Update in-memory variables so changes take effect immediately
+                if ($newCfg.bcBaseUrl)             { $BCBase            = $newCfg.bcBaseUrl }
+                if ($newCfg.navDatabaseServer)      { $NavDbServer        = $newCfg.navDatabaseServer }
+                if ($newCfg.navDatabaseName)        { $NavDbName          = $newCfg.navDatabaseName }
+                if ($newCfg.navServerInstance)      { $NavServerInst      = $newCfg.navServerInstance }
+                if ($newCfg.testNavDatabaseServer)  { $TestNavDbServer    = $newCfg.testNavDatabaseServer }
+                if ($newCfg.testNavDatabaseName)    { $TestNavDbName      = $newCfg.testNavDatabaseName }
+                if ($newCfg.testNavServerInstance)  { $TestNavServerInst  = $newCfg.testNavServerInstance }
+                if ($newCfg.testBcInstance)         { $TestBcInstance     = $newCfg.testBcInstance }
+                if ($newCfg.testBcCompany)          { $TestBcCompany      = $newCfg.testBcCompany }
+                if ($newCfg.testBcPort)             { $TestBcPort         = $newCfg.testBcPort }
+
+                Write-Log "Config updated via portal sync. testNavDbName=$TestNavDbName"
+                $rb = [System.Text.Encoding]::UTF8.GetBytes('{"success":true}')
+                $res.StatusCode = 200; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $rb.Length; $res.OutputStream.Write($rb, 0, $rb.Length)
+            } catch {
+                Write-Log "update-config ERROR: $_"
+                $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 500; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
         # Validate API key
         $incomingKey = $req.Headers['X-BespoxAI-Key']
         if ($incomingKey -ne $ApiKey) {
