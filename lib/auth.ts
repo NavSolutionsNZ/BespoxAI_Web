@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        const user = await prisma.user.findUnique({
+        const user = await (prisma as any).user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
           include: { tenant: { select: { id: true, name: true, active: true, navProduct: true } } },
         })
@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
       }
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
-        const fresh = await prisma.user.findUnique({
+        const fresh = await (prisma as any).user.findUnique({
           where: { id: token.sub },
           select: { onboardingDone: true, persona: true, mustChangePassword: true },
         })
