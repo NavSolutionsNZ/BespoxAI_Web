@@ -216,7 +216,7 @@ $NavDbName     = $Config.navDatabaseName
 $NavServerInst       = $Config.navServerInstance
 $TestNavDbServer     = if ($Config.testNavDatabaseServer) { $Config.testNavDatabaseServer } else { $NavDbServer }
 $TestNavDbName       = $Config.testNavDatabaseName
-$TestNavServerInst   = if ($Config.testNavServerInstance) { $Config.testNavServerInstance } else { $NavServerInst }
+$TestNavServerInst   = $Config.testNavServerInstance
 $TestBcInstance      = $Config.testBcInstance
 $TestBcCompany       = $Config.testBcCompany
 $TestBcPort          = if ($Config.testBcPort) { $Config.testBcPort } else { 0 }
@@ -357,6 +357,7 @@ while ($Listener.IsListening) {
                 } else {
                     $dbServer = $TestNavDbServer; $dbName = $TestNavDbName; $dbInst = $TestNavServerInst
                     if (-not $dbName) { throw "testNavDatabaseName not configured. Add it in the BC Installer tab." }
+                    if (-not $dbInst) { throw "testNavServerInstance not configured. Add it in the BC Installer tab." }
                 }
 
                 $deployDir = "C:\BespoxAI\Deployments\$requirementId\$snapshotId"
@@ -715,7 +716,6 @@ while ($Listener.IsListening) {
                 if ($newCfg.testNavDatabaseServer)  { $TestNavDbServer    = $newCfg.testNavDatabaseServer }
                 if ($newCfg.testNavDatabaseName)    { $TestNavDbName      = $newCfg.testNavDatabaseName }
                 if ($newCfg.testNavServerInstance)  { $TestNavServerInst  = $newCfg.testNavServerInstance }
-                elseif ($newCfg.navServerInstance)   { if (-not $TestNavServerInst) { $TestNavServerInst = $newCfg.navServerInstance } }
                 if ($newCfg.testBcInstance)         { $TestBcInstance     = $newCfg.testBcInstance }
                 if ($newCfg.testBcCompany)          { $TestBcCompany      = $newCfg.testBcCompany }
                 if ($newCfg.testBcPort)             { $TestBcPort         = $newCfg.testBcPort }
