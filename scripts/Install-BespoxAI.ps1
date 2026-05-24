@@ -79,7 +79,8 @@ param(
     [string] $TestNavServerInstance = '',
     [string] $TestBcInstance        = '',
     [string] $TestBcCompany         = '',
-    [int]    $TestBcPort            = 0
+    [int]    $TestBcPort            = 0,
+    [int]    $TestNavManagementPort  = 7045
 )
 
 Set-StrictMode -Version Latest
@@ -219,6 +220,7 @@ $TestNavServerInst   = $Config.testNavServerInstance
 $TestBcInstance      = $Config.testBcInstance
 $TestBcCompany       = $Config.testBcCompany
 $TestBcPort          = if ($Config.testBcPort) { $Config.testBcPort } else { 0 }
+$TestNavMgmtPort     = if ($Config.testNavManagementPort) { $Config.testNavManagementPort } else { 7045 }
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
 function Write-Log {
@@ -419,7 +421,7 @@ while ($Listener.IsListening) {
                             if ($dbInst) {
                                 $compileParams['NavServerName']           = 'localhost'
                                 $compileParams['NavServerInstance']       = $dbInst
-                                $compileParams['NavServerManagementPort'] = 7045
+                                $compileParams['NavServerManagementPort'] = $TestNavMgmtPort
                             }
                             Compile-NAVApplicationObject @compileParams
                             $fileResult.compiled = $true
@@ -692,7 +694,7 @@ while ($Listener.IsListening) {
                 $updatable = @('bcBaseUrl','bcInstance','bcCompany','bcPort','agentPort',
                                'navDatabaseServer','navDatabaseName','navServerInstance',
                                'testNavDatabaseServer','testNavDatabaseName','testNavServerInstance',
-                               'testBcInstance','testBcCompany','testBcPort')
+                               'testBcInstance','testBcCompany','testBcPort','testNavManagementPort')
 
                 foreach ($f in $updatable) {
                     $val = $newCfg.$f
@@ -712,6 +714,7 @@ while ($Listener.IsListening) {
                 if ($newCfg.testBcInstance)         { $TestBcInstance     = $newCfg.testBcInstance }
                 if ($newCfg.testBcCompany)          { $TestBcCompany      = $newCfg.testBcCompany }
                 if ($newCfg.testBcPort)             { $TestBcPort         = $newCfg.testBcPort }
+                if ($newCfg.testNavManagementPort)  { $TestNavMgmtPort    = $newCfg.testNavManagementPort }
 
                 Write-Log "Config updated via portal sync. testNavDbName=$TestNavDbName"
                 $rb = [System.Text.Encoding]::UTF8.GetBytes('{"success":true}')
@@ -835,6 +838,7 @@ $Config = [ordered]@{
     testBcInstance        = $TestBcInstance
     testBcCompany         = $TestBcCompany
     testBcPort            = $TestBcPort
+    testNavManagementPort = $TestNavManagementPort
     version               = '2.4'
     installedAt           = (Get-Date -Format 'o')
 }

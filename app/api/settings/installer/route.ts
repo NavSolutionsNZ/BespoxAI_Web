@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const { bcUsername, bcPassword, bcPort = 8048, agentPort = 9099, bcInstance, bcCompany,
           navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',
           testNavDatabaseServer = '', testNavDatabaseName = '', testNavServerInstance = '',
-          testBcInstance = '', testBcCompany = '', testBcPort = 0 } = body
+          testBcInstance = '', testBcCompany = '', testBcPort = 0, testNavManagementPort = 7045 } = body
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
 
   // ── DEBUG ── Generates a clearly-marked dummy installer zip
@@ -106,6 +106,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
       ...(testBcInstance        ? { testBcInstance }        : {}),
       ...(testBcCompany         ? { testBcCompany }         : {}),
       ...(testBcPort            ? { testBcPort: parseInt(String(testBcPort), 10) || null } : {}),
+      ...(testNavManagementPort ? { testNavManagementPort: parseInt(String(testNavManagementPort), 10) || 7045 } : {}),
     },
   })
   // Re-fetch to get latest tunnelId after possible update above
@@ -142,6 +143,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace("[string] $TestNavServerInstance = '',",         `[string] $TestNavServerInstance = '${testNavServerInstance || tenant.testNavServerInstance || ''}',`)
     .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${testBcInstance || tenant.testBcInstance || ''}',`)
     .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${testBcCompany || tenant.testBcCompany || ''}',`)
+    .replace('[int]    $TestNavManagementPort  = 7045,',      `[int]    $TestNavManagementPort  = ${testNavManagementPort || (tenant as any).testNavManagementPort || 7045},`)
 
   // Base64 + BAT wrapper (same pattern as admin installer)
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')

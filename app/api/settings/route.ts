@@ -26,7 +26,7 @@ const DEBUG_TENANT = {
   lastCU: 'CU2', bcPort: 8048, agentPort: 8080,
   navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '',
   testNavDatabaseServer: 'localhost', testNavDatabaseName: '', testNavServerInstance: '',
-  testBcPort: 0, testBcInstance: '', testBcCompany: '',
+  testBcPort: 0, testBcInstance: '', testBcCompany: '', testNavManagementPort: 7045,
   _debug: true,
 }
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ export async function GET() {
       bcPort: true, agentPort: true,
       navDatabaseServer: true, navDatabaseName: true, navServerInstance: true,
       testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true,
-      testBcPort: true, testBcInstance: true, testBcCompany: true,
+      testBcPort: true, testBcInstance: true, testBcCompany: true, testNavManagementPort: true,
     },
   })
   if (!tenant) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest) {
   const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany,
           navDatabaseServer, navDatabaseName, navServerInstance,
           testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
-          testBcPort, testBcInstance, testBcCompany,
+          testBcPort, testBcInstance, testBcCompany, testNavManagementPort,
           testServerSeparate, testAgentUrl, testTunnelToken, testAgentPort } = body
 
   const data: Record<string, any> = {}
@@ -100,6 +100,10 @@ export async function PATCH(req: NextRequest) {
   if (testBcPort !== undefined) {
     const p = parseInt(testBcPort, 10)
     if (!isNaN(p) && p >= 0 && p <= 65535) data.testBcPort = p || null
+  }
+  if (testNavManagementPort !== undefined) {
+    const p = parseInt(testNavManagementPort, 10)
+    if (!isNaN(p) && p >= 0 && p <= 65535) data.testNavManagementPort = p || 7045
   }
   if (testServerSeparate !== undefined) data.testServerSeparate = Boolean(testServerSeparate)
   if (testAgentUrl       !== undefined) data.testAgentUrl       = testAgentUrl    || null

@@ -43,6 +43,7 @@ export async function POST() {
     testBcInstance:        tenant.testBcInstance        || '',
     testBcCompany:         tenant.testBcCompany         || '',
     testBcPort:            tenant.testBcPort            || 0,
+    testNavManagementPort: (tenant as any).testNavManagementPort || 7045,
   }
 
   let agentRes: Response

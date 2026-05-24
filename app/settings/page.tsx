@@ -16,7 +16,7 @@ interface Tenant {
   bcPort: number; agentPort: number
   navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
-  testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null
+  testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null; testNavManagementPort: number | null
   bcUsername: string | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
@@ -718,6 +718,7 @@ function SettingsInner() {
                     testNavDatabaseName: tenant?.testNavDatabaseName ?? '',
                     testBcInstance:      tenant?.testBcInstance      ?? '',
                     testBcCompany:       tenant?.testBcCompany        ?? '',
+                    testNavManagementPort: String(tenant?.testNavManagementPort ?? 7045),
                   }}
                   erpLabel={erpLabel}
                   onSave={saveSystemConfig}
@@ -792,15 +793,16 @@ function SettingsInner() {
 }
 
 function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
-  initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string }
+  initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string; testNavManagementPort: string }
   onSave: (data: Record<string, any>) => Promise<void>
   erpLabel?: string
 }) {
 
   const refs = {
-    testNavDatabaseName: useRef<HTMLInputElement>(null),
-    testBcInstance:      useRef<HTMLInputElement>(null),
-    testBcCompany:       useRef<HTMLInputElement>(null),
+    testNavDatabaseName:   useRef<HTMLInputElement>(null),
+    testBcInstance:        useRef<HTMLInputElement>(null),
+    testBcCompany:         useRef<HTMLInputElement>(null),
+    testNavManagementPort: useRef<HTMLInputElement>(null),
   }
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
@@ -808,9 +810,10 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
   async function handleSave() {
     setSaving(true)
     await onSave({
-      testNavDatabaseName: refs.testNavDatabaseName.current?.value || null,
-      testBcInstance:      refs.testBcInstance.current?.value      || null,
-      testBcCompany:       refs.testBcCompany.current?.value       || null,
+      testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || null,
+      testBcInstance:        refs.testBcInstance.current?.value        || null,
+      testBcCompany:         refs.testBcCompany.current?.value         || null,
+      testNavManagementPort: refs.testNavManagementPort.current?.value || 7045,
     })
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -846,6 +849,14 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
             placeholder="Leave blank to use production company" autoComplete="off"
             onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
             onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+        </div>
+        <div>
+          {lbl('NAV Server Management Port')}
+          <input ref={refs.testNavManagementPort} style={inp} type="number" defaultValue={initial.testNavManagementPort}
+            placeholder="7045" autoComplete="off"
+            onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+            onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Used by NAV to sync schema changes. Default is 7045.</p>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
