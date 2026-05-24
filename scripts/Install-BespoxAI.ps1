@@ -216,7 +216,7 @@ $NavDbName     = $Config.navDatabaseName
 $NavServerInst       = $Config.navServerInstance
 $TestNavDbServer     = if ($Config.testNavDatabaseServer) { $Config.testNavDatabaseServer } else { $NavDbServer }
 $TestNavDbName       = $Config.testNavDatabaseName
-$TestNavServerInst   = $Config.testNavServerInstance
+$TestNavServerInst   = if ($Config.testNavServerInstance) { $Config.testNavServerInstance } else { $NavServerInst }
 $TestBcInstance      = $Config.testBcInstance
 $TestBcCompany       = $Config.testBcCompany
 $TestBcPort          = if ($Config.testBcPort) { $Config.testBcPort } else { 0 }
@@ -715,6 +715,7 @@ while ($Listener.IsListening) {
                 if ($newCfg.testNavDatabaseServer)  { $TestNavDbServer    = $newCfg.testNavDatabaseServer }
                 if ($newCfg.testNavDatabaseName)    { $TestNavDbName      = $newCfg.testNavDatabaseName }
                 if ($newCfg.testNavServerInstance)  { $TestNavServerInst  = $newCfg.testNavServerInstance }
+                elseif ($newCfg.navServerInstance)   { if (-not $TestNavServerInst) { $TestNavServerInst = $newCfg.navServerInstance } }
                 if ($newCfg.testBcInstance)         { $TestBcInstance     = $newCfg.testBcInstance }
                 if ($newCfg.testBcCompany)          { $TestBcCompany      = $newCfg.testBcCompany }
                 if ($newCfg.testBcPort)             { $TestBcPort         = $newCfg.testBcPort }
