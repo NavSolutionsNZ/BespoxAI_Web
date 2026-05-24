@@ -330,7 +330,7 @@ function SettingsInner() {
           {NAV.map(item => {
             const active = tab === item.id
             return (
-              <button key={item.id} onClick={() => setTab(item.id)}
+              <button key={item.id} onClick={() => { setTab(item.id); if (isMobile) window.scrollTo({ top: 0 }) }}
                 style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, padding: isMobile ? '7px 10px' : '9px 10px', borderRadius: 8, marginBottom: isMobile ? 0 : 2, border: 'none', background: active ? 'rgba(10,92,70,0.3)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: isMobile ? 'auto' : '100%' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(10,92,70,0.3)' : 'transparent' }}>
