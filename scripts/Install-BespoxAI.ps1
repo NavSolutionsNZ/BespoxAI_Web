@@ -2,7 +2,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    BespoxAI Installer v1.0
+    BespoxAI Installer v2.4
     Sets up BCAgent (local OData proxy) and a Cloudflare tunnel so BespoxAI
     can query your Business Central data securely from bespoxai.com.
 
@@ -86,6 +86,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$AgentVersion  = '2.4'
+
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
 $InstallRoot   = 'C:\BespoxAI'
@@ -116,15 +118,27 @@ function Test-Port {
 
 Write-Host ''
 Write-Host '  ╔══════════════════════════════════════════════╗' -ForegroundColor DarkCyan
-Write-Host '  ║        BespoxAI Installer  v1.0              ║' -ForegroundColor DarkCyan
+Write-Host "  ║        BespoxAI Installer  v$AgentVersion              ║" -ForegroundColor DarkCyan
 Write-Host '  ║  Business Central → AI Query Layer           ║' -ForegroundColor DarkCyan
 Write-Host '  ╚══════════════════════════════════════════════╝' -ForegroundColor DarkCyan
 Write-Host ''
-Write-Host "  BC Instance : $BCInstance"
-Write-Host "  BC Company  : $BCCompany"
-Write-Host "  BC Port     : $BCPort"
-Write-Host "  Agent Port  : $AgentPort"
-Write-Host "  BC User     : $BCUsername"
+Write-Host '  Production Environment' -ForegroundColor Cyan
+Write-Host "    DB Server      : $NavDatabaseServer"
+Write-Host "    DB Name        : $NavDatabaseName"
+Write-Host "    NAV Instance   : $NavServerInstance"
+Write-Host "    BC Instance    : $BCInstance"
+Write-Host "    BC Company     : $BCCompany"
+Write-Host "    BC Port        : $BCPort"
+Write-Host "    Agent Port     : $AgentPort"
+Write-Host "    BC User        : $BCUsername"
+Write-Host ''
+Write-Host '  Test Environment' -ForegroundColor Cyan
+Write-Host "    DB Name        : $TestNavDatabaseName"
+Write-Host "    DB Server      : $(if ($TestNavDatabaseServer) { $TestNavDatabaseServer } else { "$NavDatabaseServer (same as prod)" })"
+Write-Host "    NAV Instance   : $TestNavServerInstance"
+Write-Host "    BC Instance    : $TestBcInstance"
+Write-Host "    BC Company     : $(if ($TestBcCompany) { $TestBcCompany } else { '(same as prod)' })"
+Write-Host "    Mgmt Port      : $TestNavManagementPort"
 Write-Host ''
 
 # ── Step 1: Prerequisites ──────────────────────────────────────────────────────
@@ -189,7 +203,7 @@ Write-OK "cloudflared version: $cfVersion"
 
 # ── Step 4: Write BCAgent.ps1 ──────────────────────────────────────────────────
 
-Write-Step 'Installing BCAgent v2.4'
+Write-Step "Installing BCAgent v$AgentVersion"
 
 $AgentCode = @'
 #Requires -Version 5.1
@@ -200,6 +214,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
+$Version    = '2.4'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -252,7 +267,7 @@ $Listener.Prefixes.Add("http://+:$ListenPort/")
 
 try {
     $Listener.Start()
-    Write-Log "BCAgent v2.4 started — listening on port $ListenPort"
+    Write-Log "BCAgent v$Version started — listening on port $ListenPort"
 } catch {
     Write-Log "FATAL: Could not start listener on port ${ListenPort}: $_"
     exit 1
@@ -280,7 +295,7 @@ while ($Listener.IsListening) {
             $incomingKey = $req.Headers['X-BespoxAI-Key']
             $statusCode  = if ($incomingKey -eq $ApiKey) { 200 } else { 401 }
             $statusMsg   = if ($incomingKey -eq $ApiKey) { 'ok' } else { 'unauthorized' }
-            $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"2.4`"}")
+            $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"$Version`"}")
             $res.StatusCode = $statusCode
             $res.ContentType = 'application/json'
             $res.ContentLength64 = $body.Length
