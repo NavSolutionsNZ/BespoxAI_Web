@@ -1379,7 +1379,7 @@ function DeployToTestPanel(props: DeployPanelProps) {
           disabled={!writeSnapshotId || deployLoading}
           style={{ ...base, background: writeSnapshotId ? '#0A5C46' : 'var(--fog)', color: 'var(--cream)', border: 'none' }}
         >
-          {deployLoading ? (deployJobId ? 'Compiling… (polling)' : 'Deploying…') : 'Deploy + Compile to Test'}
+          {deployLoading ? 'Deploying…' : 'Deploy + Compile to Test'}
         </button>
         {writeSnapshotId
           ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>{writeSnapshotId}</span>
@@ -1639,7 +1639,6 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   const [deployResults, setDeployResults]       = useState<any[]|null>(null)
   const [deployDebug, setDeployDebug]           = useState(false)
   const [deployErr, setDeployErr]               = useState('')
-  const [deployJobId, setDeployJobId]           = useState<string|null>(null)
   const [developers, setDevelopers]             = useState<{id:string;name:string|null;email:string}[]>([])
 
   // ── Coding Assistant state ──────────────────────────────────────────────────
@@ -1910,7 +1909,6 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
     setDeployLoading(true)
     setDeployErr('')
     setDeployResults(null)
-    setDeployJobId(null)
     try {
       const res = await fetch('/api/requirements/' + selected.id + '/objects/deploy-test', {
         method:  'POST',
@@ -1918,60 +1916,21 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
         body:    JSON.stringify({ snapshotId: writeSnapshotId }),
       })
       let data: any
-      try { data = await res.json() } catch { throw new Error('Deploy API returned invalid response.') }
+      try { data = await res.json() } catch { throw new Error('Deploy API returned invalid response — the operation may have timed out (60s limit). Check BCAgent logs.') }
       if (!res.ok) throw new Error(data.error ?? 'Deploy failed (' + res.status + ')')
-
-      // Async job — start polling
-      if (data.jobId) {
-        setDeployJobId(data.jobId)
-        pollDeployStatus(selected.id, data.jobId)
-        return  // keep deployLoading=true, polling will clear it
-      }
-
-      // Synchronous response (fallback)
       setDeployResults(data.results ?? [])
       setDeployDebug(!!data._debug)
-      if (!data.success) setDeployErr('Some objects failed — check results below')
-      await refreshReqs()
+      if (data.success) {
+        // Refresh requirement to show testDeployedAt
+        const reqRes = await fetch('/api/admin/requirements')
+        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null })); setReqs([...d.requirements, ...add2]) }
+      } else {
+        setDeployErr('Some objects failed — check results below')
+      }
     } catch(e: any) {
       setDeployErr(e.message)
     } finally {
-      if (!deployJobId) setDeployLoading(false)
-    }
-  }
-
-  async function pollDeployStatus(reqId: string, jobId: string) {
-    const maxAttempts = 60  // 5 min at 5s intervals
-    let attempts = 0
-    while (attempts < maxAttempts) {
-      await new Promise(r => setTimeout(r, 5000))
-      attempts++
-      try {
-        const res = await fetch('/api/requirements/' + reqId + '/objects/deploy-status?jobId=' + jobId)
-        if (!res.ok) continue
-        const data = await res.json()
-        if (data.results?.length) setDeployResults(data.results)
-        if (data.status === 'done') {
-          setDeployJobId(null)
-          setDeployLoading(false)
-          setDeployDebug(false)
-          if (!data.success) setDeployErr('Some objects failed — check results below')
-          await refreshReqs()
-          return
-        }
-      } catch { /* continue polling */ }
-    }
-    setDeployJobId(null)
-    setDeployLoading(false)
-    setDeployErr('Deploy timed out after 5 minutes — check BCAgent logs.')
-  }
-
-  async function refreshReqs() {
-    const reqRes = await fetch('/api/admin/requirements')
-    if (reqRes.ok) {
-      const d = await reqRes.json()
-      const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null }))
-      setReqs([...d.requirements, ...add2])
+      setDeployLoading(false)
     }
   }
 
