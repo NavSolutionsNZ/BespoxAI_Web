@@ -446,14 +446,18 @@ while ($Listener.IsListening) {
                 $success = ($results | Where-Object { -not $_.imported }).Count -eq 0
                 $resultsJson = $results | ConvertTo-Json -Compress
                 $resp = [System.Text.Encoding]::UTF8.GetBytes("{`"success`":$($success.ToString().ToLower()),`"environment`":`"$environment`",`"results`":$resultsJson}")
-                $res.StatusCode = 200; $res.ContentType = 'application/json'
-                $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
+                try {
+                    $res.StatusCode = 200; $res.ContentType = 'application/json'
+                    $res.ContentLength64 = $resp.Length; $res.OutputStream.Write($resp, 0, $resp.Length)
+                } catch { Write-Log "Deploy response write failed (client disconnected): $_" }
             } catch {
                 Write-Log "Deploy ERROR: $_"
                 $em = ($_.ToString() -replace '"',"'") -replace '[\r\n]+',' '
                 $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
-                $res.StatusCode = 500; $res.ContentType = 'application/json'
-                $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+                try {
+                    $res.StatusCode = 500; $res.ContentType = 'application/json'
+                    $res.ContentLength64 = $eb.Length; $res.OutputStream.Write($eb, 0, $eb.Length)
+                } catch { Write-Log "Deploy error response write failed (client disconnected): $_" }
             }
             $res.Close(); continue
         }
