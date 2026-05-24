@@ -35,6 +35,7 @@ model Tenant {
   testBcPort             Int?                        // test BC OData port
   testBcInstance         String?                     // test BC instance name
   testBcCompany          String?                     // test BC company name
+  testNavManagementPort  Int?      @default(7045)    // NAV server management port for schema sync
   testAgentPort          Int?                        // test BCAgent listening port
   githubOrg            String?                    // GitHub org for customer repos (defaults to NavSolutionsNZ)
   githubRepo           String?                    // GitHub repo name e.g. bespoxai-acme
@@ -70,6 +71,7 @@ model User {
   preferredName String?                          // address by this if set, else firstName
   password      String                           // bcrypt hashed
   role          String    @default("user")       // "superadmin" | "tenant_admin" | "user" | "developer"
+  mustChangePassword Boolean @default(false)
   persona       String?                          // "cfo" | "finance" | "it" | "other"
   onboardingDone Boolean  @default(false)
   active        Boolean   @default(true)
