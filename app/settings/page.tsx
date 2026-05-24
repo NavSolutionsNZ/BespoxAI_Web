@@ -113,6 +113,13 @@ function SettingsInner() {
   const [profile, setProfile] = useState<{ firstName: string; lastName: string; preferredName: string }>({ firstName: '', lastName: '', preferredName: '' })
   const profileRefs = { firstName: useRef<HTMLInputElement>(null), lastName: useRef<HTMLInputElement>(null), preferredName: useRef<HTMLInputElement>(null) }
   const [profileSaving, setProfileSaving] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
   const [profileSaved,  setProfileSaved]  = useState(false)
   const role       = user?.role as string ?? ''
   const initials   = (user?.name ?? user?.email ?? '?').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
@@ -252,7 +259,7 @@ function SettingsInner() {
 
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: isMobile ? 'auto' : '100vh', minHeight: '100vh', overflow: isMobile ? 'visible' : 'hidden', fontFamily: 'var(--font-body)' }}>
 
       {/* ── DEBUG BANNER — remove when SETTINGS_DEBUG env var is removed ── */}
       {tenant?._debug && (
@@ -265,77 +272,113 @@ function SettingsInner() {
 
       {toast && <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: toast.ok ? 'var(--forest)' : '#A32D2D', color: '#fff', padding: '10px 18px', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,0.25)' }}>{toast.msg}</div>}
 
-      {/* ── Sidebar ── */}
-      <aside style={{ width: 240, flexShrink: 0, background: 'var(--ink)', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+      {/* ── Sidebar / Mobile Top Nav ── */}
+      <aside style={{
+        width: isMobile ? '100%' : 240,
+        flexShrink: 0,
+        background: 'var(--ink)',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.04)',
+        borderBottom: isMobile ? '1px solid rgba(255,255,255,0.08)' : 'none',
+        position: isMobile ? 'sticky' : 'relative',
+        top: 0,
+        zIndex: 100,
+      }}>
 
-        {/* Logo + health */}
-        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: 'var(--cream)', letterSpacing: '-0.3px' }}>Bespox</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17, color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3 }}>AI</span>
+        {/* Logo + health — hidden on mobile to save space */}
+        {!isMobile && (
+          <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: 'var(--cream)', letterSpacing: '-0.3px' }}>Bespox</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17, color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3 }}>AI</span>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: hOk ? 'rgba(10,92,70,0.25)' : hErr ? 'rgba(163,45,45,0.2)' : 'rgba(100,100,100,0.15)', border: '1px solid ' + (hOk ? 'rgba(10,92,70,0.4)' : hErr ? 'rgba(163,45,45,0.35)' : 'rgba(100,100,100,0.25)'), borderRadius: 12, padding: '4px 10px' }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: hColor }} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: hColor }}>
+                {tenantName} · {hOk ? 'Live' : hErr ? 'Offline' : '···'}
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: hOk ? 'rgba(10,92,70,0.25)' : hErr ? 'rgba(163,45,45,0.2)' : 'rgba(100,100,100,0.15)', border: `1px solid ${hOk ? 'rgba(10,92,70,0.4)' : hErr ? 'rgba(163,45,45,0.35)' : 'rgba(100,100,100,0.25)'}`, borderRadius: 12, padding: '4px 10px' }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: hColor }} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: hColor }}>
-              {tenantName} · {hOk ? 'Live' : hErr ? 'Offline' : '···'}
-            </span>
+        )}
+
+        {/* Mobile header row */}
+        {isMobile && (
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 18, color: 'var(--cream)' }}>Bespox</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 14, color: 'var(--amber)' }}>AI</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: hOk ? 'rgba(10,92,70,0.25)' : 'rgba(100,100,100,0.15)', border: '1px solid ' + (hOk ? 'rgba(10,92,70,0.4)' : 'rgba(100,100,100,0.25)'), borderRadius: 10, padding: '3px 8px' }}>
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: hColor }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: hColor }}>{hOk ? 'Live' : hErr ? 'Offline' : '···'}</span>
+              </div>
+              <button onClick={() => signOut({ callbackUrl: '/login' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(214,217,212,0.4)', fontSize: 14, padding: 4 }}>↪</button>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div style={{ padding: '18px 20px 8px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.3)' }}>Settings</span>
-        </div>
+        {/* Nav items */}
+        {!isMobile && (
+          <div style={{ padding: '18px 20px 8px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.3)' }}>Settings</span>
+          </div>
+        )}
 
-        <nav style={{ flex: 1, padding: '0 10px' }}>
+        <nav style={{ flex: isMobile ? undefined : 1, padding: isMobile ? '6px 10px 10px' : '0 10px', display: isMobile ? 'flex' : 'block', flexWrap: 'wrap', gap: isMobile ? 4 : 0 }}>
           {NAV.map(item => {
             const active = tab === item.id
             return (
               <button key={item.id} onClick={() => setTab(item.id)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 8, marginBottom: 2, border: 'none', background: active ? 'rgba(10,92,70,0.3)' : 'transparent', cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, padding: isMobile ? '7px 10px' : '9px 10px', borderRadius: 8, marginBottom: isMobile ? 0 : 2, border: 'none', background: active ? 'rgba(10,92,70,0.3)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: isMobile ? 'auto' : '100%' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-                <span style={{ fontSize: 14 }}>{item.icon}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active ? 600 : 400, color: active ? 'var(--cream)' : 'rgba(214,217,212,0.55)' }}>{item.id === 'installer' ? erpLabel + ' Installer' : item.label}</span>
-                {active && <div style={{ marginLeft: 'auto', width: 3, height: 3, borderRadius: '50%', background: 'var(--jade)' }} />}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(10,92,70,0.3)' : 'transparent' }}>
+                <span style={{ fontSize: isMobile ? 13 : 14 }}>{item.icon}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: isMobile ? 12 : 13, fontWeight: active ? 600 : 400, color: active ? 'var(--cream)' : 'rgba(214,217,212,0.55)', whiteSpace: 'nowrap' }}>{item.id === 'installer' ? erpLabel + ' Installer' : item.label}</span>
               </button>
             )
           })}
 
-          <div style={{ margin: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }} />
-          <button onClick={() => router.push('/dashboard')}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-            <span style={{ fontSize: 13 }}>←</span>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(214,217,212,0.45)' }}>Back to Dashboard</span>
-          </button>
+          {!isMobile && <div style={{ margin: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }} />}
+          {!isMobile && (
+            <button onClick={() => router.push('/dashboard')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+              <span style={{ fontSize: 13 }}>←</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(214,217,212,0.45)' }}>Back to Dashboard</span>
+            </button>
+          )}
         </nav>
 
-        {/* User row */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--jade), var(--forest))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: 'var(--cream)' }}>{initials}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? user?.email}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(214,217,212,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{role.replace('_', ' ')}</div>
+        {/* User row — desktop only */}
+        {!isMobile && (
+          <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--jade), var(--forest))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: 'var(--cream)' }}>{initials}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? user?.email}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(214,217,212,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{role.replace('_', ' ')}</div>
+            </div>
+            <button onClick={() => signOut({ callbackUrl: '/login' })} title="Sign out"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(214,217,212,0.3)', fontSize: 15, padding: 4, lineHeight: 1, transition: 'color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--fog)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(214,217,212,0.3)')}>↪</button>
           </div>
-          <button onClick={() => signOut({ callbackUrl: '/login' })} title="Sign out"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(214,217,212,0.3)', fontSize: 15, padding: 4, lineHeight: 1, transition: 'color 0.15s' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--fog)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(214,217,212,0.3)')}>↪</button>
-        </div>
+        )}
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex: 1, overflowY: 'auto', background: '#ffffff', paddingTop: tenant?._debug ? 32 : 0 }}>
-        <div style={{ maxWidth: 820, margin: '0 auto', padding: '40px 32px' }}>
+      <main style={{ flex: 1, overflowY: isMobile ? 'visible' : 'auto', background: '#ffffff', paddingTop: tenant?._debug ? 32 : 0 }}>
+        <div style={{ maxWidth: 820, margin: '0 auto', padding: isMobile ? '20px 16px 40px' : '40px 32px' }}>
 
           {/* Overview */}
           {tab === 'overview' && <>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 28 }}>Overview</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 22 : 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 28 }}>Overview</h1>
             <Card>
               <Label>Your Profile</Label>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.6 }}>How you appear in the portal and how we address you.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--slate)', marginBottom: 5 }}>First Name</div>
                   <input ref={profileRefs.firstName} style={sharedInp} defaultValue={profile.firstName} placeholder="Jane" key={'fn-' + profile.firstName}
@@ -361,7 +404,7 @@ function SettingsInner() {
             </Card>
             <Card>
               <Label>{erpLabel + ' Connection'}</Label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 40px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 40px' }}>
                 {([['Tenant Name', tenant?.name], [(erpLabel + ' Instance'), tenant?.bcInstance], [(erpLabel + ' Company'), tenant?.bcCompany], ['Agent URL', `https://${tenant?.tunnelSubdomain}-agent.bespoxai.com`], ['Status', hOk ? `Connected · ${health.ms}ms` : hErr ? 'Offline' : 'Checking…'], ['Member Since', tenant ? relTime(tenant.createdAt) : '—']] as [string, string|undefined][]).map(([k, v]) => (
                   <div key={k}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{k}</div>
@@ -373,7 +416,7 @@ function SettingsInner() {
             <Card>
               <Label>System Configuration</Label>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.65 }}>{'Your ' + erpLabel + ' version details help us tailor compatibility checks and support.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Product</div>
                   <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px' }}>
@@ -484,7 +527,7 @@ function SettingsInner() {
 
           {/* Users */}
           {tab === 'users' && <>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 28 }}>Users</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 22 : 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 28 }}>Users</h1>
             <Card>
               <Label>Invite User</Label>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -553,7 +596,7 @@ function SettingsInner() {
           {/* Entities */}
           {tab === 'entities' && <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', margin: 0 }}>Data Entities</h1>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 22 : 28, fontWeight: 400, color: 'var(--ink)', margin: 0 }}>Data Entities</h1>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={async () => {
                   setEntitySaving(true)
@@ -593,7 +636,7 @@ function SettingsInner() {
 
           {/* Installer */}
           {tab === 'installer' && <>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 10 }}>{erpLabel} Agent Installer</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 22 : 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 10 }}>{erpLabel} Agent Installer</h1>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 28, lineHeight: 1.65 }}>Download a pre-configured installer for the BespoxAI BCAgent. Run it on the Windows Server hosting Business Central — it installs the agent, configures the Cloudflare tunnel, and starts the service automatically.</p>
 
             <Card style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)' }}>
@@ -725,7 +768,7 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
           onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
         <div>
           {lbl('Test ' + erpLabel + ' Instance')}
           <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance}
@@ -806,22 +849,22 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>{lbl('Database Server')}<input ref={refs.navDatabaseServer} style={inp} defaultValue={initial.navDatabaseServer} placeholder="localhost" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
         <div>{lbl('Database Name')}<input ref={refs.navDatabaseName} style={inp} defaultValue={initial.navDatabaseName} placeholder="e.g. Dynamics NAV 2017" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>{lbl('Server Instance')}<input ref={refs.navServerInstance} style={inp} defaultValue={initial.navServerInstance} placeholder="e.g. DynamicsNAV110" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
         <div>{lbl('BC Instance Name')}<input ref={refs.bcInstance} style={inp} defaultValue={initial.bcInstance} placeholder="e.g. BC" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>{lbl('BC Company Name')}<input ref={refs.bcCompany} style={inp} defaultValue={initial.bcCompany} placeholder="e.g. CRONUS International Ltd." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <div>{lbl('BC OData Port')}<input ref={refs.bcPort} style={inp} type="number" defaultValue={initial.bcPort} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
           <div>{lbl('Agent Port')}<input ref={refs.agentPort} style={inp} type="number" defaultValue={initial.agentPort} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>
           {lbl(erpLabel + ' Username')}
           <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\username" autoComplete="off" name="bc-username" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
