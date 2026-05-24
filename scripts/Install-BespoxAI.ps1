@@ -716,7 +716,7 @@ while ($Listener.IsListening) {
                 if ($newCfg.testBcPort)             { $TestBcPort         = $newCfg.testBcPort }
                 if ($newCfg.testNavManagementPort)  { $TestNavMgmtPort    = $newCfg.testNavManagementPort }
 
-                Write-Log "Config updated via portal sync. testNavDbName=$TestNavDbName testNavMgmtPort=$TestNavMgmtPort"
+                Write-Log "Config updated via portal sync. testNavDbName=$TestNavDbName testNavDbServer=$TestNavDbServer testNavServerInst=$TestNavServerInst testNavMgmtPort=$TestNavMgmtPort testBcInstance=$TestBcInstance testBcCompany=$TestBcCompany testBcPort=$TestBcPort"
                 $rb = [System.Text.Encoding]::UTF8.GetBytes('{"success":true}')
                 $res.StatusCode = 200; $res.ContentType = 'application/json'
                 $res.ContentLength64 = $rb.Length; $res.OutputStream.Write($rb, 0, $rb.Length)
