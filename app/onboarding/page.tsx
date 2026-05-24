@@ -93,6 +93,11 @@ export default function OnboardingPage() {
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
 
+  // Step 0 — password change
+  const [newPw,     setNewPw]     = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwSaving,  setPwSaving]  = useState(false)
+
   // Prefill state
   const [prefillSource,    setPrefillSource]    = useState<'signup' | 'saved' | null>(null)
   const [tenantName,       setTenantName]       = useState('')
@@ -129,7 +134,8 @@ export default function OnboardingPage() {
     if (status === 'loading') return
     if (!session) { router.replace('/login'); return }
     if (user?.onboardingDone) { router.replace('/dashboard'); return }
-  }, [status, session, user?.onboardingDone])
+    if (user?.mustChangePassword) setStep(0)
+  }, [status, session, user?.onboardingDone, user?.mustChangePassword])
 
   // Fetch prefill data
   useEffect(() => {
@@ -173,6 +179,28 @@ export default function OnboardingPage() {
 
   function sidebarState(n: number): 'done' | 'active' | 'upcoming' {
     return n < step ? 'done' : n === step ? 'active' : 'upcoming'
+  }
+
+  async function handleSetPassword() {
+    setError('')
+    if (newPw.length < 8)   { setError('Password must be at least 8 characters.'); return }
+    if (newPw !== confirmPw) { setError('Passwords do not match.'); return }
+    setPwSaving(true)
+    try {
+      const res = await fetch('/api/settings/profile/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: newPw, clearMustChange: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Could not save password.'); return }
+      await update()
+      setStep(1)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setPwSaving(false)
+    }
   }
 
   function handleNext() {
@@ -261,6 +289,48 @@ export default function OnboardingPage() {
 
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 32px' }}>
           <div style={{ width: '100%', maxWidth: 520 }}>
+
+            {/* ── Step 0: Change temporary password ── */}
+            {step === 0 && (
+              <div>
+                <div style={eyebrow}>Account Security</div>
+                <h1 style={heading}>Set your password.</h1>
+                <p style={subtext}>
+                  You signed in with a temporary password. Please set a permanent one before continuing.
+                </p>
+                {error ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#A32D2D', marginBottom: 16 }}>{error}</p> : null}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                  <div>
+                    <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', display: 'block', marginBottom: 6 }}>New Password</label>
+                    <input
+                      type="password"
+                      value={newPw}
+                      onChange={e => setNewPw(e.target.value)}
+                      placeholder="At least 8 characters"
+                      style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '11px 14px', outline: 'none', boxSizing: 'border-box' as const }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', display: 'block', marginBottom: 6 }}>Confirm Password</label>
+                    <input
+                      type="password"
+                      value={confirmPw}
+                      onChange={e => setConfirmPw(e.target.value)}
+                      placeholder="Repeat your new password"
+                      style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '11px 14px', outline: 'none', boxSizing: 'border-box' as const }}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSetPassword() }}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleSetPassword}
+                  disabled={pwSaving}
+                  style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'var(--forest)', color: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: pwSaving ? 'not-allowed' : 'pointer', opacity: pwSaving ? 0.7 : 1 }}
+                >
+                  {pwSaving ? 'Saving…' : 'Set Password & Continue →'}
+                </button>
+              </div>
+            )}
 
             {/* ── Step 1: Role ── */}
             {step === 1 && (

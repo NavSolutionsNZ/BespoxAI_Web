@@ -41,6 +41,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           persona: user.persona,
           onboardingDone: user.onboardingDone,
+          mustChangePassword: (user as any).mustChangePassword ?? false,
         }
       },
     }),
@@ -56,16 +57,18 @@ export const authOptions: NextAuthOptions = {
         token.role          = (user as any).role
         token.persona       = (user as any).persona ?? null
         token.onboardingDone = (user as any).onboardingDone ?? false
+        token.mustChangePassword = (user as any).mustChangePassword ?? false
       }
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
         const fresh = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: { onboardingDone: true, persona: true },
+          select: { onboardingDone: true, persona: true, mustChangePassword: true },
         })
         if (fresh) {
-          token.onboardingDone = fresh.onboardingDone
-          token.persona        = fresh.persona ?? null
+          token.onboardingDone     = fresh.onboardingDone
+          token.persona            = fresh.persona ?? null
+          token.mustChangePassword = (fresh as any).mustChangePassword ?? false
         }
       }
       return token
@@ -78,7 +81,8 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).navProduct    = token.navProduct ?? null
         ;(session.user as any).role          = token.role
         ;(session.user as any).persona       = token.persona
-        ;(session.user as any).onboardingDone = token.onboardingDone
+        ;(session.user as any).onboardingDone     = token.onboardingDone
+        ;(session.user as any).mustChangePassword = token.mustChangePassword ?? false
       }
       return session
     },

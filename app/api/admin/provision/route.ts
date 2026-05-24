@@ -88,13 +88,14 @@ export async function POST(req: NextRequest) {
         const hashed = await bcrypt.hash(tempPassword, 12)
         await prisma.user.create({
           data: {
-            email:          customerEmail.trim().toLowerCase(),
-            name:           customerName?.trim() || null,
-            password:       hashed,
-            role:           'tenant_admin',
-            tenantId:       tenant.id,
-            active:         true,
-            onboardingDone: false,
+            email:              customerEmail.trim().toLowerCase(),
+            name:               customerName?.trim() || null,
+            password:           hashed,
+            role:               'tenant_admin',
+            tenantId:           tenant.id,
+            active:             true,
+            onboardingDone:     false,
+            mustChangePassword: true,
           },
         })
         steps.push(`✓ tenant_admin user created: ${customerEmail}`)

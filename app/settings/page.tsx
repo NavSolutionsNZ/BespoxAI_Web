@@ -71,6 +71,50 @@ function Label({ children }: { children: string }) {
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return <div style={{ background: 'var(--white)', borderRadius: 14, padding: '24px 28px', border: '1px solid var(--fog)', marginBottom: 16, ...style }}>{children}</div>
 }
+function ChangePasswordCard() {
+  const [open,    setOpen]    = useState(false)
+  const [current, setCurrent] = useState('')
+  const [next,    setNext]    = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [msg,     setMsg]     = useState<{ ok: boolean; text: string } | null>(null)
+  const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }
+  async function save() {
+    setMsg(null)
+    if (next.length < 8)   { setMsg({ ok: false, text: 'Password must be at least 8 characters.' }); return }
+    if (next !== confirm)   { setMsg({ ok: false, text: 'Passwords do not match.' }); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/settings/profile/change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setMsg({ ok: false, text: data.error ?? 'Failed to change password.' }); return }
+      setMsg({ ok: true, text: 'Password changed.' })
+      setCurrent(''); setNext(''); setConfirm(''); setOpen(false)
+    } catch { setMsg({ ok: false, text: 'Something went wrong.' }) }
+    finally { setSaving(false) }
+  }
+  return (
+    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--fog)' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', padding: 0 }}>
+        {open ? '▲ Hide' : '▼ Change Password'}
+      </button>
+      {msg ? <span style={{ marginLeft: 12, fontFamily: 'var(--font-mono)', fontSize: 9, color: msg.ok ? 'var(--forest)' : '#A32D2D' }}>{msg.text}</span> : null}
+      {open && (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div><div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Current Password</div><input type="password" value={current} onChange={e => setCurrent(e.target.value)} style={inp} /></div>
+          <div><div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>New Password</div><input type="password" value={next} onChange={e => setNext(e.target.value)} style={inp} /></div>
+          <div><div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Confirm New Password</div><input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} style={inp} onKeyDown={e => { if (e.key === 'Enter') save() }} /></div>
+          <button onClick={save} disabled={saving} style={{ alignSelf: 'flex-start', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Update Password'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 function Btn({ onClick, disabled, full, children }: { onClick: () => void; disabled?: boolean; full?: boolean; children: React.ReactNode }) {
   return <button onClick={onClick} disabled={disabled} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: full ? '11px' : '8px 20px', width: full ? '100%' : undefined, cursor: disabled ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: full ? 14 : 13, fontWeight: 500, opacity: disabled ? 0.6 : 1 }}>{children}</button>
 }
@@ -401,6 +445,7 @@ function SettingsInner() {
                 </button>
                 {profileSaved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
               </div>
+              <ChangePasswordCard />
             </Card>
             <Card>
               <Label>{erpLabel + ' Connection'}</Label>
