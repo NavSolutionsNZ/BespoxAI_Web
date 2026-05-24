@@ -159,9 +159,10 @@ function DashboardInner() {
 
   function setActiveNav(item: NavItem) {
     setActiveNavState(item)
+    if (isMobile) setSidebarOpen(false)
     const params = new URLSearchParams(searchParams.toString())
     params.set('view', item)
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    router.replace(pathname + '?' + params.toString(), { scroll: false })
   }
 
   // Sync if URL changes externally (back/forward)
