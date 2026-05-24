@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       } else {
         tempPassword = crypto.randomBytes(5).toString('hex')
         const hashed = await bcrypt.hash(tempPassword, 12)
-        await prisma.user.create({
+        await (prisma as any).user.create({
           data: {
             email:              customerEmail.trim().toLowerCase(),
             name:               customerName?.trim() || null,

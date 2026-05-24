@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
   // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
-  const existing = await prisma.user.findUnique({ where: { email } })
+  const existing = await (prisma as any).user.findUnique({ where: { email } })
   if (existing) return NextResponse.json({ error: 'A user with this email already exists' }, { status: 409 })
 
   const tempPassword = crypto.randomBytes(5).toString('hex')
   const hashed = await bcrypt.hash(tempPassword, 12)
 
-  const user = await prisma.user.create({
+  const user = await (prisma as any).user.create({
     data: { email, name: name || null, password: hashed, role: userRole, tenantId, active: true, onboardingDone: false, mustChangePassword: true },
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
   })
