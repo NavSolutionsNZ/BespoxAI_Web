@@ -46,7 +46,7 @@ function LoginForm() {
 
 
       {/* Back to site */}
-      <div style={{ position: 'absolute', top: 28, left: 32 }}>
+      <div style={{ position: 'absolute', top: 20, left: 20 }}>
         <Link href="/index.html" style={{
           display: 'flex', alignItems: 'center', gap: 8,
           fontFamily: 'var(--font-mono)', fontSize: 11,
@@ -62,8 +62,8 @@ function LoginForm() {
       </div>
 
       {/* Request access — top right */}
-      <div style={{ position: 'absolute', top: 28, right: 32, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)' }}>New to BespoxAI?</span>
+      <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)' }}>New?</span>
         <Link href="/signup" style={{
           fontFamily: 'var(--font-mono)', fontSize: 10,
           letterSpacing: '0.12em', textTransform: 'uppercase',

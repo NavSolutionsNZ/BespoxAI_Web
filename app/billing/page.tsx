@@ -17,6 +17,12 @@ function BillingPageInner() {
   const [planName, setPlanName]       = useState<string | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [prices, setPrices] = useState<Record<string, string | null>>({})
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check(); window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const user = session?.user as any
 
@@ -163,16 +169,16 @@ function BillingPageInner() {
     <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: 'var(--font-body)' }}>
 
       {/* Header */}
-      <div style={{ borderBottom: '1px solid var(--fog)', background: 'var(--white)', padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ borderBottom: '1px solid var(--fog)', background: 'var(--white)', padding: isMobile ? '12px 16px' : '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 6 }}>
           ← Back to Dashboard
         </button>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--ink)', fontWeight: 600 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 15 : 18, color: 'var(--ink)', fontWeight: 600 }}>
           BespokAI Billing
         </div>
-        <div style={{ fontSize: 12, color: 'var(--slate)', fontFamily: 'var(--font-mono)' }}>
+        {!isMobile && <div style={{ fontSize: 12, color: 'var(--slate)', fontFamily: 'var(--font-mono)' }}>
           Current plan: <strong style={{ color: 'var(--forest)' }}>{planName ?? tierLabel[currentTier] ?? currentTier}</strong>
-        </div>
+        </div>}
       </div>
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px' }}>

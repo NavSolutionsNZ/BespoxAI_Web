@@ -180,6 +180,17 @@ function DashboardInner() {
   const [question, setQuestion]   = useState('')
   const [history, setHistory]     = useState<QueryResult[]>([])
   const [showMeta, setShowMeta]   = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [queryLogs, setQueryLogs]         = useState<QueryLogItem[]>([])
   const [showChangePw, setShowChangePw]   = useState(false)
@@ -342,7 +353,12 @@ function DashboardInner() {
   if (!session || user?.role === 'superadmin' || user?.onboardingDone === false) return null
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)', flexDirection: 'row' }}>
+
+      {/* ── Mobile overlay backdrop ── */}
+      {isMobile && sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 199 }} />
+      )}
 
       {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
       <aside style={{
@@ -350,6 +366,8 @@ function DashboardInner() {
         background: 'var(--ink)', display: 'flex', flexDirection: 'column',
         overflow: 'hidden', transition: 'width 0.2s ease',
         borderRight: '1px solid rgba(255,255,255,0.04)',
+        position: isMobile ? 'fixed' : 'relative',
+        top: 0, left: 0, height: '100vh', zIndex: isMobile ? 200 : 'auto',
       }}>
 
         {/* Logo */}
@@ -619,11 +637,11 @@ function DashboardInner() {
 
         {/* Header */}
         <header style={{
-          padding: '0 28px', height: 60, flexShrink: 0,
+          padding: isMobile ? '0 14px' : '0 28px', height: 60, flexShrink: 0,
           background: 'var(--white)', borderBottom: '1px solid var(--fog)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14 }}>
             {/* Sidebar toggle */}
             <button
               onClick={() => setSidebarOpen(o => !o)}
@@ -633,7 +651,7 @@ function DashboardInner() {
             </button>
             <div>
               <h1 style={{
-                fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20,
+                fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: isMobile ? 16 : 20,
                 color: 'var(--ink)', lineHeight: 1,
               }}>
                 {activeNav === 'assistant' ? 'CFO Assistant' : activeNav === 'customisations' ? 'Customisations' : activeNav === 'migration' ? 'Migration Analyser' : 'Data Health Scanner'}
@@ -641,7 +659,7 @@ function DashboardInner() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
             {/* Live / offline badge */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -650,21 +668,21 @@ function DashboardInner() {
                 : health.status === 'error'
                 ? 'rgba(163,45,45,0.08)'
                 : 'rgba(100,100,100,0.06)',
-              border: `1px solid ${health.status === 'ok' ? 'rgba(26,146,114,0.2)' : health.status === 'error' ? 'rgba(163,45,45,0.2)' : 'rgba(100,100,100,0.15)'}`,
-              borderRadius: 20, padding: '4px 12px',
+              border: '1px solid ' + (health.status === 'ok' ? 'rgba(26,146,114,0.2)' : health.status === 'error' ? 'rgba(163,45,45,0.2)' : 'rgba(100,100,100,0.15)'),
+              borderRadius: 20, padding: isMobile ? '4px 8px' : '4px 12px',
             }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
                 background: health.status === 'ok' ? 'var(--jade)' : health.status === 'error' ? '#E24B4A' : 'rgba(150,150,150,0.5)',
                 animation: health.status === 'ok' ? 'pulse 2s infinite' : 'none',
               }} />
-              <span style={{
+              {!isMobile && <span style={{
                 fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 color: health.status === 'ok' ? 'var(--forest)' : health.status === 'error' ? '#A32D2D' : 'var(--slate)',
               }}>
                 {health.status === 'ok' ? erpLabel + ' connected' : health.status === 'error' ? 'Agent offline' : 'Checking…'}
-              </span>
+              </span>}
             </div>
             {/* Last checked + latency */}
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fog)' }}>

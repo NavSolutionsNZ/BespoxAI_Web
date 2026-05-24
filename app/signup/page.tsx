@@ -98,7 +98,7 @@ export default function SignupPage() {
         </p>
       </a>
 
-      <div style={{ background: '#ffffff', borderRadius: 16, padding: '36px 40px', width: '100%', maxWidth: 440, boxShadow: '0 8px 40px rgba(4,14,9,0.3)' }}>
+      <div style={{ background: '#ffffff', borderRadius: 16, padding: 'clamp(24px, 5vw, 40px) clamp(20px, 5vw, 40px)', width: '100%', maxWidth: 440, boxShadow: '0 8px 40px rgba(4,14,9,0.3)' }}>
 
         {done ? (
           /* ── Success state ── */
