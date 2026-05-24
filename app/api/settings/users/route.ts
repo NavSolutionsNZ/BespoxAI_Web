@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { notifyUserWelcome } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,6 +67,16 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.create({
     data: { email, name: name || null, password: hashed, role: userRole, tenantId, active: true, onboardingDone: false, mustChangePassword: true },
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+  })
+
+  // Get tenant name for the email
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } })
+  notifyUserWelcome({
+    to:           email,
+    name:         name || null,
+    tempPassword,
+    tenantName:   tenant?.name ?? '',
+    role:         userRole as any,
   })
 
   return NextResponse.json({ user, tempPassword })

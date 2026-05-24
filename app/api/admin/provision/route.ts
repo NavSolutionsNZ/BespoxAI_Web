@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { createTunnel, configureTunnelIngress, createDnsRecord } from '@/lib/cloudflare'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
+import { notifyUserWelcome } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,6 +100,15 @@ export async function POST(req: NextRequest) {
           },
         })
         steps.push(`✓ tenant_admin user created: ${customerEmail}`)
+
+        // Send welcome email with temp password
+        notifyUserWelcome({
+          to:           customerEmail,
+          name:         customerName?.trim() || null,
+          tempPassword: tempPassword!,
+          tenantName:   name,
+          role:         'tenant_admin',
+        })
       }
     }
 

@@ -83,6 +83,52 @@ async function getCustomerEmail(requirementId: string): Promise<{ email: string;
   }
 }
 
+// ── Account / onboarding notifications ───────────────────────────────────────
+
+export async function notifyUserWelcome(params: {
+  to:           string
+  name:         string | null
+  tempPassword: string
+  tenantName:   string
+  role:         'tenant_admin' | 'user' | 'developer'
+}) {
+  const { to, name, tempPassword, tenantName, role } = params
+  const greeting = name ? 'Hi ' + name + ',' : 'Hi,'
+  const roleLabel = role === 'tenant_admin' ? 'Administrator' : role === 'developer' ? 'Developer' : 'User'
+  try {
+    await sendEmail({
+      to,
+      subject: 'Your BespoxAI account is ready',
+      html: wrap(`
+        <p>${greeting}</p>
+        <p>Your BespoxAI account for <strong>${tenantName}</strong> has been set up.
+        You've been added as a <strong>${roleLabel}</strong>.</p>
+
+        <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0">
+          <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b7b70">Your temporary credentials</p>
+          <p style="margin:0 0 4px"><strong>Email:</strong> ${to}</p>
+          <p style="margin:0"><strong>Temporary password:</strong> <code style="background:#e8e8e0;padding:2px 6px;border-radius:4px;font-size:15px">${tempPassword}</code></p>
+        </div>
+
+        <p style="background:#fff8e8;border-left:3px solid #C8952A;padding:10px 14px;border-radius:0 6px 6px 0;margin:20px 0;font-size:13px">
+          <strong>You will be asked to set a permanent password</strong> the first time you sign in.
+          Your temporary password will no longer work after that.
+        </p>
+
+        <a href="${PORTAL}/login" style="display:inline-block;background:#0A5C46;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:600;margin:8px 0">
+          Sign in to BespoxAI →
+        </a>
+
+        <p style="font-size:12px;color:#8a9a8e;margin-top:24px">
+          If you weren't expecting this email, you can safely ignore it.
+        </p>
+      `),
+    })
+  } catch (e) {
+    console.error('[notifyUserWelcome]', e)
+  }
+}
+
 // ── Superadmin notifications ──────────────────────────────────────────────────
 
 export async function notifyAdminsSignupVerified(params: {
