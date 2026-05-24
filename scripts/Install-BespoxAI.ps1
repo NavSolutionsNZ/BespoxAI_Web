@@ -716,7 +716,17 @@ while ($Listener.IsListening) {
                 if ($newCfg.testBcPort)             { $TestBcPort         = $newCfg.testBcPort }
                 if ($newCfg.testNavManagementPort)  { $TestNavMgmtPort    = $newCfg.testNavManagementPort }
 
-                Write-Log "Config updated via portal sync. testNavDbName=$TestNavDbName testNavDbServer=$TestNavDbServer testNavServerInst=$TestNavServerInst testNavMgmtPort=$TestNavMgmtPort testBcInstance=$TestBcInstance testBcCompany=$TestBcCompany testBcPort=$TestBcPort"
+                # Log only fields that actually changed
+                $changed = @()
+                foreach ($f in $updatable) {
+                    $oldVal = "$($cfgObj.$f)"; $newVal = "$($cfgHash[$f])"
+                    if ($oldVal -ne $newVal) { $changed += ($f + ': ' + $oldVal + ' -> ' + $newVal) }
+                }
+                if ($changed.Count -gt 0) {
+                    Write-Log ("Config synced. Changes: " + ($changed -join ' | '))
+                } else {
+                    Write-Log "Config sync received — no changes detected"
+                }
                 $rb = [System.Text.Encoding]::UTF8.GetBytes('{"success":true}')
                 $res.StatusCode = 200; $res.ContentType = 'application/json'
                 $res.ContentLength64 = $rb.Length; $res.OutputStream.Write($rb, 0, $rb.Length)
