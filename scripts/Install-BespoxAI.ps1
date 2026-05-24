@@ -355,7 +355,8 @@ while ($Listener.IsListening) {
                 if ($environment -eq 'production') {
                     $dbServer = $NavDbServer; $dbName = $NavDbName; $dbInst = $NavServerInst
                 } else {
-                    $dbServer = $TestNavDbServer; $dbName = $TestNavDbName; $dbInst = $TestNavServerInst
+                    $dbServer = $TestNavDbServer; $dbName = $TestNavDbName
+                    $dbInst = if ($TestNavServerInst) { $TestNavServerInst } else { $TestBcInstance }
                     if (-not $dbName) { throw "testNavDatabaseName not configured. Add it in the BC Installer tab." }
                     if (-not $dbInst) { throw "testNavServerInstance not configured. Add it in the BC Installer tab." }
                 }
