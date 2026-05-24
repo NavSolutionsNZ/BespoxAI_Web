@@ -287,7 +287,7 @@ function SettingsInner() {
     // Persist port values to tenant so they're remembered
     await saveSystemConfig({ bcPort: instForm.bcPort, agentPort: instForm.agentPort })
     try {
-      const r = await fetch('/api/settings/installer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...instForm, testBcUsername: instForm.testBcUsername, testBcPassword: instForm.testBcPassword }) })
+      const r = await fetch('/api/settings/installer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...instForm, ...testEnv, testBcUsername: instForm.testBcUsername, testBcPassword: instForm.testBcPassword }) })
       if (!r.ok) { toast$('Generation failed', false); setInstLoading(false); return }
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'BespoxAI-Installer.zip' })
       a.click(); URL.revokeObjectURL(a.href)

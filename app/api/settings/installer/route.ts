@@ -137,6 +137,11 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace("[string] $NavDatabaseServer = 'localhost',",    `[string] $NavDatabaseServer = '${navDatabaseServer}',`)
     .replace("[string] $NavDatabaseName   = '',",             `[string] $NavDatabaseName   = '${navDatabaseName}',`)
     .replace("[string] $NavServerInstance = '',",             `[string] $NavServerInstance = '${navServerInstance}',`)
+    .replace("[string] $TestNavDatabaseServer = '',",         `[string] $TestNavDatabaseServer = '${testNavDatabaseServer}',`)
+    .replace("[string] $TestNavDatabaseName   = '',",         `[string] $TestNavDatabaseName   = '${testNavDatabaseName}',`)
+    .replace("[string] $TestNavServerInstance = '',",         `[string] $TestNavServerInstance = '${testNavServerInstance}',`)
+    .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${testBcInstance}',`)
+    .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${testBcCompany}',`)
 
   // Base64 + BAT wrapper (same pattern as admin installer)
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')
