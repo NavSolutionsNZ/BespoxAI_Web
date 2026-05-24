@@ -376,6 +376,21 @@ while ($Listener.IsListening) {
                     if ($f) { . $f.FullName }
                 }
 
+                # NavModelTools.ps1 requires $NavIde = path to finsql.exe
+                $finsqlSearchPaths = @(
+                    'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                    'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+                    'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
+                    'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe'
+                )
+                $NavIde = $null
+                foreach ($fp in $finsqlSearchPaths) {
+                    $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($ff) { $NavIde = $ff.FullName; break }
+                }
+                if (-not $NavIde) { throw 'finsql.exe not found — cannot import/compile objects. Check NAV/BC installation.' }
+                Write-Log "Using finsql.exe for NavModelTools: $NavIde"
+
                 $results = @()
                 $txtFiles = Get-ChildItem -Path $deployDir -Filter '*.txt' -File
 
@@ -793,18 +808,24 @@ Write-OK "BCAgent.ps1 written to $AgentScript"
 Write-Step 'Writing agent configuration'
 
 $Config = [ordered]@{
-    apiKey            = $ApiKey
-    listenPort        = $AgentPort
-    bcBaseUrl         = "http://localhost:$BCPort"
-    bcUsername        = $BCUsername
-    bcPassword        = $BCPassword
-    bcInstance        = $BCInstance
-    bcCompany         = $BCCompany
-    navDatabaseServer = $NavDatabaseServer
-    navDatabaseName   = $NavDatabaseName
-    navServerInstance = $NavServerInstance
-    version           = '2.4'
-    installedAt       = (Get-Date -Format 'o')
+    apiKey                = $ApiKey
+    listenPort            = $AgentPort
+    bcBaseUrl             = "http://localhost:$BCPort"
+    bcUsername            = $BCUsername
+    bcPassword            = $BCPassword
+    bcInstance            = $BCInstance
+    bcCompany             = $BCCompany
+    navDatabaseServer     = $NavDatabaseServer
+    navDatabaseName       = $NavDatabaseName
+    navServerInstance     = $NavServerInstance
+    testNavDatabaseServer = $TestNavDatabaseServer
+    testNavDatabaseName   = $TestNavDatabaseName
+    testNavServerInstance = $TestNavServerInstance
+    testBcInstance        = $TestBcInstance
+    testBcCompany         = $TestBcCompany
+    testBcPort            = $TestBcPort
+    version               = '2.4'
+    installedAt           = (Get-Date -Format 'o')
 }
 
 $Config | ConvertTo-Json | Set-Content -Path $AgentConfig -Encoding UTF8 -Force
