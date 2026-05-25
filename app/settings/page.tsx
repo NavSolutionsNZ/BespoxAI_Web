@@ -464,10 +464,11 @@ function SettingsInner() {
               <ChangePasswordCard />
             </Card>
             <Card>
-              <Label>{erpLabel + ' Connection'}</Label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 40px' }}>
+              <Label>Production Environment Details</Label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {([
-                  ['Tenant Name',                   tenant?.name],
+                  ['Product',             tenant?.navProduct === 'BC' ? 'Business Central' : tenant?.navProduct === 'NAV' ? 'Microsoft NAV' : null],
+                  ['Last CU',             tenant?.lastCU],
                   [erpLabel + ' Instance',          tenant?.bcInstance],
                   [erpLabel + ' Company',           tenant?.bcCompany],
                   ['BC OData Port',                 tenant?.bcPort ? String(tenant.bcPort) : '8048'],
@@ -476,65 +477,38 @@ function SettingsInner() {
                   ['NAV Database Name',             tenant?.navDatabaseName],
                   ['NAV Server Instance',           tenant?.navServerInstance],
                   ['NAV Management Port',           tenant?.navManagementPort ? String(tenant.navManagementPort) : '7045'],
-                  ['Agent URL',                     tenant?.tunnelSubdomain ? 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com' : null],
-                  ['Status',                        hOk ? 'Connected · ' + health.ms + 'ms' : hErr ? 'Offline' : 'Checking…'],
-                  ['Member Since',                  tenant ? relTime(tenant.createdAt) : '—'],
                 ] as [string, string|null|undefined][]).map(([k, v]) => (
-                  <div key={k}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{k}</div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)' }}>{v ?? '—'}</div>
+                  <div key={k} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 180 }}>{k}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: v ? 'var(--ink)' : 'var(--fog)' }}>{v || '—'}</span>
                   </div>
                 ))}
-              </div>
-            </Card>
-            <Card>
-              <Label>System Configuration</Label>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 18, lineHeight: 1.65 }}>{'Your ' + erpLabel + ' version details help us tailor compatibility checks and support.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Product</div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px' }}>
-                    {tenant?.navProduct === 'BC' ? 'Business Central' : tenant?.navProduct === 'NAV' ? 'Microsoft NAV' : tenant?.navProduct === 'unsure' ? 'Not sure' : 'Not specified'}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Last CU</div>
-                  <input type="text" defaultValue={tenant?.lastCU ?? ''} placeholder="e.g. CU3" onBlur={async e => { e.target.style.borderColor = 'var(--fog)'; await saveSystemConfig({ lastCU: e.target.value }) }} style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} />
-                </div>
-              </div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>OData / Agent Ports</div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.bcPort ?? 8048}</span>
-                  <span style={{ color: 'var(--fog)', fontSize: 14 }}>·</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.agentPort ?? 9099}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>BC Installer</button> tab and reinstall BCAgent.</span>
-                </div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '4px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
               </div>
             </Card>
 
             {/* Test Environment — NAV/BC14 only */}
             {(tenant?.navProduct === 'NAV' || tenant?.navProduct === 'BC') && (
               <Card>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Test Environment</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Test Environment Details</p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
                   Used for pre-production deployment and UAT. Leave blank to use the same server as production. Details are injected into the BCAgent installer.
                 </p>
                 {/* Read-only reference — edit in BC Installer tab */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
+                    { label: 'Test ' + erpLabel + ' Instance',    val: tenant?.testBcInstance },
+                    { label: 'Test ' + erpLabel + ' Company',     val: tenant?.testBcCompany },
+                    { label: 'Test ' + erpLabel + ' Port',        val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
+                    { label: 'Test Agent Port',                   val: tenant?.testAgentPort ? String(tenant.testAgentPort) : null },
                     { label: 'Test Database Server',              val: tenant?.testNavDatabaseServer },
                     { label: 'Test Database Name',                val: tenant?.testNavDatabaseName   },
                     { label: 'Test Server Instance',              val: tenant?.testNavServerInstance },
                     { label: 'Test NAV Management Port',          val: tenant?.testNavManagementPort ? String(tenant.testNavManagementPort) : '7045' },
-                    { label: 'Test ' + erpLabel + ' Port',        val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
-                    { label: 'Test ' + erpLabel + ' Instance',    val: tenant?.testBcInstance },
-                    { label: 'Test ' + erpLabel + ' Company',     val: tenant?.testBcCompany },
-                    { label: 'Test Agent Port',                   val: tenant?.testAgentPort ? String(tenant.testAgentPort) : null },
                   ].map(({ label, val }) => (
                     <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 160 }}>{label}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: val ? 'var(--ink)' : 'var(--fog)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 6, padding: '4px 10px' }}>{val || '—'}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 180 }}>{label}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: val ? 'var(--ink)' : 'var(--fog)' }}>{val || '—'}</span>
                     </div>
                   ))}
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
