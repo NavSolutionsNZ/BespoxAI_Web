@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
 
   // 3. Load tenant config
   const tenant = await getTenantById(session.user.tenantId)
+  const userDisplayName = (session.user as any).preferredName?.trim() || (session.user as any).firstName?.trim() || null
   if (!tenant) {
     return NextResponse.json({ error: 'Tenant not configured' }, { status: 404 })
   }
@@ -542,7 +543,7 @@ Return JSON:
           role: 'system',
           content: `${PERSONA}
 
-You are presenting live Business Central data to the CFO at ${tenant.name}.
+You are presenting live Business Central data to the CFO at ${tenant.name}.${userDisplayName ? ' Address them by name: ' + userDisplayName + '.' : ''}
 ${DATE_CONTEXT}
 
 Your response MUST be a single valid JSON object with this exact shape:

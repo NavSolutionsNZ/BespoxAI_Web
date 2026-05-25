@@ -135,7 +135,7 @@ function SettingsInner() {
   const searchParams = useSearchParams()
 
   const [tab, setTab] = useState<Tab>('overview')
-  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [])
+  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [searchParams])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -295,7 +295,7 @@ function SettingsInner() {
     try {
       const r = await fetch('/api/settings/installer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...instForm, ...testEnv, testBcUsername: instForm.testBcUsername, testBcPassword: instForm.testBcPassword }) })
       if (!r.ok) { toast$('Generation failed', false); setInstLoading(false); return }
-      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'BespoxAI-Installer.zip' })
+      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'Install-BespoxAI-v' + agentVersion + '.zip' })
       a.click(); URL.revokeObjectURL(a.href)
     } catch { toast$('Download failed', false) }
     setInstLoading(false)
@@ -390,7 +390,7 @@ function SettingsInner() {
           {NAV.map(item => {
             const active = tab === item.id
             return (
-              <button key={item.id} onClick={() => { setTab(item.id); if (isMobile) window.scrollTo({ top: 0 }) }}
+              <button key={item.id} onClick={() => { router.push('/settings?tab=' + item.id); if (isMobile) window.scrollTo({ top: 0 }) }}
                 style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, padding: isMobile ? '7px 10px' : '9px 10px', borderRadius: 8, marginBottom: isMobile ? 0 : 2, border: 'none', background: active ? 'rgba(10,92,70,0.3)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: isMobile ? 'auto' : '100%' }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(10,92,70,0.3)' : 'transparent' }}>
@@ -495,7 +495,7 @@ function SettingsInner() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.bcPort ?? 8048}</span>
                   <span style={{ color: 'var(--fog)', fontSize: 14 }}>·</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', minWidth: 80, textAlign: 'center' as const }}>{tenant?.agentPort ?? 9099}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <button onClick={() => setTab('installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>BC Installer</button> tab and reinstall BCAgent.</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>To change ports, update them in the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>BC Installer</button> tab and reinstall BCAgent.</span>
                 </div>
               </div>
             </Card>
@@ -526,7 +526,7 @@ function SettingsInner() {
                   {!tenant?.testNavDatabaseName && (
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>No test environment configured.</p>
                   )}
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => setTab('installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
                 </div>
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>

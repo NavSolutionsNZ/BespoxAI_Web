@@ -64,20 +64,27 @@ async function getSuperadmins(): Promise<{ email: string; name: string | null }[
   })
 }
 
+// ── Helper: resolve display name (preferredName ?? firstName ?? name) ─────────
+
+function displayName(user: { preferredName?: string | null; firstName?: string | null; name?: string | null } | null): string | null {
+  if (!user) return null
+  return user.preferredName?.trim() || user.firstName?.trim() || null
+}
+
 // ── Helper: get customer email for a requirement ──────────────────────────────
 
 async function getCustomerEmail(requirementId: string): Promise<{ email: string; name: string | null; tenantName: string; title: string } | null> {
   const req = await (prisma as any).requirement.findUnique({
     where:   { id: requirementId },
     include: {
-      user:   { select: { email: true, name: true } },
+      user:   { select: { email: true, name: true, firstName: true, preferredName: true } },
       tenant: { select: { name: true } },
     },
   })
   if (!req) return null
   return {
     email:      req.user?.email,
-    name:       req.user?.name ?? null,
+    name:       displayName(req.user),
     tenantName: req.tenant?.name ?? '',
     title:      req.title,
   }

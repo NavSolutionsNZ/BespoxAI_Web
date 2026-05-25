@@ -162,7 +162,7 @@ function DashboardInner() {
     if (isMobile) setSidebarOpen(false)
     const params = new URLSearchParams(searchParams.toString())
     params.set('view', item)
-    router.replace(pathname + '?' + params.toString(), { scroll: false })
+    router.push(pathname + '?' + params.toString(), { scroll: false })
   }
 
   // Sync if URL changes externally (back/forward)
@@ -257,7 +257,7 @@ function DashboardInner() {
 
   // ── Greeting ────────────────────────────────────────────────────────────────
 
-  const displayFirst = user?.preferredName || user?.firstName || user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'there'
+  const displayFirst = user?.preferredName || user?.firstName || 'there'
   const hour        = new Date().getHours()
   const greeting    = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const tenantName  = user?.tenantName ?? 'Your Company'
@@ -583,7 +583,7 @@ function DashboardInner() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.name ?? user?.email}
+              {(user as any)?.preferredName || (user as any)?.firstName || user?.name || user?.email}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(214,217,212,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               {user?.role === 'superadmin' ? 'Super Admin' : user?.role === 'tenant_admin' ? 'Admin' : 'User'}

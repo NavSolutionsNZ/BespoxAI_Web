@@ -35,6 +35,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name ?? user.email,
+          firstName: (user as any).firstName ?? null,
+          preferredName: (user as any).preferredName ?? null,
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
           navProduct: user.tenant.navProduct ?? null,
@@ -58,17 +60,21 @@ export const authOptions: NextAuthOptions = {
         token.persona       = (user as any).persona ?? null
         token.onboardingDone = (user as any).onboardingDone ?? false
         token.mustChangePassword = (user as any).mustChangePassword ?? false
+        token.firstName     = (user as any).firstName ?? null
+        token.preferredName = (user as any).preferredName ?? null
       }
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
         const fresh = await (prisma as any).user.findUnique({
           where: { id: token.sub },
-          select: { onboardingDone: true, persona: true, mustChangePassword: true },
+          select: { onboardingDone: true, persona: true, mustChangePassword: true, firstName: true, preferredName: true },
         })
         if (fresh) {
           token.onboardingDone     = fresh.onboardingDone
           token.persona            = fresh.persona ?? null
           token.mustChangePassword = (fresh as any).mustChangePassword ?? false
+          token.firstName          = (fresh as any).firstName ?? null
+          token.preferredName      = (fresh as any).preferredName ?? null
         }
       }
       return token
@@ -83,6 +89,8 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).persona       = token.persona
         ;(session.user as any).onboardingDone     = token.onboardingDone
         ;(session.user as any).mustChangePassword = token.mustChangePassword ?? false
+        ;(session.user as any).firstName     = token.firstName ?? null
+        ;(session.user as any).preferredName = token.preferredName ?? null
       }
       return session
     },

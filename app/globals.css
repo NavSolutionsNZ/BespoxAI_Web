@@ -9,7 +9,7 @@
   --parchment: #EDE8DC;
   --slate:     #3B5249;
   --fog:       #D6D9D4;
-  --white:     #FAFAF8;
+  --white:     #ffffff;
 
   --font-display: var(--font-cormorant), 'Georgia', serif;
   --font-body:    var(--font-dm-sans), system-ui, sans-serif;
