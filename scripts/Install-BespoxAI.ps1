@@ -87,7 +87,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '2.4'
+$AgentVersion  = '2.5'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -147,16 +147,20 @@ Write-Host ''
 
 Write-Step 'Checking prerequisites'
 
-# If our own BCAgent is running on this port, stop it cleanly before continuing
+# Stop any existing BespoxAI agent before checking port
 $existingTask = Get-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
-if ($existingTask -and $existingTask.State -eq 'Running') {
+if ($existingTask) {
     Write-Host "    Stopping existing BespoxAI agent..." -ForegroundColor Cyan
     Stop-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    Write-OK 'Existing agent stopped'
+    # Wait up to 10s for the port to free
+    $waited = 0
+    while ((Test-Port -Port $AgentPort) -and $waited -lt 10) {
+        Start-Sleep -Seconds 1; $waited++
+    }
+    if ($waited -gt 0) { Write-OK "Agent stopped (waited ${waited}s)" } else { Write-OK 'Agent stopped' }
 }
 
-# Port conflict check — only warn if still in use (i.e. something else is using it)
+# Port conflict check — only warn if still in use by something other than BespoxAI
 if (Test-Port -Port $AgentPort) {
     Write-Host ''
     Write-Host "    ⚠ Port $AgentPort is still in use by another service (not BespoxAI)." -ForegroundColor Yellow
@@ -224,7 +228,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '2.4'
+$Version    = '2.5'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
