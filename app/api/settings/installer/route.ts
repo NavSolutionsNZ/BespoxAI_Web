@@ -90,25 +90,18 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   }
   // ── End auto-provision ────────────────────────────────────────────────────
 
-  // Persist BC config from the form
+  // Persist production BC config from the installer form only
   await (prisma as any).tenant.update({
     where: { id: tenantId },
     data: {
-      ...(bcInstance  ? { bcInstance  } : {}),
-      ...(bcUsername  ? { bcUsername  } : {}),
-      ...(bcCompany  ? { bcCompany  } : {}),
+      ...(bcInstance        ? { bcInstance }        : {}),
+      ...(bcUsername        ? { bcUsername }         : {}),
+      ...(bcCompany         ? { bcCompany }          : {}),
       bcPort:            parseInt(String(bcPort),    10) || 8048,
       agentPort:         parseInt(String(agentPort), 10) || 9099,
       ...(navDatabaseName   ? { navDatabaseName }   : {}),
       ...(navServerInstance ? { navServerInstance } : {}),
       navDatabaseServer: navDatabaseServer || 'localhost',
-      ...(testNavDatabaseServer ? { testNavDatabaseServer } : {}),
-      ...(testNavDatabaseName   ? { testNavDatabaseName }   : {}),
-      ...(testNavServerInstance ? { testNavServerInstance } : {}),
-      ...(testBcInstance        ? { testBcInstance }        : {}),
-      ...(testBcCompany         ? { testBcCompany }         : {}),
-      ...(testBcPort            ? { testBcPort: parseInt(String(testBcPort), 10) || null } : {}),
-      ...(testNavManagementPort ? { testNavManagementPort: parseInt(String(testNavManagementPort), 10) || 7045 } : {}),
     },
   })
   // Re-fetch to get latest tunnelId after possible update above
@@ -140,6 +133,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace("[string] $NavDatabaseServer = 'localhost',",    `[string] $NavDatabaseServer = '${tenant.navDatabaseServer || 'localhost'}',`)
     .replace("[string] $NavDatabaseName   = '',",             `[string] $NavDatabaseName   = '${tenant.navDatabaseName || ''}',`)
     .replace("[string] $NavServerInstance    = '',",          `[string] $NavServerInstance    = '${tenant.navServerInstance || ''}',`)
+    .replace('[int]    $NavManagementPort    = 7045,',        `[int]    $NavManagementPort    = ${(tenant as any).navManagementPort || 7045},`)
     .replace("[string] $TestNavDatabaseServer = '',",         `[string] $TestNavDatabaseServer = '${tenant.testNavDatabaseServer || ''}',`)
     .replace("[string] $TestNavDatabaseName   = '',",         `[string] $TestNavDatabaseName   = '${tenant.testNavDatabaseName || ''}',`)
     .replace("[string] $TestNavServerInstance = '',",         `[string] $TestNavServerInstance = '${tenant.testNavServerInstance || ''}',`)

@@ -28,6 +28,7 @@ model Tenant {
   navDatabaseName     String?                        // NAV/BC14 SQL database name
   bcUsername          String?                        // BC service account username (saved on installer download)
   navServerInstance   String?                        // NAV server instance name (optional)
+  navManagementPort   Int?     @default(7045)        // NAV server management port for production schema sync
   // ── Test environment (same server, different DB/port) ─────────────────────
   testNavDatabaseServer  String?                     // defaults to navDatabaseServer if blank
   testNavDatabaseName    String?                     // test NAV database name

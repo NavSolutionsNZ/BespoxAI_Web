@@ -37,6 +37,7 @@ export async function POST() {
     navDatabaseServer:    tenant.navDatabaseServer    || 'localhost',
     navDatabaseName:      tenant.navDatabaseName      || '',
     navServerInstance:    tenant.navServerInstance    || '',
+    navManagementPort:    (tenant as any).navManagementPort || 7045,
     testNavDatabaseServer: tenant.testNavDatabaseServer || '',
     testNavDatabaseName:   tenant.testNavDatabaseName   || '',
     testNavServerInstance: tenant.testNavServerInstance || '',

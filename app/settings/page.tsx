@@ -14,7 +14,7 @@ interface Tenant {
   tunnelId: string | null; createdAt: string
   navProduct: string | null; navVersion: string | null; lastCU: string | null
   bcPort: number; agentPort: number
-  navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null
+  navDatabaseServer: string | null; navDatabaseName: string | null; navServerInstance: string | null; navManagementPort: number | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
   testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null; testNavManagementPort: number | null
   bcUsername: string | null
@@ -143,7 +143,7 @@ function SettingsInner() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null)
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
-  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
+  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', navManagementPort: '7045', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
   const hasLoaded = useRef(false)
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [instLoading,  setInstLoading]  = useState(false)
@@ -208,6 +208,7 @@ function SettingsInner() {
         if (t?.navDatabaseServer)   setInstForm(f => ({ ...f, navDatabaseServer:   t.navDatabaseServer         }))
         if (t?.navDatabaseName)     setInstForm(f => ({ ...f, navDatabaseName:     t.navDatabaseName           }))
         if (t?.navServerInstance)   setInstForm(f => ({ ...f, navServerInstance:   t.navServerInstance         }))
+        if (t?.navManagementPort)   setInstForm(f => ({ ...f, navManagementPort:   String(t.navManagementPort) }))
         if (t?.testServerSeparate)  setInstForm(f => ({ ...f, testServerSeparate:  t.testServerSeparate        }))
         if (t?.testAgentUrl)        setInstForm(f => ({ ...f, testAgentUrl:        t.testAgentUrl              }))
         if (t?.testTunnelToken)     setInstForm(f => ({ ...f, testTunnelToken:     t.testTunnelToken           }))
@@ -871,7 +872,7 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
 }
 
 function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
-  initial: { navDatabaseServer: string; navDatabaseName: string; navServerInstance: string; bcInstance: string; bcCompany: string; bcPort: string; agentPort: string; bcUsername: string; bcPassword: string }
+  initial: { navDatabaseServer: string; navDatabaseName: string; navServerInstance: string; navManagementPort: string; bcInstance: string; bcCompany: string; bcPort: string; agentPort: string; bcUsername: string; bcPassword: string }
   onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string>) => void
   erpLabel?: string
@@ -881,6 +882,7 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
     navDatabaseServer: useRef<HTMLInputElement>(null),
     navDatabaseName:   useRef<HTMLInputElement>(null),
     navServerInstance: useRef<HTMLInputElement>(null),
+    navManagementPort: useRef<HTMLInputElement>(null),
     bcInstance:        useRef<HTMLInputElement>(null),
     bcCompany:         useRef<HTMLInputElement>(null),
     bcPort:            useRef<HTMLInputElement>(null),
@@ -897,6 +899,7 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       navDatabaseServer: refs.navDatabaseServer.current?.value || 'localhost',
       navDatabaseName:   refs.navDatabaseName.current?.value   || '',
       navServerInstance: refs.navServerInstance.current?.value || '',
+      navManagementPort: refs.navManagementPort.current?.value || '7045',
       bcInstance:        refs.bcInstance.current?.value        || '',
       bcCompany:         refs.bcCompany.current?.value         || '',
       bcPort:            refs.bcPort.current?.value            || '8048',
@@ -908,6 +911,7 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       navDatabaseServer: vals.navDatabaseServer,
       navDatabaseName:   vals.navDatabaseName,
       navServerInstance: vals.navServerInstance,
+      navManagementPort: vals.navManagementPort,
       bcInstance:        vals.bcInstance,
       bcCompany:         vals.bcCompany,
       bcPort:            vals.bcPort,
@@ -931,6 +935,7 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>{lbl('Server Instance')}<input ref={refs.navServerInstance} style={inp} defaultValue={initial.navServerInstance} placeholder="e.g. DynamicsNAV110" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
         <div>{lbl('BC Instance Name')}<input ref={refs.bcInstance} style={inp} defaultValue={initial.bcInstance} placeholder="e.g. BC" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('NAV Management Port')}<input ref={refs.navManagementPort} style={inp} type="number" defaultValue={initial.navManagementPort} placeholder="7045" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>{lbl('BC Company Name')}<input ref={refs.bcCompany} style={inp} defaultValue={initial.bcCompany} placeholder="e.g. CRONUS International Ltd." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>

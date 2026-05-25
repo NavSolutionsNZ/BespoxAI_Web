@@ -74,6 +74,7 @@ param(
     [string] $NavDatabaseServer = 'localhost',
     [string] $NavDatabaseName   = '',
     [string] $NavServerInstance    = '',
+    [int]    $NavManagementPort    = 7045,
     [string] $TestNavDatabaseServer = '',
     [string] $TestNavDatabaseName   = '',
     [string] $TestNavServerInstance = '',
@@ -126,6 +127,7 @@ Write-Host '  Production Environment' -ForegroundColor Cyan
 Write-Host "    DB Server      : $NavDatabaseServer"
 Write-Host "    DB Name        : $NavDatabaseName"
 Write-Host "    NAV Instance   : $NavServerInstance"
+Write-Host "    Mgmt Port      : $NavManagementPort"
 Write-Host "    BC Instance    : $BCInstance"
 Write-Host "    BC Company     : $BCCompany"
 Write-Host "    BC Port        : $BCPort"
@@ -229,6 +231,7 @@ $BCPass        = $Config.bcPassword
 $NavDbServer   = if ($Config.navDatabaseServer) { $Config.navDatabaseServer } else { 'localhost' }
 $NavDbName     = $Config.navDatabaseName
 $NavServerInst       = $Config.navServerInstance
+$NavMgmtPort         = if ($Config.navManagementPort) { $Config.navManagementPort } else { 7045 }
 $TestNavDbServer     = if ($Config.testNavDatabaseServer) { $Config.testNavDatabaseServer } else { $NavDbServer }
 $TestNavDbName       = $Config.testNavDatabaseName
 $TestNavServerInst   = $Config.testNavServerInstance
@@ -368,10 +371,14 @@ while ($Listener.IsListening) {
 
                 # Select database based on environment
                 if ($environment -eq 'production') {
-                    $dbServer = $NavDbServer; $dbName = $NavDbName; $dbInst = $NavServerInst
+                    $dbServer  = $NavDbServer; $dbName = $NavDbName; $dbInst = $NavServerInst
+                    $mgmtPort  = $NavMgmtPort
+                    if (-not $dbName) { throw "navDatabaseName not configured. Add it in the BC Installer tab." }
+                    if (-not $dbInst) { throw "navServerInstance not configured. Add it in the BC Installer tab." }
                 } else {
-                    $dbServer = $TestNavDbServer; $dbName = $TestNavDbName
-                    $dbInst = if ($TestNavServerInst) { $TestNavServerInst } else { $TestBcInstance }
+                    $dbServer  = $TestNavDbServer; $dbName = $TestNavDbName
+                    $dbInst    = if ($TestNavServerInst) { $TestNavServerInst } else { $TestBcInstance }
+                    $mgmtPort  = $TestNavMgmtPort
                     if (-not $dbName) { throw "testNavDatabaseName not configured. Add it in the BC Installer tab." }
                     if (-not $dbInst) { throw "testNavServerInstance not configured. Add it in the BC Installer tab." }
                 }
@@ -438,7 +445,7 @@ while ($Listener.IsListening) {
                             if ($dbInst) {
                                 $compileParams['NavServerName']           = 'localhost'
                                 $compileParams['NavServerInstance']       = $dbInst
-                                $compileParams['NavServerManagementPort'] = $TestNavMgmtPort
+                                $compileParams['NavServerManagementPort'] = $mgmtPort
                             }
                             Compile-NAVApplicationObject @compileParams
                             $fileResult.compiled = $true
@@ -713,7 +720,7 @@ while ($Listener.IsListening) {
 
                 # Fields we allow the portal to update (no credentials)
                 $updatable = @('bcBaseUrl','bcInstance','bcCompany','bcPort','agentPort',
-                               'navDatabaseServer','navDatabaseName','navServerInstance',
+                               'navDatabaseServer','navDatabaseName','navServerInstance','navManagementPort',
                                'testNavDatabaseServer','testNavDatabaseName','testNavServerInstance',
                                'testBcInstance','testBcCompany','testBcPort','testNavManagementPort')
 
@@ -729,6 +736,7 @@ while ($Listener.IsListening) {
                 if ($newCfg.navDatabaseServer)      { $NavDbServer        = $newCfg.navDatabaseServer }
                 if ($newCfg.navDatabaseName)        { $NavDbName          = $newCfg.navDatabaseName }
                 if ($newCfg.navServerInstance)      { $NavServerInst      = $newCfg.navServerInstance }
+                if ($newCfg.navManagementPort)      { $NavMgmtPort        = $newCfg.navManagementPort }
                 if ($newCfg.testNavDatabaseServer)  { $TestNavDbServer    = $newCfg.testNavDatabaseServer }
                 if ($newCfg.testNavDatabaseName)    { $TestNavDbName      = $newCfg.testNavDatabaseName }
                 if ($newCfg.testNavServerInstance)  { $TestNavServerInst  = $newCfg.testNavServerInstance }
@@ -863,6 +871,7 @@ $Config = [ordered]@{
     navDatabaseServer     = $NavDatabaseServer
     navDatabaseName       = $NavDatabaseName
     navServerInstance     = $NavServerInstance
+    navManagementPort     = $NavManagementPort
     testNavDatabaseServer = $TestNavDatabaseServer
     testNavDatabaseName   = $TestNavDatabaseName
     testNavServerInstance = $TestNavServerInstance

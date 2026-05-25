@@ -51,7 +51,7 @@ export async function GET() {
       tunnelId: true, createdAt: true,
       navProduct: true, navVersion: true, lastCU: true,
       bcPort: true, agentPort: true,
-      navDatabaseServer: true, navDatabaseName: true, navServerInstance: true,
+      navDatabaseServer: true, navDatabaseName: true, navServerInstance: true, navManagementPort: true,
       testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true,
       testBcPort: true, testBcInstance: true, testBcCompany: true, testNavManagementPort: true,
     },
@@ -73,7 +73,7 @@ export async function PATCH(req: NextRequest) {
   const tenantId = (session.user as any).tenantId
   const body = await req.json().catch(() => ({}))
   const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany,
-          navDatabaseServer, navDatabaseName, navServerInstance,
+          navDatabaseServer, navDatabaseName, navServerInstance, navManagementPort,
           testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
           testBcPort, testBcInstance, testBcCompany, testNavManagementPort,
           testServerSeparate, testAgentUrl, testTunnelToken, testAgentPort } = body
@@ -91,6 +91,10 @@ export async function PATCH(req: NextRequest) {
   if (navDatabaseServer !== undefined) data.navDatabaseServer = navDatabaseServer || 'localhost'
   if (navDatabaseName   !== undefined) data.navDatabaseName   = navDatabaseName   || null
   if (navServerInstance !== undefined) data.navServerInstance = navServerInstance || null
+  if (navManagementPort !== undefined) {
+    const p = parseInt(navManagementPort, 10)
+    if (!isNaN(p) && p > 0 && p <= 65535) data.navManagementPort = p
+  }
   // Test environment
   if (testNavDatabaseServer !== undefined) data.testNavDatabaseServer = testNavDatabaseServer || null
   if (testNavDatabaseName   !== undefined) data.testNavDatabaseName   = testNavDatabaseName   || null
