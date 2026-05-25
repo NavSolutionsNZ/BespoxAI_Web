@@ -1196,7 +1196,7 @@ function renderMd(text: string): React.ReactNode {
 
 // ─── Admin Requirements Tab ────────────────────────────────────────────────────
 
-const STATUS_PIPELINE_ADMIN = ['draft','submitted','needs_clarification','in_review','quoted','quote_rejected','deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid','rejected']
+const STATUS_PIPELINE_ADMIN = ['draft','submitted','needs_clarification','in_review','quoted','quote_rejected','deposit_required','deposit_paid','in_development','in_uat','uat_confirmed','uat_rejected','complete_pending_payment','fully_paid','rejected']
 const STATUS_COLOR_ADMIN: Record<string, { bg: string; border: string; text: string }> = {
   draft:                    { bg: 'rgba(59,82,73,0.06)',   border: 'rgba(59,82,73,0.15)',   text: '#3B5249' },
   submitted:                { bg: 'rgba(200,149,42,0.08)', border: 'rgba(200,149,42,0.25)', text: '#C8952A' },
@@ -1207,6 +1207,9 @@ const STATUS_COLOR_ADMIN: Record<string, { bg: string; border: string; text: str
   deposit_required:         { bg: 'rgba(200,149,42,0.12)', border: 'rgba(200,149,42,0.4)', text: '#7A5200' },
   deposit_paid:             { bg: 'rgba(26,146,114,0.1)',  border: 'rgba(26,146,114,0.3)', text: '#0F6E56' },
   in_development:           { bg: 'rgba(14,110,86,0.1)',   border: 'rgba(14,110,86,0.25)', text: '#0A5C46' },
+  in_uat:                   { bg: 'rgba(200,149,42,0.12)', border: 'rgba(200,149,42,0.4)', text: '#7A5200' },
+  uat_confirmed:            { bg: 'rgba(26,146,114,0.12)', border: 'rgba(26,146,114,0.35)',text: '#0A5240' },
+  uat_rejected:             { bg: 'rgba(163,45,45,0.14)', border: 'rgba(163,45,45,0.45)',  text: '#8B1A1A' },
   complete_pending_payment: { bg: 'rgba(200,149,42,0.1)',  border: 'rgba(200,149,42,0.3)', text: '#7A5200' },
   fully_paid:               { bg: 'rgba(26,146,114,0.12)', border: 'rgba(26,146,114,0.35)',text: '#0A5240' },
   rejected:                 { bg: 'rgba(163,45,45,0.14)', border: 'rgba(163,45,45,0.45)',  text: '#8B1A1A' },
@@ -2130,7 +2133,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       <div style={{ flex: selected ? '0 0 0px' : '0 0 480px', overflow: 'hidden', display: selected ? 'none' : 'flex', flexDirection: 'column', gap: 12, transition: 'flex 0.2s' }}>
         {/* Stats */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-          {['submitted','in_review','quoted','approved','in_development'].map(s => {
+          {['submitted','in_review','quoted','approved','in_development','in_uat'].map(s => {
             const c = STATUS_COLOR_ADMIN[s]
             return statusCounts[s] ? (
               <span key={s} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '3px 10px', borderRadius: 20, background: c.bg, border: `1px solid ${c.border}`, color: c.text, textTransform: 'uppercase', letterSpacing: '0.1em' }}>

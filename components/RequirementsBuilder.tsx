@@ -83,7 +83,8 @@ const STATUS_PIPELINE = [
   {key:'draft',label:'Draft'},{key:'submitted',label:'Submitted'},
   {key:'in_review',label:'In Review'},{key:'quoted',label:'Quoted'},
   {key:'deposit_required',label:'Deposit Required'},{key:'deposit_paid',label:'Deposit Paid'},
-  {key:'in_development',label:'In Development'},{key:'complete_pending_payment',label:'Balance Due'},
+  {key:'in_development',label:'In Development'},{key:'in_uat',label:'In UAT'},
+  {key:'uat_confirmed',label:'UAT Confirmed'},{key:'complete_pending_payment',label:'Balance Due'},
   {key:'fully_paid',label:'Complete'},
 ]
 const STATUS_COLOR: Record<string,{bg:string;border:string;text:string}> = {
@@ -96,6 +97,9 @@ const STATUS_COLOR: Record<string,{bg:string;border:string;text:string}> = {
   deposit_required:         {bg:'rgba(200,149,42,0.12)',border:'rgba(200,149,42,0.4)',   text:'#7A5200'},
   deposit_paid:             {bg:'rgba(26,146,114,0.1)',  border:'rgba(26,146,114,0.3)', text:'#0F6E56'},
   in_development:           {bg:'rgba(14,110,86,0.1)',   border:'rgba(14,110,86,0.25)', text:'#0A5C46'},
+  in_uat:                   {bg:'rgba(200,149,42,0.12)', border:'rgba(200,149,42,0.4)', text:'#7A5200'},
+  uat_confirmed:            {bg:'rgba(26,146,114,0.12)', border:'rgba(26,146,114,0.35)',text:'#0A5240'},
+  uat_rejected:             {bg:'rgba(163,45,45,0.14)',  border:'rgba(163,45,45,0.45)', text:'#8B1A1A'},
   complete_pending_payment: {bg:'rgba(200,149,42,0.1)',  border:'rgba(200,149,42,0.3)', text:'#7A5200'},
   fully_paid:               {bg:'rgba(26,146,114,0.12)', border:'rgba(26,146,114,0.35)',text:'#0A5240'},
   rejected:                 {bg:'rgba(163,45,45,0.14)', border:'rgba(163,45,45,0.45)',  text:'#8B1A1A'},
@@ -104,7 +108,9 @@ function statusLabel(s:string) {
   const map:Record<string,string> = {
     needs_clarification:'Needs Clarification', quote_rejected:'Quote Rejected',
     deposit_required:'Deposit Required', deposit_paid:'Deposit Paid',
-    in_development:'In Development', complete_pending_payment:'Balance Due',
+    in_development:'In Development', in_uat:'In UAT',
+    uat_confirmed:'UAT Confirmed ✓', uat_rejected:'UAT Rejected',
+    complete_pending_payment:'Balance Due',
     fully_paid:'Complete ✓',
   }
   return map[s] ?? STATUS_PIPELINE.find(p=>p.key===s)?.label ?? s.replace(/_/g,' ')
@@ -1910,7 +1916,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 )}
 
                 {/* ── UAT Panel (customer-facing when test env is deployed) ── */}
-                {!isSuperadmin&&req.status==='in_development'&&req.testDeployedAt&&(
+                {!isSuperadmin&&(req.status==='in_uat'||req.status==='uat_rejected'||req.status==='uat_confirmed')&&(
                   <div style={{...crd,borderColor:req.uatApprovedAt?'rgba(10,92,70,0.3)':req.uatRejectedAt?'rgba(163,45,45,0.3)':'rgba(200,149,42,0.3)',background:req.uatApprovedAt?'rgba(10,92,70,0.04)':req.uatRejectedAt?'rgba(163,45,45,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
                     {req.uatApprovedAt?(
                       <div>
@@ -1940,7 +1946,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                               <button
                                 onClick={async()=>{
                                   const r=await fetch(`/api/requirements/${req.id}/uat-reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:uatRejectReason,confirm:true})})
-                                  if(r.ok){setUATScopeCreep(null);setShowUATReject(false);setUATRejectReason('');const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,uatRejectedAt:d.rejectedAt,testDeployedAt:null}:x))}
+                                  if(r.ok){setUATScopeCreep(null);setShowUATReject(false);setUATRejectReason('');const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,status:'uat_rejected',uatRejectedAt:d.rejectedAt,testDeployedAt:null}:x))}
                                 }}
                                 style={{...sBTN,fontSize:11,color:'#A32D2D'}}
                               >Reject anyway</button>
@@ -1967,7 +1973,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                                     const r=await fetch(`/api/requirements/${req.id}/uat-reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:uatRejectReason})})
                                     const d=await r.json()
                                     if(d.isScopeCreep){setUATScopeCreep({explanation:d.explanation,suggestedAmendment:d.suggestedAmendment})}
-                                    else if(d.rejected){setShowUATReject(false);setUATRejectReason('');setReqs(prev=>prev.map(x=>x.id===req.id?{...x,uatRejectedAt:d.rejectedAt,testDeployedAt:null}:x))}
+                                    else if(d.rejected){setShowUATReject(false);setUATRejectReason('');setReqs(prev=>prev.map(x=>x.id===req.id?{...x,status:'uat_rejected',uatRejectedAt:d.rejectedAt,testDeployedAt:null}:x))}
                                   }finally{setUATRejectLoad(false)}
                                 }}
                                 style={{...sBTN,fontSize:11,color:'#A32D2D'}}
@@ -1986,7 +1992,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                                 setUATApproveLoad(true)
                                 try{
                                   const r=await fetch(`/api/requirements/${req.id}/uat-approve`,{method:'POST'})
-                                  if(r.ok){const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,uatApprovedAt:d.approvedAt}:x))}
+                                  if(r.ok){const d=await r.json();setReqs(prev=>prev.map(x=>x.id===req.id?{...x,status:'uat_confirmed',uatApprovedAt:d.approvedAt}:x))}
                                 }finally{setUATApproveLoad(false)}
                               }}
                               style={{...pBTN,background:'#0A5C46',color:'var(--cream)',fontSize:12}}

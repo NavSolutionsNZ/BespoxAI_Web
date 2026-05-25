@@ -48,6 +48,7 @@ export async function POST(
   await (prisma as any).requirement.update({
     where: { id: params.id },
     data:  {
+      status:          'uat_confirmed',
       uatApprovedAt:   now,
       uatApprovedById: userId,
       // Clear any previous rejection

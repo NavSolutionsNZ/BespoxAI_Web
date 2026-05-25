@@ -49,6 +49,7 @@ export async function POST(
     await (prisma as any).requirement.update({
       where: { id: params.id },
       data:  {
+        status:               'in_uat',
         testDeployedAt:       now,
         testDeploySnapshotId: snapshotId,
         uatApprovedAt:        null,
@@ -117,6 +118,7 @@ export async function POST(
     await (prisma as any).requirement.update({
       where: { id: params.id },
       data:  {
+        status:               'in_uat',
         testDeployedAt:       new Date(),
         testDeploySnapshotId: snapshotId,
         // Clear previous UAT cycle on new deployment

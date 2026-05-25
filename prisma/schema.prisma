@@ -162,7 +162,7 @@ model Requirement {
   bcArea          String    // Sales | Purchase | Finance | Inventory | Manufacturing | Project | HR | Other
   priority        String    // nice_to_have | important | critical
   aiSpec          String?   @db.Text  // JSON: userStory, acceptanceCriteria, bcObjects, complexity, estimatedDays, assumptions, questions
-  status          String    @default("draft") // draft | submitted | needs_clarification | in_review | quoted | quote_rejected | deposit_required | deposit_paid | in_development | complete_pending_payment | fully_paid | rejected
+  status          String    @default("draft") // draft | submitted | needs_clarification | in_review | quoted | quote_rejected | deposit_required | deposit_paid | in_development | in_uat | uat_confirmed | uat_rejected | complete_pending_payment | fully_paid | rejected
   quote           Decimal?  @db.Decimal(10, 2)
   quoteApprovedAt DateTime?
   depositAmount   Decimal?  @db.Decimal(10, 2)  // 20% of quote, auto-calculated on acceptance

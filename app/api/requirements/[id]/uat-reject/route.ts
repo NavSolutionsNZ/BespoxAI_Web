@@ -146,6 +146,7 @@ Respond ONLY with valid JSON, no markdown:
   await (prisma as any).requirement.update({
     where: { id: params.id },
     data:  {
+      status:               'uat_rejected',
       uatRejectedAt:        now,
       uatRejectedById:      userId,
       uatRejectionReason:   reason,
