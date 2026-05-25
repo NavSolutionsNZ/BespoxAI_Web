@@ -147,11 +147,19 @@ Write-Host ''
 
 Write-Step 'Checking prerequisites'
 
-# Port conflict check
+# If our own BCAgent is running on this port, stop it cleanly before continuing
+$existingTask = Get-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
+if ($existingTask -and $existingTask.State -eq 'Running') {
+    Write-Host "    Stopping existing BespoxAI agent..." -ForegroundColor Cyan
+    Stop-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Write-OK 'Existing agent stopped'
+}
+
+# Port conflict check — only warn if still in use (i.e. something else is using it)
 if (Test-Port -Port $AgentPort) {
     Write-Host ''
-    Write-Host "    ⚠ Port $AgentPort is already in use on this machine." -ForegroundColor Yellow
-    Write-Host '      Another BCAgent or service may be running.' -ForegroundColor Yellow
+    Write-Host "    ⚠ Port $AgentPort is still in use by another service (not BespoxAI)." -ForegroundColor Yellow
     Write-Host "      Use -AgentPort to specify a different port (e.g. -AgentPort 8081)" -ForegroundColor Yellow
     Write-Host ''
     $confirm = Read-Host '    Continue anyway? (y/N)'
