@@ -13,6 +13,7 @@ interface Tenant {
   id: string; name: string; tunnelSubdomain: string
   bcInstance: string; bcCompany: string; active: boolean
   tunnelId: string | null
+  rdpPassword: string | null
   tier?: string; trialEndsAt?: string | null
   createdAt: string
   _count: { users: number; queryLogs: number }
@@ -100,6 +101,8 @@ function AdminPageInner() {
   const [newTenantResult, setNewTenantResult]     = useState<{ apiKey: string; name: string; tenantId?: string; provisioned?: boolean; customerEmail?: string; tempPassword?: string } | null>(null)
   const [provisionMode, setProvisionMode]         = useState(true)   // true = auto-provision, false = manual
   const [provisionSteps, setProvisionSteps]       = useState<string[]>([])
+  const [rdpLoading, setRdpLoading]               = useState<string | null>(null)  // tenantId currently provisioning
+  const [rdpError, setRdpError]                   = useState<Record<string, string>>({})
 
   // New user form
   const [showNewUser, setShowNewUser]             = useState(false)
@@ -322,6 +325,22 @@ function AdminPageInner() {
     setTenantForm({ name: '', tunnelSubdomain: '', bcInstance: 'BC', bcCompany: 'CRONUS International Ltd.', customerEmail: '', customerName: '' })
     setShowNewTenant(false)
     setSaving(false)
+  }
+
+  async function provisionRdp(tenantId: string) {
+    setRdpLoading(tenantId); setRdpError(e => ({ ...e, [tenantId]: '' }))
+    try {
+      const res  = await fetch('/api/admin/provision-rdp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
+      const data = await res.json()
+      if (!res.ok) setRdpError(e => ({ ...e, [tenantId]: data.error || 'Provision failed' }))
+    } catch (err: any) {
+      setRdpError(e => ({ ...e, [tenantId]: err.message || 'Network error' }))
+    } finally {
+      setRdpLoading(null)
+    }
   }
 
   async function createUser() {
@@ -576,6 +595,22 @@ function AdminPageInner() {
                           <button onClick={() => toggleTenant(t.id, t.active)} style={{ ...ghostBtn, color: t.active ? '#A32D2D' : 'var(--forest)' }}>
                             {t.active ? 'Deactivate' : 'Activate'}
                           </button>
+                          <button
+                            onClick={() => provisionRdp(t.id)}
+                            disabled={rdpLoading === t.id || !t.tunnelId}
+                            title={!t.tunnelId ? 'No tunnel — provision main tunnel first' : 'Provision RDP tunnel ingress + DNS'}
+                            style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 8, opacity: (!t.tunnelId || rdpLoading === t.id) ? 0.4 : 1 }}
+                          >
+                            {rdpLoading === t.id ? '⟳' : 'RDP'}{' — '}{t.name}
+                          </button>
+                          {t.rdpPassword ? (
+                            <button
+                              onClick={() => navigator.clipboard.writeText(t.rdpPassword!)}
+                              title="Copy RDP password"
+                              style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 4, fontSize: 12 }}
+                            >⧉</button>
+                          ) : null}
+                          {rdpError[t.id] ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginLeft: 6 }}>✗</span> : null}
                         </td>
                       </tr>
                     ))}

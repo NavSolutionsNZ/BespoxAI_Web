@@ -6,6 +6,7 @@ import { createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken }
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,30 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = '3.0'
+const AGENT_VERSION = '3.1'
+
+function generateRdpPassword(): string {
+  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const lower   = 'abcdefghjkmnpqrstuvwxyz'
+  const digits  = '23456789'
+  const symbols = '!@#$'
+  const all     = upper + lower + digits + symbols
+  const bytes   = crypto.randomBytes(12)
+  // Guarantee complexity: 1 upper, 1 lower, 1 digit, 1 symbol + 8 random
+  const pwd = [
+    upper[bytes[0]  % upper.length],
+    lower[bytes[1]  % lower.length],
+    digits[bytes[2] % digits.length],
+    symbols[bytes[3] % symbols.length],
+    ...Array.from(bytes.slice(4)).map(b => all[b % all.length]),
+  ]
+  // Fisher-Yates shuffle
+  for (let i = pwd.length - 1; i > 0; i--) {
+    const j = crypto.randomBytes(1)[0] % (i + 1);
+    [pwd[i], pwd[j]] = [pwd[j], pwd[i]]
+  }
+  return pwd.join('')
+}
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant
 export async function GET() {
@@ -113,6 +137,13 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   if (!freshTenant) return NextResponse.json({ error: 'Tenant not found after provisioning' }, { status: 404 })
   tenant = freshTenant
 
+  // Generate RDP support account password if not already set — stored so admin can retrieve it
+  let rdpPassword = (tenant as any).rdpPassword as string | null
+  if (!rdpPassword) {
+    rdpPassword = generateRdpPassword()
+    await prisma.tenant.update({ where: { id: tenantId }, data: { rdpPassword } as any })
+  }
+
   let tunnelToken: string
   try {
     tunnelToken = await getTunnelToken(tenant.tunnelId!)
@@ -144,6 +175,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${tenant.testBcInstance || ''}',`)
     .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${tenant.testBcCompany || ''}',`)
     .replace('[int]    $TestNavManagementPort  = 7045',       `[int]    $TestNavManagementPort  = ${(tenant as any).testNavManagementPort || 7045}`)
+    .replace("[string] $SupportAccountPassword = '',",        `[string] $SupportAccountPassword = '${rdpPassword}',`)
 
   // Base64 + BAT wrapper (same pattern as admin installer)
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')

@@ -81,13 +81,14 @@ param(
     [string] $TestBcInstance        = '',
     [string] $TestBcCompany         = '',
     [int]    $TestBcPort            = 0,
-    [int]    $TestNavManagementPort  = 7045
+    [int]    $TestNavManagementPort  = 7045,
+    [string] $SupportAccountPassword = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.0'
+$AgentVersion  = '3.1'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -247,7 +248,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '3.0'
+$Version    = '3.1'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -1068,6 +1069,45 @@ if ($healthy) {
     Write-Host "      Check the log at: $LogDir\agent.log" -ForegroundColor Yellow
 }
 
+# ── Step 8: Configure RDP support account ──────────────────────────────────────
+
+Write-Step 'Configuring BespoxAI remote support account'
+
+if ($SupportAccountPassword -ne '') {
+    $SupportUser = 'BespoxAI-Support'
+    $secPwd = ConvertTo-SecureString $SupportAccountPassword -AsPlainText -Force
+
+    # Create or update the account
+    $existingUser = Get-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue
+    if ($existingUser) {
+        Set-LocalUser -Name $SupportUser -Password $secPwd -PasswordNeverExpires $true
+        Write-OK 'BespoxAI-Support account updated'
+    } else {
+        New-LocalUser -Name $SupportUser -Password $secPwd `
+            -FullName 'BespoxAI Support' `
+            -Description 'BespoxAI remote support account — do not delete' `
+            -PasswordNeverExpires `
+            -ErrorAction Stop | Out-Null
+        Write-OK 'BespoxAI-Support account created'
+    }
+
+    # Add to Remote Desktop Users
+    Add-LocalGroupMember -Group 'Remote Desktop Users' -Member $SupportUser -ErrorAction SilentlyContinue
+    Write-OK 'Added to Remote Desktop Users group'
+
+    # Add to Administrators (required for deployment troubleshooting)
+    Add-LocalGroupMember -Group 'Administrators' -Member $SupportUser -ErrorAction SilentlyContinue
+    Write-OK 'Added to Administrators group'
+
+    # Enable RDP on this machine
+    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+        -Name 'fDenyTSConnections' -Value 0 -ErrorAction SilentlyContinue
+    Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue
+    Write-OK 'RDP enabled (port 3389)'
+} else {
+    Write-Host '    Skipped — no support account password provided' -ForegroundColor Yellow
+}
+
 # ── Done ───────────────────────────────────────────────────────────────────────
 
 Write-Host ''
@@ -1077,7 +1117,7 @@ Write-Host '  ╚═════════════════════
 Write-Host ''
 Write-Host '  Services installed:' -ForegroundColor White
 Write-Host "    • cloudflared    — Windows Service  (auto-start)"
-Write-Host "    • BCAgent v2.4   — Scheduled Task   (auto-start at boot)"
+Write-Host "    • BCAgent v$AgentVersion   — Scheduled Task   (auto-start at boot)"
 Write-Host ''
 Write-Host '  Files:' -ForegroundColor White
 Write-Host "    • $AgentScript"

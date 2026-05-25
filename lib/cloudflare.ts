@@ -66,3 +66,41 @@ export async function createDnsRecord(hostname: string, tunnelId: string) {
 export async function deleteTunnel(tunnelId: string) {
   return cfFetch(`/accounts/${ACCOUNT_ID}/cfd_tunnel/${tunnelId}`, { method: 'DELETE' })
 }
+
+// ── RDP Support ────────────────────────────────────────────────────────────────
+
+// Add RDP ingress to an existing tunnel alongside the BCAgent rule.
+// Rebuilds the full ingress config with both rules (agent + RDP) + catch-all.
+export async function addRdpIngress(
+  tunnelId:      string,
+  agentHostname: string,
+  agentPort:     number,
+  rdpHostname:   string,
+) {
+  return cfFetch(`/accounts/${ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      config: {
+        ingress: [
+          { hostname: agentHostname, service: `http://localhost:${agentPort}` },
+          { hostname: rdpHostname,   service: 'rdp://localhost:3389' },
+          { service: 'http_status:404' },
+        ],
+      },
+    }),
+  })
+}
+
+// Create CNAME DNS record for the RDP hostname
+export async function createRdpDnsRecord(hostname: string, tunnelId: string) {
+  return cfFetch(`/zones/${ZONE_ID}/dns_records`, {
+    method: 'POST',
+    body: JSON.stringify({
+      type:    'CNAME',
+      name:    hostname,
+      content: `${tunnelId}.cfargotunnel.com`,
+      proxied: true,
+      ttl:     1,
+    }),
+  })
+}
