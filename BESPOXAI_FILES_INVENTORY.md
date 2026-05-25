@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated:** May 25, 2026 (Session 5)
+**Last Updated:** May 25, 2026 (Session 6)
 
 ---
 
@@ -9,7 +9,7 @@
 - Live product at bespoxai.com is a full **Next.js application**
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
-- BCAgent v2.4 — PowerShell HttpListener service, full deployment workflow
+- BCAgent v2.9 — PowerShell HttpListener service, full deployment workflow
 - C/AL export uses **finsql.exe directly** (not Export-NAVApplicationObject — removed in BC14)
 - finsql found via wildcard path search (BC14 paths first, then legacy NAV)
 - finsql writes ANSI/ASCII — read with Get-Content -Raw (not ReadAllBytes+Unicode decode)
@@ -20,6 +20,7 @@
 - NavModelTools.ps1 location: C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\140\RoleTailored Client\
 - GitHub per-customer repos — `lib/github.ts`, classic PAT stored as `GITHUB_CUSTOMER_REPOS_TOKEN`
 - Default agent port is **9099**
+- **Version bumped on every push** — two places: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts. Will reset at go-live.
 
 ---
 
@@ -36,10 +37,11 @@ cd /home/claude
 git init repo && cd repo
 git remote add origin https://{TOKEN}@github.com/NavSolutionsNZ/BespokeAI_Web.git
 git sparse-checkout init
-git sparse-checkout set --no-cone "app" "components" "lib" "scripts"
+git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma"
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+Note: include `"prisma"` — schema.prisma is now actively maintained.
 
 ---
 
@@ -59,7 +61,7 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 | `app/signup/page.tsx` | Signup. BC + NAV version dropdown with optgroups. Card padding uses clamp(). |
 | `app/signup/verify/page.tsx` | Email verification. useEffect calls API on load. Sends notifyAdminsSignupVerified. |
 | `app/onboarding/page.tsx` | Post-signup onboarding. Step 0: force password change. Sidebar hidden on mobile. |
-| `app/settings/page.tsx` | Customer settings. ALL inputs use refs + defaultValue. Mobile: sticky top nav. ChangePasswordCard component. |
+| `app/settings/page.tsx` | Customer settings. ProdEnvForm + TestEnvForm sub-components. Mobile: sticky top nav. ChangePasswordCard. agentVersion fetched from GET /api/settings/installer and shown on Download button. |
 
 ### API Routes (`/app/api`)
 
@@ -83,11 +85,12 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 | `api/requirements/[id]/objects/deploy-prod/route.ts` | BCAgent prod deploy. Same hardening as deploy-test. |
 | `api/requirements/[id]/uat-approve/route.ts` | UAT sign-off |
 | `api/requirements/[id]/uat-reject/route.ts` | AI scope-creep check |
-| `api/settings/route.ts` | GET/PATCH tenant |
-| `api/settings/installer/route.ts` | POST — auto-provisions Cloudflare tunnel on first download. Generates BCAgent installer zip. |
+| `api/settings/route.ts` | GET/PATCH tenant. Includes navManagementPort + testNavManagementPort. |
+| `api/settings/installer/route.ts` | GET returns `{ version: AGENT_VERSION }`. POST generates installer zip using tenant DB values directly for all PS1 replace calls. Does NOT save test env fields (managed by settings PATCH only). |
+| `api/settings/sync-config/route.ts` | POST — reads all tenant fields from DB, POSTs to BCAgent /bespoxai/update-config. |
 | `api/settings/profile/route.ts` | GET/PATCH user firstName/lastName/preferredName |
-| `api/settings/profile/change-password/route.ts` | POST — change password. clearMustChange=true skips current password check (first-login flow). |
-| `api/settings/users/route.ts` | GET + POST invite. Sends notifyUserWelcome on create. mustChangePassword=true on create. |
+| `api/settings/profile/change-password/route.ts` | POST — change password. clearMustChange=true skips current password check. |
+| `api/settings/users/route.ts` | GET + POST invite. Sends notifyUserWelcome. mustChangePassword=true on create. |
 | `api/settings/users/[id]/route.ts` | PATCH + DELETE. DELETE also removes SignupRequest. |
 | `api/admin/signups/route.ts` | Lists unactivated signup requests only |
 | `api/admin/provision/route.ts` | Provision new tenant. agentPort default: 9099. mustChangePassword=true. Sends notifyUserWelcome. |
@@ -122,7 +125,7 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 | File | Purpose |
 |------|---------|
-| `Install-BespoxAI.ps1` | BCAgent v2.4 installer. Stream.Read() loop fix. JSON backslash escaping. Port 9099. |
+| `Install-BespoxAI.ps1` | BCAgent v2.9 installer. Full deploy pipeline, sync config endpoint, all env fields baked in. |
 | `Uninstall-BespoxAI.ps1` | Full cleanup. Removes registry key, cloudflared service, files. |
 | `Uninstall-BespoxAI.bat` | Right-click Run as Administrator shim for the PS1. Manually distributed. |
 
@@ -132,33 +135,36 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ### User
 ```
-name               String?   -- full display name (kept for compat)
-firstName          String?   -- NEW Session 3
-lastName           String?   -- NEW Session 3
-preferredName      String?   -- NEW Session 3 — address by this if set, else firstName
-mustChangePassword Boolean   -- NEW Session 5 — force password change on first login
+name               String?
+firstName          String?
+lastName           String?
+preferredName      String?   -- address by this if set, else firstName
+mustChangePassword Boolean   @default(false)
 role: "superadmin" | "tenant_admin" | "user" | "developer"
 ```
-⚠️ `mustChangePassword` added via raw SQL — `prisma/schema.prisma` NOT yet updated. Add on PC:
-```prisma
-mustChangePassword Boolean @default(false)
-```
+All in prisma/schema.prisma ✅
 
 ### Tenant (key fields)
 ```
-tunnelId              String?  -- Cloudflare tunnel ID (auto-created on first installer download)
-tunnelSubdomain       String?  -- e.g. "testco1" → testco1-agent.bespoxai.com (UNIQUE constraint)
+tunnelId              String?
+tunnelSubdomain       String?  -- e.g. "gwmdev" → gwmdev-agent.bespoxai.com
 bcPort                Int      -- default 8048
 agentPort             Int      -- default 9099
-navDatabaseName       String?
 navDatabaseServer     String?
+navDatabaseName       String?
 navServerInstance     String?
+navManagementPort     Int?     @default(7045)  -- production NAV mgmt port for schema sync
 bcInstance            String?
 bcCompany             String?
+testNavDatabaseServer String?
 testNavDatabaseName   String?
-testBcInstance        String?
+testNavServerInstance String?
+testNavManagementPort Int?     @default(7045)  -- test NAV mgmt port for schema sync
+testBcInstance        String?  -- used as fallback for testNavServerInstance in compile
 testBcCompany         String?
+testBcPort            Int?
 ```
+All in prisma/schema.prisma ✅
 
 ### Known Tenants
 | ID | Name | tunnelSubdomain | agentPort |
@@ -168,53 +174,82 @@ testBcCompany         String?
 | cmoqtoiyv0000f8pfhcpdfqyo | GWM2_AutoInstall | gwm2 | 8080 |
 | cmoInpd4v0001bf6xftw1v8h0 | Test Comp 1 | testcomp1 | 8080 |
 
+### Schema Changes — Session 6 (all applied to Vercel Postgres ✅)
+```sql
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "testNavManagementPort" INTEGER NOT NULL DEFAULT 7045;
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "navManagementPort" INTEGER NOT NULL DEFAULT 7045;
+```
+prisma/schema.prisma updated for both + mustChangePassword ✅
+
 ---
 
-## BCAgent v2.4 — Critical Implementation Notes
+## BCAgent v2.9 — Critical Implementation Notes
 
-### Scheduled Task
-- Runs as BC user (e.g. incadea\9lancasterr), NOT SYSTEM
-- Password stored in Windows Task Scheduler credential store
+### Version — TWO places, bump every push
+1. `$AgentVersion = '2.9'` and `$Version = '2.9'` in `Install-BespoxAI.ps1`
+2. `const AGENT_VERSION = '2.9'` in `app/api/settings/installer/route.ts`
 
-### Authentication to BC OData
-- `$webReq.UseDefaultCredentials = $true` — uses Windows token of the running user
-- Equivalent to browser SSO
+### Installer Banner
+Shows all production AND test env fields at startup for customer verification.
 
-### Stream.Read() Fix (Session 5)
-All request body reads now loop until all bytes consumed:
-```powershell
-$offset = 0
-while ($offset -lt $bodyLen) {
-    $read = $req.InputStream.Read($bodyBytes, $offset, $bodyLen - $offset)
-    if ($read -le 0) { break }
-    $offset += $read
-}
+### Reinstall — No Uninstall Needed
+1. Stop BespoxAI-BCAgent scheduled task (regardless of state)
+2. Use `netstat -ano` to find PID on port
+3. Check `Win32_Process.CommandLine` contains `BCAgent.ps1` before killing
+4. Wait up to 5s for port to free
+5. Warn only if port still in use by non-BCAgent process
+
+### Sync Config to Agent
+- **UI:** "↑ Sync Config to Agent" button in Settings → BC Installer tab (disabled until tunnel provisioned)
+- **API:** POST /api/settings/sync-config
+- **BCAgent endpoint:** POST /bespoxai/update-config — writes agent.config.json + updates in-memory vars immediately
+- **Log:** Shows only changed fields (field: old → new)
+- Does NOT sync bcPassword/bcUsername (not in DB)
+
+### agent.config.json — Full Field List
+```
+apiKey, listenPort, bcBaseUrl (includes instance e.g. http://localhost:8048/GWM_Dev),
+bcPort, agentPort, bcUsername, bcPassword, bcInstance, bcCompany,
+navDatabaseServer, navDatabaseName, navServerInstance, navManagementPort,
+testNavDatabaseServer, testNavDatabaseName, testNavServerInstance, testNavManagementPort,
+testBcInstance, testBcCompany, testBcPort, version
 ```
 
-### JSON Response Fix (Session 5)
-Windows paths escaped before embedding in JSON strings:
-```powershell
-$pathEsc = $somePath.Replace('\','\\')
-```
+### Deploy — Import + Compile
+- `$NavIde` set from finsql.exe wildcard search before NavModelTools.ps1 dot-sourced
+- `Import-NAVApplicationObject` uses `-Confirm:$false`
+- `Compile-NAVApplicationObject` uses `-NavServerName localhost -NavServerInstance $dbInst -NavServerManagementPort $mgmtPort`
+- `$mgmtPort` = `$NavMgmtPort` (prod) or `$TestNavMgmtPort` (test)
+- `$dbInst` for test: `$TestNavServerInst` if set, else falls back to `$TestBcInstance`
+- Production compile has same config checks as test — fails clearly if not configured
+- Response writes wrapped in try-catch for dropped connections
 
 ### Deploy Pipeline Flow
 ```
-Admin UI → Sync from GitHub → DB (pulls latest edits from branch)
-         → Write files to server (BCAgent writes to C:\BespoxAI\Deployments\{reqId}\{snapshot}\)
-         → Deploy + Compile to Test (BCAgent runs Import-NAVApplicationObject + Compile-NAVApplicationObject)
+Admin UI → Sync from GitHub → DB
+         → Write files to BCAgent server
+         → Deploy + Compile to Test  ✅ WORKING (Session 6)
+         → Deploy + Compile to Production  (code ready, not yet tested)
 ```
-**Current status:** Deploy + Compile to Test returning immediate error — need BCAgent log diagnosis.
-Log location: `C:\BespoxAI\Agent\BCAgent.log`
 
-### agent.config.json
-- Location: `C:\BespoxAI\Agent\agent.config.json`
-- Contains: apiKey, bcUsername, bcPassword, bcInstance, bcCompany, bcPort, agentPort, testNavDatabaseName etc.
+### BCAgent Architecture
+```
+Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
+  → cloudflared (Windows service, --protocol http2, runs as SYSTEM)
+  → localhost:9099 (BCAgent scheduled task, runs as BC user account)
+  → localhost:8048/{bcInstance} (BC/NAV OData, NTLM via UseDefaultCredentials)
+```
+
+### Known NAV v14 OData Limitations
+- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice
+- `$filter` on Posting_Date NOT supported on posted documents
+- `$apply`, `groupby`, `aggregate()` NOT supported
 
 ---
 
 ## Settings Page — Input Pattern (CRITICAL)
 
-**All form inputs in settings/page.tsx use refs + defaultValue, NOT controlled inputs.**
+**ProdEnvForm and TestEnvForm use refs + defaultValue (not controlled inputs).**
 
 ```tsx
 const refs = { fieldName: useRef<HTMLInputElement>(null) }
@@ -222,16 +257,18 @@ const refs = { fieldName: useRef<HTMLInputElement>(null) }
 const val = refs.fieldName.current?.value || ''
 ```
 
+**Installer route uses tenant DB values directly** for all PS1 replace calls — never uses body values for config fields. Test env fields are managed exclusively by settings PATCH route.
+
 ---
 
 ## CFO Assistant — Query Pipeline
 
 ```
 POST /api/query
-  → Router (callAI, jsonMode:true) → needsData true/false
-  → if needsData: Planner (callAI, jsonMode:true) → entity + OData params
+  → Router (jsonMode:true) → needsData true/false
+  → Planner (jsonMode:true) → entity + OData params
   → OData fetch via BCAgent tunnel
-  → Answerer (callAI) → structured response
+  → Answerer → structured response
   → QueryLog (tenantId, userId, question, answer, entity, displayHint, recordCount)
 ```
 
@@ -263,6 +300,9 @@ POST /api/query
 - ❌ Don't default agent port to 8080 — it's 9099
 - ❌ Don't run BCAgent as SYSTEM — it must run as the BC user account
 - ❌ Don't use HttpClient in BCAgent — use HttpWebRequest (WinHTTP-backed NTLM)
-- ❌ Don't push changes without explicit confirmation from Rich (batch deploy rule)
+- ❌ Don't push changes without explicit confirmation from Rich
 - ❌ Don't assume timeout on deploy errors — ask for BCAgent log first
 - ❌ Don't implement significant architectural changes without discussion first
+- ❌ Don't save test env fields from installer route DB save — settings PATCH only
+- ❌ Don't use body values for installer PS1 replace calls — use tenant DB object directly
+- ❌ Don't forget to bump version in BOTH Install-BespoxAI.ps1 AND installer/route.ts on every push

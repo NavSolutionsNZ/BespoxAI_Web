@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespokeAI_Web (GitHub)
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** May 25, 2026 (Session 5)
+**Last Updated:** May 25, 2026 (Session 6)
 
 ---
 
@@ -29,57 +29,69 @@
 
 - **Repo:** `NavSolutionsNZ/BespokeAI_Web`
 - **Branch:** `main`
-- **Claude uses sparse checkout** — never clones the full repo
+- **Claude uses sparse checkout** — never clones the full repo. Include `"prisma"` in set.
 - **api.github.com is blocked** — but `github.com` git operations work
 - **Push:** `git push origin master:main`
 
 ---
 
-## Session 5 Key Changes (May 25, 2026)
+## Session 6 Key Changes (May 25, 2026)
 
-### Admin — Tenants Tab
-- STATUS column now shows **Connected / Not Connected** based on `tunnelId` (not account `active`)
-- Added `ConnectedPill` component (separate from `StatusPill` to avoid SWC template literal issues)
+### Deploy to Test — ✅ NOW WORKING
+Full end-to-end deploy + compile to test environment is working on GWM Dev.
 
-### Deployment Pipeline — Write & Deploy to Test
-- **Sync from GitHub → DB** button added to Deploy panel — pulls latest files from GitHub branch into `TenantObjectFile` so developer edits are picked up before deploying
-- New API route: `POST /api/requirements/[id]/objects/sync-from-github`
-- New API route: `GET /api/requirements/[id]/objects/write` (reads objects, writes to BCAgent deployment folder)
-- **BCAgent stream read fix:** `Stream.Read()` now loops until all bytes consumed — fixes "Unterminated string" on large payloads (e.g. Codeunit 80)
-- **BCAgent JSON response fix:** Backslashes in Windows paths now escaped in JSON responses
-- **Write route hardening:** try-catch around BCAgent fetch; text-first JSON parse with regex fallback for `snapshotId`
-- **deploy-test + deploy-prod route hardening:** same text-first JSON parse, try-catch around fetch, removed template literals
-- `writeSnapshotId` persisted to DB (`testDeploySnapshotId`) immediately after successful write — Step 2 stays available across sessions
-- Deploy error handling fixed in admin UI — real error messages now shown instead of `<!DOCTYPE` HTML
-- **Deploy + Compile to Test still failing** — error returns immediately (not timeout). Need to check BCAgent logs at `C:\BespoxAI\Agent\BCAgent.log` on GWM server to diagnose. **Do not assume timeout — ask Rich to check logs first.**
+Fixes applied this session to get it working:
+- **testNavDatabaseName not reaching agent** — installer route was overwriting DB value with body default on every download. Fixed: installer route now uses tenant DB values directly for all PS1 replace calls, and does NOT save test env fields (managed by settings PATCH only)
+- **NonInteractive mode error** on Import-NAVApplicationObject — fixed with `-Confirm:$false`
+- **$NavIde not set** — NavModelTools.ps1 requires `$NavIde = path to finsql.exe`. Fixed: wildcard search for finsql.exe assigned to `$NavIde` before dot-sourcing NavModelTools
+- **Compile-NAVApplicationObject** needing `-NavServerInstance` and `-NavServerManagementPort` — fixed with environment-specific `$mgmtPort` variable
+- **testNavServerInstance empty** — `testBcInstance` used as fallback in compile when `testNavServerInstance` not set
+- **Response write crash on dropped connection** — wrapped in try-catch
 
-### Onboarding — Step 0: Force Password Change
-- New `mustChangePassword Boolean` column on User (added via raw SQL — schema.prisma NOT yet updated — do this on PC)
-- New API route: `POST /api/settings/profile/change-password`
-- Onboarding Step 0 shown when `mustChangePassword = true` — user must set permanent password before proceeding
-- `mustChangePassword = true` set automatically on: provision (admin creates tenant), invite (settings/users)
-- `mustChangePassword = false` cleared on successful password change
-- Session token updated via `update()` call — `mustChangePassword` flows through JWT like `onboardingDone`
+### Sync Config to Agent (new feature)
+- New BCAgent endpoint: `POST /bespoxai/update-config` — writes agent.config.json + updates in-memory vars immediately (no restart needed)
+- New API route: `POST /api/settings/sync-config`
+- UI: "↑ Sync Config to Agent" button in Settings → BC Installer tab
+- Logs only changed fields (field: old → new value), or "no changes detected"
+- Does not sync bcPassword/bcUsername
 
-### Welcome Email
-- `notifyUserWelcome()` added to `lib/notifications.ts`
-- Sent automatically on provision AND settings/users invite
-- Shows temp credentials + amber warning about mandatory password change on first login
-- **Settings → Profile: Change Password** collapsible section added for all users (requires current password)
+### New Config Fields — Production + Test Management Ports
+- `navManagementPort` — production NAV server management port for compile schema sync
+- `testNavManagementPort` — test NAV server management port
+- Both added to: DB schema, settings API, ProdEnvForm/TestEnvForm UI, installer PS1 params, agent.config.json, BCAgent compile params, sync-config payload, update-config endpoint
+- `testNavServerInstance` now has explicit UI field in TestEnvForm
 
-### Mobile Responsiveness — ALL user types covered
-- **Settings:** Sticky top nav bar, horizontal tab strip, fluid grids (`auto-fit`), reduced padding, scroll-to-top on tab change
-- **Dashboard:** Slide-over sidebar (fixed position overlay on mobile), backdrop tap to close, auto-closes on nav selection, compact header/badge
-- **Admin:** Slide-over sidebar + ☰ hamburger toggle, auto-closes on tab selection
-- **Onboarding:** Sidebar hidden on mobile (progress bar at top replaces it), reduced padding
-- **Billing:** Header wraps cleanly on mobile, plan cards already use `auto-fit`
-- **Login:** Corner links tightened to 20px
-- **Signup:** Card padding uses `clamp()` for mobile
+### Installer — Major Improvements
+- All PS1 replace calls now use `tenant` DB object directly (not body values)
+- Test env fields no longer saved from installer route (prevented overwriting saved values)
+- agent.config.json now includes `bcPort`, `agentPort`, and correct `bcBaseUrl` with instance path
+- Version shown on Download Installer button — fetched dynamically from `GET /api/settings/installer`
+- Installer banner shows all production AND test env fields at startup
+- BAT/ZIP filename includes version: `Install-BespoxAI-v2.9-{tenant}.zip`
 
-### Process Note (CRITICAL)
-- **Batch deployments:** Claude must NOT push changes without explicit confirmation from Rich
-- **Diagnose before architecting:** Always ask for logs/error details before proposing architectural changes
-- **Discuss significant changes** (e.g. async deploy pattern) before implementing
+### Installer — Auto-Stop on Reinstall
+- No uninstall needed before reinstalling
+- Stops existing BespoxAI-BCAgent scheduled task (regardless of state)
+- Uses `netstat -ano` to find PID on port
+- Verifies process `Win32_Process.CommandLine` contains `BCAgent.ps1` before killing (safe — won't kill other processes)
+- Waits up to 5s for port to free
+- Only warns if port still in use by something that isn't BCAgent
+
+### BCAgent Version
+- Bumped to **v2.9** this session (was v2.4 at start)
+- **Version must be bumped on every push** — two places: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts
+- Will reset at go-live
+
+### schema.prisma — Now Actively Maintained
+- Added `navManagementPort Int? @default(7045)` to Tenant
+- Added `testNavManagementPort Int? @default(7045)` to Tenant
+- Added `mustChangePassword Boolean @default(false)` to User (was in DB via SQL but not in schema)
+- Include `"prisma"` in sparse checkout from now on
+
+### Process Note (CRITICAL — reinforced this session)
+- **Never push without explicit confirmation from Rich**
+- **Diagnose before architecting** — always ask for logs/errors first
+- **Discuss significant changes** before implementing
 
 ---
 
@@ -88,6 +100,7 @@
 - **Provider:** PostgreSQL via Vercel Postgres
 - **ORM:** Prisma — no migrations, uses `db push` or raw SQL
 - **Never run** `prisma migrate`
+- **No local clone needed** — Vercel runs `prisma generate` on deploy from schema.prisma in GitHub
 
 ### Known Test IDs
 - **TestCo1 Tenant ID:** `cmpgqbg8l0001tqej9wpqsx6g` (tunnelSubdomain: testco1, agentPort: 9099)
@@ -95,24 +108,18 @@
 - **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
 - **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
 
-### Schema Changes — Session 5
+### Schema Changes — Session 6
 ```sql
-ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "testNavManagementPort" INTEGER NOT NULL DEFAULT 7045;
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "navManagementPort" INTEGER NOT NULL DEFAULT 7045;
 ```
-⚠️ `prisma/schema.prisma` NOT yet updated — add `mustChangePassword Boolean @default(false)` to User model on PC.
-
-### Schema Changes — Session 3
-```sql
-ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "firstName" TEXT;
-ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastName" TEXT;
-ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "preferredName" TEXT;
-```
+Both applied ✅. prisma/schema.prisma updated ✅.
 
 ---
 
 ## Settings Page — CRITICAL Input Pattern
 
-**All form inputs in `app/settings/page.tsx` use refs + defaultValue.**
+**ProdEnvForm and TestEnvForm use refs + defaultValue (not controlled inputs).**
 
 ```tsx
 // CORRECT — refs pattern
@@ -127,33 +134,34 @@ const [val, setVal] = useState('')
 
 ---
 
-## BCAgent — Session 5 Changes (CRITICAL)
+## BCAgent — Session 6 Changes (CRITICAL)
 
-- **Version: 2.4** (unchanged version number but significant fixes)
-- All `Stream.Read()` calls now loop until all bytes consumed — fixes truncation on large payloads
-- JSON responses with Windows paths now escape backslashes (`\` → `\\`)
-- **Deploy endpoint still synchronous** — async job pattern was explored but reverted pending log diagnosis
-- **GWM server has new agent installed** (reinstalled during Session 5)
+- **Version: 2.9**
+- Installer auto-stop on reinstall (netstat + CommandLine check)
+- Sync Config endpoint: POST /bespoxai/update-config
+- Deploy compile uses environment-specific mgmtPort ($NavMgmtPort vs $TestNavMgmtPort)
+- agent.config.json now includes bcPort, agentPort, full bcBaseUrl with instance
+- All PS1 installer replace strings verified against actual PS1 param declarations
 
 ### BCAgent Architecture
 ```
 Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
   → cloudflared (Windows service, --protocol http2, runs as SYSTEM)
   → localhost:9099 (BCAgent scheduled task, runs as BC user account)
-  → localhost:8048 (BC/NAV OData, NTLM via UseDefaultCredentials)
+  → localhost:8048/{bcInstance} (BC/NAV OData, NTLM via UseDefaultCredentials)
 ```
 
-### Known NAV v14 OData Limitations (affects CFO assistant planner)
-- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice — returns 400
-- `$filter` on Posting_Date NOT supported on posted documents — returns 400
-- `$apply`, `groupby`, `aggregate()` NOT supported — returns 400
+### Known NAV v14 OData Limitations
+- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice
+- `$filter` on Posting_Date NOT supported on posted documents
+- `$apply`, `groupby`, `aggregate()` NOT supported
 
 ---
 
-## CFO Assistant Query Pipeline (Session 4 Fixes)
+## CFO Assistant Query Pipeline
 
-1. **Router** (classify needsData) — now uses `jsonMode: true` to force JSON from gpt-4o
-2. **Planner** (pick entity + OData params) — now uses `jsonMode: true` to force JSON from gpt-4o
+1. **Router** (jsonMode:true) — classify needsData
+2. **Planner** (jsonMode:true) — pick entity + OData params
 3. **OData fetch** — via tunnel → BCAgent → BC
 4. **Answerer** — formats response
 
@@ -169,10 +177,10 @@ DELETE FROM "QueryLog" WHERE "tenantId" = '{tenantId}' AND entity = '__BAD_QUERY
 1. Sign up → select BC or NAV version → verify email
 2. Email triggers `notifyAdminsSignupVerified` to superadmins
 3. Superadmin activates from Admin → Signups
-4. Customer receives temp credentials + **welcome email** (auto-sent) with password change warning
-5. Login → **onboarding Step 0** (set permanent password) → Step 1-5 (name, product, connection)
+4. Customer receives temp credentials + welcome email with password change warning
+5. Login → onboarding Step 0 (set permanent password) → Step 1-5 (name, product, connection)
 6. Settings → BC Installer → Download (auto-creates tunnel first time)
-7. Run installer on Windows server as Administrator (port 9099)
+7. Run installer on Windows server as Administrator (port 9099) — no uninstall needed for reinstall
 
 ---
 
