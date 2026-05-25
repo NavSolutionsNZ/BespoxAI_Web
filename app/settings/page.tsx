@@ -147,6 +147,7 @@ function SettingsInner() {
   const hasLoaded = useRef(false)
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [instLoading,  setInstLoading]  = useState(false)
+  const [agentVersion, setAgentVersion] = useState('')
   const [inviteForm,   setInviteForm]   = useState({ email: '', name: '', role: 'user' })
   const [inviteResult, setInviteResult] = useState<{ tempPassword: string; email: string } | null>(null)
   const [resetResult,  setResetResult]  = useState<{ id: string; tempPassword: string } | null>(null)
@@ -192,6 +193,10 @@ function SettingsInner() {
     if (status === 'unauthenticated' || !session) { router.push('/login'); return }
     if (role && role !== 'tenant_admin' && role !== 'superadmin') router.push('/dashboard')
   }, [status, session, role])
+
+  useEffect(() => {
+    fetch('/api/settings/installer').then(r => r.json()).then(d => { if (d.version) setAgentVersion(d.version) }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!session || hasLoaded.current) return
@@ -783,7 +788,7 @@ function SettingsInner() {
             )}
 
             <button onClick={downloadInstaller} disabled={instLoading} style={{ marginTop: 8, width: '100%', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: instLoading ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, opacity: instLoading ? 0.7 : 1 }}>
-              {instLoading ? 'Generating…' : '⬇ Download Installer (.zip)'}
+              {instLoading ? 'Generating…' : ('⬇ Download Installer ' + (agentVersion ? 'v' + agentVersion + ' ' : '') + '(.zip)')}
             </button>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>{erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}</p>
           </>}

@@ -18,6 +18,10 @@ const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 const AGENT_VERSION = '2.5'
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant
+export async function GET() {
+  return NextResponse.json({ version: AGENT_VERSION })
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
