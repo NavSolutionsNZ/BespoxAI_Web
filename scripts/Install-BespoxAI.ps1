@@ -87,7 +87,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '2.7'
+$AgentVersion  = '2.8'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -152,12 +152,17 @@ $existingTask = Get-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction Sile
 if ($existingTask) {
     Write-Host "    Stopping existing BespoxAI agent..." -ForegroundColor Cyan
     Stop-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
-    # Kill the process holding the port using netstat (more reliable than Get-NetTCPConnection for HttpListener)
+    # Kill the process holding the port — only if it's a PowerShell process (our BCAgent)
     $netstatLine = netstat -ano | Select-String "TCP.*:$AgentPort\s.*LISTENING"
     if ($netstatLine) {
         $ownerPid = ($netstatLine[0].Line.Trim() -split '\s+')[-1]
-        Stop-Process -Id ([int]$ownerPid) -Force -ErrorAction SilentlyContinue
-        Write-Host "    Killed process $ownerPid on port $AgentPort" -ForegroundColor Cyan
+        $ownerProc = Get-Process -Id ([int]$ownerPid) -ErrorAction SilentlyContinue
+        if ($ownerProc -and $ownerProc.Name -match '^powershell$|^pwsh$') {
+            Stop-Process -Id ([int]$ownerPid) -Force -ErrorAction SilentlyContinue
+            Write-Host "    Killed BCAgent process $ownerPid" -ForegroundColor Cyan
+        } else {
+            Write-Host "    Process on port $AgentPort is not PowerShell — will not kill" -ForegroundColor Yellow
+        }
     }
     # Wait up to 5s for the port to free
     $waited = 0
@@ -235,7 +240,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '2.7'
+$Version    = '2.8'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
