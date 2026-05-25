@@ -135,7 +135,7 @@ function SettingsInner() {
   const searchParams = useSearchParams()
 
   const [tab, setTab] = useState<Tab>('overview')
-  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab) }, [searchParams])
+  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab); else router.replace('/settings?tab=overview') }, [searchParams])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -466,7 +466,20 @@ function SettingsInner() {
             <Card>
               <Label>{erpLabel + ' Connection'}</Label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 40px' }}>
-                {([['Tenant Name', tenant?.name], [(erpLabel + ' Instance'), tenant?.bcInstance], [(erpLabel + ' Company'), tenant?.bcCompany], ['Agent URL', `https://${tenant?.tunnelSubdomain}-agent.bespoxai.com`], ['Status', hOk ? `Connected · ${health.ms}ms` : hErr ? 'Offline' : 'Checking…'], ['Member Since', tenant ? relTime(tenant.createdAt) : '—']] as [string, string|undefined][]).map(([k, v]) => (
+                {([
+                  ['Tenant Name',                   tenant?.name],
+                  [erpLabel + ' Instance',          tenant?.bcInstance],
+                  [erpLabel + ' Company',           tenant?.bcCompany],
+                  ['BC OData Port',                 tenant?.bcPort ? String(tenant.bcPort) : '8048'],
+                  ['Agent Port',                    tenant?.agentPort ? String(tenant.agentPort) : '9099'],
+                  ['NAV Database Server',           tenant?.navDatabaseServer],
+                  ['NAV Database Name',             tenant?.navDatabaseName],
+                  ['NAV Server Instance',           tenant?.navServerInstance],
+                  ['NAV Management Port',           tenant?.navManagementPort ? String(tenant.navManagementPort) : '7045'],
+                  ['Agent URL',                     tenant?.tunnelSubdomain ? 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com' : null],
+                  ['Status',                        hOk ? 'Connected · ' + health.ms + 'ms' : hErr ? 'Offline' : 'Checking…'],
+                  ['Member Since',                  tenant ? relTime(tenant.createdAt) : '—'],
+                ] as [string, string|null|undefined][]).map(([k, v]) => (
                   <div key={k}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{k}</div>
                     <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)' }}>{v ?? '—'}</div>
@@ -510,22 +523,20 @@ function SettingsInner() {
                 {/* Read-only reference — edit in BC Installer tab */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
-                    { label: 'Test Database Server',   val: tenant?.testNavDatabaseServer },
-                    { label: 'Test Database Name',     val: tenant?.testNavDatabaseName   },
-                    { label: 'Test Server Instance',   val: tenant?.testNavServerInstance },
-                    { label: 'Test ' + erpLabel + ' Port',           val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
-                    { label: 'Test ' + erpLabel + ' Instance',       val: tenant?.testBcInstance },
-                    { label: 'Test ' + erpLabel + ' Company',        val: tenant?.testBcCompany },
-                    { label: 'Test Agent Port',         val: tenant?.testAgentPort ? String(tenant.testAgentPort) : null },
-                  ].map(({ label, val }) => val ? (
+                    { label: 'Test Database Server',              val: tenant?.testNavDatabaseServer },
+                    { label: 'Test Database Name',                val: tenant?.testNavDatabaseName   },
+                    { label: 'Test Server Instance',              val: tenant?.testNavServerInstance },
+                    { label: 'Test NAV Management Port',          val: tenant?.testNavManagementPort ? String(tenant.testNavManagementPort) : '7045' },
+                    { label: 'Test ' + erpLabel + ' Port',        val: tenant?.testBcPort ? String(tenant.testBcPort) : null },
+                    { label: 'Test ' + erpLabel + ' Instance',    val: tenant?.testBcInstance },
+                    { label: 'Test ' + erpLabel + ' Company',     val: tenant?.testBcCompany },
+                    { label: 'Test Agent Port',                   val: tenant?.testAgentPort ? String(tenant.testAgentPort) : null },
+                  ].map(({ label, val }) => (
                     <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 160 }}>{label}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 6, padding: '4px 10px' }}>{val}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: val ? 'var(--ink)' : 'var(--fog)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 6, padding: '4px 10px' }}>{val || '—'}</span>
                     </div>
-                  ) : null)}
-                  {!tenant?.testNavDatabaseName && (
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>No test environment configured.</p>
-                  )}
+                  ))}
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
                 </div>
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

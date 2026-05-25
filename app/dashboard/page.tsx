@@ -604,7 +604,7 @@ function DashboardInner() {
           </button>
           {isTenantAdmin && (
             <button
-              onClick={() => router.push('/settings')}
+              onClick={() => router.push('/settings?tab=overview')}
               title="Settings"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
