@@ -492,7 +492,7 @@ function SettingsInner() {
               <Card>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Test Environment Details</p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)', marginBottom: 16, lineHeight: 1.55 }}>
-                  Used for pre-production deployment and UAT. Leave blank to use the same server as production. Details are injected into the BCAgent installer.
+                  Used for pre-production deployment and UAT.
                 </p>
                 {/* Read-only reference — edit in BC Installer tab */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 40px' }}>

@@ -2,10 +2,10 @@
 
 **Project Owner:** Rich Lancaster (richard.lancaster — Windows/MINGW64 environment)
 **Current Status:** Full Next.js application deployed to Vercel. Live at bespoxai.com.
-**Repository:** NavSolutionsNZ/BespokeAI_Web (GitHub)
+**Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** May 25, 2026 (Session 6)
+**Last Updated:** May 26, 2026 (Session 7)
 
 ---
 
@@ -27,71 +27,84 @@
 
 ## GitHub Access
 
-- **Repo:** `NavSolutionsNZ/BespokeAI_Web`
+- **Repo:** `NavSolutionsNZ/BespoxAI_Web` (renamed from BespokeAI_Web — old URL still redirects)
 - **Branch:** `main`
-- **Claude uses sparse checkout** — never clones the full repo. Include `"prisma"` in set.
+- **Claude uses sparse checkout** — never clones the full repo. Include `"prisma"` and context files in set.
 - **api.github.com is blocked** — but `github.com` git operations work
 - **Push:** `git push origin master:main`
+- **Remote URL:** `https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git`
+
+### Sparse Checkout Setup (every session)
+```bash
+cd /home/claude
+git init repo && cd repo
+git remote add origin https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git
+git sparse-checkout init
+git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "BESPOXAI_PROJECT_SUMMARY.md" "BESPOXAI_COMPONENT_ROADMAP.md" "BESPOXAI_FILES_INVENTORY.md"
+git pull origin main
+git config user.email "claude@anthropic.com" && git config user.name "Claude"
+```
 
 ---
 
-## Session 6 Key Changes (May 25, 2026)
+## Session 7 Key Changes (May 26, 2026)
 
-### Deploy to Test — ✅ NOW WORKING
-Full end-to-end deploy + compile to test environment is working on GWM Dev.
+### UAT Status Pipeline
+- deploy-test → sets `status: 'in_uat'` on success
+- uat-approve → sets `status: 'uat_confirmed'`
+- uat-reject → sets `status: 'uat_rejected'`
+- STATUS_PIPELINE, STATUS_COLOR, statusLabel updated in RequirementsBuilder + admin
+- UAT panel condition driven by status not testDeployedAt
+- Null-guard on testDeployedAt date display
 
-Fixes applied this session to get it working:
-- **testNavDatabaseName not reaching agent** — installer route was overwriting DB value with body default on every download. Fixed: installer route now uses tenant DB values directly for all PS1 replace calls, and does NOT save test env fields (managed by settings PATCH only)
-- **NonInteractive mode error** on Import-NAVApplicationObject — fixed with `-Confirm:$false`
-- **$NavIde not set** — NavModelTools.ps1 requires `$NavIde = path to finsql.exe`. Fixed: wildcard search for finsql.exe assigned to `$NavIde` before dot-sourcing NavModelTools
-- **Compile-NAVApplicationObject** needing `-NavServerInstance` and `-NavServerManagementPort` — fixed with environment-specific `$mgmtPort` variable
-- **testNavServerInstance empty** — `testBcInstance` used as fallback in compile when `testNavServerInstance` not set
-- **Response write crash on dropped connection** — wrapped in try-catch
+### RDP Remote Support (v3.1)
+- BCAgent installer Step 8: creates `BespoxAI-Support` local Windows account, adds to Administrators + Remote Desktop Users, enables RDP (port 3389)
+- `$SupportAccountPassword` param baked in at installer download, stored as `rdpPassword` in DB
+- `lib/cloudflare.ts`: `addRdpIngress()` + `createRdpDnsRecord()` — isolated, existing functions untouched
+- `POST /api/admin/provision-rdp`: adds CF ingress + DNS for `{subdomain}-rdp.bespoxai.com`
+- Admin tenants table: `[RDP — Tenant Name]` button + `[⧉]` copy password button
+- Schema: `rdpPassword String?` added to Tenant
+- SQL applied: `ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;`
+- To connect: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390` (cloudflared must be installed on Rich's machine — one-time setup)
 
-### Sync Config to Agent (new feature)
-- New BCAgent endpoint: `POST /bespoxai/update-config` — writes agent.config.json + updates in-memory vars immediately (no restart needed)
-- New API route: `POST /api/settings/sync-config`
-- UI: "↑ Sync Config to Agent" button in Settings → BC Installer tab
-- Logs only changed fields (field: old → new value), or "no changes detected"
-- Does not sync bcPassword/bcUsername
+### Back Button Fixes
+- Settings tabs: `router.push('/settings?tab=x')` instead of `setTab()` — history entries created
+- Settings: `router.replace` to `?tab=overview` on load if no tab param
+- Dashboard settings icon: pushes `/settings?tab=overview` (distinct history entry)
+- Dashboard nav: `router.replace` → `router.push` for tab changes
 
-### New Config Fields — Production + Test Management Ports
-- `navManagementPort` — production NAV server management port for compile schema sync
-- `testNavManagementPort` — test NAV server management port
-- Both added to: DB schema, settings API, ProdEnvForm/TestEnvForm UI, installer PS1 params, agent.config.json, BCAgent compile params, sync-config payload, update-config endpoint
-- `testNavServerInstance` now has explicit UI field in TestEnvForm
+### Preferred Name — Site-wide
+- `lib/auth.ts`: `firstName` + `preferredName` added to JWT, session, and session refresh
+- Rule: `preferredName ?? firstName` only — no fallback to full name
+- Dashboard greeting + sidebar, Admin sidebar, Settings sidebar all use preferred name
+- `lib/notifications.ts`: `displayName()` helper + `getCustomerEmail` fetches both fields
+- CFO assistant answerer: addresses user by `preferredName ?? firstName`
+- **Users must log out and back in** for token to pick up new fields
 
-### Installer — Major Improvements
-- All PS1 replace calls now use `tenant` DB object directly (not body values)
-- Test env fields no longer saved from installer route (prevented overwriting saved values)
-- agent.config.json now includes `bcPort`, `agentPort`, and correct `bcBaseUrl` with instance path
-- Version shown on Download Installer button — fetched dynamically from `GET /api/settings/installer`
-- Installer banner shows all production AND test env fields at startup
-- BAT/ZIP filename includes version: `Install-BespoxAI-v2.9-{tenant}.zip`
+### Installer Filename
+- Download button now triggers `Install-BespoxAI-v3.1.zip` (was `BespoxAI-Installer.zip`)
+- Fixed in `app/settings/page.tsx` — `download` attribute was hardcoded
 
-### Installer — Auto-Stop on Reinstall
-- No uninstall needed before reinstalling
-- Stops existing BespoxAI-BCAgent scheduled task (regardless of state)
-- Uses `netstat -ano` to find PID on port
-- Verifies process `Win32_Process.CommandLine` contains `BCAgent.ps1` before killing (safe — won't kill other processes)
-- Waits up to 5s for port to free
-- Only warns if port still in use by something that isn't BCAgent
+### White Backgrounds
+- `--white` CSS variable changed from `#FAFAF8` → `#ffffff` — true white site-wide
+
+### Settings Overview — Production/Test Environment Cards
+- Renamed "BC Connection" → "Production Environment Details"
+- Removed "System Configuration" card
+- Added Product + Last CU fields to Production Environment Details (read-only from DB)
+- Removed Agent URL, Status, Member Since from display
+- Both cards use consistent grid layout (label above value, font-body text)
+- Test env shows all fields with `—` for blanks
+- "Leave blank" instruction removed from test env overview (it's read-only)
 
 ### BCAgent Version
-- Bumped to **v2.9** this session (was v2.4 at start)
-- **Version must be bumped on every push** — two places: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts
-- Will reset at go-live
+- **Current version: 3.1**
+- Two places to bump: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts
 
-### schema.prisma — Now Actively Maintained
-- Added `navManagementPort Int? @default(7045)` to Tenant
-- Added `testNavManagementPort Int? @default(7045)` to Tenant
-- Added `mustChangePassword Boolean @default(false)` to User (was in DB via SQL but not in schema)
-- Include `"prisma"` in sparse checkout from now on
-
-### Process Note (CRITICAL — reinforced this session)
-- **Never push without explicit confirmation from Rich**
-- **Diagnose before architecting** — always ask for logs/errors first
-- **Discuss significant changes** before implementing
+### Vercel MCP
+- Connected this session — Claude can now pull deployment logs directly via Vercel MCP
+- Team ID: `team_eZ4MqWjZdsPA2iWoK4exjjPF`
+- Project ID: `prj_AT4GXatATIi2FaUCS62Ttp2AivRo`
 
 ---
 
@@ -108,12 +121,11 @@ Fixes applied this session to get it working:
 - **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
 - **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
 
-### Schema Changes — Session 6
+### Schema Changes — Session 7
 ```sql
-ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "testNavManagementPort" INTEGER NOT NULL DEFAULT 7045;
-ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "navManagementPort" INTEGER NOT NULL DEFAULT 7045;
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;
 ```
-Both applied ✅. prisma/schema.prisma updated ✅.
+Applied ✅. prisma/schema.prisma updated ✅.
 
 ---
 
@@ -134,21 +146,17 @@ const [val, setVal] = useState('')
 
 ---
 
-## BCAgent — Session 6 Changes (CRITICAL)
+## BCAgent v3.1 — Architecture
 
-- **Version: 2.9**
-- Installer auto-stop on reinstall (netstat + CommandLine check)
-- Sync Config endpoint: POST /bespoxai/update-config
-- Deploy compile uses environment-specific mgmtPort ($NavMgmtPort vs $TestNavMgmtPort)
-- agent.config.json now includes bcPort, agentPort, full bcBaseUrl with instance
-- All PS1 installer replace strings verified against actual PS1 param declarations
-
-### BCAgent Architecture
 ```
 Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
   → cloudflared (Windows service, --protocol http2, runs as SYSTEM)
   → localhost:9099 (BCAgent scheduled task, runs as BC user account)
   → localhost:8048/{bcInstance} (BC/NAV OData, NTLM via UseDefaultCredentials)
+
+RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
+  → localhost:3389 (Windows RDP)
+  → BespoxAI-Support account (local admin, RDP enabled by installer)
 ```
 
 ### Known NAV v14 OData Limitations
@@ -163,12 +171,7 @@ Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
 1. **Router** (jsonMode:true) — classify needsData
 2. **Planner** (jsonMode:true) — pick entity + OData params
 3. **OData fetch** — via tunnel → BCAgent → BC
-4. **Answerer** — formats response
-
-### Bad Query Steering
-```sql
-DELETE FROM "QueryLog" WHERE "tenantId" = '{tenantId}' AND entity = '__BAD_QUERY__';
-```
+4. **Answerer** — formats response, addresses user by preferredName ?? firstName
 
 ---
 
@@ -179,7 +182,7 @@ DELETE FROM "QueryLog" WHERE "tenantId" = '{tenantId}' AND entity = '__BAD_QUERY
 3. Superadmin activates from Admin → Signups
 4. Customer receives temp credentials + welcome email with password change warning
 5. Login → onboarding Step 0 (set permanent password) → Step 1-5 (name, product, connection)
-6. Settings → BC Installer → Download (auto-creates tunnel first time)
+6. Settings → BC Installer → Download (auto-creates tunnel first time, generates rdpPassword)
 7. Run installer on Windows server as Administrator (port 9099) — no uninstall needed for reinstall
 
 ---
@@ -190,7 +193,7 @@ DELETE FROM "QueryLog" WHERE "tenantId" = '{tenantId}' AND entity = '__BAD_QUERY
 - **Signup tagline:** "CFO Intelligence for Business Central & Microsoft NAV"
 - **Homepage hero:** "Your Business Central. One portal. Complete control."
 - **Primary brand line:** "Bespoke AI. Built for the ERP Microsoft left behind."
-- **Backgrounds:** White (`#ffffff`) throughout portal
+- **Backgrounds:** White (`#ffffff`) throughout portal — `--white: #ffffff` in globals.css
 - **Placeholder color:** `#8a9a8e` (global CSS)
 
 ---
@@ -228,5 +231,7 @@ if (cfg.provider === 'anthropic') {
 
 - **Never** `router.back()` — always explicit `router.push()`
 - Settings deep-links: `?tab=installer`, `?tab=overview`, `?tab=users`, `?tab=entities`
-- Dashboard: `?view=xxx` persists nav tab
+- Settings always has tab in URL — `router.replace('/settings?tab=overview')` on load if none
+- Dashboard: `?view=xxx` — uses `router.push` (not replace) for back button support
 - Unconnected users → default to `customisations` tab
+- Back button works correctly across: Settings tabs, Dashboard nav, Admin tabs
