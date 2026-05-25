@@ -87,7 +87,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '2.9'
+$AgentVersion  = '3.0'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -151,21 +151,27 @@ Write-Step 'Checking prerequisites'
 $existingTask = Get-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
 if ($existingTask) {
     Write-Host "    Stopping existing BespoxAI agent..." -ForegroundColor Cyan
+
+    # 1. Stop the scheduled task
     Stop-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
-    # Kill the process holding the port — only if it's running BCAgent.ps1
-    $netstatLine = netstat -ano | Select-String "TCP.*:$AgentPort\s.*LISTENING"
-    if ($netstatLine) {
-        $ownerPid = ($netstatLine[0].Line.Trim() -split '\s+')[-1]
-        $ownerProc = Get-Process -Id ([int]$ownerPid) -ErrorAction SilentlyContinue
-        $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId=$ownerPid" -ErrorAction SilentlyContinue).CommandLine
-        if ($ownerProc -and $cmdLine -match 'BCAgent\.ps1') {
-            Stop-Process -Id ([int]$ownerPid) -Force -ErrorAction SilentlyContinue
-            Write-Host "    Killed BCAgent process $ownerPid" -ForegroundColor Cyan
-        } else {
-            Write-Host "    Process on port $AgentPort is not BCAgent.ps1 — will not kill" -ForegroundColor Yellow
+
+    # 2. Kill any BCAgent.ps1 PowerShell processes directly
+    $bcProcs = Get-WmiObject Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*BCAgent.ps1*' }
+    foreach ($proc in $bcProcs) {
+        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+
+    # 3. Remove HTTP.sys URL ACL reservation (HttpListener registers with kernel, not as a process)
+    $urlacls = & netsh http show urlacl 2>&1 | Select-String "http://\+:$AgentPort/"
+    if ($urlacls) {
+        foreach ($entry in $urlacls) {
+            $url = ($entry.ToString().Trim() -split '\s+')[-1]
+            & netsh http delete urlacl url=$url 2>&1 | Out-Null
         }
     }
-    # Wait up to 5s for the port to free
+
+    # Wait up to 5s for port to free
     $waited = 0
     while ((Test-Port -Port $AgentPort) -and $waited -lt 5) {
         Start-Sleep -Seconds 1; $waited++
@@ -173,7 +179,7 @@ if ($existingTask) {
     if ($waited -gt 0) { Write-OK "Agent stopped (waited ${waited}s)" } else { Write-OK 'Agent stopped' }
 }
 
-# Port conflict check — only warn if still in use by something other than BespoxAI
+# Port conflict check — only warn if still in use after all cleanup attempts
 if (Test-Port -Port $AgentPort) {
     Write-Host ''
     Write-Host "    ⚠ Port $AgentPort is still in use by another service (not BespoxAI)." -ForegroundColor Yellow
@@ -241,7 +247,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '2.9'
+$Version    = '3.0'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
