@@ -863,7 +863,9 @@ Write-Step 'Writing agent configuration'
 $Config = [ordered]@{
     apiKey                = $ApiKey
     listenPort            = $AgentPort
-    bcBaseUrl             = "http://localhost:$BCPort"
+    bcBaseUrl             = "http://localhost:$BCPort/$BCInstance"
+    bcPort                = $BCPort
+    agentPort             = $AgentPort
     bcUsername            = $BCUsername
     bcPassword            = $BCPassword
     bcInstance            = $BCInstance

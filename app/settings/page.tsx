@@ -716,9 +716,10 @@ function SettingsInner() {
                 <TestEnvForm
                   key={tenant?.id ?? 'loading'}
                   initial={{
-                    testNavDatabaseName: tenant?.testNavDatabaseName ?? '',
-                    testBcInstance:      tenant?.testBcInstance      ?? '',
-                    testBcCompany:       tenant?.testBcCompany        ?? '',
+                    testNavDatabaseName:   tenant?.testNavDatabaseName   ?? '',
+                    testNavServerInstance: tenant?.testNavServerInstance  ?? '',
+                    testBcInstance:        tenant?.testBcInstance         ?? '',
+                    testBcCompany:         tenant?.testBcCompany          ?? '',
                     testNavManagementPort: String(tenant?.testNavManagementPort ?? 7045),
                   }}
                   erpLabel={erpLabel}
@@ -794,13 +795,14 @@ function SettingsInner() {
 }
 
 function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
-  initial: { testNavDatabaseName: string; testBcInstance: string; testBcCompany: string; testNavManagementPort: string }
+  initial: { testNavDatabaseName: string; testNavServerInstance: string; testBcInstance: string; testBcCompany: string; testNavManagementPort: string }
   onSave: (data: Record<string, any>) => Promise<void>
   erpLabel?: string
 }) {
 
   const refs = {
     testNavDatabaseName:   useRef<HTMLInputElement>(null),
+    testNavServerInstance: useRef<HTMLInputElement>(null),
     testBcInstance:        useRef<HTMLInputElement>(null),
     testBcCompany:         useRef<HTMLInputElement>(null),
     testNavManagementPort: useRef<HTMLInputElement>(null),
@@ -812,6 +814,7 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
     setSaving(true)
     await onSave({
       testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || null,
+      testNavServerInstance: refs.testNavServerInstance.current?.value || null,
       testBcInstance:        refs.testBcInstance.current?.value        || null,
       testBcCompany:         refs.testBcCompany.current?.value         || null,
       testNavManagementPort: refs.testNavManagementPort.current?.value || 7045,
@@ -837,6 +840,14 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>The SQL database used for test deployments.</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <div>
+          {lbl('Test Server Instance')}
+          <input ref={refs.testNavServerInstance} style={inp} type="text" defaultValue={initial.testNavServerInstance}
+            placeholder="e.g. DynamicsNAV110_Test" autoComplete="off"
+            onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+            onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>NAV Windows service instance name for schema sync.</p>
+        </div>
         <div>
           {lbl('Test ' + erpLabel + ' Instance')}
           <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance}
