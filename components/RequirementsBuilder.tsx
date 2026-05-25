@@ -1932,7 +1932,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       <div>
                         <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#9A6A00',fontWeight:600,letterSpacing:'0.08em',marginBottom:6}}>🧪 TEST ENVIRONMENT READY</p>
                         <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',lineHeight:1.6,marginBottom:4}}>Your customisation has been deployed to the test environment. Please test thoroughly and sign off when satisfied.</p>
-                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginBottom:12}}>Deployed to test: {new Date(req.testDeployedAt).toLocaleDateString('en-NZ')}</p>
+                        <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginBottom:12}}>Deployed to test: {req.testDeployedAt ? new Date(req.testDeployedAt).toLocaleDateString('en-NZ') : '—'}</p>
 
                         {/* Scope-creep analysis result */}
                         {uatScopeCreep&&(
