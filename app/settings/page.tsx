@@ -417,7 +417,7 @@ function SettingsInner() {
           <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--jade), var(--forest))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: 'var(--cream)' }}>{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? user?.email}</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.preferredName || user?.firstName || user?.name || user?.email}</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(214,217,212,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{role.replace('_', ' ')}</div>
             </div>
             <button onClick={() => signOut({ callbackUrl: '/login' })} title="Sign out"
@@ -465,7 +465,7 @@ function SettingsInner() {
             </Card>
             <Card>
               <Label>Production Environment Details</Label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 40px' }}>
                 {([
                   ['Product',             tenant?.navProduct === 'BC' ? 'Business Central' : tenant?.navProduct === 'NAV' ? 'Microsoft NAV' : null],
                   ['Last CU',             tenant?.lastCU],
@@ -478,13 +478,13 @@ function SettingsInner() {
                   ['NAV Server Instance',           tenant?.navServerInstance],
                   ['NAV Management Port',           tenant?.navManagementPort ? String(tenant.navManagementPort) : '7045'],
                 ] as [string, string|null|undefined][]).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 180 }}>{k}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: v ? 'var(--ink)' : 'var(--fog)' }}>{v || '—'}</span>
+                  <div key={k}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{k}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: v ? 'var(--ink)' : 'var(--fog)' }}>{v || '—'}</div>
                   </div>
                 ))}
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '4px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
               </div>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '14px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
             </Card>
 
             {/* Test Environment — NAV/BC14 only */}
@@ -495,7 +495,7 @@ function SettingsInner() {
                   Used for pre-production deployment and UAT. Leave blank to use the same server as production. Details are injected into the BCAgent installer.
                 </p>
                 {/* Read-only reference — edit in BC Installer tab */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 40px' }}>
                   {[
                     { label: 'Test ' + erpLabel + ' Instance',    val: tenant?.testBcInstance },
                     { label: 'Test ' + erpLabel + ' Company',     val: tenant?.testBcCompany },
@@ -506,11 +506,12 @@ function SettingsInner() {
                     { label: 'Test Server Instance',              val: tenant?.testNavServerInstance },
                     { label: 'Test NAV Management Port',          val: tenant?.testNavManagementPort ? String(tenant.testNavManagementPort) : '7045' },
                   ].map(({ label, val }) => (
-                    <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', minWidth: 180 }}>{label}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: val ? 'var(--ink)' : 'var(--fog)' }}>{val || '—'}</span>
+                    <div key={label}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: val ? 'var(--ink)' : 'var(--fog)' }}>{val || '—'}</div>
                     </div>
                   ))}
+                </div>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
                 </div>
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
