@@ -87,7 +87,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '2.5'
+$AgentVersion  = '2.6'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -152,9 +152,14 @@ $existingTask = Get-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction Sile
 if ($existingTask) {
     Write-Host "    Stopping existing BespoxAI agent..." -ForegroundColor Cyan
     Stop-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
-    # Wait up to 10s for the port to free
+    # Also kill the process holding the port directly
+    $conn = Get-NetTCPConnection -LocalPort $AgentPort -State Listen -ErrorAction SilentlyContinue
+    if ($conn) {
+        Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+    # Wait up to 5s for the port to free
     $waited = 0
-    while ((Test-Port -Port $AgentPort) -and $waited -lt 10) {
+    while ((Test-Port -Port $AgentPort) -and $waited -lt 5) {
         Start-Sleep -Seconds 1; $waited++
     }
     if ($waited -gt 0) { Write-OK "Agent stopped (waited ${waited}s)" } else { Write-OK 'Agent stopped' }
@@ -228,7 +233,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '2.5'
+$Version    = '2.6'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
