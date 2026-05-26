@@ -214,6 +214,14 @@ model Requirement {
   // ── Deployment notes (manual deployments) ────────────────────────────────
   deploymentNotes      String?  @db.Text  // appended on each manual deployment (test + prod)
 
+  // ── Pipeline transition timestamps ────────────────────────────────────────
+  submittedAt              DateTime?  // customer submits
+  inReviewAt               DateTime?  // admin moves to in_review
+  quotedAt                 DateTime?  // admin sends quote
+  depositRequiredAt        DateTime?  // customer approves quote
+  inDevelopmentAt          DateTime?  // admin starts development
+  completePendingPaymentAt DateTime?  // admin marks work complete
+
   // ── Production deployment ─────────────────────────────────────────────────
   prodApprovalSentAt   DateTime?          // when go-live doc was sent to customer
   prodGoLiveDoc        String?  @db.Text  // AI-generated go-live summary sent to customer

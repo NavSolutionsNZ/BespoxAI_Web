@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
+import { notifyCustomerReadyForUAT } from '@/lib/notifications'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60  // bump to 300 on Vercel Pro
@@ -46,6 +47,10 @@ export async function POST(
         error: 'NAV compilation skipped in debug mode' },
     ]
     const now = new Date()
+    const reqForNotify = await (prisma as any).requirement.findUnique({
+      where:  { id: params.id },
+      select: { title: true, user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
+    })
     await (prisma as any).requirement.update({
       where: { id: params.id },
       data:  {
@@ -60,6 +65,14 @@ export async function POST(
         uatRejectionAnalysis: null,
       },
     })
+    if (reqForNotify) {
+      notifyCustomerReadyForUAT({
+        customerEmail: reqForNotify.user.email,
+        customerName:  reqForNotify.user.name ?? '',
+        title:         reqForNotify.title,
+        tenantName:    reqForNotify.tenant?.name ?? '',
+      }).catch(e => console.error('[deploy-test] notify UAT:', e))
+    }
     return NextResponse.json({
       success:    true,
       results:    mockResults,
@@ -115,6 +128,10 @@ export async function POST(
 
   if (data.success) {
     // Update requirement — set testDeployedAt, clear any previous UAT state
+    const reqForNotify = await (prisma as any).requirement.findUnique({
+      where:  { id: params.id },
+      select: { title: true, user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
+    })
     await (prisma as any).requirement.update({
       where: { id: params.id },
       data:  {
@@ -130,6 +147,14 @@ export async function POST(
         uatRejectionAnalysis: null,
       },
     })
+    if (reqForNotify) {
+      notifyCustomerReadyForUAT({
+        customerEmail: reqForNotify.user.email,
+        customerName:  reqForNotify.user.name ?? '',
+        title:         reqForNotify.title,
+        tenantName:    reqForNotify.tenant?.name ?? '',
+      }).catch(e => console.error('[deploy-test] notify UAT:', e))
+    }
   }
 
   return NextResponse.json({

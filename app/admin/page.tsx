@@ -1275,6 +1275,13 @@ interface AdminReq {
   prodDeployedAt:       string | null
   prodDeploySnapshotId: string | null
   deploymentNotes:      string | null
+  // Pipeline timestamps
+  submittedAt:              string | null
+  inReviewAt:               string | null
+  quotedAt:                 string | null
+  depositRequiredAt:        string | null
+  inDevelopmentAt:          string | null
+  completePendingPaymentAt: string | null
   assignedDeveloper:    { id: string; name: string | null; email: string } | null
   githubBranch:         string | null
   parentId:             string | null
@@ -1764,6 +1771,20 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   const adminName  = (session?.user as any)?.name  ?? 'Admin'
   const adminEmail = (session?.user as any)?.email ?? ''
   const [reqs, setReqs]           = useState<AdminReq[]>([])
+  const [collapsedAdminCards, setCollapsedAdmin] = useState<Record<string,boolean>>({})
+  function toggleAdminCard(id: string) { setCollapsedAdmin(prev => ({ ...prev, [id]: !prev[id] })) }
+  function adminCardToggle(id: string) {
+    const col = !!collapsedAdminCards[id]
+    return (
+      <button
+        onClick={() => toggleAdminCard(id)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }}
+        title={col ? 'Expand' : 'Collapse'}
+      >
+        {col ? '▾' : '▴'}
+      </button>
+    )
+  }
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
   const [selected, setSelected]   = useState<AdminReq | null>(null)
@@ -1841,7 +1862,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       const data = await reqRes.json()
       if (!reqRes.ok) throw new Error(data.error)
       // Merge addenda into flat list so they appear in requirements tab and get action buttons
-      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null }))
+      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, inDevelopmentAt: null, completePendingPaymentAt: null }))
       setReqs([...data.requirements, ...addenda])
       if (usersRes.ok) {
         const ud = await usersRes.json()
@@ -2091,7 +2112,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       if (data.success) {
         // Refresh requirement to show testDeployedAt
         const reqRes = await fetch('/api/admin/requirements')
-        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null })); setReqs([...d.requirements, ...add2]) }
+        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, inDevelopmentAt: null, completePendingPaymentAt: null })); setReqs([...d.requirements, ...add2]) }
       } else {
         setDeployErr('Some objects failed — check results below')
       }
@@ -2438,6 +2459,54 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
               </select>
             </div>
 
+            {/* Pipeline progress with dates */}
+            {(() => {
+              const PIPE = ['draft','submitted','in_review','quoted','deposit_required','deposit_paid','in_development','in_uat','uat_confirmed','complete_pending_payment','fully_paid']
+              const PIPE_LABELS: Record<string,string> = {
+                draft:'Draft', submitted:'Submitted', in_review:'In Review', quoted:'Quoted',
+                deposit_required:'Deposit Req.', deposit_paid:'Deposit Paid', in_development:'In Dev',
+                in_uat:'In UAT', uat_confirmed:'UAT Confirmed', complete_pending_payment:'Balance Due', fully_paid:'Complete'
+              }
+              const pipeDateMap: Record<string,string|null|undefined> = {
+                draft:                    selected.createdAt,
+                submitted:                selected.submittedAt,
+                in_review:                selected.inReviewAt,
+                quoted:                   selected.quotedAt,
+                deposit_required:         selected.depositRequiredAt,
+                deposit_paid:             selected.depositPaidAt,
+                in_development:           selected.inDevelopmentAt,
+                in_uat:                   selected.testDeployedAt,
+                uat_confirmed:            selected.uatApprovedAt,
+                complete_pending_payment: selected.completePendingPaymentAt,
+                fully_paid:               selected.balancePaidAt,
+              }
+              const si = PIPE.findIndex(s => s === selected.status)
+              return (
+                <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto' }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 10 }}>Pipeline</p>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 'max-content' }}>
+                    {PIPE.map((s, i) => {
+                      const done = i < si, cur = i === si
+                      const dateStr = pipeDateMap[s]
+                      const fmt = dateStr ? new Date(dateStr).toLocaleDateString('en-NZ', { day: '2-digit', month: 'short' }) : null
+                      return (
+                        <div key={s} style={{ display: 'flex', alignItems: 'center', flex: i < PIPE.length - 1 ? 1 : 'none' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: done ? 'var(--jade)' : cur ? 'var(--forest)' : 'var(--fog)', boxShadow: cur ? '0 0 0 3px rgba(10,92,70,0.15)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {done ? <span style={{ color: 'white', fontSize: 7 }}>✓</span> : null}
+                            </div>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 6, letterSpacing: '0.07em', textTransform: 'uppercase', color: cur ? 'var(--forest)' : done ? 'var(--jade)' : 'var(--slate)', textAlign: 'center', whiteSpace: 'nowrap' }}>{PIPE_LABELS[s] ?? s}</span>
+                            {fmt ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 6, color: done ? 'var(--jade)' : cur ? 'var(--forest)' : 'var(--slate)', textAlign: 'center', whiteSpace: 'nowrap' }}>{fmt}</span> : <span style={{ fontSize: 6 }}>&nbsp;</span>}
+                          </div>
+                          {i < PIPE.length - 1 ? <div style={{ flex: 1, height: 2, background: done ? 'var(--jade)' : 'var(--fog)', margin: '0 2px', marginBottom: 26, minWidth: 8 }} /> : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Quote rejection banner */}
             {selected.status === 'quote_rejected' && selected.quoteRejectionReason && (
               <div style={{ background: 'rgba(163,45,45,0.05)', border: '1px solid rgba(163,45,45,0.25)', borderRadius: 8, padding: '12px 14px' }}>
@@ -2465,9 +2534,13 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
               if (log.length === 0) return null
               return (
                 <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 10 }}>
-                    Consultant Q&amp;A Log ({log.length} round{log.length !== 1 ? 's' : ''})
-                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedAdminCards['qa-'+selected.id] ? 0 : 10 }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>
+                      Consultant Q&amp;A Log ({log.length} round{log.length !== 1 ? 's' : ''})
+                    </p>
+                    {adminCardToggle('qa-'+selected.id)}
+                  </div>
+                  <div style={{ overflow: 'hidden', maxHeight: collapsedAdminCards['qa-'+selected.id] ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {log.map((round: any, i: number) => (
                       <div key={i} style={{ paddingLeft: 10, borderLeft: `2px solid ${round.answers ? 'var(--jade)' : 'rgba(200,149,42,0.5)'}` }}>
@@ -2485,13 +2558,18 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                       </div>
                     ))}
                   </div>
+                  </div>{/* end collapsible qa */}
                 </div>
               )
             })()}
 
             {/* Description */}
             <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px' }}>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 8 }}>Description</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedAdminCards['desc-'+selected.id] ? 0 : 8 }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>Description</p>
+                {adminCardToggle('desc-'+selected.id)}
+              </div>
+              <div style={{ overflow: 'hidden', maxHeight: collapsedAdminCards['desc-'+selected.id] ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{selected.description}</p>
 
               {/* Q&A clarification pairs */}
@@ -2512,17 +2590,22 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                   )}
                 </div>
               )}
+              </div>{/* end collapsible description */}
             </div>
 
             {/* AI Spec */}
             {spec ? (
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedAdminCards['spec-'+selected.id] ? 0 : 10 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>
                     AI Spec · {spec.complexity} · ~{spec.estimatedDays}d
                   </p>
-                  <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jade)', fontSize: 10 }}>{genSpec ? '…' : '↺ Regen'}</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jade)', fontSize: 10 }}>{genSpec ? '…' : '↺ Regen'}</button>
+                    {adminCardToggle('spec-'+selected.id)}
+                  </div>
                 </div>
+                <div style={{ overflow: 'hidden', maxHeight: collapsedAdminCards['spec-'+selected.id] ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--ink)', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 8 }}>{spec.userStory}</p>
                 {spec.acceptanceCriteria?.length > 0 && (
                   <ul style={{ margin: '0 0 8px', paddingLeft: 16 }}>
@@ -2673,6 +2756,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                   </div>
                 )}
                 {specErr && <p style={{ color: '#A32D2D', fontSize: 11, marginTop: 8 }}>{specErr}</p>}
+                </div>{/* end collapsible spec */}
               </div>
             ) : (
               <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'var(--ink)', color: 'var(--cream)', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500 }}>
@@ -2699,7 +2783,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                 onDeploy={deployToTest}
                 onManualDeploy={async () => {
                   const r = await fetch('/api/admin/requirements')
-                  if (r.ok) { const d = await r.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null })); setReqs([...d.requirements, ...add2]) }
+                  if (r.ok) { const d = await r.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, inDevelopmentAt: null, completePendingPaymentAt: null })); setReqs([...d.requirements, ...add2]) }
                 }}
               />
             )}

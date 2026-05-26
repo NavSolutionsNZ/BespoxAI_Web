@@ -75,11 +75,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       updateData.status = 'fully_paid'
       updateData.balancePaidAt = new Date()
     }
+    if (body.status === 'in_review' && !existing.inReviewAt) {
+      updateData.inReviewAt = new Date()
+    }
+    if (body.status === 'quoted' && body.quote !== undefined && !existing.quotedAt) {
+      updateData.quotedAt = new Date()
+    }
     if (body.status === 'in_development' && existing.status === 'deposit_paid') {
       updateData.status = 'in_development'
+      updateData.inDevelopmentAt = new Date()
     }
     if (body.status === 'complete_pending_payment' && existing.status === 'in_development') {
       updateData.status = 'complete_pending_payment'
+      updateData.completePendingPaymentAt = new Date()
     }
 
   } else {
@@ -89,6 +97,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // Submit: also record customer answers against the open admin Q&A round
     if (status === 'submitted' && ['draft', 'needs_clarification', 'quote_rejected'].includes(existing.status)) {
       updateData.status = 'submitted'
+      if (!existing.submittedAt) updateData.submittedAt = new Date()
 
       // If coming from needs_clarification, pair the answer with the open round
       if (existing.status === 'needs_clarification' && customerAnswers) {
@@ -108,6 +117,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (status === 'deposit_required' && existing.status === 'quoted') {
       updateData.status = 'deposit_required'
       updateData.quoteApprovedAt = new Date()
+      updateData.depositRequiredAt = new Date()
       if (existing.quote) {
         updateData.depositAmount = parseFloat(existing.quote.toString()) * 0.2
       }

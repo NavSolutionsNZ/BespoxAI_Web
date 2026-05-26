@@ -232,6 +232,21 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   const [actLoading, setAL]       = useState(false)
   const [showQF, setShowQF]       = useState(false)
+  // Collapsible cards — key is cardId, value true = collapsed
+  const [collapsedCards, setCollapsed] = useState<Record<string,boolean>>({})
+  function toggleCard(id: string) { setCollapsed(prev => ({ ...prev, [id]: !prev[id] })) }
+  function cardToggleBtn(id: string) {
+    const col = !!collapsedCards[id]
+    return (
+      <button
+        onClick={() => toggleCard(id)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', lineHeight: 1, fontSize: 14, display: 'flex', alignItems: 'center' }}
+        title={col ? 'Expand' : 'Collapse'}
+      >
+        {col ? '▾' : '▴'}
+      </button>
+    )
+  }
   // Addendum — full page flow (same as create, linked to parent)
   const [showAddendum, setShowAddendum]         = useState(false)
   const [addendumParentId, setAddendumParentId] = useState<string|null>(null)
@@ -740,17 +755,17 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     <div class="section-label">Payment Schedule</div>
 
     ${isDeposit ? `
-    <div class="row"><span class="lbl">Total project quote (excl. GST)</span><span class="amt">$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row"><span class="lbl">Total project quote (plus GST)</span><span class="amt">$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row subdued"><span class="lbl">80% balance — due ${monthly ? 'on invoice (20th of following month)' : 'on completion'}</span><span class="amt" style="color:#3B5249">$${balanceExcl.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row" style="border-top:2px solid #EDE8DC;margin-top:4px;padding-top:10px"><span class="lbl">20% deposit</span><span class="amt">$${(quote*0.2).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     ${hasReviewCredit ? `<div class="row credit"><span class="lbl">Less: Specification review fee (credited)</span><span class="amt credit">− $249.00 NZD</span></div>` : ''}
-    <div class="row"><span class="lbl">Net deposit (excl. GST)</span><span class="amt">$${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row"><span class="lbl">Net deposit (plus GST)</span><span class="amt">$${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row total"><span class="lbl">Total deposit due (incl. GST)</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     ` : `
-    <div class="row"><span class="lbl">Total project quote (excl. GST)</span><span class="amt">$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row"><span class="lbl">Total project quote (plus GST)</span><span class="amt">$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row subdued"><span class="lbl">Less: 20% deposit already paid</span><span class="amt" style="color:#3B5249">− $${depositPd.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
-    <div class="row" style="border-top:2px solid #EDE8DC;margin-top:4px;padding-top:10px"><span class="lbl">Balance (excl. GST)</span><span class="amt">$${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row" style="border-top:2px solid #EDE8DC;margin-top:4px;padding-top:10px"><span class="lbl">Balance (plus GST)</span><span class="amt">$${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     <div class="row total"><span class="lbl">Total balance due (incl. GST)</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
     `}
@@ -894,7 +909,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   <div style="margin-bottom:20px">
     <div class="section-label">Payment</div>
-    <div class="row"><span class="lbl">Specification review fee (excl. GST)</span><span class="amt">$${feeExcl.toFixed(2)} NZD</span></div>
+    <div class="row"><span class="lbl">Specification review fee (plus GST)</span><span class="amt">$${feeExcl.toFixed(2)} NZD</span></div>
     <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toFixed(2)} NZD</span></div>
     <div class="row total"><span class="lbl">Total incl. GST</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toFixed(2)} NZD</span></div>
   </div>
@@ -908,7 +923,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   </div>
 
   <div class="credit-note">
-    ✦ This $${feeExcl.toFixed(2)} NZD (excl. GST) review fee will be credited in full against your development deposit if you proceed with this customisation.
+    ✦ This $${feeExcl.toFixed(2)} NZD (plus GST) review fee will be credited in full against your development deposit if you proceed with this customisation.
   </div>
 
   <div class="note">
@@ -1320,10 +1335,14 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Feasibility check result */}
               {(feasLoadingId===req.id||req.feasibility)&&(
                 <div style={{background:'var(--white)',border:'1px solid var(--fog)',borderRadius:10,padding:'18px 20px'}}>
-                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:collapsedCards['feas-'+req.id]?0:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <span>BespoxAI Feasibility Check</span>
-                    {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
+                      {cardToggleBtn('feas-'+req.id)}
+                    </div>
                   </div>
+                  <div style={{overflow:'hidden',maxHeight:collapsedCards['feas-'+req.id]?0:'2000px',transition:'max-height 0.25s ease'}}>
 
                   {feasLoadingId===req.id&&(
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -1389,20 +1408,38 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 <div style={crd}>
                   <label style={lbl}>Progress</label>
                   <div style={{display:'flex',alignItems:'center',marginTop:6}}>
-                    {STATUS_PIPELINE.map((s,i)=>{
-                      const done=i<si,cur=i===si
-                      return (
-                        <div key={s.key} style={{display:'flex',alignItems:'center',flex:i<STATUS_PIPELINE.length-1?1:'none'}}>
-                          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                            <div style={{width:18,height:18,borderRadius:'50%',background:done?'var(--jade)':cur?'var(--forest)':'var(--fog)',boxShadow:cur?'0 0 0 3px rgba(10,92,70,0.15)':'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                              {done&&<span style={{color:'white',fontSize:9}}>✓</span>}
+      {{
+                      const pipelineDateMap: Record<string,string|null|undefined> = {
+                        draft:                    req.createdAt,
+                        submitted:                req.submittedAt,
+                        in_review:                req.inReviewAt,
+                        quoted:                   req.quotedAt,
+                        deposit_required:         req.depositRequiredAt,
+                        deposit_paid:             req.depositPaidAt,
+                        in_development:           req.inDevelopmentAt,
+                        in_uat:                   req.testDeployedAt,
+                        uat_confirmed:            req.uatApprovedAt,
+                        complete_pending_payment: req.completePendingPaymentAt,
+                        fully_paid:               req.balancePaidAt,
+                      }
+                      return STATUS_PIPELINE.map((s,i)=>{
+                        const done=i<si,cur=i===si
+                        const dateStr = pipelineDateMap[s.key]
+                        const fmt = dateStr ? new Date(dateStr).toLocaleDateString('en-NZ',{day:'2-digit',month:'short'}) : null
+                        return (
+                          <div key={s.key} style={{display:'flex',alignItems:'center',flex:i<STATUS_PIPELINE.length-1?1:'none'}}>
+                            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+                              <div style={{width:18,height:18,borderRadius:'50%',background:done?'var(--jade)':cur?'var(--forest)':'var(--fog)',boxShadow:cur?'0 0 0 3px rgba(10,92,70,0.15)':'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                {done&&<span style={{color:'white',fontSize:9}}>✓</span>}
+                              </div>
+                              <span style={{fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.07em',textTransform:'uppercase',color:cur?'var(--forest)':done?'var(--jade)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap'}}>{s.label}</span>
+                              {fmt ? <span style={{fontFamily:'var(--font-mono)',fontSize:6,color:done?'var(--jade)':cur?'var(--forest)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap',letterSpacing:'0.04em'}}>{fmt}</span> : <span style={{fontSize:6}}>&nbsp;</span>}
                             </div>
-                            <span style={{fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.07em',textTransform:'uppercase',color:cur?'var(--forest)':done?'var(--jade)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap'}}>{s.label}</span>
+                            {i<STATUS_PIPELINE.length-1&&<div style={{flex:1,height:2,background:done?'var(--jade)':'var(--fog)',margin:'0 2px',marginBottom:26}}/>}
                           </div>
-                          {i<STATUS_PIPELINE.length-1&&<div style={{flex:1,height:2,background:done?'var(--jade)':'var(--fog)',margin:'0 2px',marginBottom:18}}/>}
-                        </div>
-                      )
-                    })}
+                        )
+                      })
+                    }()}
                   </div>
                 </div>
               )}
@@ -1430,12 +1467,13 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     )}
                   </div>
                 )}
+                  </div>{/* end collapsible feasibility */}
               </div>
 
               {/* AI Spec */}
               {spec?(
                 <div style={{...crd,padding:'18px 20px'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:collapsedCards['spec-'+req.id]?0:16}}>
                     <div>
                       <label style={lbl}>AI-Generated Functional Spec</label>
                       <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
@@ -1452,6 +1490,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         })()}
                       </div>
                     </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
                     {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
                       const gc=getGenCount(req)
                       const atLimit=!isSuperadmin&&gc>=MAX_GENS
@@ -1471,7 +1510,10 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         </button>
                       )
                     })()}
+                    {cardToggleBtn('spec-'+req.id)}
                   </div>
+                  </div>
+                  <div style={{overflow:'hidden',maxHeight:collapsedCards['spec-'+req.id]?0:'9999px',transition:'max-height 0.25s ease'}}>
 
                   {/* Refinement panel */}
                   {showRefine&&!isSuperadmin&&(()=>{
@@ -1679,12 +1721,12 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   <div style={{background:'rgba(200,149,42,0.06)',border:'1px solid rgba(200,149,42,0.2)',borderRadius:10,padding:'14px 16px'}}>
                     <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'#9A6A00',marginBottom:10}}>📋 Payment Terms</p>
                     {[
-                      {label:'Total project quote (excl. GST)', val:`$${q.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, style:{}},
+                      {label:'Total project quote (plus GST)', val:`$${q.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, style:{}},
                       ...(reviewCredit ? [{label:'Spec review fee — credited', val:`− $${reviewCredit.toFixed(2)} NZD`, style:{color:'var(--forest)'}}] : []),
-                      {label:'20% deposit (excl. GST)', val:`$${depositNet.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, style:{}},
+                      {label:'20% deposit (plus GST)', val:`$${depositNet.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, style:{}},
                       {label:'GST (15%)', val:`$${depositGstAmt.toFixed(2)} NZD`, style:{}},
                       {label:'Deposit due now (incl. GST)', val:`$${depositTotal.toFixed(2)} NZD`, style:{fontWeight:700,color:'#7A5200'}},
-                      {label:`80% balance (excl. GST) — due ${isMonthlyBilling(termsKey)?'20th of following month':'on completion'}`, val:`$${balanceExcl.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, style:{color:'var(--slate)'}},
+                      {label:`80% balance (plus GST) — due ${isMonthlyBilling(termsKey)?'20th of following month':'on completion'}`, val:`$${balanceExcl.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, style:{color:'var(--slate)'}},
                     ].map((r,i,arr)=>(
                       <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:i<arr.length-1?'1px solid rgba(200,149,42,0.12)':'none'}}>
                         <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',...r.style}}>{r.label}</span>
@@ -1697,6 +1739,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   </div>
                 )
               })()}
+                  </div>{/* end collapsible spec */}
 
               {/* Quote */}
               {req.quote&&(
@@ -1704,7 +1747,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   <label style={lbl}>Quote from BespoxAI</label>
                   <div style={{display:'flex',alignItems:'baseline',gap:6}}>
                     <span style={{fontFamily:'var(--font-display)',fontSize:30,fontWeight:500,color:'var(--forest)',lineHeight:1}}>${parseFloat(req.quote).toLocaleString()}</span>
-                    <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--slate)'}}>NZD excl. GST</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--slate)'}}>NZD plus GST</span>
                   </div>
                   {req.consultantNote&&<div style={{fontFamily:'var(--font-body)',fontSize:12,lineHeight:1.7,marginTop:10}}>{renderMdLight(req.consultantNote)}</div>}
                   {req.quoteApprovedAt&&<p style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--jade)',marginTop:8,letterSpacing:'0.08em'}}>✓ Accepted {new Date(req.quoteApprovedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</p>}
@@ -1748,7 +1791,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         ?'A senior developer will review this specification before a quote is issued.'
                         :req.reviewIncluded
                           ?'Covered by your plan. A senior developer will review this specification before a quote is issued.'
-                          :'$249 NZD (excl. GST) review fee paid. This will be credited against development costs. A senior developer will review before a quote is issued.'}
+                          :'$249 NZD (plus GST) review fee paid. This will be credited against development costs. A senior developer will review before a quote is issued.'}
                     </p>
                   </div>
                 </div>
@@ -1780,7 +1823,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   ) : spec ? (
                     <div style={{display:'flex',flexDirection:'column',gap:10,flex:'0 0 auto'}}>
                       <div style={{background:'rgba(10,92,70,0.04)',border:'1px solid rgba(10,92,70,0.15)',borderRadius:8,padding:'12px 14px'}}>
-                        <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--forest)',marginBottom:5}}>Senior Developer Review — {reviewAllowance&&reviewAllowance.remaining>0?'Included with your plan':'$249 NZD excl. GST'}</p>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--forest)',marginBottom:5}}>Senior Developer Review — {reviewAllowance&&reviewAllowance.remaining>0?'Included with your plan':'$249 NZD plus GST'}</p>
                         <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6,margin:0}}>
                           {'Every specification is reviewed by a senior ' + erpLabel + ' developer before a quote is issued.'}
                           {reviewAllowance&&reviewAllowance.remaining>0
@@ -1793,7 +1836,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                           {reviewLoading?'Processing…':reviewAllowance&&reviewAllowance.remaining>0?'Submit for Senior Review (included) →':'Submit for Senior Review — $249 + GST →'}
                         </button>
                         {(!reviewAllowance||reviewAllowance.remaining===0)&&(
-                          <p style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',marginTop:4}}>$249.00 excl. GST · 15% GST ($37.35) added at checkout · credited against development deposit</p>
+                          <p style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--slate)',marginTop:4}}>$249.00 plus GST · 15% GST ($37.35) added at checkout · credited against development deposit</p>
                         )}
                         <button onClick={()=>deleteReq(req.id)} style={{...sBTN,color:'#A32D2D'}}>Delete Draft</button>
                       </div>
@@ -2169,7 +2212,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     <p style={{fontFamily:'var(--font-body)',fontSize:11,color:'var(--slate)',marginBottom:12,lineHeight:1.5,fontStyle:'italic'}}>Customer reason: "{req.quoteRejectionReason}"</p>
                   )}
                   <div style={{marginBottom:10}}>
-                    <div style={{...lbl,marginBottom:5}}>Amount (NZD excl. GST)</div>
+                    <div style={{...lbl,marginBottom:5}}>Amount (NZD plus GST)</div>
                     <input type="number" placeholder="e.g. 2500" value={quoteAmt} onChange={e=>setQA(e.target.value)} style={iSt} onFocus={fo} onBlur={bl}/>
                   </div>
                   <div style={{...lbl,marginBottom:5}}>Note to customer (optional)</div>
@@ -2230,15 +2273,15 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Amount summary */}
               <div style={{background:accentBg,border:`1px solid ${accentBdr}`,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
                 {(isDeposit ? [
-                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Total project quote (plus GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   ...(reviewCredit ? [{label:'Spec review fee — credited', amt:`− $249.00 NZD`, bold:false, credit:true}] : []),
-                  {label:'20% deposit (excl. GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'20% deposit (plus GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   {label:'Total deposit incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true, credit:false},
                 ] : [
-                  {label:'Total project quote (excl. GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Total project quote (plus GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   {label:'Deposit paid', amt:`$${parseFloat(req.depositAmount??'0').toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
-                  {label:'Balance (excl. GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
+                  {label:'Balance (plus GST)', amt:`$${baseAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   {label:'Total balance incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true, credit:false},
                 ]).map((r,i,arr)=>(
@@ -2267,7 +2310,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'#A32D2D',marginBottom:8,fontWeight:600}}>⚠ Important — Please Read</p>
                     <ul style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',lineHeight:1.75,paddingLeft:16,margin:0}}>
                       <li>By proceeding, you accept full liability for the <strong>20% deposit ({reviewCredit ? `$${Math.max(0,quote*0.2-249).toLocaleString('en-NZ',{minimumFractionDigits:2})}` : `$${(quote*0.2).toLocaleString('en-NZ',{minimumFractionDigits:2})}`} NZD)</strong> even if you cancel before work is complete.</li>
-                      <li style={{marginTop:6}}>If you cancel <strong>after 24 hours</strong> from acceptance, you are liable for the <strong>full development cost (${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD excl. GST)</strong>.</li>
+                      <li style={{marginTop:6}}>If you cancel <strong>after 24 hours</strong> from acceptance, you are liable for the <strong>full development cost (${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD plus GST)</strong>.</li>
                       <li style={{marginTop:6}}>An invoice will be issued for the balance due on the 20th of the following month.</li>
                     </ul>
                   </div>

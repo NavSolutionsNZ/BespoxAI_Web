@@ -248,7 +248,7 @@ export async function notifyAdminsDepositPaid(params: {
         <p>Hi ${admin.name ?? 'there'},</p>
         <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has paid the deposit for:</p>
         ${reqBlock(params.title, params.tenantName)}
-        <p><strong>Deposit amount:</strong> $${params.depositAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })} NZD (excl. GST)</p>
+        <p><strong>Deposit amount:</strong> $${params.depositAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })} NZD (plus GST)</p>
         <p>You can now start development when ready.</p>
         ${cta('View in admin', `${PORTAL}/admin`)}
       `),
@@ -302,7 +302,7 @@ export async function notifyCustomerQuoted(params: {
       <div style="background:#fff;border-left:3px solid #C8952A;padding:12px 20px;margin:16px 0;border-radius:0 6px 6px 0">
         <p style="margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.06em">Quote amount</p>
         <p style="margin:4px 0 0;font-size:28px;font-weight:700;color:#0A5C46">$${params.quoteAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })}</p>
-        <p style="margin:4px 0 0;font-size:12px;color:#888">NZD excl. GST</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#888">NZD plus GST</p>
       </div>
       ${noteBlock}
       <p>Log in to your portal to review the quote and confirm you'd like to proceed. A 20% deposit will be required to start development.</p>
@@ -330,6 +330,25 @@ export async function notifyCustomerInDevelopment(params: {
   }).catch(e => console.error('[notify] customer in dev:', e))
 }
 
+export async function notifyCustomerReadyForUAT(params: {
+  customerEmail: string
+  customerName:  string
+  title:         string
+  tenantName:    string
+}) {
+  await sendEmail({
+    to:      params.customerEmail,
+    subject: `Ready for testing — ${params.title}`,
+    html: wrap(`
+      <p>Hi ${params.customerName || 'there'},</p>
+      <p>Your customisation has been deployed to the test environment and is ready for your review:</p>
+      ${reqBlock(params.title, params.tenantName)}
+      <p>Please test thoroughly in your test environment and sign off when you're satisfied, or let us know if anything needs adjustment.</p>
+      ${cta('Review & sign off', PORTAL)}
+    `),
+  }).catch(e => console.error('[notify] customer ready for UAT:', e))
+}
+
 export async function notifyCustomerBalanceDue(params: {
   customerEmail:  string
   customerName:   string
@@ -347,7 +366,7 @@ export async function notifyCustomerBalanceDue(params: {
       <div style="background:#fff;border-left:3px solid #C8952A;padding:12px 20px;margin:16px 0;border-radius:0 6px 6px 0">
         <p style="margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.06em">Balance due</p>
         <p style="margin:4px 0 0;font-size:28px;font-weight:700;color:#0A5C46">$${params.balanceAmount.toLocaleString('en-NZ', { minimumFractionDigits: 2 })}</p>
-        <p style="margin:4px 0 0;font-size:12px;color:#888">NZD excl. GST</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#888">NZD plus GST</p>
       </div>
       <p>Log in to your portal to complete payment and arrange production deployment.</p>
       ${cta('Pay balance', PORTAL)}

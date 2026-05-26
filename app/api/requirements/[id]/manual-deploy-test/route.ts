@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
+import { notifyCustomerReadyForUAT } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,8 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:  { id: params.id },
-    select: { id: true, status: true, deploymentNotes: true },
+    select: { id: true, title: true, status: true, deploymentNotes: true,
+              user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
   })
   if (!requirement)
     return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
@@ -53,6 +55,13 @@ export async function POST(
       uatRejectionAnalysis: null,
     },
   })
+
+  notifyCustomerReadyForUAT({
+    customerEmail: requirement.user.email,
+    customerName:  requirement.user.name ?? '',
+    title:         requirement.title,
+    tenantName:    requirement.tenant?.name ?? '',
+  }).catch(e => console.error('[manual-deploy-test] notify UAT:', e))
 
   return NextResponse.json({ success: true, deployedAt: now.toISOString() })
 }

@@ -52,7 +52,7 @@ export function UpgradePrompt({ reason, trialEndsAt }: Props) {
             <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 14px' }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#F4EFE4' }}>{p.name}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(200,149,42,0.8)' }}>✦ {p.tokens}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8a9a8e' }}>{p.price} excl. GST</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8a9a8e' }}>{p.price} plus GST</span>
             </div>
           ))}
         </div>
