@@ -43,6 +43,9 @@ export interface Requirement {
   feasibilityCostRange: string | null; feasibilityCheckedAt: string | null
   reviewPaidAt: string | null; reviewStripeSessionId: string | null
   reviewBypassed: boolean; reviewIncluded: boolean; reviewSubmittedAt: string | null
+  // Pipeline transition timestamps
+  submittedAt: string | null; inReviewAt: string | null; quotedAt: string | null
+  depositRequiredAt: string | null; inDevelopmentAt: string | null; completePendingPaymentAt: string | null
   // Deployment & UAT
   testDeployedAt: string | null; testDeploySnapshotId: string | null
   uatApprovedAt: string | null; uatApprovedById: string | null
@@ -191,7 +194,7 @@ function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
   return (
     <button
       onClick={onToggle}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', lineHeight: 1, fontSize: 14, display: 'flex', alignItems: 'center' }}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--slate)', lineHeight: 1, fontSize: 14, display: 'flex', alignItems: 'center' }}
       title={collapsed ? 'Expand' : 'Collapse'}
     >
       {collapsed ? '▾' : '▴'}
@@ -244,7 +247,6 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   const [actLoading, setAL]       = useState(false)
   const [showQF, setShowQF]       = useState(false)
-  // Collapsible cards — key is cardId, value true = collapsed
   const [collapsedCards, setCollapsed] = useState<Record<string,boolean>>({})
   function toggleCard(id: string) { setCollapsed(prev => ({ ...prev, [id]: !prev[id] })) }
   // Addendum — full page flow (same as create, linked to parent)
@@ -1350,10 +1352,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 <div style={{background:'var(--white)',border:'1px solid var(--fog)',borderRadius:10,padding:'18px 20px'}}>
                   <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <span>BespoxAI Feasibility Check</span>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
-                    </div>
+                    {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
                   </div>
+
                   {feasLoadingId===req.id&&(
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
                       <div style={{width:14,height:14,borderRadius:'50%',border:'2px solid var(--forest)',borderTopColor:'transparent',animation:'spin 0.8s linear infinite',flexShrink:0}}/>
