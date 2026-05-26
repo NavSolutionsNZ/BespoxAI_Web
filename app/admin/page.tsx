@@ -1764,6 +1764,18 @@ function DeployToProductionPanel({ selected, onSentApproval, onDeployed, onManua
 
 // ─── Admin Requirements Tab ────────────────────────────────────────────────────
 
+function AdminCardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }}
+      title={collapsed ? 'Expand' : 'Collapse'}
+    >
+      {collapsed ? '▾' : '▴'}
+    </button>
+  )
+}
+
 function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelectReqId?: string|null; onAutoSelectDone?: () => void }) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -1773,18 +1785,6 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   const [reqs, setReqs]           = useState<AdminReq[]>([])
   const [collapsedAdminCards, setCollapsedAdmin] = useState<Record<string,boolean>>({})
   function toggleAdminCard(id: string) { setCollapsedAdmin(prev => ({ ...prev, [id]: !prev[id] })) }
-  function adminCardToggle(id: string) {
-    const col = !!collapsedAdminCards[id]
-    return (
-      <button
-        onClick={() => toggleAdminCard(id)}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }}
-        title={col ? 'Expand' : 'Collapse'}
-      >
-        {col ? '▾' : '▴'}
-      </button>
-    )
-  }
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
   const [selected, setSelected]   = useState<AdminReq | null>(null)
@@ -2538,7 +2538,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>
                       Consultant Q&amp;A Log ({log.length} round{log.length !== 1 ? 's' : ''})
                     </p>
-                    {adminCardToggle('qa-'+selected.id)}
+                    <AdminCardToggleBtn collapsed={!!collapsedAdminCards['qa-'+selected.id]} onToggle={()=>toggleAdminCard('qa-'+selected.id)} />
                   </div>
                   <div style={{ overflow: 'hidden', maxHeight: collapsedAdminCards['qa-'+selected.id] ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -2567,7 +2567,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
             <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '12px 14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedAdminCards['desc-'+selected.id] ? 0 : 8 }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', margin: 0 }}>Description</p>
-                {adminCardToggle('desc-'+selected.id)}
+                <AdminCardToggleBtn collapsed={!!collapsedAdminCards['desc-'+selected.id]} onToggle={()=>toggleAdminCard('desc-'+selected.id)} />
               </div>
               <div style={{ overflow: 'hidden', maxHeight: collapsedAdminCards['desc-'+selected.id] ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{selected.description}</p>
@@ -2602,7 +2602,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jade)', fontSize: 10 }}>{genSpec ? '…' : '↺ Regen'}</button>
-                    {adminCardToggle('spec-'+selected.id)}
+                    <AdminCardToggleBtn collapsed={!!collapsedAdminCards['spec-'+selected.id]} onToggle={()=>toggleAdminCard('spec-'+selected.id)} />
                   </div>
                 </div>
                 <div style={{ overflow: 'hidden', maxHeight: collapsedAdminCards['spec-'+selected.id] ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>

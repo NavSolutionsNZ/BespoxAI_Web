@@ -187,6 +187,18 @@ function renderMdLight(text: string): React.ReactNode {
   })
 }
 
+function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', lineHeight: 1, fontSize: 14, display: 'flex', alignItems: 'center' }}
+      title={collapsed ? 'Expand' : 'Collapse'}
+    >
+      {collapsed ? '▾' : '▴'}
+    </button>
+  )
+}
+
 export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const router = useRouter()
@@ -235,18 +247,6 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   // Collapsible cards — key is cardId, value true = collapsed
   const [collapsedCards, setCollapsed] = useState<Record<string,boolean>>({})
   function toggleCard(id: string) { setCollapsed(prev => ({ ...prev, [id]: !prev[id] })) }
-  function cardToggleBtn(id: string) {
-    const col = !!collapsedCards[id]
-    return (
-      <button
-        onClick={() => toggleCard(id)}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', lineHeight: 1, fontSize: 14, display: 'flex', alignItems: 'center' }}
-        title={col ? 'Expand' : 'Collapse'}
-      >
-        {col ? '▾' : '▴'}
-      </button>
-    )
-  }
   // Addendum — full page flow (same as create, linked to parent)
   const [showAddendum, setShowAddendum]         = useState(false)
   const [addendumParentId, setAddendumParentId] = useState<string|null>(null)
@@ -1339,7 +1339,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     <span>BespoxAI Feasibility Check</span>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
-                      {cardToggleBtn('feas-'+req.id)}
+                      <CardToggleBtn collapsed={!!collapsedCards['feas-'+req.id]} onToggle={()=>toggleCard('feas-'+req.id)} />
                     </div>
                   </div>
                   <div style={{overflow:'hidden',maxHeight:collapsedCards['feas-'+req.id]?0:'2000px',transition:'max-height 0.25s ease'}}>
@@ -1510,7 +1510,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         </button>
                       )
                     })()}
-                    {cardToggleBtn('spec-'+req.id)}
+                    <CardToggleBtn collapsed={!!collapsedCards['spec-'+req.id]} onToggle={()=>toggleCard('spec-'+req.id)} />
                   </div>
                   </div>
                   <div style={{overflow:'hidden',maxHeight:collapsedCards['spec-'+req.id]?0:'9999px',transition:'max-height 0.25s ease'}}>
