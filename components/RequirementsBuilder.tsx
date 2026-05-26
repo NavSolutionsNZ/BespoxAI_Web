@@ -1200,6 +1200,19 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             const sc    = STATUS_COLOR[req.status]??STATUS_COLOR.draft
             const spec  = parseSpec(req)
             const si    = STATUS_PIPELINE.findIndex(s=>s.key===req.status)
+            const pipelineDateMap: Record<string,string|null|undefined> = {
+              draft:                    req.createdAt,
+              submitted:                req.submittedAt,
+              in_review:                req.inReviewAt,
+              quoted:                   req.quotedAt,
+              deposit_required:         req.depositRequiredAt,
+              deposit_paid:             req.depositPaidAt,
+              in_development:           req.inDevelopmentAt,
+              in_uat:                   req.testDeployedAt,
+              uat_confirmed:            req.uatApprovedAt,
+              complete_pending_payment: req.completePendingPaymentAt,
+              fully_paid:               req.balancePaidAt,
+            }
             const needsClarif = req.status==='needs_clarification'
             const quoteRej    = req.status==='quote_rejected'
 
@@ -1408,38 +1421,23 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 <div style={crd}>
                   <label style={lbl}>Progress</label>
                   <div style={{display:'flex',alignItems:'center',marginTop:6}}>
-                    {(()=>{
-                      const pipelineDateMap: Record<string,string|null|undefined> = {
-                        draft:                    req.createdAt,
-                        submitted:                req.submittedAt,
-                        in_review:                req.inReviewAt,
-                        quoted:                   req.quotedAt,
-                        deposit_required:         req.depositRequiredAt,
-                        deposit_paid:             req.depositPaidAt,
-                        in_development:           req.inDevelopmentAt,
-                        in_uat:                   req.testDeployedAt,
-                        uat_confirmed:            req.uatApprovedAt,
-                        complete_pending_payment: req.completePendingPaymentAt,
-                        fully_paid:               req.balancePaidAt,
-                      }
-                      return STATUS_PIPELINE.map((s,i)=>{
-                        const done=i<si,cur=i===si
-                        const dateStr = pipelineDateMap[s.key]
-                        const fmt = dateStr ? new Date(dateStr).toLocaleDateString('en-NZ',{day:'2-digit',month:'short'}) : null
-                        return (
-                          <div key={s.key} style={{display:'flex',alignItems:'center',flex:i<STATUS_PIPELINE.length-1?1:'none'}}>
-                            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
-                              <div style={{width:18,height:18,borderRadius:'50%',background:done?'var(--jade)':cur?'var(--forest)':'var(--fog)',boxShadow:cur?'0 0 0 3px rgba(10,92,70,0.15)':'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                {done&&<span style={{color:'white',fontSize:9}}>✓</span>}
-                              </div>
-                              <span style={{fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.07em',textTransform:'uppercase',color:cur?'var(--forest)':done?'var(--jade)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap'}}>{s.label}</span>
-                              {fmt ? <span style={{fontFamily:'var(--font-mono)',fontSize:6,color:done?'var(--jade)':cur?'var(--forest)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap',letterSpacing:'0.04em'}}>{fmt}</span> : <span style={{fontSize:6}}>&nbsp;</span>}
+                    {STATUS_PIPELINE.map((s,i)=>{
+                      const done=i<si,cur=i===si
+                      const dateStr = pipelineDateMap[s.key]
+                      const fmt = dateStr ? new Date(dateStr).toLocaleDateString('en-NZ',{day:'2-digit',month:'short'}) : null
+                      return (
+                        <div key={s.key} style={{display:'flex',alignItems:'center',flex:i<STATUS_PIPELINE.length-1?1:'none'}}>
+                          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+                            <div style={{width:18,height:18,borderRadius:'50%',background:done?'var(--jade)':cur?'var(--forest)':'var(--fog)',boxShadow:cur?'0 0 0 3px rgba(10,92,70,0.15)':'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                              {done ? <span style={{color:'white',fontSize:9}}>✓</span> : null}
                             </div>
-                            {i<STATUS_PIPELINE.length-1&&<div style={{flex:1,height:2,background:done?'var(--jade)':'var(--fog)',margin:'0 2px',marginBottom:26}}/>}
+                            <span style={{fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.07em',textTransform:'uppercase',color:cur?'var(--forest)':done?'var(--jade)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap'}}>{s.label}</span>
+                            {fmt ? <span style={{fontFamily:'var(--font-mono)',fontSize:6,color:done?'var(--jade)':cur?'var(--forest)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap',letterSpacing:'0.04em'}}>{fmt}</span> : <span style={{fontSize:6}}>&nbsp;</span>}
                           </div>
-                        )
-                      })
-                    })()}
+                          {i<STATUS_PIPELINE.length-1 ? <div style={{flex:1,height:2,background:done?'var(--jade)':'var(--fog)',margin:'0 2px',marginBottom:26}}/> : null}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
