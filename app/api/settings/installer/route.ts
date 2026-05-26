@@ -175,7 +175,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${tenant.testBcInstance || ''}',`)
     .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${tenant.testBcCompany || ''}',`)
     .replace('[int]    $TestNavManagementPort  = 7045',       `[int]    $TestNavManagementPort  = ${(tenant as any).testNavManagementPort || 7045}`)
-    .replace("[string] $SupportAccountPassword = '',",        `[string] $SupportAccountPassword = '${rdpPassword}',`)
+    .replace("[string] $SupportAccountPassword = ''",         `[string] $SupportAccountPassword = '${rdpPassword}'`)
 
   // Base64 + BAT wrapper (same pattern as admin installer)
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')
