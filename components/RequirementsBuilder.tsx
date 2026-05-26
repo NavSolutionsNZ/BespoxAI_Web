@@ -1348,15 +1348,12 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Feasibility check result */}
               {(feasLoadingId===req.id||req.feasibility)&&(
                 <div style={{background:'var(--white)',border:'1px solid var(--fog)',borderRadius:10,padding:'18px 20px'}}>
-                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:collapsedCards['feas-'+req.id]?0:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <span>BespoxAI Feasibility Check</span>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
-                      <CardToggleBtn collapsed={!!collapsedCards['feas-'+req.id]} onToggle={()=>toggleCard('feas-'+req.id)} />
                     </div>
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['feas-'+req.id]?0:'2000px',transition:'max-height 0.25s ease'}}>
-
                   {feasLoadingId===req.id&&(
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
                       <div style={{width:14,height:14,borderRadius:'50%',border:'2px solid var(--forest)',borderTopColor:'transparent',animation:'spin 0.8s linear infinite',flexShrink:0}}/>
@@ -1465,7 +1462,6 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     )}
                   </div>
                 )}
-                  </div>{/* end collapsible feasibility */}
               </div>
 
               {/* AI Spec */}
