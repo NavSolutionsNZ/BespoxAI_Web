@@ -1,12 +1,18 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** May 26, 2026 (Session 7)
+**Last Updated:** May 26, 2026 (Session 8)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 8 — RDP Bug Fixes (v3.2)**
+- [x] SupportAccountPassword inject fix — trailing comma mismatch in route.ts .replace() caused Step 8 to silently skip
+- [x] agent.config.json version field was hardcoded '2.4' — now uses $AgentVersion dynamically
+- [x] BCAgent bumped to v3.2 (PS1 x2 + installer/route.ts)
+- [x] RDP end-to-end tested and confirmed working on TestCo1
 
 **Session 7 — UAT Status Pipeline**
 - [x] deploy-test → status: 'in_uat' on success
@@ -28,7 +34,7 @@
 - [x] Back button: Settings tabs + Dashboard nav use router.push (history entries)
 - [x] Settings always has ?tab= in URL
 - [x] Preferred name site-wide: auth JWT, session, sidebars, CFO assistant, notifications
-- [x] Installer download filename includes version (Install-BespoxAI-v3.1.zip)
+- [x] Installer download filename includes version (Install-BespoxAI-v3.2.zip)
 - [x] --white CSS variable → true #ffffff
 - [x] Settings overview: Production/Test Environment Details cards (consistent grid layout)
 - [x] Settings overview: removed System Configuration card, Agent URL, Status, Member Since
@@ -131,7 +137,7 @@ Requires custom web service in BC (ties into #10). Deferred.
 14. **BATCH DEPLOY RULE:** Do NOT push changes without explicit confirmation from Rich
 15. **DIAGNOSE BEFORE ARCHITECTING:** Always ask for logs/errors before proposing solutions (use Vercel MCP for build errors)
 16. **DISCUSS SIGNIFICANT CHANGES** before implementing
-17. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts
+17. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts — THREE values, all must match
 
 ### SWC/JSX Rules (critical)
 - Use `cond ? <JSX/> : null` NOT `cond && <JSX/>` in large function returns

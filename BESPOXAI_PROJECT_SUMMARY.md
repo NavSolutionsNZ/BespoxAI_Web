@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** May 26, 2026 (Session 7)
+**Last Updated:** May 26, 2026 (Session 8)
 
 ---
 
@@ -47,6 +47,35 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
+## Session 8 Key Changes (May 26, 2026)
+
+### RDP End-to-End Test — Confirmed Working (TestCo1)
+- RDP via Cloudflare tunnel fully tested and working on TestCo1
+- Local machine requires: `cloudflared.exe` from https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+- Connect command: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
+- Then RDP to `localhost:3390` with username `.\BespoxAI-Support` and password from Admin panel copy button
+
+### Bug Fix: SupportAccountPassword Inject (Step 8 was silently skipped)
+- **Root cause:** route.ts `.replace()` searched for `[string] $SupportAccountPassword = '',` (with trailing comma) but PS1 has no trailing comma on last param — replace never matched, password stayed empty, Step 8 skipped with "Skipped — no support account password provided"
+- **Fix:** Removed trailing comma from both sides of the `.replace()` in `app/api/settings/installer/route.ts`
+
+### Bug Fix: agent.config.json version hardcoded as '2.4'
+- **Root cause:** Step 5 of installer had `version = '2.4'` hardcoded — never updated across versions
+- **Fix:** Changed to `version = $AgentVersion` — now always reflects current installer version dynamically
+
+### BCAgent Version Bump → 3.2
+- `$AgentVersion` and `$Version` in `Install-BespoxAI.ps1` → `'3.2'`
+- `AGENT_VERSION` in `app/api/settings/installer/route.ts` → `'3.2'`
+
+### RDP Cleanup Script (for post-testing removal of BespoxAI-Support)
+```powershell
+net user BespoxAI-Support /delete
+net user BespoxAI-Support  # verify gone
+```
+RDP setting and firewall rule can be left — do not disable RDP as it locks out other admin access.
+
+---
+
 ## Session 7 Key Changes (May 26, 2026)
 
 ### UAT Status Pipeline
@@ -65,7 +94,6 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 - Admin tenants table: `[RDP — Tenant Name]` button + `[⧉]` copy password button
 - Schema: `rdpPassword String?` added to Tenant
 - SQL applied: `ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;`
-- To connect: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390` (cloudflared must be installed on Rich's machine — one-time setup)
 
 ### Back Button Fixes
 - Settings tabs: `router.push('/settings?tab=x')` instead of `setTab()` — history entries created
@@ -82,7 +110,7 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 - **Users must log out and back in** for token to pick up new fields
 
 ### Installer Filename
-- Download button now triggers `Install-BespoxAI-v3.1.zip` (was `BespoxAI-Installer.zip`)
+- Download button now triggers `Install-BespoxAI-v3.2.zip` (versioned filename)
 - Fixed in `app/settings/page.tsx` — `download` attribute was hardcoded
 
 ### White Backgrounds
@@ -97,12 +125,8 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 - Test env shows all fields with `—` for blanks
 - "Leave blank" instruction removed from test env overview (it's read-only)
 
-### BCAgent Version
-- **Current version: 3.1**
-- Two places to bump: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts
-
 ### Vercel MCP
-- Connected this session — Claude can now pull deployment logs directly via Vercel MCP
+- Connected Session 7 — Claude can now pull deployment logs directly via Vercel MCP
 - Team ID: `team_eZ4MqWjZdsPA2iWoK4exjjPF`
 - Project ID: `prj_AT4GXatATIi2FaUCS62Ttp2AivRo`
 
@@ -146,7 +170,7 @@ const [val, setVal] = useState('')
 
 ---
 
-## BCAgent v3.1 — Architecture
+## BCAgent v3.2 — Architecture
 
 ```
 Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
@@ -156,8 +180,13 @@ Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
 
 RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
   → localhost:3389 (Windows RDP)
-  → BespoxAI-Support account (local admin, RDP enabled by installer)
+  → BespoxAI-Support account (local admin, RDP enabled by installer Step 8)
 ```
+
+### RDP Connection (Rich's local machine)
+1. Download cloudflared: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+2. Run: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
+3. RDP to `localhost:3390` — username `.\BespoxAI-Support`, password from Admin panel
 
 ### Known NAV v14 OData Limitations
 - `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice
@@ -182,7 +211,7 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
 3. Superadmin activates from Admin → Signups
 4. Customer receives temp credentials + welcome email with password change warning
 5. Login → onboarding Step 0 (set permanent password) → Step 1-5 (name, product, connection)
-6. Settings → BC Installer → Download (auto-creates tunnel first time, generates rdpPassword)
+6. Settings → BC Installer → Download (auto-creates tunnel first time, generates rdpPassword on first download only)
 7. Run installer on Windows server as Administrator (port 9099) — no uninstall needed for reinstall
 
 ---

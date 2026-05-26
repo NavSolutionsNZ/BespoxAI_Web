@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated:** May 26, 2026 (Session 7)
+**Last Updated: May 26, 2026 (Session 8))
 
 ---
 
@@ -9,7 +9,7 @@
 - Live product at bespoxai.com is a full **Next.js application**
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
-- BCAgent v3.1 — PowerShell HttpListener service, full deployment workflow
+- BCAgent v3.2 — PowerShell HttpListener service, full deployment workflow
 - C/AL export uses **finsql.exe directly** (not Export-NAVApplicationObject — removed in BC14)
 - finsql found via wildcard path search (BC14 paths first, then legacy NAV)
 - finsql writes ANSI/ASCII — read with Get-Content -Raw (not ReadAllBytes+Unicode decode)
@@ -115,7 +115,7 @@
 
 | File | Purpose |
 |------|---------|
-| `Install-BespoxAI.ps1` | BCAgent v3.1 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. |
+| `Install-BespoxAI.ps1` | BCAgent v3.2 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. |
 | `Uninstall-BespoxAI.ps1` | Full cleanup. |
 | `Uninstall-BespoxAI.bat` | Right-click Run as Administrator shim. |
 
@@ -172,11 +172,12 @@ complete_pending_payment | fully_paid | rejected
 
 ---
 
-## BCAgent v3.1 — Critical Implementation Notes
+## BCAgent v3.2 — Critical Implementation Notes
 
-### Version — TWO places, bump every push
-1. `$AgentVersion = '3.1'` and `$Version = '3.1'` in `Install-BespoxAI.ps1`
-2. `const AGENT_VERSION = '3.1'` in `app/api/settings/installer/route.ts`
+### Version — THREE values, all must match, bump every push
+1. `$AgentVersion = '3.2'` in `Install-BespoxAI.ps1`
+2. `$Version = '3.2'` in `Install-BespoxAI.ps1`
+3. `const AGENT_VERSION = '3.2'` in `app/api/settings/installer/route.ts`
 
 ### RDP Support (Step 8 of installer)
 - Creates `BespoxAI-Support` local account (or updates password if exists)
@@ -239,6 +240,6 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't push changes without explicit confirmation from Rich
 - ❌ Don't assume timeout on deploy errors — check Vercel MCP logs first
 - ❌ Don't implement significant architectural changes without discussion first
-- ❌ Don't bump version in only one place — always BOTH PS1 and installer/route.ts
+- ❌ Don't bump version in only one place — always ALL THREE: $AgentVersion + $Version in PS1 + AGENT_VERSION in installer/route.ts
 - ❌ Don't address users by full name — use preferredName ?? firstName only
 - ❌ Don't use router.replace for tab navigation — use router.push for history
