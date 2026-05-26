@@ -190,18 +190,6 @@ function renderMdLight(text: string): React.ReactNode {
   })
 }
 
-function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: 'var(--slate)', lineHeight: 1, fontSize: 14, display: 'flex', alignItems: 'center' }}
-      title={collapsed ? 'Expand' : 'Collapse'}
-    >
-      {collapsed ? '▾' : '▴'}
-    </button>
-  )
-}
-
 export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const router = useRouter()
@@ -247,8 +235,6 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   const [actLoading, setAL]       = useState(false)
   const [showQF, setShowQF]       = useState(false)
-  const [collapsedCards, setCollapsed] = useState<Record<string,boolean>>({})
-  function toggleCard(id: string) { setCollapsed(prev => ({ ...prev, [id]: !prev[id] })) }
   // Addendum — full page flow (same as create, linked to parent)
   const [showAddendum, setShowAddendum]         = useState(false)
   const [addendumParentId, setAddendumParentId] = useState<string|null>(null)
@@ -1421,18 +1407,18 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   <div style={{display:'flex',alignItems:'center',marginTop:6}}>
                     {STATUS_PIPELINE.map((s,i)=>{
                       const done=i<si,cur=i===si
-                      const dateStr = pipelineDateMap[s.key]
-                      const fmt = dateStr ? new Date(dateStr).toLocaleDateString('en-NZ',{day:'2-digit',month:'short'}) : null
+                      const pds = pipelineDateMap[s.key]
+                      const pdfmt = pds ? new Date(pds).toLocaleDateString('en-NZ',{day:'2-digit',month:'short'}) : null
                       return (
                         <div key={s.key} style={{display:'flex',alignItems:'center',flex:i<STATUS_PIPELINE.length-1?1:'none'}}>
                           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
                             <div style={{width:18,height:18,borderRadius:'50%',background:done?'var(--jade)':cur?'var(--forest)':'var(--fog)',boxShadow:cur?'0 0 0 3px rgba(10,92,70,0.15)':'none',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                              {done ? <span style={{color:'white',fontSize:9}}>✓</span> : null}
+                              {done&&<span style={{color:'white',fontSize:9}}>✓</span>}
                             </div>
                             <span style={{fontFamily:'var(--font-mono)',fontSize:7,letterSpacing:'0.07em',textTransform:'uppercase',color:cur?'var(--forest)':done?'var(--jade)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap'}}>{s.label}</span>
-                            {fmt ? <span style={{fontFamily:'var(--font-mono)',fontSize:6,color:done?'var(--jade)':cur?'var(--forest)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap',letterSpacing:'0.04em'}}>{fmt}</span> : <span style={{fontSize:6}}>&nbsp;</span>}
+                            {pdfmt&&<span style={{fontFamily:'var(--font-mono)',fontSize:6,color:done?'var(--jade)':cur?'var(--forest)':'var(--slate)',textAlign:'center',whiteSpace:'nowrap',letterSpacing:'0.04em'}}>{pdfmt}</span>}
                           </div>
-                          {i<STATUS_PIPELINE.length-1 ? <div style={{flex:1,height:2,background:done?'var(--jade)':'var(--fog)',margin:'0 2px',marginBottom:26}}/> : null}
+                          {i<STATUS_PIPELINE.length-1&&<div style={{flex:1,height:2,background:done?'var(--jade)':'var(--fog)',margin:'0 2px',marginBottom:pdfmt?26:18}}/>}
                         </div>
                       )
                     })}
@@ -1468,7 +1454,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* AI Spec */}
               {spec?(
                 <div style={{...crd,padding:'18px 20px'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:collapsedCards['spec-'+req.id]?0:16}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
                     <div>
                       <label style={lbl}>AI-Generated Functional Spec</label>
                       <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
@@ -1485,30 +1471,26 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         })()}
                       </div>
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
-                        const gc=getGenCount(req)
-                        const atLimit=!isSuperadmin&&gc>=MAX_GENS
-                        return atLimit ? (
-                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',letterSpacing:'0.08em'}}>✕ limit reached — submit or contact BespoxAI</span>
-                        ) : (
-                          <button
-                            onClick={()=>{
-                              setShowRefine(true)
-                              setEditedUS(spec.userStory ?? '')
-                              setEditedCrit([...(spec.acceptanceCriteria ?? [])])
-                            }}
-                            disabled={genSpec}
-                            style={{...sBTN,fontSize:11}}
-                          >
-                            ✏ Refine &amp; Regenerate
-                          </button>
-                        )
-                      })()}
-                      <CardToggleBtn collapsed={!!collapsedCards['spec-'+req.id]} onToggle={()=>toggleCard('spec-'+req.id)} />
-                    </div>
+                    {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
+                      const gc=getGenCount(req)
+                      const atLimit=!isSuperadmin&&gc>=MAX_GENS
+                      return atLimit ? (
+                        <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',letterSpacing:'0.08em'}}>✕ limit reached — submit or contact BespoxAI</span>
+                      ) : (
+                        <button
+                          onClick={()=>{
+                            setShowRefine(true)
+                            setEditedUS(spec.userStory ?? '')
+                            setEditedCrit([...(spec.acceptanceCriteria ?? [])])
+                          }}
+                          disabled={genSpec}
+                          style={{...sBTN,fontSize:11}}
+                        >
+                          ✏ Refine &amp; Regenerate
+                        </button>
+                      )
+                    })()}
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['spec-'+req.id]?0:'9999px',transition:'max-height 0.25s ease'}}>
 
                   {/* Refinement panel */}
                   {showRefine&&!isSuperadmin&&(()=>{
@@ -1734,7 +1716,6 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   </div>
                 )
               })()}
-                  </div>{/* end collapsible spec */}
 
               {/* Quote */}
               {req.quote&&(
