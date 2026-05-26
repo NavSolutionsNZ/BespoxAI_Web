@@ -1485,27 +1485,27 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       </div>
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
-                      const gc=getGenCount(req)
-                      const atLimit=!isSuperadmin&&gc>=MAX_GENS
-                      return atLimit ? (
-                        <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',letterSpacing:'0.08em'}}>✕ limit reached — submit or contact BespoxAI</span>
-                      ) : (
-                        <button
-                          onClick={()=>{
-                            setShowRefine(true)
-                            setEditedUS(spec.userStory ?? '')
-                            setEditedCrit([...(spec.acceptanceCriteria ?? [])])
-                          }}
-                          disabled={genSpec}
-                          style={{...sBTN,fontSize:11}}
-                        >
-                          ✏ Refine &amp; Regenerate
-                        </button>
-                      )
-                    })()}
-                    <CardToggleBtn collapsed={!!collapsedCards['spec-'+req.id]} onToggle={()=>toggleCard('spec-'+req.id)} />
-                  </div>
+                      {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
+                        const gc=getGenCount(req)
+                        const atLimit=!isSuperadmin&&gc>=MAX_GENS
+                        return atLimit ? (
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',letterSpacing:'0.08em'}}>✕ limit reached — submit or contact BespoxAI</span>
+                        ) : (
+                          <button
+                            onClick={()=>{
+                              setShowRefine(true)
+                              setEditedUS(spec.userStory ?? '')
+                              setEditedCrit([...(spec.acceptanceCriteria ?? [])])
+                            }}
+                            disabled={genSpec}
+                            style={{...sBTN,fontSize:11}}
+                          >
+                            ✏ Refine &amp; Regenerate
+                          </button>
+                        )
+                      })()}
+                      <CardToggleBtn collapsed={!!collapsedCards['spec-'+req.id]} onToggle={()=>toggleCard('spec-'+req.id)} />
+                    </div>
                   </div>
                   <div style={{overflow:'hidden',maxHeight:collapsedCards['spec-'+req.id]?0:'9999px',transition:'max-height 0.25s ease'}}>
 
