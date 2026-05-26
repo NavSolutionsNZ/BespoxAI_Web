@@ -1408,7 +1408,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 <div style={crd}>
                   <label style={lbl}>Progress</label>
                   <div style={{display:'flex',alignItems:'center',marginTop:6}}>
-      {{
+                    {(()=>{
                       const pipelineDateMap: Record<string,string|null|undefined> = {
                         draft:                    req.createdAt,
                         submitted:                req.submittedAt,
@@ -1439,7 +1439,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                           </div>
                         )
                       })
-                    }()}
+                    })()}
                   </div>
                 </div>
               )}
