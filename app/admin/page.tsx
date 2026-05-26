@@ -1280,8 +1280,10 @@ interface AdminReq {
   inReviewAt:               string | null
   quotedAt:                 string | null
   depositRequiredAt:        string | null
+  depositPaidAt:            string | null
   inDevelopmentAt:          string | null
   completePendingPaymentAt: string | null
+  balancePaidAt:            string | null
   assignedDeveloper:    { id: string; name: string | null; email: string } | null
   githubBranch:         string | null
   parentId:             string | null
@@ -1862,7 +1864,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       const data = await reqRes.json()
       if (!reqRes.ok) throw new Error(data.error)
       // Merge addenda into flat list so they appear in requirements tab and get action buttons
-      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, inDevelopmentAt: null, completePendingPaymentAt: null }))
+      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, depositPaidAt: null, inDevelopmentAt: null, completePendingPaymentAt: null, balancePaidAt: null }))
       setReqs([...data.requirements, ...addenda])
       if (usersRes.ok) {
         const ud = await usersRes.json()
@@ -2112,7 +2114,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       if (data.success) {
         // Refresh requirement to show testDeployedAt
         const reqRes = await fetch('/api/admin/requirements')
-        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, inDevelopmentAt: null, completePendingPaymentAt: null })); setReqs([...d.requirements, ...add2]) }
+        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, depositPaidAt: null, inDevelopmentAt: null, completePendingPaymentAt: null, balancePaidAt: null })); setReqs([...d.requirements, ...add2]) }
       } else {
         setDeployErr('Some objects failed — check results below')
       }
@@ -2783,7 +2785,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                 onDeploy={deployToTest}
                 onManualDeploy={async () => {
                   const r = await fetch('/api/admin/requirements')
-                  if (r.ok) { const d = await r.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, inDevelopmentAt: null, completePendingPaymentAt: null })); setReqs([...d.requirements, ...add2]) }
+                  if (r.ok) { const d = await r.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, depositPaidAt: null, inDevelopmentAt: null, completePendingPaymentAt: null, balancePaidAt: null })); setReqs([...d.requirements, ...add2]) }
                 }}
               />
             )}
