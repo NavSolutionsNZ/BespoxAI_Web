@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** May 26, 2026 (Session 8)
+**Last Updated:** May 26, 2026 (Session 9)
 
 ---
 
@@ -47,6 +47,52 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
+## Session 9 Key Changes (May 26, 2026)
+
+### Manual Deployment Pipeline
+- New: `POST /api/requirements/[id]/manual-deploy-test` — sets `in_uat`, appends deployment note, sends UAT notification, skips BCAgent
+- New: `POST /api/requirements/[id]/manual-deploy-prod` — sets `prodDeployedAt`, appends note, notifies customer
+- `schema.prisma`: `deploymentNotes String? @db.Text` added to Requirement
+- Admin deploy-to-test panel: "Mark as manually deployed" checkbox skips Steps 1 & 2
+- Admin deploy-to-prod panel: checkbox on Step 2
+- Deployment notes displayed superadmin-only below respective deploy buttons
+
+### UAT Customer Notification
+- `lib/notifications.ts`: `notifyCustomerReadyForUAT` added
+- Fires on successful automated deploy-to-test (debug + real paths)
+- Fires on manual deploy-to-test confirm
+
+### Pipeline Dates — All Stages
+- `schema.prisma`: 6 new date fields stamped on transitions:
+  `submittedAt`, `inReviewAt`, `quotedAt`, `depositRequiredAt`, `inDevelopmentAt`, `completePendingPaymentAt`
+- Also using: `depositPaidAt`, `balancePaidAt`, `testDeployedAt`, `uatApprovedAt`, `createdAt`
+- Pipeline graphic in customer RequirementsBuilder shows dates under every node
+- Pipeline graphic in admin requirement detail also shows all dates
+- `requirements/[id]/route.ts` stamps all 6 new dates on status transitions
+
+### Collapsible Cards (Admin only — customer deferred)
+- `app/admin/page.tsx`: AI Spec, Q&A Log, Description cards are collapsible
+- ▴/▾ arrow toggle, start expanded
+- `AdminCardToggleBtn` standalone component extracted before `AdminRequirementsTab`
+- **Customer-facing collapsible cards in RequirementsBuilder.tsx deferred** — SWC/JSX parser constraint with this file's deep nesting + `} as const` pattern prevents adding wrapping divs in the current file structure. Needs a clean session approach (possibly extract the spec card section into a separate component file).
+
+### GST — "excl. GST" → "plus GST" Site-wide
+- `RequirementsBuilder.tsx` (19), `app/billing/page.tsx` (3), `components/UpgradePrompt.tsx` (1), `lib/notifications.ts` (3)
+
+### SQL Run This Session
+```sql
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "deploymentNotes" TEXT;
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "submittedAt" TIMESTAMP;
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "inReviewAt" TIMESTAMP;
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "quotedAt" TIMESTAMP;
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "depositRequiredAt" TIMESTAMP;
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "inDevelopmentAt" TIMESTAMP;
+ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "completePendingPaymentAt" TIMESTAMP;
+```
+All applied ✅
+
+---
+
 ## Session 8 Key Changes (May 26, 2026)
 
 ### RDP End-to-End Test — Confirmed Working (TestCo1)
@@ -67,69 +113,6 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 - `$AgentVersion` and `$Version` in `Install-BespoxAI.ps1` → `'3.2'`
 - `AGENT_VERSION` in `app/api/settings/installer/route.ts` → `'3.2'`
 
-### RDP Cleanup Script (for post-testing removal of BespoxAI-Support)
-```powershell
-net user BespoxAI-Support /delete
-net user BespoxAI-Support  # verify gone
-```
-RDP setting and firewall rule can be left — do not disable RDP as it locks out other admin access.
-
----
-
-## Session 7 Key Changes (May 26, 2026)
-
-### UAT Status Pipeline
-- deploy-test → sets `status: 'in_uat'` on success
-- uat-approve → sets `status: 'uat_confirmed'`
-- uat-reject → sets `status: 'uat_rejected'`
-- STATUS_PIPELINE, STATUS_COLOR, statusLabel updated in RequirementsBuilder + admin
-- UAT panel condition driven by status not testDeployedAt
-- Null-guard on testDeployedAt date display
-
-### RDP Remote Support (v3.1)
-- BCAgent installer Step 8: creates `BespoxAI-Support` local Windows account, adds to Administrators + Remote Desktop Users, enables RDP (port 3389)
-- `$SupportAccountPassword` param baked in at installer download, stored as `rdpPassword` in DB
-- `lib/cloudflare.ts`: `addRdpIngress()` + `createRdpDnsRecord()` — isolated, existing functions untouched
-- `POST /api/admin/provision-rdp`: adds CF ingress + DNS for `{subdomain}-rdp.bespoxai.com`
-- Admin tenants table: `[RDP — Tenant Name]` button + `[⧉]` copy password button
-- Schema: `rdpPassword String?` added to Tenant
-- SQL applied: `ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;`
-
-### Back Button Fixes
-- Settings tabs: `router.push('/settings?tab=x')` instead of `setTab()` — history entries created
-- Settings: `router.replace` to `?tab=overview` on load if no tab param
-- Dashboard settings icon: pushes `/settings?tab=overview` (distinct history entry)
-- Dashboard nav: `router.replace` → `router.push` for tab changes
-
-### Preferred Name — Site-wide
-- `lib/auth.ts`: `firstName` + `preferredName` added to JWT, session, and session refresh
-- Rule: `preferredName ?? firstName` only — no fallback to full name
-- Dashboard greeting + sidebar, Admin sidebar, Settings sidebar all use preferred name
-- `lib/notifications.ts`: `displayName()` helper + `getCustomerEmail` fetches both fields
-- CFO assistant answerer: addresses user by `preferredName ?? firstName`
-- **Users must log out and back in** for token to pick up new fields
-
-### Installer Filename
-- Download button now triggers `Install-BespoxAI-v3.2.zip` (versioned filename)
-- Fixed in `app/settings/page.tsx` — `download` attribute was hardcoded
-
-### White Backgrounds
-- `--white` CSS variable changed from `#FAFAF8` → `#ffffff` — true white site-wide
-
-### Settings Overview — Production/Test Environment Cards
-- Renamed "BC Connection" → "Production Environment Details"
-- Removed "System Configuration" card
-- Added Product + Last CU fields to Production Environment Details (read-only from DB)
-- Removed Agent URL, Status, Member Since from display
-- Both cards use consistent grid layout (label above value, font-body text)
-- Test env shows all fields with `—` for blanks
-- "Leave blank" instruction removed from test env overview (it's read-only)
-
-### Vercel MCP
-- Connected Session 7 — Claude can now pull deployment logs directly via Vercel MCP
-- Team ID: `team_eZ4MqWjZdsPA2iWoK4exjjPF`
-- Project ID: `prj_AT4GXatATIi2FaUCS62Ttp2AivRo`
-
 ---
 
 ## Database
@@ -144,12 +127,6 @@ RDP setting and firewall rule can be left — do not disable RDP as it locks out
 - **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev — NOT the test tenant)
 - **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
 - **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
-
-### Schema Changes — Session 7
-```sql
-ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;
-```
-Applied ✅. prisma/schema.prisma updated ✅.
 
 ---
 
@@ -183,16 +160,6 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
   → BespoxAI-Support account (local admin, RDP enabled by installer Step 8)
 ```
 
-### RDP Connection (Rich's local machine)
-1. Download cloudflared: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
-2. Run: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
-3. RDP to `localhost:3390` — username `.\BespoxAI-Support`, password from Admin panel
-
-### Known NAV v14 OData Limitations
-- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice
-- `$filter` on Posting_Date NOT supported on posted documents
-- `$apply`, `groupby`, `aggregate()` NOT supported
-
 ---
 
 ## CFO Assistant Query Pipeline
@@ -224,6 +191,7 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
 - **Primary brand line:** "Bespoke AI. Built for the ERP Microsoft left behind."
 - **Backgrounds:** White (`#ffffff`) throughout portal — `--white: #ffffff` in globals.css
 - **Placeholder color:** `#8a9a8e` (global CSS)
+- **GST:** All prices show "plus GST" (not "excl. GST") — changed session 9
 
 ---
 
