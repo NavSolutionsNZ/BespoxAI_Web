@@ -211,6 +211,9 @@ model Requirement {
   reviewIncluded        Boolean  @default(false) // Covered by Manager/Executive monthly allowance
   reviewSubmittedAt     DateTime?          // When review was submitted (any payment method)
 
+  // ── Deployment notes (manual deployments) ────────────────────────────────
+  deploymentNotes      String?  @db.Text  // appended on each manual deployment (test + prod)
+
   // ── Production deployment ─────────────────────────────────────────────────
   prodApprovalSentAt   DateTime?          // when go-live doc was sent to customer
   prodGoLiveDoc        String?  @db.Text  // AI-generated go-live summary sent to customer

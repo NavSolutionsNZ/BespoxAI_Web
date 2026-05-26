@@ -1274,6 +1274,7 @@ interface AdminReq {
   prodApprovedById:     string | null
   prodDeployedAt:       string | null
   prodDeploySnapshotId: string | null
+  deploymentNotes:      string | null
   assignedDeveloper:    { id: string; name: string | null; email: string } | null
   githubBranch:         string | null
   parentId:             string | null
@@ -1300,13 +1301,32 @@ interface DeployPanelProps {
   onSync:          () => void
   onWrite:         () => void
   onDeploy:        () => void
+  onManualDeploy:  () => void
 }
 
 function DeployToTestPanel(props: DeployPanelProps) {
   const { selected, syncLoading, syncResult, syncErr,
           writeLoading, writeSnapshotId, writeErr,
           deployLoading, deployResults, deployDebug, deployErr,
-          onSync, onWrite, onDeploy } = props
+          onSync, onWrite, onDeploy, onManualDeploy } = props
+  const [manualMode,    setManualMode]    = useState(false)
+  const [manualLoading, setManualLoading] = useState(false)
+  const [manualErr,     setManualErr]     = useState<string|null>(null)
+
+  async function handleManualDeployTest() {
+    if (!confirm('Confirm manual deployment to test? This will advance the requirement to In UAT and record a deployment note.')) return
+    setManualLoading(true); setManualErr(null)
+    try {
+      const res = await fetch('/api/requirements/' + selected.id + '/manual-deploy-test', { method: 'POST' })
+      if (!res.ok) { const e = await res.json(); setManualErr(e.error ?? 'Failed'); return }
+      setManualMode(false)
+      onManualDeploy()
+    } catch (e: any) {
+      setManualErr(e.message ?? 'Network error')
+    } finally {
+      setManualLoading(false)
+    }
+  }
 
   const base: React.CSSProperties = {
     fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px',
@@ -1391,78 +1411,121 @@ function DeployToTestPanel(props: DeployPanelProps) {
           : null}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 1</span>
-        <button
-          onClick={onWrite}
-          disabled={writeLoading}
-          style={{ ...base, background: writeSnapshotId ? 'var(--fog)' : 'var(--ink)', color: writeSnapshotId ? 'var(--slate)' : 'var(--cream)', border: 'none' }}
-        >
-          {writeLoading ? 'Writing…' : writeSnapshotId ? 'Files written — re-write' : 'Write files to server'}
-        </button>
-        {writeSnapshotId
-          ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>
-              {writeSnapshotId}
-            </span>
-          : null}
+      {/* Manual deployment toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingTop: 4 }}>
+        <input
+          type="checkbox"
+          id={'manual-test-' + selected.id}
+          checked={manualMode}
+          onChange={e => { setManualMode(e.target.checked); setManualErr(null) }}
+          style={{ cursor: 'pointer' }}
+        />
+        <label htmlFor={'manual-test-' + selected.id} style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', cursor: 'pointer' }}>
+          Mark as manually deployed
+        </label>
       </div>
-      {writeErr
-        ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '0 0 8px' }}>{writeErr}</p>
-        : null}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 2</span>
-        <button
-          onClick={onDeploy}
-          disabled={!writeSnapshotId || deployLoading}
-          style={{ ...base, background: writeSnapshotId ? '#0A5C46' : 'var(--fog)', color: 'var(--cream)', border: 'none' }}
-        >
-          {deployLoading ? 'Deploying…' : 'Deploy + Compile to Test'}
-        </button>
-        {writeSnapshotId
-          ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>{writeSnapshotId}</span>
-          : null}
-      </div>
-      {deployErr
-        ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p>
-        : null}
-
-      {deployResults
-        ? <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
-            {deployDebug
-              ? <div style={{ background: '#FAEEDA', borderBottom: '1px solid #EF9F27', padding: '4px 10px' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#633806' }}>
-                    DEBUG — simulated results only
-                  </span>
-                </div>
+      {manualMode ? (
+        <div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginBottom: 10 }}>
+            Steps 1 &amp; 2 will be skipped. The deployment will be recorded as a manual deployment note.
+          </p>
+          <button
+            onClick={handleManualDeployTest}
+            disabled={manualLoading}
+            style={{ ...base, background: '#0A5C46', color: '#fff', border: 'none' }}
+          >
+            {manualLoading ? 'Confirming\u2026' : 'Confirm Manual Deployment'}
+          </button>
+          {manualErr ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', marginTop: 6 }}>{manualErr}</p> : null}
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 1</span>
+            <button
+              onClick={onWrite}
+              disabled={writeLoading}
+              style={{ ...base, background: writeSnapshotId ? 'var(--fog)' : 'var(--ink)', color: writeSnapshotId ? 'var(--slate)' : 'var(--cream)', border: 'none' }}
+            >
+              {writeLoading ? 'Writing\u2026' : writeSnapshotId ? 'Files written \u2014 re-write' : 'Write files to server'}
+            </button>
+            {writeSnapshotId
+              ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>
+                  {writeSnapshotId}
+                </span>
               : null}
-            {deployResults.map((r: any, i: number) => (
-              <div
-                key={i}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: (r.imported && r.compiled) ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}
-              >
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1 }}>{r.filename}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>
-                  imp {r.imported ? 'ok' : 'fail'}
-                </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>
-                  cmp {r.compiled ? 'ok' : 'fail'}
-                </span>
-              </div>
-            ))}
           </div>
-        : null}
+          {writeErr
+            ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '0 0 8px' }}>{writeErr}</p>
+            : null}
 
-      {deployErr && deployErr.includes('timeout')
-        ? <details style={{ marginTop: 10 }}>
-            <summary style={{ cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>
-              Manual deployment instructions
-            </summary>
-            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 9, background: 'var(--parchment)', padding: '8px 10px', borderRadius: 6, marginTop: 6, whiteSpace: 'pre-wrap' }}>
-              {scriptLines.join('\n')}
-            </pre>
-          </details>
-        : null}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 2</span>
+            <button
+              onClick={onDeploy}
+              disabled={!writeSnapshotId || deployLoading}
+              style={{ ...base, background: writeSnapshotId ? '#0A5C46' : 'var(--fog)', color: 'var(--cream)', border: 'none' }}
+            >
+              {deployLoading ? 'Deploying\u2026' : 'Deploy + Compile to Test'}
+            </button>
+            {writeSnapshotId
+              ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46' }}>{writeSnapshotId}</span>
+              : null}
+          </div>
+          {deployErr
+            ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: '8px 0 0' }}>{deployErr}</p>
+            : null}
+
+          {deployResults
+            ? <div style={{ marginTop: 10, border: '1px solid var(--fog)', borderRadius: 6, overflow: 'hidden' }}>
+                {deployDebug
+                  ? <div style={{ background: '#FAEEDA', borderBottom: '1px solid #EF9F27', padding: '4px 10px' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#633806' }}>
+                        DEBUG \u2014 simulated results only
+                      </span>
+                    </div>
+                  : null}
+                {deployResults.map((r: any, i: number) => (
+                  <div
+                    key={i}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: (r.imported && r.compiled) ? 'rgba(10,92,70,0.03)' : 'rgba(163,45,45,0.03)' }}
+                  >
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, flex: 1 }}>{r.filename}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.imported ? '#0A5C46' : '#A32D2D' }}>
+                      imp {r.imported ? 'ok' : 'fail'}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: r.compiled ? '#0A5C46' : '#A32D2D' }}>
+                      cmp {r.compiled ? 'ok' : 'fail'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            : null}
+
+          {deployErr && deployErr.includes('timeout')
+            ? <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)' }}>
+                  Manual deployment instructions
+                </summary>
+                <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 9, background: 'var(--parchment)', padding: '8px 10px', borderRadius: 6, marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                  {scriptLines.join('\n')}
+                </pre>
+              </details>
+            : null}
+        </div>
+      )}
+
+      {selected.deploymentNotes ? (
+        <div style={{ marginTop: 10, background: 'rgba(10,92,70,0.04)', border: '1px solid rgba(10,92,70,0.15)', borderRadius: 6, padding: '8px 12px' }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>
+            Deployment Notes
+          </p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink)', margin: 0, whiteSpace: 'pre-wrap' }}>
+            {selected.deploymentNotes}
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1470,18 +1533,39 @@ function DeployToTestPanel(props: DeployPanelProps) {
 // ─── Deploy to Production Panel ────────────────────────────────────────────────
 
 interface ProdDeployPanelProps {
-  selected:       AdminReq
-  onSentApproval: (goLiveDoc: string, sentAt: string) => void
-  onDeployed:     (snapshotId: string, deployedAt: string) => void
+  selected:          AdminReq
+  onSentApproval:    (goLiveDoc: string, sentAt: string) => void
+  onDeployed:        (snapshotId: string, deployedAt: string) => void
+  onManualDeployed:  (deployedAt: string) => void
 }
 
-function DeployToProductionPanel({ selected, onSentApproval, onDeployed }: ProdDeployPanelProps) {
+function DeployToProductionPanel({ selected, onSentApproval, onDeployed, onManualDeployed }: ProdDeployPanelProps) {
   const [sendingDoc,    setSendingDoc]    = useState(false)
   const [sendErr,       setSendErr]       = useState<string|null>(null)
   const [deploying,     setDeploying]     = useState(false)
   const [deployResults, setDeployResults] = useState<any[]|null>(null)
   const [deployErr,     setDeployErr]     = useState<string|null>(null)
   const [confirmDeploy, setConfirmDeploy] = useState(false)
+  const [manualMode,    setManualMode]    = useState(false)
+  const [manualLoading, setManualLoading] = useState(false)
+  const [manualErr,     setManualErr]     = useState<string|null>(null)
+
+  async function handleManualDeployProd() {
+    if (!confirm('Confirm manual deployment to production? This will be recorded as a manual deployment note and the customer will be notified.')) return
+    setManualLoading(true); setManualErr(null)
+    try {
+      const res = await fetch('/api/requirements/' + selected.id + '/manual-deploy-prod', { method: 'POST' })
+      if (!res.ok) { const e = await res.json(); setManualErr(e.error ?? 'Failed'); return }
+      const d = await res.json()
+      setManualMode(false)
+      onManualDeployed(d.deployedAt)
+    } catch (e: any) {
+      setManualErr(e.message ?? 'Network error')
+    } finally {
+      setManualLoading(false)
+    }
+  }
+
 
   const base: { [k: string]: any } = {
     fontFamily: 'var(--font-body)', fontSize: 12, padding: '7px 14px',
@@ -1580,28 +1664,63 @@ function DeployToProductionPanel({ selected, onSentApproval, onDeployed }: ProdD
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', minWidth: 60 }}>Step 2</span>
-            {confirmDeploy ? (
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={handleDeploy}
-                  disabled={deploying}
-                  style={{ ...base, background: '#A32D2D', color: '#fff', border: 'none', fontWeight: 600 }}
-                >
-                  {deploying ? 'Deploying…' : '⚠ DEPLOY TO PRODUCTION'}
-                </button>
-                <button onClick={() => setConfirmDeploy(false)} style={{ ...base }}>Cancel</button>
+            {manualMode ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', margin: 0 }}>
+                  BCAgent will be skipped. The deployment will be recorded as a manual deployment note and the customer will be notified.
+                </p>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={handleManualDeployProd}
+                    disabled={manualLoading || !selected.prodApprovedAt}
+                    style={{ ...base, background: selected.prodApprovedAt ? '#0A5C46' : 'var(--fog)', color: selected.prodApprovedAt ? '#fff' : 'var(--slate)', border: 'none' }}
+                  >
+                    {manualLoading ? 'Confirming\u2026' : 'Confirm Manual Deployment'}
+                  </button>
+                  <button onClick={() => { setManualMode(false); setManualErr(null) }} style={{ ...base }}>Cancel</button>
+                </div>
+                {manualErr ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A32D2D', margin: 0 }}>{manualErr}</p> : null}
               </div>
             ) : (
-              <button
-                onClick={() => setConfirmDeploy(true)}
-                disabled={!selected.prodApprovedAt || deploying}
-                style={{ ...base, background: selected.prodApprovedAt ? '#0A5C46' : 'var(--fog)', color: selected.prodApprovedAt ? '#fff' : 'var(--slate)', border: 'none' }}
-              >
-                Deploy to Production
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                {confirmDeploy ? (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={handleDeploy}
+                      disabled={deploying}
+                      style={{ ...base, background: '#A32D2D', color: '#fff', border: 'none', fontWeight: 600 }}
+                    >
+                      {deploying ? 'Deploying\u2026' : '\u26a0 DEPLOY TO PRODUCTION'}
+                    </button>
+                    <button onClick={() => setConfirmDeploy(false)} style={{ ...base }}>Cancel</button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button
+                      onClick={() => setConfirmDeploy(true)}
+                      disabled={!selected.prodApprovedAt || deploying}
+                      style={{ ...base, background: selected.prodApprovedAt ? '#0A5C46' : 'var(--fog)', color: selected.prodApprovedAt ? '#fff' : 'var(--slate)', border: 'none' }}
+                    >
+                      Deploy to Production
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        id={'manual-prod-' + selected.id}
+                        checked={manualMode}
+                        onChange={e => { setManualMode(e.target.checked); setManualErr(null) }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <label htmlFor={'manual-prod-' + selected.id} style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', cursor: 'pointer' }}>
+                        Mark as manually deployed
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
-          {!selected.prodApprovedAt ? (
+          {!selected.prodApprovedAt && !manualMode ? (
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', margin: '4px 0 0 68px' }}>
               Waiting for customer to approve go-live doc
             </p>
@@ -1617,6 +1736,17 @@ function DeployToProductionPanel({ selected, onSentApproval, onDeployed }: ProdD
                   {r.error ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: '#A32D2D' }}>{r.error}</span> : null}
                 </div>
               ))}
+            </div>
+          ) : null}
+
+          {selected.deploymentNotes ? (
+            <div style={{ marginTop: 10, background: 'rgba(10,92,70,0.04)', border: '1px solid rgba(10,92,70,0.15)', borderRadius: 6, padding: '8px 12px' }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>
+                Deployment Notes
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                {selected.deploymentNotes}
+              </p>
             </div>
           ) : null}
         </>
@@ -1711,7 +1841,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       const data = await reqRes.json()
       if (!reqRes.ok) throw new Error(data.error)
       // Merge addenda into flat list so they appear in requirements tab and get action buttons
-      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null }))
+      const addenda = (data.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null }))
       setReqs([...data.requirements, ...addenda])
       if (usersRes.ok) {
         const ud = await usersRes.json()
@@ -1961,7 +2091,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
       if (data.success) {
         // Refresh requirement to show testDeployedAt
         const reqRes = await fetch('/api/admin/requirements')
-        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null })); setReqs([...d.requirements, ...add2]) }
+        if (reqRes.ok) { const d = await reqRes.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null })); setReqs([...d.requirements, ...add2]) }
       } else {
         setDeployErr('Some objects failed — check results below')
       }
@@ -2567,6 +2697,10 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                 onSync={syncFromGitHub}
                 onWrite={writeObjectsToServer}
                 onDeploy={deployToTest}
+                onManualDeploy={async () => {
+                  const r = await fetch('/api/admin/requirements')
+                  if (r.ok) { const d = await r.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null })); setReqs([...d.requirements, ...add2]) }
+                }}
               />
             )}
 
@@ -2576,6 +2710,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                 selected={selected}
                 onSentApproval={(goLiveDoc, sentAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodGoLiveDoc: goLiveDoc, prodApprovalSentAt: sentAt, prodApprovedAt: null } : x))}
                 onDeployed={(snapshotId, deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: snapshotId } : x))}
+                onManualDeployed={(deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: null } : x))}
               />
             ) : null}
 
