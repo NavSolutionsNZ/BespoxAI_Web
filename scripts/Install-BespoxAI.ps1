@@ -88,7 +88,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.1'
+$AgentVersion  = '3.2'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -248,7 +248,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '3.1'
+$Version    = '3.2'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -913,7 +913,7 @@ $Config = [ordered]@{
     testBcCompany         = $TestBcCompany
     testBcPort            = $TestBcPort
     testNavManagementPort = $TestNavManagementPort
-    version               = '2.4'
+    version               = $AgentVersion
     installedAt           = (Get-Date -Format 'o')
 }
 
