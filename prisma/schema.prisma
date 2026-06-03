@@ -54,6 +54,9 @@ model Tenant {
   cancellationReason   String?   // billing_error | cancellation_requested | payment_disputed
   cancellationFeedback String?   // feedback + comment from Stripe portal survey
   paymentTermsKey      String   @default("terms1") // terms1 | terms2 | terms3
+  partnerAccountId     String?               // null = direct tenant; set = managed by partner
+  partnerAccount       PartnerAccount?  @relation(fields: [partnerAccountId], references: [id])
+  githubRepoOverride   String?               // e.g. 'acme-consulting/widgets-ltd-nav'
   createdAt            DateTime @default(now())
   updatedAt       DateTime @updatedAt
   users               User[]
@@ -88,6 +91,7 @@ model User {
   assignedRequirements Requirement[] @relation("RequirementDeveloper")
   migrationEnquiries MigrationEnquiry[]
   uploadedObjects    TenantObjectFile[]
+  partnerUsers       PartnerUser[]
 }
 
 model SignupRequest {
@@ -336,4 +340,54 @@ model BusinessConfig {
   terms3Text      String   @default("Full amount due 20th of the following month")
   updatedAt       DateTime @updatedAt
   updatedBy       String?
+}
+
+model PartnerAccount {
+  id                   String        @id @default(cuid())
+  name                 String
+  slug                 String        @unique
+  billingEmail         String
+  stripeCustomerId     String?
+
+  // Fees (all in smallest currency unit, e.g. cents/pence)
+  monthlyAccessFee     Int           @default(0)
+  perDeveloperFee      Int           @default(0)
+  perTenantFee         Int           @default(0)
+  perUserFee           Int           @default(0)
+
+  // Revenue share — BespoxAI share = 1 - revenueSharePartner (never stored)
+  revenueSharePartner  Float         @default(0.60)
+
+  // Payment mode
+  paymentMode          String        @default("bespoxai_collected") // bespoxai_collected | partner_collected
+
+  // Branding (Phase 1: store; Phase 4: apply)
+  isWhiteLabel         Boolean       @default(false)
+  brandName            String?
+  logoUrl              String?
+  primaryColour        String?
+  agentBrandName       String?       // replaces 'BespoxAI' in agent paths/filenames/service names (Phase 4)
+
+  // GitHub (partner org — optional, falls back to BespoxAI org)
+  githubOrg            String?
+  githubToken          String?       // AES-256-GCM encrypted, never exposed in API responses
+
+  isActive             Boolean       @default(true)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  tenants              Tenant[]
+  users                PartnerUser[]
+}
+
+model PartnerUser {
+  id               String         @id @default(cuid())
+  partnerAccountId String
+  partnerAccount   PartnerAccount @relation(fields: [partnerAccountId], references: [id])
+  userId           String
+  user             User           @relation(fields: [userId], references: [id])
+  role             String         // partner_admin | partner_developer
+  createdAt        DateTime       @default(now())
+
+  @@unique([partnerAccountId, userId])
 }

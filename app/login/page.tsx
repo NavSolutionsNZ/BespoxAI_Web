@@ -24,8 +24,19 @@ function LoginForm() {
     setError('')
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
-    if (res?.error) setError('Invalid email or password. Please try again.')
-    else router.push(callbackUrl)
+    if (res?.error) {
+      setError('Invalid email or password. Please try again.')
+    } else {
+      // Fetch session to detect partner vs direct user
+      const { getSession } = await import('next-auth/react')
+      const session = await getSession()
+      const user = session?.user as any
+      if (user?.partnerAccountId) {
+        router.push('/partner/dashboard')
+      } else {
+        router.push(callbackUrl)
+      }
+    }
   }
 
   return (

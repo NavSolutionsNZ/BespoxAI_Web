@@ -26,10 +26,21 @@ export const authOptions: NextAuthOptions = {
           include: { tenant: { select: { id: true, name: true, active: true, navProduct: true } } },
         })
 
-        if (!user || !user.tenant.active || !user.active) return null
+        if (!user || !user.active) return null
+        // Partner users may not have an active direct tenant — check tenant only for non-partner users
+        const partnerCheck = await (prisma as any).partnerUser.findFirst({ where: { userId: user.id } })
+        if (!partnerCheck && !user.tenant?.active) return null
 
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) return null
+
+        // Check if this user is also a PartnerUser
+        const partnerUser = await (prisma as any).partnerUser.findFirst({
+          where: { userId: user.id },
+          include: { partnerAccount: { select: { id: true, slug: true, isActive: true } } },
+        })
+
+        const isPartner = partnerUser && partnerUser.partnerAccount?.isActive
 
         return {
           id: user.id,
@@ -37,13 +48,17 @@ export const authOptions: NextAuthOptions = {
           name: user.name ?? user.email,
           firstName: (user as any).firstName ?? null,
           preferredName: (user as any).preferredName ?? null,
-          tenantId: user.tenantId,
-          tenantName: user.tenant.name,
-          navProduct: user.tenant.navProduct ?? null,
+          tenantId: isPartner ? undefined : user.tenantId,
+          tenantName: isPartner ? undefined : (user.tenant?.name ?? null),
+          navProduct: isPartner ? undefined : (user.tenant.navProduct ?? null),
           role: user.role,
           persona: user.persona,
           onboardingDone: user.onboardingDone,
           mustChangePassword: (user as any).mustChangePassword ?? false,
+          // Partner context — undefined for non-partner users
+          partnerAccountId: isPartner ? partnerUser.partnerAccountId : undefined,
+          partnerRole:      isPartner ? partnerUser.role : undefined,
+          partnerSlug:      isPartner ? partnerUser.partnerAccount.slug : undefined,
         }
       },
     }),
@@ -62,6 +77,10 @@ export const authOptions: NextAuthOptions = {
         token.mustChangePassword = (user as any).mustChangePassword ?? false
         token.firstName     = (user as any).firstName ?? null
         token.preferredName = (user as any).preferredName ?? null
+        // Partner context
+        token.partnerAccountId = (user as any).partnerAccountId ?? null
+        token.partnerRole      = (user as any).partnerRole ?? null
+        token.partnerSlug      = (user as any).partnerSlug ?? null
       }
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
@@ -91,6 +110,10 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).mustChangePassword = token.mustChangePassword ?? false
         ;(session.user as any).firstName     = token.firstName ?? null
         ;(session.user as any).preferredName = token.preferredName ?? null
+        // Partner context
+        ;(session.user as any).partnerAccountId = token.partnerAccountId ?? null
+        ;(session.user as any).partnerRole      = token.partnerRole ?? null
+        ;(session.user as any).partnerSlug      = token.partnerSlug ?? null
       }
       return session
     },
