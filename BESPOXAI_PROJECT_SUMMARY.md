@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 4, 2026 (Session 11)
+**Last Updated:** June 4, 2026 (Session 12)
 
 ---
 
@@ -164,6 +164,46 @@ revenueSharePartner: default 0.60
 
 ### Known schema debt
 User.tenantId is required FK; partner users get placeholder tenantId on activation. Make nullable in Phase 2.
+
+## Session 12 Key Changes (June 4, 2026)
+
+### Partner Programme — Phase 2 BCAgent + Client UX
+- **Partner BCAgent routes** — `POST /api/partner/tenants/[id]/installer`, `sync-config`, `provision-rdp`
+  - All scoped behind `requirePartnerSession('partner_admin')` + `assertTenantBelongsToPartner()`
+  - Installer auto-provisions Cloudflare tunnel on first download, generates rdpPassword
+  - Tunnel provision clears `connectionRequestedAt/ToEmail` on the Tenant
+- **BCAgent tab** in `/partner/tenants/[id]` — full Production + Test env form (editable, refs pattern),
+  Sync Config + Provision RDP buttons (conditional on `tunnelId`), Download Installer button
+- **`managedByPartner`** flag added to JWT/session for regular tenant users whose tenant has a `partnerAccountId`
+- **Client user settings** — BC Installer tab hidden for partner-managed users; URL redirect guard added
+- **Dashboard** — partner-managed clients: Upgrade/Billing sidebar hidden, installer setup prompt replaced
+  with neutral "not yet connected" box, CFO greeting updated
+- **Request Connection / Request Upgrade buttons** — `POST /api/partner/request`, `GET /api/partner/request-state`
+  - Sends email to partner `billingEmail` + all BespoxAI superadmins
+  - Persists to Tenant: `connectionRequestedAt`, `connectionRequestedToEmail`, `upgradeRequestedAt`, `upgradeRequestedToEmail`
+  - No re-request once submitted; connection request cleared when tunnel is provisioned
+  - Dashboard loads persisted state on mount, shows "Requested [date] — sent to [email]" instead of button
+
+### Schema changes — Session 12
+```sql
+ALTER TABLE "Tenant"
+  ADD COLUMN IF NOT EXISTS "connectionRequestedAt"      TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS "connectionRequestedToEmail" TEXT,
+  ADD COLUMN IF NOT EXISTS "upgradeRequestedAt"         TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS "upgradeRequestedToEmail"    TEXT;
+```
+Applied ✅. prisma/schema.prisma updated ✅.
+
+### Interactive question widget pattern
+- Always use sequential single-question widgets (one question at a time, `innerHTML` re-render on answer)
+- Never use hidden elements (`display:none`) in widgets — they fail to render during iframe streaming
+- Outer container must have `min-height` set to prevent iframe collapse
+- Use inline `onclick` handlers, not `addEventListener` (runs after streaming)
+
+### Test seed data
+- Partner: Test Partner Ltd (slug: testpartner), login: partner@testpartner.com / Partner123!
+- Client tenants: Acme Distribution Ltd (acmedist, BC25), Pinnacle Manufacturing NZ (pinnaclemfg, NAV12)
+- Test client user: client@acmedist.com / password (tenant_admin on Acme, managedByPartner=true)
 
 ## Session 8 Key Changes (May 26, 2026)
 

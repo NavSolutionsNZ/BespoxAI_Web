@@ -76,6 +76,17 @@
 
 ## Work Backlog (Prioritized)
 
+**Session 12 — Partner Programme Phase 2 BCAgent + Client UX**
+- [x] Partner BCAgent routes — installer, sync-config, provision-rdp (partner-scoped, assertTenantBelongsToPartner)
+- [x] BCAgent tab in partner tenant view — full editable form, conditional Sync + RDP buttons
+- [x] managedByPartner in JWT/session for client tenant users
+- [x] BC Installer tab hidden for partner-managed users in Settings
+- [x] Dashboard: billing hidden, installer prompts replaced, neutral "not yet connected" copy
+- [x] Request Connection / Request Upgrade buttons — email partner + superadmins, persist to DB, no re-request
+- [x] GET /api/partner/request-state — load persisted state on dashboard mount
+- [x] Sequential single-question widget pattern established (replaces hidden-element approach)
+- [x] Test client user: client@acmedist.com on Acme Distribution Ltd
+
 **Session 11 — Partner Programme Phase 2 (Partial)**
 - [x] User.tenantId nullable — SQL applied, schema updated, activate route fixed
 - [x] POST /api/partner/tenants — create client tenant (no tunnel; auto-provisioned on installer download)
@@ -85,10 +96,8 @@
 - [x] Test seed data: Test Partner Ltd + 2 client tenants + 3 requirements
 
 ### Partner Programme — Phase 2 Remaining
-- [ ] BCAgent routes for partner portal (installer download, sync-config, provision-rdp per tenant)
+- [ ] /partner/team page + api/partner/users/* routes (partner staff management)
 - [ ] lib/github.ts — GitHub token resolution (partner org → BespoxAI fallback)
-- [ ] Client user settings — hide BCAgent tabs for partner-managed tenants
-- [ ] /partner/team page + api/partner/users/* routes
 - [ ] White-label sender name in notifications
 
 ### 🔴 HIGH PRIORITY
@@ -164,6 +173,12 @@ Requires custom web service in BC (ties into #10). Deferred.
 15. **DIAGNOSE BEFORE ARCHITECTING:** Always ask for logs/errors before proposing solutions (use Vercel MCP for build errors)
 16. **DISCUSS SIGNIFICANT CHANGES** before implementing
 17. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts — THREE values, all must match
+
+### Interactive Question Widgets
+- Always use sequential single-question pattern: one question at a time, `innerHTML` re-render on answer, `sendPrompt()` at end
+- Never use `display:none` hidden elements — they collapse during iframe streaming
+- Always set `min-height` on outer container
+- Use inline `onclick` handlers only — never `addEventListener` (fires after streaming)
 
 ### SWC/JSX Rules (critical)
 - Use `cond ? <JSX/> : null` NOT `cond && <JSX/>` in large function returns
