@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -10,7 +10,13 @@ type Tenant = {
   navProduct: string | null; navVersion: string | null; lastCU: string | null
   tier: string; tunnelId: string | null; bcCompany: string | null
   bcInstance: string | null; agentPort: number; bcPort: number
+  bcUsername: string | null
   navDatabaseServer: string | null; navDatabaseName: string | null
+  navServerInstance: string | null; navManagementPort: number | null
+  testNavDatabaseServer: string | null; testNavDatabaseName: string | null
+  testNavServerInstance: string | null; testNavManagementPort: number | null
+  testBcInstance: string | null; testBcCompany: string | null; testBcPort: number | null
+  rdpPassword: string | null
   createdAt: string
   users: TenantUser[]
 }
@@ -160,6 +166,345 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
       {children}
+    </div>
+  )
+}
+
+// ── BCAgent Tab ──────────────────────────────────────────────────────────────
+
+function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelProvisioned: () => void }) {
+  const tenantId = tenant.id
+  const hasTunnel = !!tenant.tunnelId
+  const erpLabel  = tenant.navProduct === 'NAV' ? 'NAV' : 'BC'
+
+  // Form state — refs pattern (no controlled inputs)
+  const refs = {
+    navDatabaseServer:     React.useRef<HTMLInputElement>(null),
+    navDatabaseName:       React.useRef<HTMLInputElement>(null),
+    navServerInstance:     React.useRef<HTMLInputElement>(null),
+    navManagementPort:     React.useRef<HTMLInputElement>(null),
+    bcInstance:            React.useRef<HTMLInputElement>(null),
+    bcCompany:             React.useRef<HTMLInputElement>(null),
+    bcPort:                React.useRef<HTMLInputElement>(null),
+    agentPort:             React.useRef<HTMLInputElement>(null),
+    bcUsername:            React.useRef<HTMLInputElement>(null),
+    bcPassword:            React.useRef<HTMLInputElement>(null),
+    testNavDatabaseName:   React.useRef<HTMLInputElement>(null),
+    testNavServerInstance: React.useRef<HTMLInputElement>(null),
+    testBcInstance:        React.useRef<HTMLInputElement>(null),
+    testBcCompany:         React.useRef<HTMLInputElement>(null),
+    testNavManagementPort: React.useRef<HTMLInputElement>(null),
+  }
+
+  const [testSeparate, setTestSeparate]   = useState(false)
+  const [instLoading,  setInstLoading]    = useState(false)
+  const [syncLoading,  setSyncLoading]    = useState(false)
+  const [rdpLoading,   setRdpLoading]     = useState(false)
+  const [agentVersion, setAgentVersion]   = useState<string | null>(null)
+  const [feedback,     setFeedback]       = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+
+  React.useEffect(() => {
+    fetch('/api/partner/tenants/' + tenantId + '/installer')
+      .then(r => r.json()).then(d => { if (d.version) setAgentVersion(d.version) }).catch(() => {})
+  }, [tenantId])
+
+  function showFeedback(type: 'ok' | 'err', msg: string) {
+    setFeedback({ type, msg })
+    setTimeout(() => setFeedback(null), 4000)
+  }
+
+  async function downloadInstaller() {
+    const bcUsername = refs.bcUsername.current?.value || ''
+    const bcPassword = refs.bcPassword.current?.value || ''
+    if (!bcUsername) { showFeedback('err', 'BC service account username is required'); return }
+    setInstLoading(true)
+    try {
+      const r = await fetch('/api/partner/tenants/' + tenantId + '/installer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bcUsername, bcPassword,
+          bcPort:            parseInt(refs.bcPort.current?.value            || '8048', 10),
+          agentPort:         parseInt(refs.agentPort.current?.value         || '9099', 10),
+          bcInstance:        refs.bcInstance.current?.value                 || '',
+          bcCompany:         refs.bcCompany.current?.value                  || '',
+          navDatabaseServer: refs.navDatabaseServer.current?.value          || 'localhost',
+          navDatabaseName:   refs.navDatabaseName.current?.value            || '',
+          navServerInstance: refs.navServerInstance.current?.value          || '',
+          navManagementPort: parseInt(refs.navManagementPort.current?.value || '7045', 10),
+          testNavDatabaseServer: '',
+          testNavDatabaseName:   refs.testNavDatabaseName.current?.value   || '',
+          testNavServerInstance: refs.testNavServerInstance.current?.value || '',
+          testBcInstance:        refs.testBcInstance.current?.value        || '',
+          testBcCompany:         refs.testBcCompany.current?.value         || '',
+          testNavManagementPort: parseInt(refs.testNavManagementPort.current?.value || '7045', 10),
+        }),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        showFeedback('err', j.error || 'Failed to generate installer')
+        return
+      }
+      const blob = await r.blob()
+      const url  = URL.createObjectURL(blob)
+      const cd   = r.headers.get('content-disposition') || ''
+      const match = cd.match(/filename="([^"]+)"/)
+      const filename = match ? match[1] : ('Install-BespoxAI-v' + (agentVersion || '3.2') + '.zip')
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+      if (!hasTunnel) onTunnelProvisioned()
+      showFeedback('ok', 'Installer downloaded — tunnel provisioned if this was the first download')
+    } catch (e: any) {
+      showFeedback('err', e.message || 'Download failed')
+    } finally {
+      setInstLoading(false)
+    }
+  }
+
+  async function syncConfig() {
+    setSyncLoading(true)
+    try {
+      const r = await fetch('/api/partner/tenants/' + tenantId + '/sync-config', { method: 'POST' })
+      const j = await r.json().catch(() => ({}))
+      if (r.ok) showFeedback('ok', 'Config synced to agent successfully')
+      else showFeedback('err', j.error || 'Sync failed')
+    } catch (e: any) {
+      showFeedback('err', e.message || 'Sync failed')
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
+  async function provisionRdp() {
+    setRdpLoading(true)
+    try {
+      const r = await fetch('/api/partner/tenants/' + tenantId + '/provision-rdp', { method: 'POST' })
+      const j = await r.json().catch(() => ({}))
+      if (r.ok) showFeedback('ok', 'RDP provisioned: ' + j.rdpHostname)
+      else showFeedback('err', j.error || 'RDP provisioning failed')
+    } catch (e: any) {
+      showFeedback('err', e.message || 'RDP provisioning failed')
+    } finally {
+      setRdpLoading(false)
+    }
+  }
+
+  const inp: React.CSSProperties = {
+    width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6,
+    color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13,
+    padding: '8px 12px', outline: 'none', boxSizing: 'border-box',
+  }
+  const lbl = (t: string) => (
+    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>{t}</div>
+  )
+  const hint = (t: string) => (
+    <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginTop: 4 }}>{t}</p>
+  )
+  const sectionHead = (t: string) => (
+    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#58A6FF', letterSpacing: '0.14em', textTransform: 'uppercase', borderBottom: '1px solid #21262D', paddingBottom: 10, marginBottom: 20 }}>{t}</div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Production environment */}
+      <Card style={{ background: 'rgba(200,149,42,0.04)', border: '1px solid rgba(200,149,42,0.2)' }}>
+        {sectionHead('Production Environment')}
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginBottom: 18, lineHeight: 1.6 }}>
+          {erpLabel + ' connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.'}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div>
+              {lbl('BC Service Account Username *')}
+              <input ref={refs.bcUsername} style={inp} type="text" defaultValue={tenant.bcUsername || ''}
+                placeholder="e.g. DOMAIN\BCServiceUser" autoComplete="off" />
+              {hint('Windows account used to authenticate with BC OData.')}
+            </div>
+            <div>
+              {lbl('BC Service Account Password *')}
+              <input ref={refs.bcPassword} style={inp} type="password" defaultValue=""
+                placeholder="Not stored — embedded in installer only" autoComplete="new-password" />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div>
+              {lbl('SQL Database Server')}
+              <input ref={refs.navDatabaseServer} style={inp} type="text" defaultValue={tenant.navDatabaseServer || 'localhost'}
+                placeholder="localhost" autoComplete="off" />
+              {hint('SQL Server hostname or IP. Used for finsql object export.')}
+            </div>
+            <div>
+              {lbl('SQL Database Name')}
+              <input ref={refs.navDatabaseName} style={inp} type="text" defaultValue={tenant.navDatabaseName || ''}
+                placeholder="e.g. Dynamics NAV 2017" autoComplete="off" />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div>
+              {lbl('NAV Server Instance')}
+              <input ref={refs.navServerInstance} style={inp} type="text" defaultValue={tenant.navServerInstance || ''}
+                placeholder="e.g. DynamicsNAV110" autoComplete="off" />
+              {hint('Windows service instance name.')}
+            </div>
+            <div>
+              {lbl(erpLabel + ' Instance')}
+              <input ref={refs.bcInstance} style={inp} type="text" defaultValue={tenant.bcInstance || ''}
+                placeholder="e.g. BC or NAV" autoComplete="off" />
+            </div>
+            <div>
+              {lbl(erpLabel + ' Company')}
+              <input ref={refs.bcCompany} style={inp} type="text" defaultValue={tenant.bcCompany || ''}
+                placeholder="e.g. CRONUS International Ltd." autoComplete="off" />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div>
+              {lbl('OData Port')}
+              <input ref={refs.bcPort} style={inp} type="number" defaultValue={tenant.bcPort || 8048}
+                placeholder="8048" autoComplete="off" />
+            </div>
+            <div>
+              {lbl('Agent Port')}
+              <input ref={refs.agentPort} style={inp} type="number" defaultValue={tenant.agentPort || 9099}
+                placeholder="9099" autoComplete="off" />
+              {hint('Port BCAgent listens on. Default 9099.')}
+            </div>
+            <div>
+              {lbl('NAV Management Port')}
+              <input ref={refs.navManagementPort} style={inp} type="number" defaultValue={tenant.navManagementPort || 7045}
+                placeholder="7045" autoComplete="off" />
+              {hint('Used for schema sync. Default 7045.')}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Test environment */}
+      <Card style={{ background: 'rgba(14,110,86,0.04)', border: '1px solid rgba(14,110,86,0.2)' }}>
+        {sectionHead('Test Environment')}
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginBottom: 16, lineHeight: 1.55 }}>
+          Used for pre-production deployment and UAT. Shares credentials with production — only configure what differs.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            {lbl('Test Database Name')}
+            <input ref={refs.testNavDatabaseName} style={inp} type="text" defaultValue={tenant.testNavDatabaseName || ''}
+              placeholder="e.g. Dynamics NAV 2017 Test" autoComplete="off" />
+            {hint('SQL database used for test deployments.')}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div>
+              {lbl('Test Server Instance')}
+              <input ref={refs.testNavServerInstance} style={inp} type="text" defaultValue={tenant.testNavServerInstance || ''}
+                placeholder="e.g. DynamicsNAV110_Test" autoComplete="off" />
+            </div>
+            <div>
+              {lbl('Test ' + erpLabel + ' Instance')}
+              <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={tenant.testBcInstance || ''}
+                placeholder="Leave blank to use production instance" autoComplete="off" />
+            </div>
+            <div>
+              {lbl('Test ' + erpLabel + ' Company')}
+              <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={tenant.testBcCompany || ''}
+                placeholder="Leave blank to use production company" autoComplete="off" />
+            </div>
+            <div>
+              {lbl('Test NAV Management Port')}
+              <input ref={refs.testNavManagementPort} style={inp} type="number" defaultValue={tenant.testNavManagementPort || 7045}
+                placeholder="7045" autoComplete="off" />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Separate test server */}
+      <Card>
+        {sectionHead('Separate Test Server')}
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginBottom: 16, lineHeight: 1.55 }}>
+          If the test environment is on a separate server, enable this to note that a dedicated BCAgent is needed.
+        </p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input type="checkbox" checked={testSeparate} onChange={e => setTestSeparate(e.target.checked)}
+            style={{ accentColor: '#58A6FF', width: 14, height: 14 }} />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E' }}>Test environment is on a separate server</span>
+        </label>
+        {testSeparate ? (
+          <div style={{ marginTop: 16, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 8, padding: '12px 16px' }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C8952A', margin: 0 }}>
+              Separate test server installer generation coming soon. Contact BespoxAI once details are confirmed.
+            </p>
+          </div>
+        ) : null}
+      </Card>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* Sync config — only if tunnel exists */}
+        {hasTunnel ? (
+          <button onClick={syncConfig} disabled={syncLoading} style={{
+            width: '100%', background: syncLoading ? '#21262D' : '#161B22',
+            color: syncLoading ? '#8B949E' : '#C9D1D9',
+            border: '1px solid #30363D', borderRadius: 8, padding: '11px',
+            cursor: syncLoading ? 'default' : 'pointer',
+            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+          }}>
+            {syncLoading ? 'Syncing…' : '↑ Sync Config to Agent'}
+          </button>
+        ) : null}
+        {hasTunnel ? (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
+            Pushes current settings to the running agent immediately — no reinstall needed. Credentials stay unchanged on the server.
+          </p>
+        ) : null}
+
+        {/* Provision RDP — only if tunnel exists */}
+        {hasTunnel ? (
+          <button onClick={provisionRdp} disabled={rdpLoading} style={{
+            width: '100%', background: rdpLoading ? '#21262D' : '#161B22',
+            color: rdpLoading ? '#8B949E' : '#C9D1D9',
+            border: '1px solid #30363D', borderRadius: 8, padding: '11px',
+            cursor: rdpLoading ? 'default' : 'pointer',
+            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+          }}>
+            {rdpLoading ? 'Provisioning…' : '⧉ Provision RDP Access'}
+          </button>
+        ) : null}
+        {hasTunnel ? (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
+            {'Adds remote desktop access via ' + (tenant.tunnelSubdomain || '') + '-rdp.bespoxai.com — run once after installer.'}
+          </p>
+        ) : null}
+
+        {/* Download installer */}
+        <button onClick={downloadInstaller} disabled={instLoading} style={{
+          width: '100%', background: instLoading ? '#1A4731' : '#238636',
+          color: '#fff', border: 'none', borderRadius: 8, padding: '12px',
+          cursor: instLoading ? 'default' : 'pointer',
+          fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+          opacity: instLoading ? 0.7 : 1,
+        }}>
+          {instLoading ? 'Generating…' : ('⬇ Download Installer' + (agentVersion ? ' v' + agentVersion : '') + ' (.zip)')}
+        </button>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', textAlign: 'center', marginTop: -4 }}>
+          {erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}
+        </p>
+
+        {/* Feedback banner */}
+        {feedback ? (
+          <div style={{
+            padding: '10px 16px', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 13,
+            background: feedback.type === 'ok' ? 'rgba(35,134,54,0.15)' : 'rgba(163,45,45,0.15)',
+            border: '1px solid ' + (feedback.type === 'ok' ? 'rgba(63,185,80,0.3)' : 'rgba(163,45,45,0.4)'),
+            color: feedback.type === 'ok' ? '#3FB950' : '#F85149',
+          }}>
+            {feedback.msg}
+          </div>
+        ) : null}
+
+      </div>
     </div>
   )
 }
@@ -697,7 +1042,7 @@ export default function PartnerTenantPage() {
 
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'overview' | 'requirements' | 'users' | 'settings'>('overview')
+  const [tab, setTab] = useState<'overview' | 'requirements' | 'users' | 'settings' | 'bcagent'>('overview')
 
   useEffect(() => {
     fetch('/api/partner/tenants/' + tenantId)
@@ -757,6 +1102,7 @@ export default function PartnerTenantPage() {
         <TabBtn label="Requirements" active={tab === 'requirements'} onClick={() => setTab('requirements')} />
         <TabBtn label="Users"        active={tab === 'users'}        onClick={() => setTab('users')} />
         <TabBtn label="Settings"     active={tab === 'settings'}     onClick={() => setTab('settings')} />
+        <TabBtn label="BCAgent"      active={tab === 'bcagent'}      onClick={() => setTab('bcagent')} />
       </div>
 
       {/* Tab content */}
@@ -803,10 +1149,13 @@ export default function PartnerTenantPage() {
           </Card>
           <div style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)', borderRadius: 8, padding: '12px 16px' }}>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
-              Connection settings are managed by BespoxAI. Contact support if changes are needed.
+              To update connection settings or download the installer, use the BCAgent tab.
             </p>
           </div>
         </div>
+      ) : null}
+      {tab === 'bcagent' ? (
+        <BCAgentTab tenant={tenant} onTunnelProvisioned={() => { fetch('/api/partner/tenants/' + tenantId).then(r => r.json()).then(d => { if (d) setTenant(d) }) }} />
       ) : null}
     </div>
   )

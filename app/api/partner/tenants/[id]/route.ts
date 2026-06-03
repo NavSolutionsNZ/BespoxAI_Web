@@ -10,7 +10,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
-    const tenant = await assertTenantBelongsToPartner(params.id, session.partnerAccountId)
+    const tenantRaw = await (prisma as any).tenant.findFirst({
+      where: { id: params.id, partnerAccountId: session.partnerAccountId },
+    })
+    if (!tenantRaw) throw new Error('Not found')
+    const tenant = tenantRaw
 
     const users = await (prisma as any).user.findMany({
       where:   { tenantId: params.id, active: true },

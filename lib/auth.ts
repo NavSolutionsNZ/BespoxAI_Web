@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await (prisma as any).user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
-          include: { tenant: { select: { id: true, name: true, active: true, navProduct: true } } },
+          include: { tenant: { select: { id: true, name: true, active: true, navProduct: true, partnerAccountId: true } } },
         })
 
         if (!user || !user.active) return null
@@ -59,6 +59,7 @@ export const authOptions: NextAuthOptions = {
           partnerAccountId: isPartner ? partnerUser.partnerAccountId : undefined,
           partnerRole:      isPartner ? partnerUser.role : undefined,
           partnerSlug:      isPartner ? partnerUser.partnerAccount.slug : undefined,
+          managedByPartner: !isPartner && !!user.tenant?.partnerAccountId,
         }
       },
     }),
@@ -81,6 +82,7 @@ export const authOptions: NextAuthOptions = {
         token.partnerAccountId = (user as any).partnerAccountId ?? null
         token.partnerRole      = (user as any).partnerRole ?? null
         token.partnerSlug      = (user as any).partnerSlug ?? null
+        token.managedByPartner = (user as any).managedByPartner ?? false
       }
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
@@ -114,6 +116,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).partnerAccountId = token.partnerAccountId ?? null
         ;(session.user as any).partnerRole      = token.partnerRole ?? null
         ;(session.user as any).partnerSlug      = token.partnerSlug ?? null
+        ;(session.user as any).managedByPartner = token.managedByPartner ?? false
       }
       return session
     },

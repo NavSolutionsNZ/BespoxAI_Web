@@ -135,7 +135,7 @@ function SettingsInner() {
   const searchParams = useSearchParams()
 
   const [tab, setTab] = useState<Tab>('overview')
-  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') setTab(t as Tab); else router.replace('/settings?tab=overview') }, [searchParams])
+  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') { if (t === 'installer' && managedByPartner) { router.replace('/settings?tab=overview'); return } setTab(t as Tab) } else router.replace('/settings?tab=overview') }, [searchParams, managedByPartner])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -155,6 +155,8 @@ function SettingsInner() {
   const [entitySaving, setEntitySaving] = useState(false)
 
   const user       = session?.user as any
+  const managedByPartner = user?.managedByPartner ?? false
+  const visibleNav = managedByPartner ? NAV.filter(item => item.id !== 'installer') : NAV
   const [profile, setProfile] = useState<{ firstName: string; lastName: string; preferredName: string }>({ firstName: '', lastName: '', preferredName: '' })
   const profileRefs = { firstName: useRef<HTMLInputElement>(null), lastName: useRef<HTMLInputElement>(null), preferredName: useRef<HTMLInputElement>(null) }
   const [profileSaving, setProfileSaving] = useState(false)
@@ -387,7 +389,7 @@ function SettingsInner() {
         )}
 
         <nav style={{ flex: isMobile ? undefined : 1, padding: isMobile ? '6px 10px 10px' : '0 10px', display: isMobile ? 'flex' : 'block', flexWrap: 'wrap', gap: isMobile ? 4 : 0 }}>
-          {NAV.map(item => {
+          {visibleNav.map(item => {
             const active = tab === item.id
             return (
               <button key={item.id} onClick={() => { router.push('/settings?tab=' + item.id); if (isMobile) window.scrollTo({ top: 0 }) }}
