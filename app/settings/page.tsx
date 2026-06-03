@@ -135,7 +135,7 @@ function SettingsInner() {
   const searchParams = useSearchParams()
 
   const [tab, setTab] = useState<Tab>('overview')
-  useEffect(() => { const t = searchParams.get('tab'); if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') { if (t === 'installer' && managedByPartner) { router.replace('/settings?tab=overview'); return } setTab(t as Tab) } else router.replace('/settings?tab=overview') }, [searchParams, managedByPartner])
+  useEffect(() => { const t = searchParams.get('tab'); const isMgdByPartner = !!(session?.user as any)?.managedByPartner; if (t === 'installer' || t === 'overview' || t === 'users' || t === 'entities') { if (t === 'installer' && isMgdByPartner) { router.replace('/settings?tab=overview'); return } setTab(t as Tab) } else router.replace('/settings?tab=overview') }, [searchParams, session])
   const [tenant,       setTenant]       = useState<Tenant | null>(null)
   const [users,        setUsers]        = useState<TenantUser[]>([])
   const [loading,      setLoading]      = useState(true)
