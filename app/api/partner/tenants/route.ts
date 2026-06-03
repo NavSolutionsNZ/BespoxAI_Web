@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
     name, tunnelSubdomain,
     navProduct, navVersion, lastCU,
     bcInstance, bcCompany, bcPort, agentPort,
+    bcUsername,
+    // bcPassword intentionally not destructured — never persisted to DB
     navDatabaseServer, navDatabaseName, navServerInstance, navManagementPort,
     // Test environment
     testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
@@ -75,6 +77,7 @@ export async function POST(req: NextRequest) {
       bcCompany:          bcCompany?.trim()   || '',
       bcPort:             parseInt(String(bcPort   ?? 8048), 10) || 8048,
       agentPort:          parseInt(String(agentPort ?? 9099), 10) || 9099,
+      ...(bcUsername         ? { bcUsername: bcUsername.trim() } : {}),
       ...(navDatabaseServer  ? { navDatabaseServer:  navDatabaseServer.trim()  } : {}),
       ...(navDatabaseName    ? { navDatabaseName:    navDatabaseName.trim()    } : {}),
       ...(navServerInstance  ? { navServerInstance:  navServerInstance.trim()  } : {}),

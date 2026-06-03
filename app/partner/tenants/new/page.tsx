@@ -80,6 +80,8 @@ export default function AddClientPage() {
   const bcCompanyRef         = useRef<HTMLInputElement>(null)
   const bcPortRef            = useRef<HTMLInputElement>(null)
   const agentPortRef         = useRef<HTMLInputElement>(null)
+  const bcUsernameRef        = useRef<HTMLInputElement>(null)
+  const bcPasswordRef        = useRef<HTMLInputElement>(null)
   const navDbServerRef       = useRef<HTMLInputElement>(null)
   const navDbNameRef         = useRef<HTMLInputElement>(null)
   const navServerInstanceRef = useRef<HTMLInputElement>(null)
@@ -123,6 +125,8 @@ export default function AddClientPage() {
       bcCompany:          bcCompanyRef.current?.value.trim() || null,
       bcPort:             bcPortRef.current?.value ? parseInt(bcPortRef.current.value) : 8048,
       agentPort:          agentPortRef.current?.value ? parseInt(agentPortRef.current.value) : 9099,
+      bcUsername:         bcUsernameRef.current?.value.trim() || null,
+      bcPassword:         bcPasswordRef.current?.value || null,
       navDatabaseServer:  navDbServerRef.current?.value.trim() || null,
       navDatabaseName:    navDbNameRef.current?.value.trim() || null,
       navServerInstance:  navServerInstanceRef.current?.value.trim() || null,
@@ -252,6 +256,14 @@ export default function AddClientPage() {
             </Field>
             <Field label="BC Company" hint="Company name as it appears in BC">
               <input ref={bcCompanyRef} style={inputStyle} placeholder="ACME" />
+            </Field>
+          </div>
+          <div style={gridTwo}>
+            <Field label="BC Service Account Username" hint="DOMAIN\username or .\localuser — stored, used in installer">
+              <input ref={bcUsernameRef} style={inputStyle} placeholder="DOMAIN\BCServiceAccount" autoComplete="off" />
+            </Field>
+            <Field label="BC Service Account Password" hint="Baked into installer only — never stored. You will re-enter this at installer download.">
+              <input ref={bcPasswordRef} style={{ ...inputStyle }} type="password" placeholder="••••••••" autoComplete="new-password" />
             </Field>
           </div>
           <div style={gridThree}>
