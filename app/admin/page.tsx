@@ -31,7 +31,7 @@ interface Stats {
   tenants: any[]; topEntities: { entity: string; _count: { entity: number } }[]
 }
 
-type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'business'
+type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'partners'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -120,6 +120,8 @@ function AdminPageInner() {
   const [userAction, setUserAction]               = useState('')  // userId being actioned
   const [resetResult, setResetResult]             = useState<{ email: string; tempPassword: string } | null>(null)
   const [confirmDelete, setConfirmDelete]         = useState<string | null>(null)
+  const [partners, setPartners]                   = useState<any[]>([])
+  const [partnersLoaded, setPartnersLoaded]       = useState(false)
 
   // Installer download form
   const [installerTenantId, setInstallerTenantId] = useState<string | null>(null)
@@ -136,17 +138,27 @@ function AdminPageInner() {
       fetch('/api/admin/tenants').then(r => r.json()),
       fetch('/api/admin/users').then(r => r.json()),
       fetch('/api/admin/stats').then(r => r.json()),
-    ]).then(([t, u, s]) => {
+      fetch('/api/admin/partners').then(r => r.json()),
+    ]).then(([t, u, s, p]) => {
       setTenants(t.tenants ?? [])
       setUsers(u.users ?? [])
       setStats(s)
+      setPartners(Array.isArray(p) ? p : [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
 
   useEffect(() => {
     if (tab === 'signups' && !signupsLoaded) { loadSignups() }
-  }, [tab, signupsLoaded])
+    if (tab === 'partners' && !partnersLoaded) { loadPartners() }
+  }, [tab, signupsLoaded, partnersLoaded])
+
+  function loadPartners() {
+    fetch('/api/admin/partners')
+      .then(r => r.json())
+      .then(data => { setPartners(Array.isArray(data) ? data : []); setPartnersLoaded(true) })
+      .catch(() => setPartnersLoaded(true))
+  }
 
   function loadSignups() {
     setSignupsError(null)
@@ -388,7 +400,7 @@ function AdminPageInner() {
         </div>
 
         <nav style={{ flex: 1, padding: '12px 10px' }}>
-          {([['overview', 'Overview'], ['tenants', 'Tenants'], ['users', 'Users'], ['entities', 'Entities'], ['signups', 'Signups'], ['requirements', 'Customisations'], ['settings', '⚙ AI Setup'], ['business', '🏢 Business']] as [Tab, string][]).map(([id, label]) => (
+          {([['overview', 'Overview'], ['tenants', 'Tenants'], ['users', 'Users'], ['entities', 'Entities'], ['signups', 'Signups'], ['requirements', 'Customisations'], ['settings', '⚙ AI Setup'], ['business', '🏢 Business'], ['partners', '◈ Partners']] as [Tab, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 10px', borderRadius: 8, marginBottom: 2, border: 'none',
@@ -439,7 +451,7 @@ function AdminPageInner() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontSize: 16, padding: 4 }}>☰</button>
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: isMobile ? 16 : 20, color: 'var(--ink)' }}>
-              {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : tab === 'business' ? 'Business Settings' : 'Entities'}
+              {tab === 'overview' ? 'Overview' : tab === 'tenants' ? 'Tenants' : tab === 'users' ? 'Users' : tab === 'signups' ? 'Signup Requests' : tab === 'requirements' ? 'Customisation Requests' : tab === 'settings' ? 'AI Setup' : tab === 'business' ? 'Business Settings' : tab === 'partners' ? 'Partners' : 'Entities'}
             </h1>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -563,7 +575,22 @@ function AdminPageInner() {
                   <tbody>
                     {tenants.map(t => (
                       <tr key={t.id} style={{ borderBottom: '1px solid var(--fog)', opacity: t.active ? 1 : 0.5 }}>
-                        <td style={tdStyle}><span style={{ fontWeight: 500 }}>{t.name}</span></td>
+                        <td style={tdStyle}>
+                          <span style={{ fontWeight: 500 }}>{t.name}</span>
+                          {(t as any).partnerAccount ? (
+                            <span style={{
+                              display: 'inline-block', marginLeft: 6,
+                              padding: '1px 6px', borderRadius: 10,
+                              fontFamily: 'var(--font-mono)', fontSize: 9,
+                              letterSpacing: '0.06em', textTransform: 'uppercase',
+                              background: 'rgba(88,166,255,0.12)',
+                              color: '#58A6FF',
+                              border: '1px solid rgba(88,166,255,0.25)',
+                            }}>
+                              {(t as any).partnerAccount.name}
+                            </span>
+                          ) : null}
+                        </td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{t.tunnelSubdomain}</td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{t.bcInstance}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t._count.users}</td>
@@ -849,6 +876,14 @@ function AdminPageInner() {
         {/* ── Business Settings tab ─────────────────────────────────────────── */}
         {tab === 'business' && (
           <BusinessSettingsTab />
+        )}
+
+        {tab === 'partners' && (
+          <PartnersTab
+            partners={partners}
+            partnersLoaded={partnersLoaded}
+            onReload={() => { setPartnersLoaded(false) }}
+          />
         )}
 
         {tab === 'entities' && (
@@ -3682,6 +3717,216 @@ function AISettingsTab() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Partners Tab ─────────────────────────────────────────────────────────────
+
+function PartnersTab({ partners, partnersLoaded, onReload }: {
+  partners: any[]
+  partnersLoaded: boolean
+  onReload: () => void
+}) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<any>({})
+  const [form, setForm] = useState({
+    name: '', slug: '', billingEmail: '',
+    monthlyAccessFee: 0, perDeveloperFee: 0, perTenantFee: 0, perUserFee: 0,
+    revenueSharePartner: 0.60,
+    paymentMode: 'bespoxai_collected',
+    isWhiteLabel: false,
+  })
+
+  const colStyle: React.CSSProperties = {
+    padding: '10px 14px', textAlign: 'left' as const,
+    fontFamily: 'var(--font-mono)', fontSize: 10,
+    color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+    borderBottom: '1px solid var(--fog)', fontWeight: 500,
+  }
+  const cellStyle: React.CSSProperties = {
+    padding: '10px 14px', fontFamily: 'var(--font-body)', fontSize: 13,
+    borderBottom: '1px solid var(--fog)', verticalAlign: 'middle' as const,
+  }
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '7px 10px', borderRadius: 6,
+    border: '1px solid var(--fog)', fontFamily: 'var(--font-body)', fontSize: 13,
+    background: 'var(--white)', color: 'var(--ink)', boxSizing: 'border-box' as const,
+  }
+
+  async function createPartner() {
+    if (!form.name || !form.slug || !form.billingEmail) { setError('Name, slug and billing email are required'); return }
+    setSaving(true); setError('')
+    const res = await fetch('/api/admin/partners', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
+    setShowCreate(false)
+    setForm({ name: '', slug: '', billingEmail: '', monthlyAccessFee: 0, perDeveloperFee: 0, perTenantFee: 0, perUserFee: 0, revenueSharePartner: 0.60, paymentMode: 'bespoxai_collected', isWhiteLabel: false })
+    onReload()
+  }
+
+  async function saveEdit(id: string) {
+    setSaving(true); setError('')
+    const res = await fetch('/api/admin/partners/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed'); return }
+    setEditId(null)
+    onReload()
+  }
+
+  function startEdit(p: any) {
+    setEditId(p.id)
+    setEditForm({
+      monthlyAccessFee: p.monthlyAccessFee,
+      perDeveloperFee: p.perDeveloperFee,
+      perTenantFee: p.perTenantFee,
+      perUserFee: p.perUserFee,
+      revenueSharePartner: p.revenueSharePartner,
+      paymentMode: p.paymentMode,
+      isActive: p.isActive,
+    })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, color: 'var(--ink)', margin: 0 }}>Partner Accounts</h2>
+        <button
+          onClick={() => setShowCreate(v => !v)}
+          style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--forest)', background: 'rgba(26,146,114,0.08)', color: 'var(--forest)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+        >
+          {showCreate ? 'Cancel' : '+ New Partner'}
+        </button>
+      </div>
+
+      {error ? <p style={{ color: '#A32D2D', fontFamily: 'var(--font-body)', fontSize: 13, marginBottom: 12 }}>{error}</p> : null}
+
+      {showCreate ? (
+        <div style={{ background: 'var(--cream)', border: '1px solid var(--fog)', borderRadius: 12, padding: 24, marginBottom: 20 }}>
+          <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--ink)', margin: '0 0 16px' }}>Create Partner Account</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div><label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Partner Name</label>
+              <input style={inp} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Acme Consulting" /></div>
+            <div><label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Slug</label>
+              <input style={inp} value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} placeholder="acme-consulting" /></div>
+            <div style={{ gridColumn: '1 / -1' }}><label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Billing Email</label>
+              <input style={inp} type="email" value={form.billingEmail} onChange={e => setForm(f => ({ ...f, billingEmail: e.target.value }))} placeholder="billing@acme.co.nz" /></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+            {[['Monthly Access Fee', 'monthlyAccessFee'], ['Per Developer Fee', 'perDeveloperFee'], ['Per Tenant Fee', 'perTenantFee'], ['Per User Fee', 'perUserFee']].map(([label, key]) => (
+              <div key={key}><label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>{label}</label>
+                <input style={inp} type="number" min="0" value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: Number(e.target.value) }))} /></div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div><label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Revenue Share (Partner %)</label>
+              <input style={inp} type="number" min="0" max="1" step="0.01" value={form.revenueSharePartner} onChange={e => setForm(f => ({ ...f, revenueSharePartner: Number(e.target.value) }))} /></div>
+            <div><label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Payment Mode</label>
+              <select style={inp} value={form.paymentMode} onChange={e => setForm(f => ({ ...f, paymentMode: e.target.value }))}>
+                <option value="bespoxai_collected">BespoxAI Collected</option>
+                <option value="partner_collected">Partner Collected</option>
+              </select></div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.isWhiteLabel} onChange={e => setForm(f => ({ ...f, isWhiteLabel: e.target.checked }))} />
+                White Label
+              </label>
+            </div>
+          </div>
+          <button onClick={createPartner} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--forest)', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Creating...' : 'Create Partner'}
+          </button>
+        </div>
+      ) : null}
+
+      <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, overflowX: 'auto' }}>
+        {!partnersLoaded ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--slate)' }}>Loading...</div>
+        ) : partners.length === 0 ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--slate)' }}>No partner accounts yet.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr>
+                {['Partner', 'Slug', 'Tenants', 'Users', 'Rev Share', 'Payment Mode', 'Fees (mo/dev/tenant/user)', 'Status', ''].map(h => (
+                  <th key={h} style={colStyle}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {partners.map(p => (
+                <tr key={p.id}>
+                  <td style={cellStyle}><span style={{ fontWeight: 500 }}>{p.name}</span>{p.isWhiteLabel ? <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 10, fontFamily: 'var(--font-mono)', fontSize: 9, background: 'rgba(200,149,42,0.15)', color: 'var(--gold)', border: '1px solid rgba(200,149,42,0.3)' }}>WL</span> : null}</td>
+                  <td style={{ ...cellStyle, fontFamily: 'var(--font-mono)', fontSize: 11 }}>{p.slug}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' as const, fontFamily: 'var(--font-mono)', fontSize: 11 }}>{p._count?.tenants ?? 0}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' as const, fontFamily: 'var(--font-mono)', fontSize: 11 }}>{p._count?.users ?? 0}</td>
+                  <td style={{ ...cellStyle, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+                    {editId === p.id ? (
+                      <input type="number" min="0" max="1" step="0.01" value={editForm.revenueSharePartner} onChange={e => setEditForm((f: any) => ({ ...f, revenueSharePartner: Number(e.target.value) }))} style={{ ...inp, width: 70 }} />
+                    ) : (
+                      Math.round(p.revenueSharePartner * 100) + '% / ' + Math.round((1 - p.revenueSharePartner) * 100) + '%'
+                    )}
+                  </td>
+                  <td style={cellStyle}>
+                    {editId === p.id ? (
+                      <select value={editForm.paymentMode} onChange={e => setEditForm((f: any) => ({ ...f, paymentMode: e.target.value }))} style={{ ...inp, width: 'auto' }}>
+                        <option value="bespoxai_collected">BespoxAI</option>
+                        <option value="partner_collected">Partner</option>
+                      </select>
+                    ) : (
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{p.paymentMode === 'partner_collected' ? 'Partner' : 'BespoxAI'}</span>
+                    )}
+                  </td>
+                  <td style={{ ...cellStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>
+                    {editId === p.id ? (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {[['monthlyAccessFee', 'mo'], ['perDeveloperFee', 'dev'], ['perTenantFee', 'ten'], ['perUserFee', 'usr']].map(([key, lbl]) => (
+                          <input key={key} type="number" min="0" title={lbl} placeholder={lbl} value={editForm[key]} onChange={e => setEditForm((f: any) => ({ ...f, [key]: Number(e.target.value) }))} style={{ ...inp, width: 60, fontSize: 11 }} />
+                        ))}
+                      </div>
+                    ) : (
+                      p.monthlyAccessFee + ' / ' + p.perDeveloperFee + ' / ' + p.perTenantFee + ' / ' + p.perUserFee
+                    )}
+                  </td>
+                  <td style={cellStyle}>
+                    {editId === p.id ? (
+                      <select value={editForm.isActive ? 'true' : 'false'} onChange={e => setEditForm((f: any) => ({ ...f, isActive: e.target.value === 'true' }))} style={{ ...inp, width: 'auto' }}>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                      </select>
+                    ) : (
+                      <span style={{ padding: '2px 8px', borderRadius: 10, fontFamily: 'var(--font-mono)', fontSize: 10, background: p.isActive ? 'rgba(26,146,114,0.1)' : 'rgba(163,45,45,0.1)', color: p.isActive ? 'var(--forest)' : '#A32D2D', border: '1px solid ' + (p.isActive ? 'rgba(26,146,114,0.25)' : 'rgba(163,45,45,0.25)') }}>
+                        {p.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ ...cellStyle, whiteSpace: 'nowrap' as const }}>
+                    {editId === p.id ? (
+                      <>
+                        <button onClick={() => saveEdit(p.id)} disabled={saving} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: 'var(--forest)', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer', marginRight: 6 }}>{saving ? '...' : 'Save'}</button>
+                        <button onClick={() => setEditId(null)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--fog)', background: 'transparent', color: 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                      </>
+                    ) : (
+                      <button onClick={() => startEdit(p)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--fog)', background: 'transparent', color: 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}>Edit</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }

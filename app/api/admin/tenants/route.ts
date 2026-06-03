@@ -18,11 +18,12 @@ export async function GET() {
   const guard = adminGuard(session)
   if (guard) return guard
 
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await (prisma as any).tenant.findMany({
     orderBy: { createdAt: 'asc' },
     include: {
       _count: { select: { users: true, queryLogs: true, requirements: true } },
       queryLogs: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+      partnerAccount: { select: { id: true, name: true, slug: true } },
     },
   })
 
