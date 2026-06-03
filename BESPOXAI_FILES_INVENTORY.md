@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: May 26, 2026 (Session 8))
+**Last Updated: June 4, 2026 (Session 10)**
 
 ---
 
@@ -49,6 +49,11 @@
 | `app/login/page.tsx` | Login. White background. Corner links at 20px for mobile. |
 | `app/signup/page.tsx` | Signup. BC + NAV version dropdown with optgroups. Card padding uses clamp(). |
 | `app/signup/verify/page.tsx` | Email verification. useEffect calls API on load. Sends notifyAdminsSignupVerified. |
+| `app/partner/layout.tsx` | Partner portal — dark sidebar layout, auth guard |
+| `app/partner/dashboard/page.tsx` | Partner dashboard — tenant list + stat cards |
+| `app/partner-site/page.tsx` | partners.bespoxai.com marketing landing page |
+| `app/partner-site/signup/page.tsx` | Partner signup form |
+| `app/partner-site/signup/verify/page.tsx` | Email verification status page |
 | `app/onboarding/page.tsx` | Post-signup onboarding. Step 0: force password change. Sidebar hidden on mobile. |
 | `app/settings/page.tsx` | Customer settings. ProdEnvForm + TestEnvForm sub-components. Mobile: sticky top nav. ChangePasswordCard. Tab changes use router.push (history). Always has ?tab= in URL. Overview shows Production/Test Environment Details cards. |
 
@@ -86,6 +91,14 @@
 | `api/admin/provision-rdp/route.ts` | POST — adds CF RDP ingress + DNS for {subdomain}-rdp.bespoxai.com. Isolated from main tunnel flow. |
 | `api/admin/ai-config/route.ts` | GET/POST AI config |
 | `api/admin/users/[id]/route.ts` | PATCH + DELETE. |
+| `api/admin/partners/route.ts` | GET list + POST create partner accounts |
+| `api/admin/partners/[id]/route.ts` | GET + PATCH partner account |
+| `api/admin/partners/[id]/activate/route.ts` | POST activate partner signup |
+| `api/admin/partner-signups/route.ts` | GET pending partner signup requests |
+| `api/partner-signup/route.ts` | POST submit partner signup request |
+| `api/partner-signup/verify/route.ts` | GET verify email token |
+| `api/partner/account/route.ts` | GET/PATCH own PartnerAccount |
+| `api/partner/tenants/route.ts` | GET partner's client tenants |
 | `api/billing/create-checkout/route.ts` | Stripe subscription checkout |
 | `api/onboarding/route.ts` | GET/POST onboarding data. |
 | `api/signup/verify/route.ts` | Verifies token, fires notifyAdminsSignupVerified |
@@ -108,8 +121,17 @@
 | `tenant-context.ts` | `buildTenantContext()` |
 | `tenants.ts` | `getTenantById()`, `buildODataUrl()`. agentPort fallback: 9099. |
 | `github.ts` | Per-customer GitHub repos. |
+| `crypto.ts` | encryptToken/decryptToken — AES-256-GCM, key from PARTNER_GITHUB_TOKEN_ENCRYPTION_KEY |
+| `branding.ts` | BrandingConfig, DEFAULT_BRANDING, resolveBranding() |
+| `partner-auth.ts` | requirePartnerSession() + assertTenantBelongsToPartner() |
 | `ai-config.ts` | `getAiConfig()` |
 | `auth.ts` | NextAuth config. JWT includes: tenantId, role, onboardingDone, mustChangePassword, navProduct, persona, firstName, preferredName. |
+
+### Middleware
+
+| File | Purpose |
+|------|---------|
+| `middleware.ts` | partners.bespoxai.com hostname → rewrites to /partner-site/* |
 
 ### Scripts (`/scripts`)
 

@@ -1,12 +1,23 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** May 26, 2026 (Session 8)
+**Last Updated:** June 4, 2026 (Session 10)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 10 — Partner Programme Phase 1**
+- [x] PartnerAccount + PartnerUser + PartnerSignupRequest models + schema
+- [x] lib/crypto.ts, lib/branding.ts, lib/partner-auth.ts
+- [x] Auth — partner JWT context + login redirect
+- [x] middleware.ts — partners.bespoxai.com routing
+- [x] Partner portal shell (layout + dashboard)
+- [x] Partner self-serve signup flow (landing, form, verify)
+- [x] Superadmin Partners tab (create, edit, activate pending signups)
+- [x] Tenant pill for partner-managed tenants
+- [x] partners.bespoxai.com DNS + Vercel domain
 
 **Session 8 — RDP Bug Fixes (v3.2)**
 - [x] SupportAccountPassword inject fix — trailing comma mismatch in route.ts .replace() caused Step 8 to silently skip
@@ -64,6 +75,16 @@
 ---
 
 ## Work Backlog (Prioritized)
+
+### Partner Programme — Phase 2 (Next)
+- [ ] User.tenantId make nullable (schema debt — partner users use placeholder tenantId)
+- [ ] POST /api/partner/tenants — partner creates client tenants
+- [ ] /app/partner/tenants/[id] — single tenant view (Requirements, Settings, Users, GitHub tabs)
+- [ ] BCAgent routes for partner portal (installer, sync-config, provision-rdp per tenant)
+- [ ] lib/github.ts — GitHub token resolution (partner org → BespoxAI fallback)
+- [ ] Client user settings — hide BCAgent tabs for partner-managed tenants
+- [ ] /partner/team page + api/partner/users/* routes
+- [ ] White-label sender name in notifications
 
 ### 🔴 HIGH PRIORITY
 

@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** May 26, 2026 (Session 9)
+**Last Updated:** June 4, 2026 (Session 10)
 
 ---
 
@@ -92,6 +92,34 @@ ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "completePendingPaymentAt" TI
 All applied ✅
 
 ---
+
+## Session 10 Key Changes (June 4, 2026)
+
+### Partner Programme — Phase 1 Complete
+- **DB/Schema:** PartnerAccount, PartnerUser, PartnerSignupRequest tables live
+- **lib/crypto.ts** — AES-256-GCM encrypt/decrypt (`PARTNER_GITHUB_TOKEN_ENCRYPTION_KEY` env var, 64 hex chars)
+- **lib/branding.ts** — BrandingConfig + DEFAULT_BRANDING + resolveBranding() — Phase 4 ready
+- **lib/partner-auth.ts** — requirePartnerSession() + assertTenantBelongsToPartner()
+- **lib/auth.ts** — partner context in JWT/session; login redirects to /partner/dashboard
+- **middleware.ts** — partners.bespoxai.com rewrites to /partner-site/*
+- **Partner portal** — dark GitHub-style sidebar layout + dashboard with tenant table
+- **Partner self-serve signup** — partners.bespoxai.com landing + form (company/contact/GST/address/phone/payment mode/bank account) + verify flow
+- **Superadmin Partners tab** — create/edit partner accounts, pending applications + Activate button, partner pill on tenant rows
+- **partners.bespoxai.com** — Cloudflare CNAME + Vercel Production domain configured
+
+### PartnerAccount key fields
+paymentMode: 'bespoxai_collected' | 'partner_collected'
+agentBrandName: replaces 'BespoxAI' in agent paths/filenames (wired Phase 4, stored now)
+bankAccount: for revenue share payouts (masked in UI)
+githubToken: AES-256-GCM encrypted
+revenueSharePartner: default 0.60
+
+### Partner payment modes
+- bespoxai_collected: standard Stripe (Phase 3); approval buttons labelled "Approve & Begin Development" / "Approve & Release to Client" with "This will be invoiced to your BespoxAI account"
+- partner_collected: partner bills clients directly; BespoxAI invoices partner for revenue share
+
+### Known schema debt
+User.tenantId is required FK; partner users get placeholder tenantId on activation. Make nullable in Phase 2.
 
 ## Session 8 Key Changes (May 26, 2026)
 
