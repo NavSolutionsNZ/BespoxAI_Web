@@ -79,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       await createDnsRecord(hostname, newTunnel.id)
       tenant = await (prisma as any).tenant.update({
         where: { id: params.id },
-        data:  { tunnelId: newTunnel.id, tunnelSubdomain: subdomain },
+        data:  { tunnelId: newTunnel.id, tunnelSubdomain: subdomain, connectionRequestedAt: null, connectionRequestedToEmail: null },
       })
     } catch (e: any) {
       return NextResponse.json({ error: 'Could not create Cloudflare tunnel: ' + e.message }, { status: 502 })

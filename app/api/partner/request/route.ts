@@ -37,6 +37,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Tenant or partner not found' }, { status: 404 })
   }
 
+  // Block re-request if already submitted
+  if (type === 'connection' && (tenant as any).connectionRequestedAt) {
+    return NextResponse.json({ error: 'Already requested', alreadyRequested: true }, { status: 409 })
+  }
+  if (type === 'upgrade' && (tenant as any).upgradeRequestedAt) {
+    return NextResponse.json({ error: 'Already requested', alreadyRequested: true }, { status: 409 })
+  }
+
   // Load superadmins
   const superadmins: { email: string; name: string | null }[] = await (prisma as any).user.findMany({
     where:  { role: 'superadmin' },
@@ -95,5 +103,11 @@ export async function POST(req: NextRequest) {
 
   await Promise.all(sends)
 
-  return NextResponse.json({ ok: true })
+  // Persist request record on tenant
+  const updateData = type === 'connection'
+    ? { connectionRequestedAt: new Date(), connectionRequestedToEmail: partnerEmail }
+    : { upgradeRequestedAt:    new Date(), upgradeRequestedToEmail:    partnerEmail }
+  await (prisma as any).tenant.update({ where: { id: user.tenantId }, data: updateData })
+
+  return NextResponse.json({ ok: true, sentTo: partnerEmail })
 }

@@ -145,13 +145,31 @@ function DashboardInner() {
   const isTenantAdmin = user?.role === 'tenant_admin' || user?.role === 'superadmin'
   const [partnerReqSent, setPartnerReqSent] = useState<'upgrade' | 'connection' | null>(null)
   const [partnerReqLoading, setPartnerReqLoading] = useState<'upgrade' | 'connection' | null>(null)
+  const [partnerReqState, setPartnerReqState] = useState<{
+    connectionRequestedAt: string | null; connectionRequestedToEmail: string | null
+    upgradeRequestedAt: string | null; upgradeRequestedToEmail: string | null
+  }>({ connectionRequestedAt: null, connectionRequestedToEmail: null, upgradeRequestedAt: null, upgradeRequestedToEmail: null })
+
+  useEffect(() => {
+    if (!managedByPartner) return
+    fetch('/api/partner/request-state').then(r => r.json()).then(d => {
+      if (d) setPartnerReqState(d)
+    }).catch(() => {})
+  }, [managedByPartner])
 
   async function sendPartnerRequest(type: 'upgrade' | 'connection') {
     setPartnerReqLoading(type)
     try {
-      await fetch('/api/partner/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
-      setPartnerReqSent(type)
-      setTimeout(() => setPartnerReqSent(null), 4000)
+      const res = await fetch('/api/partner/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        const now = new Date().toISOString()
+        setPartnerReqState(prev => type === 'connection'
+          ? { ...prev, connectionRequestedAt: now, connectionRequestedToEmail: data.sentTo ?? null }
+          : { ...prev, upgradeRequestedAt: now, upgradeRequestedToEmail: data.sentTo ?? null })
+        setPartnerReqSent(type)
+        setTimeout(() => setPartnerReqSent(null), 4000)
+      }
     } catch { /* silent */ } finally {
       setPartnerReqLoading(null)
     }
@@ -576,7 +594,7 @@ function DashboardInner() {
             </div>
             {aiUsage.percentUsed >= 100 && (
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#A32D2D', marginTop: 4, letterSpacing: '0.06em' }}>
-                Monthly limit reached{managedByPartner ? '' : ' — '}{!managedByPartner ? <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span> : null}{managedByPartner ? <button onClick={() => sendPartnerRequest('upgrade')} disabled={partnerReqLoading === 'upgrade'} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 8, color: partnerReqSent === 'upgrade' ? '#3FB950' : '#A32D2D', textDecoration: 'underline', letterSpacing: '0.06em' }}>{partnerReqSent === 'upgrade' ? ' ✓ Request sent' : ' — Request upgrade'}</button> : null}
+                Monthly limit reached{!managedByPartner ? ' — ' : ''}{!managedByPartner ? <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span> : null}{managedByPartner && partnerReqState.upgradeRequestedAt ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.06em', color: '#8B949E' }}>{' — Requested ' + new Date(partnerReqState.upgradeRequestedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' }) + (partnerReqState.upgradeRequestedToEmail ? ' (' + partnerReqState.upgradeRequestedToEmail + ')' : '')}</span> : null}{managedByPartner && !partnerReqState.upgradeRequestedAt ? <button onClick={() => sendPartnerRequest('upgrade')} disabled={partnerReqLoading === 'upgrade'} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 8, color: partnerReqSent === 'upgrade' ? '#3FB950' : '#A32D2D', textDecoration: 'underline', letterSpacing: '0.06em' }}>{partnerReqSent === 'upgrade' ? ' ✓ Sent' : ' — Request upgrade'}</button> : null}
               </p>
             )}
           </div>
@@ -782,14 +800,18 @@ function DashboardInner() {
                   {/* Partner-managed — not connected state */}
                   {!isConnected && health.status !== 'checking' && managedByPartner ? (
                     <div style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#58A6FF', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' setup in progress'}</p>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#58A6FF', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' not yet connected'}</p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
-                        Your system connection is being set up by your partner
+                        {'Your ' + erpLabel + ' system is not yet connected'}
                       </p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.65, marginBottom: 16 }}>
-                        Once your partner installs and configures the BCAgent on your server, your live data will appear here automatically.
+                        Your partner can connect your system using the BCAgent installer. Once installed, your live data will appear here automatically.
                       </p>
-                      {partnerReqSent === 'connection' ? (
+                      {partnerReqState.connectionRequestedAt ? (
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.6 }}>
+                          {'✓ Requested on ' + new Date(partnerReqState.connectionRequestedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) + (partnerReqState.connectionRequestedToEmail ? ' — sent to ' + partnerReqState.connectionRequestedToEmail : '')}
+                        </p>
+                      ) : partnerReqSent === 'connection' ? (
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--forest)', fontWeight: 500 }}>✓ Request sent — your partner has been notified</p>
                       ) : (
                         <button onClick={() => sendPartnerRequest('connection')} disabled={partnerReqLoading === 'connection'} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: partnerReqLoading === 'connection' ? 'default' : 'pointer', opacity: partnerReqLoading === 'connection' ? 0.6 : 1 }}>

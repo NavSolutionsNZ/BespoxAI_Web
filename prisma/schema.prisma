@@ -38,6 +38,10 @@ model Tenant {
   testBcCompany          String?                     // test BC company name
   testNavManagementPort  Int?      @default(7045)    // NAV server management port for schema sync
   rdpPassword            String?                     // BespoxAI-Support account password (baked into installer)
+  connectionRequestedAt      DateTime?               // Set when client requests connection setup; cleared on tunnel provision
+  connectionRequestedToEmail String?                 // Partner email the request was sent to
+  upgradeRequestedAt         DateTime?               // Set when client requests plan upgrade
+  upgradeRequestedToEmail    String?                 // Partner email the request was sent to
   testAgentPort          Int?                        // test BCAgent listening port
   githubOrg            String?                    // GitHub org for customer repos (defaults to NavSolutionsNZ)
   githubRepo           String?                    // GitHub repo name e.g. bespoxai-acme
