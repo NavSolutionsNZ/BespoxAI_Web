@@ -47,14 +47,14 @@ export async function POST(req: Request) {
 
   await sendEmail({
     to:      adminEmail,
-    subject: `🏗️ Migration Analysis Request — ${user.tenant.name}`,
+    subject: `🏗️ Migration Analysis Request — ${user.tenant?.name ?? 'Unknown'}`,
     html: `
       <div style="font-family:sans-serif;max-width:620px;color:#040E09">
         <h2 style="color:#0A5C46;margin-bottom:4px">New Migration Analysis Request</h2>
         <p style="color:#3B5249;margin-top:0">Submitted via BespokAI dashboard</p>
         <table style="width:100%;border-collapse:collapse;margin-top:20px">
           ${[
-            ['Tenant',        user.tenant.name],
+            ['Tenant',        user.tenant?.name ?? 'Unknown'],
             ['Contact Name',  contactName || user.name || '—'],
             ['Email',         user.email],
             ['Phone',         phone],
