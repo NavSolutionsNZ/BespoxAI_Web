@@ -75,7 +75,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   })
 
   try {
-    await notifyAdminsNewRequirement(requirement.id, requirement.title, tenant?.name ?? 'Unknown')
+    await notifyAdminsNewRequirement({
+      requirementId: requirement.id,
+      title:         requirement.title,
+      tenantName:    tenant?.name ?? 'Unknown',
+      customerName:  'Partner',
+      customerEmail: '',
+    })
   } catch { /* non-fatal */ }
 
   return NextResponse.json(requirement, { status: 201 })
