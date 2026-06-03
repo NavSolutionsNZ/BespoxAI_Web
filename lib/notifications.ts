@@ -442,3 +442,56 @@ export async function notifyCustomerProdDeployed(params: {
     `),
   }).catch(e => console.error('[notify] customer prod deployed:', e))
 }
+
+// ── Partner notifications ─────────────────────────────────────────────────────
+
+export async function notifyAdminsPartnerSignupVerified(params: {
+  companyName: string
+  contactName: string
+  email:       string
+}) {
+  try {
+    const admins = await getSuperadmins()
+    await Promise.all(admins.map(admin =>
+      sendEmail({
+        to:      admin.email,
+        subject: 'New partner signup verified — ' + params.companyName,
+        html: wrap(`
+          <p>Hi ${admin.name ?? 'there'},</p>
+          <p><strong>${params.companyName}</strong> (${params.contactName}) has verified their email address and is awaiting partner account activation.</p>
+          <p style="margin:0">Email: ${params.email}</p>
+          ${cta('Review in admin', PORTAL + '/admin?tab=partners')}
+        `),
+      })
+    ))
+  } catch (e) {
+    console.error('[notifyAdminsPartnerSignupVerified]', e)
+  }
+}
+
+export async function notifyPartnerWelcome(params: {
+  email:       string
+  contactName: string
+  companyName: string
+  tempPassword: string
+}) {
+  try {
+    await sendEmail({
+      to:      params.email,
+      subject: 'Welcome to BespoxAI — your partner account is ready',
+      html: wrap(`
+        <p>Hi ${params.contactName},</p>
+        <p>Your BespoxAI Partner account for <strong>${params.companyName}</strong> has been activated.</p>
+        <p>You can log in at <a href="${PORTAL}/login" style="color:#0A5C46">${PORTAL}/login</a> using the credentials below.</p>
+        <div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:16px 0">
+          <p style="margin:0 0 6px"><strong>Email:</strong> ${params.email}</p>
+          <p style="margin:0"><strong>Temporary password:</strong> <code style="background:#f4f0e8;padding:2px 6px;border-radius:4px">${params.tempPassword}</code></p>
+        </div>
+        <p>You will be asked to set a new password on first login.</p>
+        ${cta('Log in to Partner Portal', PORTAL + '/login')}
+      `),
+    })
+  } catch (e) {
+    console.error('[notifyPartnerWelcome]', e)
+  }
+}

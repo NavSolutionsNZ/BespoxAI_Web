@@ -369,6 +369,11 @@ model PartnerAccount {
   agentBrandName       String?       // replaces 'BespoxAI' in agent paths/filenames/service names (Phase 4)
 
   // GitHub (partner org — optional, falls back to BespoxAI org)
+  contactName          String?
+  phone                String?
+  address              String?
+  gstNumber            String?
+  bankAccount          String?       // masked in UI, for revenue share payouts
   githubOrg            String?
   githubToken          String?       // AES-256-GCM encrypted, never exposed in API responses
 
@@ -390,4 +395,22 @@ model PartnerUser {
   createdAt        DateTime       @default(now())
 
   @@unique([partnerAccountId, userId])
+}
+
+model PartnerSignupRequest {
+  id            String    @id @default(cuid())
+  companyName   String
+  slug          String
+  billingEmail  String
+  email         String
+  contactName   String
+  phone         String
+  address       String
+  gstNumber     String?
+  paymentMode   String    @default("bespoxai_collected")
+  bankAccount   String?
+  verifyToken   String    @unique
+  verifiedAt    DateTime?
+  activatedAt   DateTime?
+  createdAt     DateTime  @default(now())
 }

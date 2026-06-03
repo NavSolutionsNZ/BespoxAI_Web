@@ -1,72 +1,30 @@
-import { withAuth } from 'next-auth/middleware'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export default withAuth(
-  function middleware(req) {
-    const token    = (req as any).nextauth?.token
-    const role     = token?.role as string | undefined
-    const pathname = req.nextUrl.pathname
-    const isApi    = pathname.startsWith('/api/')
+export function middleware(req: NextRequest) {
+  const hostname = req.headers.get('host') ?? ''
+  const isPartnerSite = hostname === 'partners.bespoxai.com' || hostname.startsWith('partners.')
 
-    const isAdminRoute    = pathname.startsWith('/admin')    || pathname.startsWith('/api/admin')
-    const isSettingsRoute = pathname.startsWith('/settings') || pathname.startsWith('/api/settings')
+  if (!isPartnerSite) return NextResponse.next()
 
-    // /admin — superadmin only
-    if (isAdminRoute && role !== 'superadmin') {
-      if (isApi) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
+  const { pathname } = req.nextUrl
 
-    // /settings — tenant_admin or superadmin
-    if (isSettingsRoute && role !== 'tenant_admin' && role !== 'superadmin') {
-      if (isApi) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
+  // Rewrite partner subdomain paths to /partner-site/* equivalents
+  if (pathname === '/' || pathname === '') {
+    return NextResponse.rewrite(new URL('/partner-site', req.url))
+  }
+  if (pathname === '/signup') {
+    return NextResponse.rewrite(new URL('/partner-site/signup', req.url))
+  }
+  if (pathname === '/signup/verify') {
+    return NextResponse.rewrite(new URL('/partner-site/signup/verify', req.url))
+  }
 
-    return NextResponse.next()
-  },
-  {
-    pages: { signIn: '/login' },
-    callbacks: {
-      authorized({ token, req }) {
-        const pathname = req.nextUrl.pathname
-        // Public routes — no auth required
-        if (
-          pathname.startsWith('/demo')                     ||
-          pathname.startsWith('/api/demo')                 ||
-          pathname.startsWith('/signup')                   ||
-          pathname.startsWith('/api/signup')               ||
-          pathname.startsWith('/forgot-password')          ||
-          pathname.startsWith('/reset-password')           ||
-          pathname.startsWith('/api/auth/forgot-password') ||
-          pathname.startsWith('/api/auth/reset-password')  ||
-          pathname.startsWith('/api/webhooks/stripe')
-        ) return true
-        return !!token?.tenantId
-      },
-    },
-  },
-)
+  // API routes, auth, and /partner/* pass through unchanged
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/onboarding/:path*',
-    '/onboarding',
-    '/admin',
-    '/admin/:path*',
-    '/settings/:path*',
-    '/demo/:path*',
-    '/signup/:path*',
-    '/api/query',
-    '/api/onboarding',
-    '/api/admin/:path*',
-    '/api/settings/:path*',
-    '/api/demo/:path*',
-    '/api/signup/:path*',
-    '/api/signup',
-    '/api/webhooks/stripe',
-    '/billing/:path*',
-    '/api/billing/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

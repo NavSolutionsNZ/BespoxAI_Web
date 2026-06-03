@@ -122,6 +122,7 @@ function AdminPageInner() {
   const [confirmDelete, setConfirmDelete]         = useState<string | null>(null)
   const [partners, setPartners]                   = useState<any[]>([])
   const [partnersLoaded, setPartnersLoaded]       = useState(false)
+  const [pendingPartnerSignups, setPendingPartnerSignups] = useState<any[]>([])
 
   // Installer download form
   const [installerTenantId, setInstallerTenantId] = useState<string | null>(null)
@@ -154,10 +155,25 @@ function AdminPageInner() {
   }, [tab, signupsLoaded, partnersLoaded])
 
   function loadPartners() {
-    fetch('/api/admin/partners')
-      .then(r => r.json())
-      .then(data => { setPartners(Array.isArray(data) ? data : []); setPartnersLoaded(true) })
-      .catch(() => setPartnersLoaded(true))
+    Promise.all([
+      fetch('/api/admin/partners').then(r => r.json()),
+      fetch('/api/admin/partner-signups').then(r => r.json()),
+    ]).then(([p, s]) => {
+      setPartners(Array.isArray(p) ? p : [])
+      setPendingPartnerSignups(s.signups ?? [])
+      setPartnersLoaded(true)
+    }).catch(() => setPartnersLoaded(true))
+  }
+
+  async function activatePartnerSignup(id: string) {
+    const res = await fetch('/api/admin/partners/' + id + '/activate', { method: 'POST' })
+    if (res.ok) {
+      // Reload both lists
+      setPartnersLoaded(false)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      alert(d.error ?? 'Activation failed')
+    }
   }
 
   function loadSignups() {
@@ -883,6 +899,8 @@ function AdminPageInner() {
             partners={partners}
             partnersLoaded={partnersLoaded}
             onReload={() => { setPartnersLoaded(false) }}
+            pendingSignups={pendingPartnerSignups}
+            onActivate={activatePartnerSignup}
           />
         )}
 
@@ -3723,12 +3741,15 @@ function AISettingsTab() {
 
 // ─── Partners Tab ─────────────────────────────────────────────────────────────
 
-function PartnersTab({ partners, partnersLoaded, onReload }: {
+function PartnersTab({ partners, partnersLoaded, onReload, pendingSignups, onActivate }: {
   partners: any[]
   partnersLoaded: boolean
   onReload: () => void
+  pendingSignups: any[]
+  onActivate: (id: string) => Promise<void>
 }) {
   const [showCreate, setShowCreate] = useState(false)
+  const [activating, setActivating] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
@@ -3800,6 +3821,50 @@ function PartnersTab({ partners, partnersLoaded, onReload }: {
 
   return (
     <div>
+      {pendingSignups.length > 0 ? (
+        <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 12, padding: 20, marginBottom: 24 }}>
+          <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--gold)', margin: '0 0 14px' }}>
+            Pending Applications ({pendingSignups.length})
+          </h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 }}>
+            <thead>
+              <tr>
+                {['Company', 'Contact', 'Email', 'Payment Mode', 'Verified', 'Applied', ''].map(h => (
+                  <th key={h} style={{ padding: '6px 12px', textAlign: 'left' as const, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, borderBottom: '1px solid rgba(200,149,42,0.15)', fontWeight: 500 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pendingSignups.map((s: any) => (
+                <tr key={s.id}>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--ink)', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>{s.companyName}</td>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>{s.contactName}</td>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>{s.email}</td>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>{s.paymentMode === 'partner_collected' ? 'Partner' : 'BespoxAI'}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>
+                    {s.verifiedAt ? (
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)' }}>✓ Verified</span>
+                    ) : (
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>Pending</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>{new Date(s.createdAt).toLocaleDateString('en-NZ')}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid rgba(200,149,42,0.1)' }}>
+                    <button
+                      disabled={!s.verifiedAt || activating === s.id}
+                      onClick={async () => { setActivating(s.id); await onActivate(s.id); setActivating(null) }}
+                      title={!s.verifiedAt ? 'Awaiting email verification' : 'Activate this partner account'}
+                      style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: s.verifiedAt ? 'var(--forest)' : 'var(--fog)', color: s.verifiedAt ? 'var(--white)' : 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, cursor: s.verifiedAt ? 'pointer' : 'not-allowed', opacity: activating === s.id ? 0.6 : 1 }}>
+                      {activating === s.id ? '...' : 'Activate'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, color: 'var(--ink)', margin: 0 }}>Partner Accounts</h2>
         <button
