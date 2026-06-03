@@ -763,7 +763,7 @@ function DashboardInner() {
                       {greeting}, {displayFirst}.{' '}
                       {isConnected
                         ? <>I&apos;m connected to <strong>{tenantName}</strong> and ready to answer questions about your finances. What would you like to know?</>
-                        : managedByPartner ? <>{'I\'m your ' + erpLabel + ' financial assistant. Your system connection is being set up by your partner.'}</> : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
+                        : managedByPartner ? <>{'I\'m your ' + erpLabel + ' financial assistant. Your ' + erpLabel + ' system is not yet connected — your partner can set this up for you.'}</> : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
                       }
                     </p>
                   </div>
