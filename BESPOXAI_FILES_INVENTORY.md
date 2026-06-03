@@ -50,6 +50,8 @@
 | `app/signup/page.tsx` | Signup. BC + NAV version dropdown with optgroups. Card padding uses clamp(). |
 | `app/signup/verify/page.tsx` | Email verification. useEffect calls API on load. Sends notifyAdminsSignupVerified. |
 | `app/partner/layout.tsx` | Partner portal — dark sidebar layout, auth guard |
+| `app/partner/tenants/[id]/page.tsx` | Client management view — 4 tabs: Overview, Requirements, Users, Settings |
+| `app/partner/tenants/new/page.tsx` | Add Client form — full BC/NAV config, BC service account, optional test env |
 | `app/partner/dashboard/page.tsx` | Partner dashboard — tenant list + stat cards |
 | `app/partner-site/page.tsx` | partners.bespoxai.com marketing landing page |
 | `app/partner-site/signup/page.tsx` | Partner signup form |
@@ -89,6 +91,10 @@
 | `api/admin/signups/route.ts` | Lists unactivated signup requests only |
 | `api/admin/provision/route.ts` | Provision new tenant. agentPort default: 9099. mustChangePassword=true. |
 | `api/admin/provision-rdp/route.ts` | POST — adds CF RDP ingress + DNS for {subdomain}-rdp.bespoxai.com. Isolated from main tunnel flow. |
+| `api/partner/tenants/route.ts` | GET list + POST create client tenant (partner session, no tunnel) |
+| `api/partner/tenants/[id]/route.ts` | GET single tenant + users (assertTenantBelongsToPartner) |
+| `api/partner/tenants/[id]/requirements/route.ts` | GET list + POST raise on behalf of tenant |
+| `api/partner/tenants/[id]/requirements/[reqId]/route.ts` | GET + PATCH customer-side actions (submit, Q&A, quote approve/reject) |
 | `api/admin/ai-config/route.ts` | GET/POST AI config |
 | `api/admin/users/[id]/route.ts` | PATCH + DELETE. |
 | `api/admin/partners/route.ts` | GET list + POST create partner accounts |

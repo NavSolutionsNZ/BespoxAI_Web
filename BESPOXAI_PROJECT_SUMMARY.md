@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 4, 2026 (Session 10)
+**Last Updated:** June 4, 2026 (Session 11)
 
 ---
 
@@ -90,6 +90,50 @@ ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "inDevelopmentAt" TIMESTAMP;
 ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "completePendingPaymentAt" TIMESTAMP;
 ```
 All applied ✅
+
+---
+
+## Session 11 Key Changes (June 4, 2026)
+
+### Partner Programme — Phase 2
+
+#### Schema
+- `User.tenantId` made nullable (`String?`, `tenant Tenant?`) — partner users have no tenant
+- SQL applied: `ALTER TABLE "User" ALTER COLUMN "tenantId" DROP NOT NULL;`
+- `prisma/schema.prisma` updated
+
+#### Partner User Activation Fix
+- `app/api/admin/partners/[id]/activate/route.ts`: removed placeholder tenant hack, now sets `tenantId: null`
+
+#### Requirements Guard
+- `app/api/requirements/route.ts`: POST now returns 403 if `user.tenantId` is null (partner users cannot create requirements via the standard route)
+
+#### Null-guard Fix
+- `app/api/migration/enquiry/route.ts`: `user.tenant?.name` — was crashing after tenantId nullable change
+
+#### Partner Tenant View (`/partner/tenants/[id]`)
+- 4-tab client management view: Overview, Requirements, Users, Settings
+- Requirements tab: full pipeline — list, raise, submit, Q&A, quote accept/reject (no Stripe payment, no BCAgent panels)
+- Settings tab: read-only BC config with "contact support" note
+
+#### New API Routes
+- `GET /api/partner/tenants/[id]` — single tenant + users
+- `GET/POST /api/partner/tenants/[id]/requirements` — list + raise on behalf
+- `GET/PATCH /api/partner/tenants/[id]/requirements/[reqId]` — detail + customer-side actions
+
+#### Add Client (`/partner/tenants/new`)
+- Full-page form: company name, subdomain (auto-generated on blur), product toggle (BC/NAV), version, last CU
+- Production environment: BC instance, company, SQL server, database, server instance, OData port, agent port, management port
+- BC service account: username (stored in DB) + password (never stored — baked into installer at download, same as existing customer flow)
+- Test environment: collapsible section, all test env fields
+- `POST /api/partner/tenants`: creates tenant record with `partnerAccountId` from session, no tunnel — auto-provisioned on first installer download
+- Subdomain uniqueness checked at create time (409 if taken)
+
+### Test Data (seed SQL delivered this session)
+- Partner account: "Test Partner Ltd" (slug: testpartner)
+- Partner login: `partner@testpartner.com` / `Partner123!`
+- Two seed tenants: Acme Distribution Ltd (acmedist, BC25) + Pinnacle Manufacturing NZ (pinnaclemfg, NAV12)
+- Three seed requirements across both tenants (submitted, in_development, draft)
 
 ---
 

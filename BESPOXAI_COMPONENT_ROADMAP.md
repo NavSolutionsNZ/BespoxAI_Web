@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 4, 2026 (Session 10)
+**Last Updated:** June 4, 2026 (Session 11)
 
 ---
 
@@ -76,11 +76,16 @@
 
 ## Work Backlog (Prioritized)
 
-### Partner Programme — Phase 2 (Next)
-- [ ] User.tenantId make nullable (schema debt — partner users use placeholder tenantId)
-- [ ] POST /api/partner/tenants — partner creates client tenants
-- [ ] /app/partner/tenants/[id] — single tenant view (Requirements, Settings, Users, GitHub tabs)
-- [ ] BCAgent routes for partner portal (installer, sync-config, provision-rdp per tenant)
+**Session 11 — Partner Programme Phase 2 (Partial)**
+- [x] User.tenantId nullable — SQL applied, schema updated, activate route fixed
+- [x] POST /api/partner/tenants — create client tenant (no tunnel; auto-provisioned on installer download)
+- [x] /partner/tenants/[id] — 4-tab client management view (Overview, Requirements, Users, Settings)
+- [x] /partner/tenants/new — Add Client form (full BC/NAV config, BC service account, optional test env)
+- [x] Partner requirements pipeline — raise, submit, Q&A, quote approve/reject on behalf of client
+- [x] Test seed data: Test Partner Ltd + 2 client tenants + 3 requirements
+
+### Partner Programme — Phase 2 Remaining
+- [ ] BCAgent routes for partner portal (installer download, sync-config, provision-rdp per tenant)
 - [ ] lib/github.ts — GitHub token resolution (partner org → BespoxAI fallback)
 - [ ] Client user settings — hide BCAgent tabs for partner-managed tenants
 - [ ] /partner/team page + api/partner/users/* routes
