@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createId } from '@paralleldrive/cuid2'
 import { encryptToken } from '@/lib/crypto'
 
 function isSuperadmin(session: any) {
@@ -63,7 +62,7 @@ export async function POST(req: NextRequest) {
   if (existing) return NextResponse.json({ error: 'slug already in use' }, { status: 409 })
 
   const data: any = {
-    id: createId(),
+    id: crypto.randomUUID(),
     name, slug, billingEmail,
     monthlyAccessFee, perDeveloperFee, perTenantFee, perUserFee,
     revenueSharePartner,
