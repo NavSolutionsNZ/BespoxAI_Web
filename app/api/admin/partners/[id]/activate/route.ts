@@ -54,18 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     },
   })
 
-  // Create User — needs a tenantId to satisfy the required FK
-  // Partner users are linked via PartnerUser, not Tenant, but the schema requires tenantId.
-  // We use a sentinel approach: find the first tenant or create a placeholder.
-  // For now partner users have no meaningful tenantId — we use a known sentinel.
-  // NOTE: This is a Phase 2 schema concern — ideally tenantId becomes nullable for partner users.
-  // For now, partner users log in fine because auth detects PartnerUser and ignores tenantId.
-  // We'll use a system tenant placeholder if available, otherwise skip tenant guard.
-  const anyTenant = await (prisma as any).tenant.findFirst({ orderBy: { createdAt: 'asc' } })
-  if (!anyTenant) {
-    return NextResponse.json({ error: 'No tenants exist yet — create at least one tenant before activating a partner' }, { status: 400 })
-  }
-
+  // Create User — tenantId is now nullable; partner users have no tenant (context comes from PartnerUser)
   const user = await (prisma as any).user.create({
     data: {
       email:             signup.email,
@@ -77,7 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       mustChangePassword: true,
       onboardingDone:    true,
       active:            true,
-      tenantId:          anyTenant.id,  // placeholder — partner context comes from PartnerUser
+      tenantId:          null,
     },
   })
 

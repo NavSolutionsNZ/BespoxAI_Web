@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
 
   const { title, description, bcArea, priority } = body
 
+  if (!user.tenantId) {
+    return NextResponse.json({ error: 'Partner accounts cannot create requirements directly' }, { status: 403 })
+  }
+
   if (!title?.trim() || !description?.trim() || !bcArea || !priority) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
