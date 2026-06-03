@@ -141,6 +141,7 @@ function DashboardInner() {
   const pathname   = usePathname()
   const searchParams = useSearchParams()
   const user = session?.user as any
+  const managedByPartner = !!(user?.managedByPartner)
   const isTenantAdmin = user?.role === 'tenant_admin' || user?.role === 'superadmin'
   const health = useHealthStatus()
 
@@ -523,8 +524,8 @@ function DashboardInner() {
           </div>
         )}
 
-        {/* Upgrade / billing link — non-superadmin only */}
-        {user?.role !== 'superadmin' && (
+        {/* Upgrade / billing link — non-superadmin, non-partner-managed only */}
+        {user?.role !== 'superadmin' && !managedByPartner && (
           <div style={{ padding: '4px 10px 0' }}>
             <button onClick={() => router.push('/billing')} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -562,7 +563,7 @@ function DashboardInner() {
             </div>
             {aiUsage.percentUsed >= 100 && (
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#A32D2D', marginTop: 4, letterSpacing: '0.06em' }}>
-                Monthly limit reached — <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span>
+                Monthly limit reached{managedByPartner ? ' — contact your partner to upgrade' : ' — '}{!managedByPartner ? <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span> : null}
               </p>
             )}
           </div>
@@ -731,7 +732,7 @@ function DashboardInner() {
                       {greeting}, {displayFirst}.{' '}
                       {isConnected
                         ? <>I&apos;m connected to <strong>{tenantName}</strong> and ready to answer questions about your finances. What would you like to know?</>
-                        : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
+                        : managedByPartner ? <>{'I\'m your ' + erpLabel + ' financial assistant. Your system connection is managed by your partner.'}</> : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
                       }
                     </p>
                   </div>
@@ -740,7 +741,7 @@ function DashboardInner() {
                   {isConnected && <OverviewCards tenantName={tenantName} onQuery={(q) => { setQuestion(q); setTimeout(() => textareaRef.current?.focus(), 50) }} />}
 
                   {/* Not connected — setup prompt */}
-                  {!isConnected && health.status !== 'checking' && (
+                  {!isConnected && health.status !== 'checking' && !managedByPartner && (
                     <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' not connected'}</p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
@@ -764,6 +765,19 @@ function DashboardInner() {
                       </div>
                     </div>
                   )}
+
+                  {/* Partner-managed — not connected state */}
+                  {!isConnected && health.status !== 'checking' && managedByPartner ? (
+                    <div style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#58A6FF', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' setup in progress'}</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
+                        Your system connection is being set up by your partner
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.65 }}>
+                        Once your partner installs and configures the BCAgent on your server, your live data will appear here automatically.
+                      </p>
+                    </div>
+                  ) : null}
 
                   {/* Suggested questions — only when connected */}
                   {isConnected && (
