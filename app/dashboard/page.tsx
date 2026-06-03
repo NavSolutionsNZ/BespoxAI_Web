@@ -143,6 +143,19 @@ function DashboardInner() {
   const user = session?.user as any
   const managedByPartner = !!(user?.managedByPartner)
   const isTenantAdmin = user?.role === 'tenant_admin' || user?.role === 'superadmin'
+  const [partnerReqSent, setPartnerReqSent] = useState<'upgrade' | 'connection' | null>(null)
+  const [partnerReqLoading, setPartnerReqLoading] = useState<'upgrade' | 'connection' | null>(null)
+
+  async function sendPartnerRequest(type: 'upgrade' | 'connection') {
+    setPartnerReqLoading(type)
+    try {
+      await fetch('/api/partner/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
+      setPartnerReqSent(type)
+      setTimeout(() => setPartnerReqSent(null), 4000)
+    } catch { /* silent */ } finally {
+      setPartnerReqLoading(null)
+    }
+  }
   const health = useHealthStatus()
 
   // Superadmin has no tenant dashboard — send to admin portal
@@ -563,7 +576,7 @@ function DashboardInner() {
             </div>
             {aiUsage.percentUsed >= 100 && (
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#A32D2D', marginTop: 4, letterSpacing: '0.06em' }}>
-                Monthly limit reached{managedByPartner ? ' — contact your partner to upgrade' : ' — '}{!managedByPartner ? <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span> : null}
+                Monthly limit reached{managedByPartner ? '' : ' — '}{!managedByPartner ? <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => router.push('/billing')}>upgrade to continue</span> : null}{managedByPartner ? <button onClick={() => sendPartnerRequest('upgrade')} disabled={partnerReqLoading === 'upgrade'} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 8, color: partnerReqSent === 'upgrade' ? '#3FB950' : '#A32D2D', textDecoration: 'underline', letterSpacing: '0.06em' }}>{partnerReqSent === 'upgrade' ? ' ✓ Request sent' : ' — Request upgrade'}</button> : null}
               </p>
             )}
           </div>
@@ -732,7 +745,7 @@ function DashboardInner() {
                       {greeting}, {displayFirst}.{' '}
                       {isConnected
                         ? <>I&apos;m connected to <strong>{tenantName}</strong> and ready to answer questions about your finances. What would you like to know?</>
-                        : managedByPartner ? <>{'I\'m your ' + erpLabel + ' financial assistant. Your system connection is managed by your partner.'}</> : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
+                        : managedByPartner ? <>{'I\'m your ' + erpLabel + ' financial assistant. Your system connection is being set up by your partner.'}</> : <>{'I\'m your ' + erpLabel + ' financial assistant. '}<a href="/settings?tab=installer" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'none' }}>{'Connect your ' + erpFullName + ' system'}</a>{' to start querying your live data.'}</>
                       }
                     </p>
                   </div>
@@ -773,9 +786,16 @@ function DashboardInner() {
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
                         Your system connection is being set up by your partner
                       </p>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.65 }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.65, marginBottom: 16 }}>
                         Once your partner installs and configures the BCAgent on your server, your live data will appear here automatically.
                       </p>
+                      {partnerReqSent === 'connection' ? (
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--forest)', fontWeight: 500 }}>✓ Request sent — your partner has been notified</p>
+                      ) : (
+                        <button onClick={() => sendPartnerRequest('connection')} disabled={partnerReqLoading === 'connection'} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: partnerReqLoading === 'connection' ? 'default' : 'pointer', opacity: partnerReqLoading === 'connection' ? 0.6 : 1 }}>
+                          {partnerReqLoading === 'connection' ? 'Sending…' : 'Request Connection Setup'}
+                        </button>
+                      )}
                     </div>
                   ) : null}
 
