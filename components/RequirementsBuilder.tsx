@@ -279,7 +279,26 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
   const [collapsedCards, setCC] = useState({} as {[k:string]:boolean})
-  function toggleCard(key: string) { setCC(prev => ({ ...prev, [key]: !prev[key] })) }
+  function isCardCollapsed(id: string, map?: {[k:string]:boolean}): boolean {
+    const m = map ?? collapsedCards
+    if (id in m) return m[id]
+    const dash   = id.lastIndexOf('-')
+    const prefix = id.slice(0, dash)
+    const reqId  = id.slice(dash + 1)
+    const req    = reqs.find((r: any) => r.id === reqId)
+    const st     = req?.status ?? 'draft'
+    const openFor: Record<string, string[]> = {
+      desc:    ['draft','needs_clarification','quote_rejected'],
+      spec:    ['draft','submitted','needs_clarification','quote_rejected','in_review'],
+      feasib:  ['submitted','needs_clarification','in_review'],
+      quote:   ['quoted','deposit_required','complete_pending_payment','fully_paid'],
+      uat:     ['in_uat','uat_confirmed','uat_rejected'],
+      proddep: ['uat_confirmed','complete_pending_payment','fully_paid'],
+      addenda: [],
+    }
+    return !(openFor[prefix] ?? []).includes(st)
+  }
+  function toggleCard(key: string) { setCC(prev => ({ ...prev, [key]: !isCardCollapsed(key, prev) })) }
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
   const [showPayModal, setShowPayModal]       = useState(false)
@@ -1358,14 +1377,14 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Feasibility check result */}
               {(feasLoadingId===req.id||req.feasibility)&&(
                 <div style={{background:'var(--white)',border:'1px solid var(--fog)',borderRadius:10,padding:'18px 20px'}}>
-                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:collapsedCards['feasib-'+req.id] ? 0 : 12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--slate)',marginBottom:isCardCollapsed('feasib-'+req.id) ? 0 : 12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div style={{display:'flex',gap:12,alignItems:'center'}}>
                       <span>BespoxAI Feasibility Check</span>
                       {req.feasibilityCheckedAt&&<span style={{color:'rgba(59,82,73,0.5)',fontSize:8}}>{new Date(req.feasibilityCheckedAt).toLocaleDateString('en-NZ',{dateStyle:'medium'})}</span>}
                     </div>
-                    <CardToggleBtn collapsed={!!collapsedCards['feasib-'+req.id]} onToggle={()=>toggleCard('feasib-'+req.id)} />
+                    <CardToggleBtn collapsed={!!isCardCollapsed('feasib-'+req.id)} onToggle={()=>toggleCard('feasib-'+req.id)} />
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['feasib-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
+                  <div style={{overflow:'hidden',maxHeight:isCardCollapsed('feasib-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
 
                   {feasLoadingId===req.id&&(
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -1455,11 +1474,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
               {/* Description */}
               <div style={crd}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:collapsedCards['desc-'+req.id] ? 0 : 8}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('desc-'+req.id) ? 0 : 8}}>
                   <label style={{...lbl,marginBottom:0}}>Description</label>
-                  <CardToggleBtn collapsed={!!collapsedCards['desc-'+req.id]} onToggle={()=>toggleCard('desc-'+req.id)} />
+                  <CardToggleBtn collapsed={!!isCardCollapsed('desc-'+req.id)} onToggle={()=>toggleCard('desc-'+req.id)} />
                 </div>
-                <div style={{overflow:'hidden',maxHeight:collapsedCards['desc-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
+                <div style={{overflow:'hidden',maxHeight:isCardCollapsed('desc-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
                   <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.75,whiteSpace:'pre-wrap'}}>{req.description}</p>
                   {(savedQA.length>0||savedText)&&(
                     <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid var(--fog)'}}>
@@ -1522,9 +1541,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     })()}
                   </div>
 
-                  <CardToggleBtn collapsed={!!collapsedCards['spec-'+req.id]} onToggle={()=>toggleCard('spec-'+req.id)} />
+                  <CardToggleBtn collapsed={!!isCardCollapsed('spec-'+req.id)} onToggle={()=>toggleCard('spec-'+req.id)} />
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['spec-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
+                  <div style={{overflow:'hidden',maxHeight:isCardCollapsed('spec-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
                   {/* Refinement panel */}
                   {showRefine&&!isSuperadmin&&(()=>{
                     const gc=getGenCount(req)
@@ -1754,11 +1773,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Quote */}
               {req.quote&&(
                 <div style={{...crd,background:req.quoteApprovedAt?'rgba(10,92,70,0.04)':'var(--white)',borderColor:req.quoteApprovedAt?'rgba(10,92,70,0.2)':'var(--fog)'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:collapsedCards['quote-'+req.id] ? 0 : 8}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('quote-'+req.id) ? 0 : 8}}>
                     <label style={{...lbl,marginBottom:0}}>Quote from BespoxAI</label>
-                    <CardToggleBtn collapsed={!!collapsedCards['quote-'+req.id]} onToggle={()=>toggleCard('quote-'+req.id)} />
+                    <CardToggleBtn collapsed={!!isCardCollapsed('quote-'+req.id)} onToggle={()=>toggleCard('quote-'+req.id)} />
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['quote-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
+                  <div style={{overflow:'hidden',maxHeight:isCardCollapsed('quote-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
                   <div style={{display:'flex',alignItems:'baseline',gap:6}}>
                     <span style={{fontFamily:'var(--font-display)',fontSize:30,fontWeight:500,color:'var(--forest)',lineHeight:1}}>${parseFloat(req.quote).toLocaleString()}</span>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--slate)'}}>NZD plus GST</span>
@@ -1976,11 +1995,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {/* ── UAT Panel (customer-facing when test env is deployed) ── */}
                 {!isSuperadmin&&(req.status==='in_uat'||req.status==='uat_rejected'||req.status==='uat_confirmed')&&(
                   <div style={{...crd,borderColor:req.uatApprovedAt?'rgba(10,92,70,0.3)':req.uatRejectedAt?'rgba(163,45,45,0.3)':'rgba(200,149,42,0.3)',background:req.uatApprovedAt?'rgba(10,92,70,0.04)':req.uatRejectedAt?'rgba(163,45,45,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:collapsedCards['uat-'+req.id] ? 0 : 10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('uat-'+req.id) ? 0 : 10}}>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:req.uatApprovedAt?'#0A5C46':req.uatRejectedAt?'#A32D2D':'#9A6A00'}}>{req.uatApprovedAt?'UAT Approved':req.uatRejectedAt?'UAT Rejected':'UAT Ready'}</span>
-                    <CardToggleBtn collapsed={!!collapsedCards['uat-'+req.id]} onToggle={()=>toggleCard('uat-'+req.id)} />
+                    <CardToggleBtn collapsed={!!isCardCollapsed('uat-'+req.id)} onToggle={()=>toggleCard('uat-'+req.id)} />
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['uat-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
+                  <div style={{overflow:'hidden',maxHeight:isCardCollapsed('uat-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
                     {req.uatApprovedAt?(
                       <div>
                         <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#0A5C46',fontWeight:600,marginBottom:4}}>✓ UAT Approved</p>
@@ -2072,11 +2091,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {/* ── Production Deployment — go-live doc & approval (customer) ── */}
                 {!isSuperadmin&&req.prodApprovalSentAt&&!req.prodDeployedAt&&(
                   <div style={{...crd,borderColor:req.prodApprovedAt?'rgba(10,92,70,0.3)':'rgba(200,149,42,0.3)',background:req.prodApprovedAt?'rgba(10,92,70,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:collapsedCards['proddep-'+req.id] ? 0 : 10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('proddep-'+req.id) ? 0 : 10}}>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:req.prodApprovedAt?'#0A5C46':'#9A6A00'}}>{req.prodApprovedAt?'Go-Live Approved':'Production Go-Live Approval Required'}</span>
-                    <CardToggleBtn collapsed={!!collapsedCards['proddep-'+req.id]} onToggle={()=>toggleCard('proddep-'+req.id)} />
+                    <CardToggleBtn collapsed={!!isCardCollapsed('proddep-'+req.id)} onToggle={()=>toggleCard('proddep-'+req.id)} />
                   </div>
-                  <div style={{overflow:'hidden',maxHeight:collapsedCards['proddep-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
+                  <div style={{overflow:'hidden',maxHeight:isCardCollapsed('proddep-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease'}}>
                     {req.prodApprovedAt?(
                       <div>
                         <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#0A5C46',fontWeight:600,marginBottom:4}}>✓ Go-Live Approved</p>
@@ -2127,11 +2146,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {/* ── Addenda list ── */}
                 {req.addenda && req.addenda.length > 0 ? (
                   <div style={{borderTop:'1px solid var(--fog)',paddingTop:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:collapsedCards['addenda-'+req.id] ? 0 : 6}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('addenda-'+req.id) ? 0 : 6}}>
                       <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',margin:0}}>Addenda ({req.addenda.length})</p>
-                      <CardToggleBtn collapsed={!!collapsedCards['addenda-'+req.id]} onToggle={()=>toggleCard('addenda-'+req.id)} />
+                      <CardToggleBtn collapsed={!!isCardCollapsed('addenda-'+req.id)} onToggle={()=>toggleCard('addenda-'+req.id)} />
                     </div>
-                    <div style={{overflow:'hidden',maxHeight:collapsedCards['addenda-'+req.id] ? 0 : '9999px',transition:'max-height 0.25s ease',display:'flex',flexDirection:'column',gap:6}}>
+                    <div style={{overflow:'hidden',maxHeight:isCardCollapsed('addenda-'+req.id) ? 0 : '9999px',transition:'max-height 0.25s ease',display:'flex',flexDirection:'column',gap:6}}>
                     {req.addenda.map(add => {
                       const sc = STATUS_COLOR[add.status] ?? STATUS_COLOR.draft
                       return (
