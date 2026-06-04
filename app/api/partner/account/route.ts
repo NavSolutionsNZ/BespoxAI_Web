@@ -23,17 +23,27 @@ export async function GET(req: NextRequest) {
   })
 }
 
-// PATCH /api/partner/account — update branding fields (admin only)
+// PATCH /api/partner/account — update settings (admin only)
 export async function PATCH(req: NextRequest) {
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const allowed = ['brandName', 'logoUrl', 'primaryColour', 'isWhiteLabel', 'billingEmail', 'fromEmail']
+  const scalarFields = [
+    'contactName', 'phone', 'address', 'gstNumber', 'billingEmail',
+    'brandName', 'logoUrl', 'primaryColour', 'isWhiteLabel', 'agentBrandName',
+    'fromEmail', 'githubOrg',
+  ]
 
   const data: any = { updatedAt: new Date() }
-  for (const key of allowed) {
+  for (const key of scalarFields) {
     if (key in body) data[key] = body[key]
+  }
+
+  // GitHub token — encrypt if a new non-placeholder value provided
+  if ('githubToken' in body && body.githubToken && body.githubToken !== '••••••••') {
+    const { encryptToken } = await import('@/lib/crypto')
+    data.githubToken = encryptToken(body.githubToken)
   }
 
   const partner = await (prisma as any).partnerAccount.update({

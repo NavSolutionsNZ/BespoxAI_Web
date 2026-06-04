@@ -103,8 +103,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         {/* Nav */}
         <nav style={{ flex: 1, padding: '12px 8px' }}>
           {NAV_ITEMS.map(item => {
-            // Hide billing + settings from non-admins
-            if (!isAdmin && (item.href === '/partner/billing' || item.href === '/partner/settings')) return null
+            // Hide billing from non-admins; settings and team are visible to all
+            if (!isAdmin && item.href === '/partner/billing') return null
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
               <Link
