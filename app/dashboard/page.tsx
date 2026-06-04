@@ -163,7 +163,15 @@ function DashboardInner() {
   useEffect(() => {
     fetch('/api/branding')
       .then(r => r.ok ? r.json() : null)
-      .then(b => { if (b) setBranding(b) })
+      .then(b => {
+        if (!b) return
+        setBranding(b)
+        if (b.isWhiteLabel) {
+          const root = document.documentElement
+          if (b.primaryColour)   root.style.setProperty('--forest', b.primaryColour)
+          if (b.secondaryColour) root.style.setProperty('--jade',   b.secondaryColour)
+        }
+      })
       .catch(() => {})
   }, [])
 

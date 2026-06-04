@@ -370,6 +370,7 @@ model PartnerAccount {
   brandName            String?
   logoUrl              String?
   primaryColour        String?
+  secondaryColour      String?       // maps to --jade (lighter accent, gradients, badges)
   agentBrandName       String?       // replaces 'BespoxAI' in agent paths/filenames/service names (Phase 4)
 
   // GitHub (partner org — optional, falls back to BespoxAI org)

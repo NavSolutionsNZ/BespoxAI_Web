@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json()
   const scalarFields = [
     'contactName', 'phone', 'address', 'gstNumber', 'billingEmail',
-    'brandName', 'logoUrl', 'primaryColour', 'isWhiteLabel', 'agentBrandName',
+    'brandName', 'logoUrl', 'primaryColour', 'secondaryColour', 'isWhiteLabel', 'agentBrandName',
     'fromEmail', 'githubOrg',
   ]
 
