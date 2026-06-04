@@ -403,12 +403,12 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
             <div>
               {lbl('Test ' + erpLabel + ' Instance')}
               <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={tenant.testBcInstance || ''}
-                placeholder="Leave blank to use production instance" autoComplete="off" />
+                placeholder="e.g. DynamicsNAV110_Test" autoComplete="off" />
             </div>
             <div>
               {lbl('Test ' + erpLabel + ' Company')}
               <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={tenant.testBcCompany || ''}
-                placeholder="Leave blank to use production company" autoComplete="off" />
+                placeholder="e.g. Cronus Test" autoComplete="off" />
             </div>
             <div>
               {lbl('Test NAV Management Port')}

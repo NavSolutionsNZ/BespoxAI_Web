@@ -865,14 +865,14 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
         <div>
           {lbl('Test ' + erpLabel + ' Instance')}
           <input ref={refs.testBcInstance} style={inp} type="text" defaultValue={initial.testBcInstance}
-            placeholder="Leave blank to use production instance" autoComplete="off"
+            placeholder="e.g. DynamicsNAV110_Test" autoComplete="off"
             onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
             onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
         </div>
         <div>
           {lbl('Test ' + erpLabel + ' Company')}
           <input ref={refs.testBcCompany} style={inp} type="text" defaultValue={initial.testBcCompany}
-            placeholder="Leave blank to use production company" autoComplete="off"
+            placeholder="e.g. Cronus Test" autoComplete="off"
             onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
             onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
         </div>
