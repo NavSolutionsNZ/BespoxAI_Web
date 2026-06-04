@@ -64,6 +64,7 @@ export interface Requirement {
   parentId: string | null
   addenda: { id: string; title: string; status: string; quote: string | null; createdAt: string; parentId: string }[]
 }
+type CollapseMap = {[key:string]:boolean}
 
 interface AiSpec {
   userStory: string; acceptanceCriteria: string[]; bcObjects: string[]
@@ -200,7 +201,7 @@ const CARD_OPEN_FOR: { [key: string]: string[] } = {
   addenda: [],
 }
 
-function isCardCollapsedFn(id: string, reqs: Requirement[], map: { [k: string]: boolean }): boolean {
+function isCardCollapsedFn(id: string, reqs: Requirement[], map: CollapseMap): boolean {
   if (id in map) return map[id]
   const dash   = id.lastIndexOf('-')
   const prefix = id.slice(0, dash)
@@ -298,7 +299,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [feasErr, setFeasErr]             = useState('')
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
-  const [collapsedCards, setCC] = useState({} as {[k:string]:boolean})
+  const [collapsedCards, setCC] = useState<CollapseMap>({})
   function isCardCollapsed(id: string, map?: typeof collapsedCards) {
     return isCardCollapsedFn(id, reqs, map ?? collapsedCards)
   }
@@ -368,8 +369,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     if (['in_uat','uat_rejected','uat_confirmed'].includes(s)) open.push('uat-'+req.id)
     if (['uat_confirmed','complete_pending_payment','fully_paid'].includes(s)) open.push('proddep-'+req.id)
     if (['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(s)) open.push('documents-'+req.id)
-    const init = {} as {[k:string]:boolean}
-    open.forEach(k => { init[k] = false })
+    const init = Object.fromEntries(open.map(k => [k, false]))
     setCC(init)
     setSelected(req); setShowCreate(false)
     setShowQAP(false); setQAAnswers({})
