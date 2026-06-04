@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest) {
   if (user.partnerAccountId) {
     const partner = await (prisma as any).partnerAccount.findUnique({
       where: { id: user.partnerAccountId },
-      select: { brandName: true, logoUrl: true, primaryColour: true, secondaryColour: true, isWhiteLabel: true, agentBrandName: true },
+      select: { brandName: true, logoUrl: true, isWhiteLabel: true, agentBrandName: true },
     })
     return NextResponse.json(resolveBranding(partner))
   }
@@ -32,7 +32,7 @@ export async function GET(_req: NextRequest) {
       where: { id: user.tenantId },
       select: {
         partnerAccount: {
-          select: { brandName: true, logoUrl: true, primaryColour: true, secondaryColour: true, isWhiteLabel: true, agentBrandName: true },
+          select: { brandName: true, logoUrl: true, isWhiteLabel: true, agentBrandName: true },
         },
       },
     })

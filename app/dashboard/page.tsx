@@ -166,11 +166,7 @@ function DashboardInner() {
       .then(b => {
         if (!b) return
         setBranding(b)
-        if (b.isWhiteLabel) {
-          const root = document.documentElement
-          if (b.primaryColour)   root.style.setProperty('--forest', b.primaryColour)
-          if (b.secondaryColour) root.style.setProperty('--jade',   b.secondaryColour)
-        }
+
       })
       .catch(() => {})
   }, [])

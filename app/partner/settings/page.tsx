@@ -14,8 +14,6 @@ type PartnerAccount = {
   billingEmail: string
   brandName: string | null
   logoUrl: string | null
-  primaryColour: string | null
-  secondaryColour: string | null
   agentBrandName: string | null
   isWhiteLabel: boolean
   fromEmail: string | null
@@ -255,8 +253,7 @@ export default function PartnerSettings() {
             </div>
             <div style={{ ...grid(2), marginBottom: 16 }}>
               <Input label="Logo URL" name="logoUrl" defaultValue={account.logoUrl} placeholder="https://cdn.example.com/logo.png" />
-              <Input label="Primary colour" name="primaryColour" defaultValue={account.primaryColour} placeholder="#0A5C46" hint="Main accent colour — buttons, links, active states." />
-              <Input label="Secondary colour" name="secondaryColour" defaultValue={account.secondaryColour} placeholder="#1A9272" hint="Lighter accent colour — gradients, badges, highlights." />
+
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: isAdmin ? 'pointer' : 'default' }}>
@@ -285,8 +282,6 @@ export default function PartnerSettings() {
             <Field label="Brand name" value={account.brandName} />
             <Field label="Agent brand name" value={account.agentBrandName} />
             <Field label="Logo URL" value={account.logoUrl} />
-            <Field label="Primary colour" value={account.primaryColour} />
-            <Field label="Secondary colour" value={account.secondaryColour} />
             <Field label="White-label mode" value={account.isWhiteLabel ? 'Enabled' : 'Disabled'} />
           </div>
         )}

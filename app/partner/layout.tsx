@@ -27,11 +27,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       .then(b => {
         if (!b) return
         setBranding(b)
-        if (b.isWhiteLabel) {
-          const root = document.documentElement
-          if (b.primaryColour)   root.style.setProperty('--forest', b.primaryColour)
-          if (b.secondaryColour) root.style.setProperty('--jade',   b.secondaryColour)
-        }
+
       })
       .catch(() => {})
   }, [])
@@ -106,7 +102,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
               fontSize: 11,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: branding.isWhiteLabel && branding.primaryColour ? branding.primaryColour : '#58A6FF',
+              color: '#58A6FF',
               marginBottom: 2,
             }}>
               {branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'}
@@ -233,7 +229,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           >
             ☰
           </button>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: branding.isWhiteLabel && branding.primaryColour ? branding.primaryColour : '#58A6FF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#58A6FF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             {(branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI') + ' Partner'}
           </span>
           <div style={{ width: 28 }} />
