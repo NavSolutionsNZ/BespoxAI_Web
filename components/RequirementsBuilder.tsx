@@ -980,7 +980,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       bg: 'rgba(10,92,70,0.06)',
       border: 'rgba(10,92,70,0.2)',
     },
-  } as const
+  }
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
