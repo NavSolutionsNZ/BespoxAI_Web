@@ -1839,7 +1839,27 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
   const adminEmail = (session?.user as any)?.email ?? ''
   const [reqs, setReqs]           = useState<AdminReq[]>([])
   const [collapsedAdminCards, setCollapsedAdmin] = useState<Record<string,boolean>>({})
-  function toggleAdminCard(id: string) { setCollapsedAdmin(prev => ({ ...prev, [id]: !prev[id] })) }
+  function toggleAdminCard(id: string) { setCollapsedAdmin(prev => ({ ...prev, [id]: !isAdminCardCollapsed(id, prev) })) }
+  function isAdminCardCollapsed(id: string, map?: Record<string,boolean>): boolean {
+    const m = map ?? collapsedAdminCards
+    if (id in m) return m[id]
+    const dash   = id.lastIndexOf('-')
+    const prefix = id.slice(0, dash)
+    const reqId  = id.slice(dash + 1)
+    const req    = reqs.find((r: any) => r.id === reqId)
+    const st     = req?.status ?? 'draft'
+    const openFor: Record<string, string[]> = {
+      qa:         ['submitted','needs_clarification','in_review','quote_rejected'],
+      desc:       ['draft','submitted','needs_clarification','in_review','quote_rejected','rejected'],
+      spec:       ['submitted','needs_clarification','in_review','quote_rejected'],
+      devplan:    ['in_review','quote_rejected','in_development'],
+      deploytest: ['in_development','in_uat','uat_rejected'],
+      deployprod: ['uat_confirmed','complete_pending_payment','fully_paid'],
+      quote:      ['quoted','deposit_required','deposit_paid','complete_pending_payment','fully_paid'],
+      addenda:    [],
+    }
+    return !(openFor[prefix] ?? []).includes(st)
+  }
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
   const [selected, setSelected]   = useState<AdminReq | null>(null)
@@ -2821,7 +2841,16 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
 
             {/* ── Deploy to Test (when requirement is in_development) ── */}
             {selected.status === 'in_development' && (
-              <DeployToTestPanel
+              <div style={{ border: '1px solid rgba(26,146,114,0.25)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => toggleAdminCard('deploytest-' + selected.id)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: isAdminCardCollapsed('deploytest-' + selected.id) ? 'rgba(26,146,114,0.04)' : 'rgba(26,146,114,0.07)', border: 'none', cursor: 'pointer' }}
+                >
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--jade)' }}>⚙ Deploy to Test</span>
+                  <AdminCardToggleBtn collapsed={!!isAdminCardCollapsed('deploytest-' + selected.id)} onToggle={() => toggleAdminCard('deploytest-' + selected.id)} />
+                </button>
+                {!isAdminCardCollapsed('deploytest-' + selected.id) && (
+                  <DeployToTestPanel
                 selected={selected}
                 syncLoading={syncLoading}
                 syncResult={syncResult}
@@ -2841,16 +2870,29 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                   if (r.ok) { const d = await r.json(); const add2 = (d.allAddenda ?? []).map((a: any) => ({ ...a, addenda: [], assignedDeveloper: null, devPlan: null, testDeployedAt: null, testDeploySnapshotId: null, uatApprovedAt: null, uatApprovedById: null, uatRejectedAt: null, uatRejectionReason: null, uatRejectionAnalysis: null, githubBranch: null, prodApprovalSentAt: null, prodGoLiveDoc: null, prodApprovedAt: null, prodApprovedById: null, prodDeployedAt: null, prodDeploySnapshotId: null, deploymentNotes: null, submittedAt: null, inReviewAt: null, quotedAt: null, depositRequiredAt: null, depositPaidAt: null, inDevelopmentAt: null, completePendingPaymentAt: null, balancePaidAt: null })); setReqs([...d.requirements, ...add2]) }
                 }}
               />
+                )}
+              </div>
             )}
 
             {/* ── Deploy to Production (when UAT approved) ── */}
             {(selected.uatApprovedAt || selected.prodApprovalSentAt || selected.prodDeployedAt) ? (
-              <DeployToProductionPanel
-                selected={selected}
-                onSentApproval={(goLiveDoc, sentAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodGoLiveDoc: goLiveDoc, prodApprovalSentAt: sentAt, prodApprovedAt: null } : x))}
-                onDeployed={(snapshotId, deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: snapshotId } : x))}
-                onManualDeployed={(deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: null } : x))}
-              />
+              <div style={{ border: '1px solid rgba(163,45,45,0.25)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => toggleAdminCard('deployprod-' + selected.id)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: isAdminCardCollapsed('deployprod-' + selected.id) ? 'rgba(163,45,45,0.04)' : 'rgba(163,45,45,0.07)', border: 'none', cursor: 'pointer' }}
+                >
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#E24B4A' }}>⚙ Deploy to Production</span>
+                  <AdminCardToggleBtn collapsed={!!isAdminCardCollapsed('deployprod-' + selected.id)} onToggle={() => toggleAdminCard('deployprod-' + selected.id)} />
+                </button>
+                {!isAdminCardCollapsed('deployprod-' + selected.id) && (
+                  <DeployToProductionPanel
+                    selected={selected}
+                    onSentApproval={(goLiveDoc, sentAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodGoLiveDoc: goLiveDoc, prodApprovalSentAt: sentAt, prodApprovedAt: null } : x))}
+                    onDeployed={(snapshotId, deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: snapshotId } : x))}
+                    onManualDeployed={(deployedAt) => setReqs(prev => prev.map(x => x.id === selected.id ? { ...x, prodDeployedAt: deployedAt, prodDeploySnapshotId: null } : x))}
+                  />
+                )}
+              </div>
             ) : null}
 
             {/* ── Coding Assistant (in_development with github branch) ── */}
@@ -2986,8 +3028,11 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
 
             {/* ── Dev Plan (superadmin internal only) ── */}
             {['in_review','quoted','approved','in_development','complete','quote_rejected'].includes(selected.status) && (
-              <div style={{ background: 'var(--ink)', borderRadius: 8, padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: devPlanData ? 14 : 0 }}>
+              <div style={{ background: 'var(--ink)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => toggleAdminCard('devplan-' + selected.id)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--amber)' }}>⚙ Internal Dev Plan</span>
                     {devPlanData && devPlanData.totalEstimatedHours && (
@@ -2998,19 +3043,24 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                     {devPlanData && (
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: devPlanData._bcConnected ? 'var(--jade)' : 'rgba(214,217,212,0.3)', letterSpacing: '0.08em' }}>
                         {devPlanData._bcConnected
-                          ? `🔌 BC live · ${devPlanData._introspectedTables?.join(', ')}`
+                          ? ('🔌 BC live · ' + devPlanData._introspectedTables?.join(', '))
                           : '🔌 BC not connected'}
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => generateDevPlan(selected.id)}
-                    disabled={genPlan}
-                    style={{ background: 'rgba(200,149,42,0.15)', border: '1px solid rgba(200,149,42,0.3)', color: 'var(--amber)', borderRadius: 6, padding: '5px 12px', cursor: genPlan ? 'wait' : 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em' }}
-                  >
-                    {genPlan ? '✦ Generating…' : devPlanData ? '↺ Regenerate' : '✦ Generate Dev Plan'}
-                  </button>
-                </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); generateDevPlan(selected.id) }}
+                      disabled={genPlan}
+                      style={{ background: 'rgba(200,149,42,0.15)', border: '1px solid rgba(200,149,42,0.3)', color: 'var(--amber)', borderRadius: 6, padding: '5px 12px', cursor: genPlan ? 'wait' : 'pointer', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em' }}
+                    >
+                      {genPlan ? '✦ Generating…' : devPlanData ? '↺ Regenerate' : '✦ Generate Dev Plan'}
+                    </button>
+                    <AdminCardToggleBtn collapsed={!!isAdminCardCollapsed('devplan-' + selected.id)} onToggle={() => toggleAdminCard('devplan-' + selected.id)} />
+                  </div>
+                </button>
+                {!isAdminCardCollapsed('devplan-' + selected.id) && (
+                  <div style={{ padding: '0 16px 14px' }}>
                 {planErr && <p style={{ color: '#E24B4A', fontSize: 11, marginTop: 8 }}>{planErr}</p>}
                 {devPlanData && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
@@ -3145,25 +3195,50 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                     )}
                   </div>
                 )}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Quote info */}
             {selected.quote && (
-              <div style={{ background: 'rgba(10,92,70,0.05)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 8, padding: '12px 14px' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 6 }}>Quote</p>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 500, color: 'var(--forest)', lineHeight: 1 }}>${parseFloat(selected.quote!).toLocaleString()}</p>
-                {selected.consultantNote && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, marginTop: 8, lineHeight: 1.7 }}>{renderMdLight(selected.consultantNote)}</div>}
-                {selected.quoteApprovedAt && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)', marginTop: 6 }}>✓ Approved {new Date(selected.quoteApprovedAt).toLocaleDateString('en-NZ')}</p>}
+              <div style={{ background: 'rgba(10,92,70,0.05)', border: '1px solid rgba(10,92,70,0.2)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => toggleAdminCard('quote-' + selected.id)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)' }}>Quote</span>
+                    {!isAdminCardCollapsed('quote-' + selected.id) ? null : (
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 500, color: 'var(--forest)' }}>{'$' + parseFloat(selected.quote!).toLocaleString()}</span>
+                    )}
+                  </div>
+                  <AdminCardToggleBtn collapsed={!!isAdminCardCollapsed('quote-' + selected.id)} onToggle={() => toggleAdminCard('quote-' + selected.id)} />
+                </button>
+                <div style={{ overflow: 'hidden', maxHeight: isAdminCardCollapsed('quote-' + selected.id) ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
+                  <div style={{ padding: '0 14px 12px' }}>
+                    <p style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 500, color: 'var(--forest)', lineHeight: 1 }}>{'$' + parseFloat(selected.quote!).toLocaleString()}</p>
+                    {selected.consultantNote && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, marginTop: 8, lineHeight: 1.7 }}>{renderMdLight(selected.consultantNote)}</div>}
+                    {selected.quoteApprovedAt && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--jade)', marginTop: 6 }}>{'✓ Approved ' + new Date(selected.quoteApprovedAt).toLocaleDateString('en-NZ')}</p>}
+                  </div>
+                </div>
               </div>
             )}
 
             {/* ── Addenda list ── */}
             {selected.addenda && selected.addenda.length > 0 ? (
-              <div style={{ background: 'var(--ink)', borderRadius: 8, padding: '12px 14px' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.5)', margin: '0 0 8px' }}>
-                  Addenda ({selected.addenda.length})
-                </p>
+              <div style={{ background: 'var(--ink)', borderRadius: 8, overflow: 'hidden' }}>
+                <button
+                  onClick={() => toggleAdminCard('addenda-' + selected.id)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(214,217,212,0.5)' }}>
+                    Addenda ({selected.addenda.length})
+                  </span>
+                  <AdminCardToggleBtn collapsed={!!isAdminCardCollapsed('addenda-' + selected.id)} onToggle={() => toggleAdminCard('addenda-' + selected.id)} />
+                </button>
+                <div style={{ overflow: 'hidden', maxHeight: isAdminCardCollapsed('addenda-' + selected.id) ? 0 : '9999px', transition: 'max-height 0.25s ease' }}>
+                <div style={{ padding: '0 14px 12px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {selected.addenda.map(add => {
                     const STATUS_COLORS: Record<string, string> = {
@@ -3186,6 +3261,8 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                       </div>
                     )
                   })}
+                </div>
+                </div>
                 </div>
               </div>
             ) : null}
