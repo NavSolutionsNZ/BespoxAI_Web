@@ -486,7 +486,7 @@ function SettingsInner() {
                   </div>
                 ))}
               </div>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '14px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
+              {!managedByPartner ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '14px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p> : null}
             </Card>
 
             {/* Test Environment — NAV/BC14 only */}
@@ -514,7 +514,7 @@ function SettingsInner() {
                     </div>
                   ))}
                 </div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '14px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p>
+                {!managedByPartner ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: '14px 0 0' }}>To configure, go to the <button onClick={() => router.push('/settings?tab=installer')} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--forest)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{erpLabel + ' Installer'}</button> tab.</p> : null}
                 {false && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 5 }}>Test Database Server</div>
