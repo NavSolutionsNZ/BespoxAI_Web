@@ -345,7 +345,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     if (['in_uat','uat_rejected','uat_confirmed'].includes(s)) open.push('uat-'+req.id)
     if (['uat_confirmed','complete_pending_payment','fully_paid'].includes(s)) open.push('proddep-'+req.id)
     if (['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'].includes(s)) open.push('documents-'+req.id)
-    const init: {[k:string]:boolean} = {}
+    const init = {} as {[k:string]:boolean}
     open.forEach(k => { init[k] = false })
     setCC(init)
     setSelected(req); setShowCreate(false)
