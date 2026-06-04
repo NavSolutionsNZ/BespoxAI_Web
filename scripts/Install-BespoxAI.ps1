@@ -82,7 +82,8 @@ param(
     [string] $TestBcCompany         = '',
     [int]    $TestBcPort            = 0,
     [int]    $TestNavManagementPort  = 7045,
-    [string] $SupportAccountPassword = ''
+    [string] $SupportAccountPassword = '',
+    [string] $BrandName = 'BespoxAI'
 )
 
 Set-StrictMode -Version Latest
@@ -92,7 +93,7 @@ $AgentVersion  = '3.2'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
-$InstallRoot   = 'C:\BespoxAI'
+$InstallRoot   = "C:\$BrandName"
 $AgentDir      = "$InstallRoot\Agent"
 $CloudflaredDir= "$InstallRoot\Cloudflared"
 $LogDir        = "$InstallRoot\Logs"
@@ -120,7 +121,7 @@ function Test-Port {
 
 Write-Host ''
 Write-Host '  ╔══════════════════════════════════════════════╗' -ForegroundColor DarkCyan
-Write-Host "  ║        BespoxAI Installer  v$AgentVersion              ║" -ForegroundColor DarkCyan
+Write-Host "  ║        $BrandName Installer  v$AgentVersion              ║" -ForegroundColor DarkCyan
 Write-Host '  ║  Business Central → AI Query Layer           ║' -ForegroundColor DarkCyan
 Write-Host '  ╚══════════════════════════════════════════════╝' -ForegroundColor DarkCyan
 Write-Host ''
@@ -149,12 +150,12 @@ Write-Host ''
 Write-Step 'Checking prerequisites'
 
 # Stop any existing BespoxAI agent before checking port
-$existingTask = Get-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
+$existingTask = Get-ScheduledTask -TaskName "$BrandName-BCAgent" -ErrorAction SilentlyContinue
 if ($existingTask) {
-    Write-Host "    Stopping existing BespoxAI agent..." -ForegroundColor Cyan
+    Write-Host "    Stopping existing $BrandName agent..." -ForegroundColor Cyan
 
     # 1. Stop the scheduled task
-    Stop-ScheduledTask -TaskName 'BespoxAI-BCAgent' -ErrorAction SilentlyContinue
+    Stop-ScheduledTask -TaskName "$BrandName-BCAgent" -ErrorAction SilentlyContinue
 
     # 2. Kill any BCAgent.ps1 PowerShell processes directly
     $bcProcs = Get-WmiObject Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction SilentlyContinue |
@@ -183,7 +184,7 @@ if ($existingTask) {
 # Port conflict check — only warn if still in use after all cleanup attempts
 if (Test-Port -Port $AgentPort) {
     Write-Host ''
-    Write-Host "    ⚠ Port $AgentPort is still in use by another service (not BespoxAI)." -ForegroundColor Yellow
+    Write-Host "    ⚠ Port $AgentPort is still in use by another service (not $BrandName)." -ForegroundColor Yellow
     Write-Host "      Use -AgentPort to specify a different port (e.g. -AgentPort 8081)" -ForegroundColor Yellow
     Write-Host ''
     $confirm = Read-Host '    Continue anyway? (y/N)'
@@ -237,12 +238,12 @@ Write-OK "cloudflared version: $cfVersion"
 
 # ── Step 4: Write BCAgent.ps1 ──────────────────────────────────────────────────
 
-Write-Step "Installing BCAgent v$AgentVersion"
+Write-Step "Installing $BrandName agent v$AgentVersion"
 
 $AgentCode = @'
 #Requires -Version 5.1
 <#
-  BCAgent v2.3 — BespoxAI local proxy for Business Central OData
+  BCAgent v$AgentVersion — $BrandName local proxy for Business Central OData
   Validates X-BespoxAI-Key, forwards requests to BC with NTLM auth.
   v2.1: Accept-Encoding fix. v2.2: POST body forwarding.
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
@@ -354,7 +355,7 @@ while ($Listener.IsListening) {
 
                 if (-not $objects -or $objects.Count -eq 0) { throw 'No objects provided.' }
 
-                $deployDir = "C:\BespoxAI\Deployments\$requirementId\${timestamp}_deploy"
+                $deployDir = "C:\$BrandName\Deployments\$requirementId\${timestamp}_deploy"
                 New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
 
                 foreach ($obj in $objects) {
@@ -415,7 +416,7 @@ while ($Listener.IsListening) {
                     if (-not $dbInst) { throw "testNavServerInstance not configured. Add it in the BC Installer tab." }
                 }
 
-                $deployDir = "C:\BespoxAI\Deployments\$requirementId\$snapshotId"
+                $deployDir = "C:\$BrandName\Deployments\$requirementId\$snapshotId"
                 if (-not (Test-Path $deployDir)) { throw "Snapshot folder not found: $deployDir" }
 
                 # Load NAV/BC modules (management + model tools). BC14 paths first.
@@ -524,7 +525,7 @@ while ($Listener.IsListening) {
             if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $result = @{ regression = @(); deployments = @() }
-                foreach ($tree in @(@{key='regression';path='C:\BespoxAI\Regression'}, @{key='deployments';path='C:\BespoxAI\Deployments'})) {
+                foreach ($tree in @(@{key='regression';path="C:\$BrandName\Regression"}, @{key='deployments';path="C:\$BrandName\Deployments"})) {
                     if (Test-Path $tree.path) {
                         Get-ChildItem $tree.path -Directory | ForEach-Object {
                             $reqId = $_.Name
@@ -563,7 +564,7 @@ while ($Listener.IsListening) {
                 $body = [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset) | ConvertFrom-Json
                 $reqId = if ($body.requirementId) { $body.requirementId -replace '[^a-zA-Z0-9_-]','' } else { '' }
                 $deleted = 0
-                foreach ($base in @('C:\BespoxAI\Regression','C:\BespoxAI\Deployments')) {
+                foreach ($base in @("C:\$BrandName\Regression","C:\$BrandName\Deployments")) {
                     if ($reqId) {
                         $target = "$base\$reqId"
                         if (Test-Path $target) { Remove-Item $target -Recurse -Force; $deleted++ }
@@ -690,7 +691,7 @@ while ($Listener.IsListening) {
                 }
 
                 # Save regression snapshot
-                $regressionDir = "C:\BespoxAI\Regression\$requirementId\${timestamp}_fetch"
+                $regressionDir = "C:\$BrandName\Regression\$requirementId\${timestamp}_fetch"
                 New-Item -ItemType Directory -Path $regressionDir -Force | Out-Null
                 $manifest = @{ requirementId=$requirementId; type='fetch'; timestamp=(Get-Date -Format 'o'); objects=@($objects|ForEach-Object{"$($_.type) $($_.id)"}) } | ConvertTo-Json
                 Set-Content -Path "$regressionDir\_manifest.json" -Value $manifest -Encoding UTF8
@@ -886,7 +887,7 @@ while ($Listener.IsListening) {
 '@
 
 Set-Content -Path $AgentScript -Value $AgentCode -Encoding UTF8 -Force
-Write-OK "BCAgent.ps1 written to $AgentScript"
+Write-OK "$BrandName agent script written to $AgentScript"
 
 # ── Step 5: Write agent.config.json ───────────────────────────────────────────
 
@@ -985,9 +986,9 @@ Write-Host '    Service recovery configured (auto-restart on failure)'
 
 # ── Step 7: Install BCAgent as a scheduled task ────────────────────────────────
 
-Write-Step 'Installing BCAgent scheduled task'
+Write-Step "Installing $BrandName agent scheduled task"
 
-$TaskName = 'BespoxAI-BCAgent'
+$TaskName = "$BrandName-BCAgent"
 
 # Remove existing task
 Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
@@ -1020,7 +1021,7 @@ Register-ScheduledTask `
 $stResult = & schtasks.exe /change /tn $TaskName /ru $BCUsername /rp $BCPassword 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "    Warning: could not set task user ($stResult) -- running as SYSTEM" -ForegroundColor Yellow
-    Write-Host "    BCAgent will use explicit credentials from agent.config.json instead" -ForegroundColor Yellow
+    Write-Host "    $BrandName agent will use explicit credentials from agent.config.json instead" -ForegroundColor Yellow
 } else {
     Write-OK "Task user set to $BCUsername"
 }
@@ -1041,11 +1042,11 @@ Write-OK 'cloudflared tunnel running'
 # Start BCAgent
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 4
-Write-OK 'BCAgent started'
+Write-OK "$BrandName agent started"
 
 # ── Step 9: Health check ───────────────────────────────────────────────────────
 
-Write-Step 'Verifying BCAgent health'
+Write-Step "Verifying $BrandName agent health"
 
 $maxAttempts = 6
 $healthy     = $false
@@ -1057,38 +1058,38 @@ for ($i = 1; $i -le $maxAttempts; $i++) {
             -UseBasicParsing -TimeoutSec 5
         if ($resp.StatusCode -eq 200) { $healthy = $true; break }
     } catch {}
-    Write-Host "    Waiting for BCAgent... (attempt $i/$maxAttempts)"
+    Write-Host "    Waiting for $BrandName agent... (attempt $i/$maxAttempts)"
     Start-Sleep -Seconds 3
 }
 
 if ($healthy) {
-    Write-OK "BCAgent health check passed — http://localhost:$AgentPort/health"
+    Write-OK "$BrandName agent health check passed — http://localhost:$AgentPort/health"
 } else {
     Write-Host ''
-    Write-Host '    ⚠ BCAgent did not respond in time. It may still be starting.' -ForegroundColor Yellow
+    Write-Host "    ⚠ $BrandName agent did not respond in time. It may still be starting." -ForegroundColor Yellow
     Write-Host "      Check the log at: $LogDir\agent.log" -ForegroundColor Yellow
 }
 
 # ── Step 8: Configure RDP support account ──────────────────────────────────────
 
-Write-Step 'Configuring BespoxAI remote support account'
+Write-Step "Configuring $BrandName remote support account"
 
 if ($SupportAccountPassword -ne '') {
-    $SupportUser = 'BespoxAI-Support'
+    $SupportUser = "$BrandName-Support"
     $secPwd = ConvertTo-SecureString $SupportAccountPassword -AsPlainText -Force
 
     # Create or update the account
     $existingUser = Get-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue
     if ($existingUser) {
         Set-LocalUser -Name $SupportUser -Password $secPwd -PasswordNeverExpires $true
-        Write-OK 'BespoxAI-Support account updated'
+        Write-OK "$BrandName-Support account updated"
     } else {
         New-LocalUser -Name $SupportUser -Password $secPwd `
-            -FullName 'BespoxAI Support' `
-            -Description 'BespoxAI remote support account — do not delete' `
+            -FullName "$BrandName Support" `
+            -Description "$BrandName remote support account — do not delete" `
             -PasswordNeverExpires `
             -ErrorAction Stop | Out-Null
-        Write-OK 'BespoxAI-Support account created'
+        Write-OK "$BrandName-Support account created"
     }
 
     # Add to Remote Desktop Users
@@ -1117,7 +1118,7 @@ Write-Host '  ╚═════════════════════
 Write-Host ''
 Write-Host '  Services installed:' -ForegroundColor White
 Write-Host "    • cloudflared    — Windows Service  (auto-start)"
-Write-Host "    • BCAgent v$AgentVersion   — Scheduled Task   (auto-start at boot)"
+Write-Host "    • $BrandName agent v$AgentVersion   — Scheduled Task   (auto-start at boot)"
 Write-Host ''
 Write-Host '  Files:' -ForegroundColor White
 Write-Host "    • $AgentScript"

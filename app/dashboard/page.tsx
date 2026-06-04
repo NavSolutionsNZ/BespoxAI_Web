@@ -6,6 +6,8 @@ import { useState, useRef, useEffect, KeyboardEvent, Suspense } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { DisplayHint, StructuredData } from '@/app/api/query/route'
+import type { BrandingConfig } from '@/lib/branding'
+import { DEFAULT_BRANDING } from '@/lib/branding'
 import DataVisualizer from '@/components/DataVisualizer'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
 import RequirementsBuilder from '@/components/RequirementsBuilder'
@@ -142,6 +144,7 @@ function DashboardInner() {
   const searchParams = useSearchParams()
   const user = session?.user as any
   const managedByPartner = !!(user?.managedByPartner)
+  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING)
   const isTenantAdmin = user?.role === 'tenant_admin' || user?.role === 'superadmin'
   const [partnerReqSent, setPartnerReqSent] = useState<'upgrade' | 'connection' | null>(null)
   const [partnerReqLoading, setPartnerReqLoading] = useState<'upgrade' | 'connection' | null>(null)
@@ -156,6 +159,13 @@ function DashboardInner() {
       if (d) setPartnerReqState(d)
     }).catch(() => {})
   }, [managedByPartner])
+
+  useEffect(() => {
+    fetch('/api/branding')
+      .then(r => r.ok ? r.json() : null)
+      .then(b => { if (b) setBranding(b) })
+      .catch(() => {})
+  }, [])
 
   async function sendPartnerRequest(type: 'upgrade' | 'connection') {
     setPartnerReqLoading(type)
@@ -406,14 +416,25 @@ function DashboardInner() {
         {/* Logo */}
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span style={{
-              fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22,
-              color: 'var(--cream)', letterSpacing: '-0.3px',
-            }}>Bespox</span>
-            <span style={{
-              fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17,
-              color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3,
-            }}>AI</span>
+            {branding.isWhiteLabel && branding.logoUrl ? (
+              <img src={branding.logoUrl} alt={branding.brandName} style={{ height: 28, objectFit: 'contain' }} />
+            ) : branding.isWhiteLabel && branding.brandName ? (
+              <span style={{
+                fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20,
+                color: 'var(--cream)', letterSpacing: '-0.3px',
+              }}>{branding.brandName}</span>
+            ) : (
+              <>
+                <span style={{
+                  fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22,
+                  color: 'var(--cream)', letterSpacing: '-0.3px',
+                }}>Bespox</span>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17,
+                  color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3,
+                }}>AI</span>
+              </>
+            )}
           </div>
           {/* Connected company badge */}
           <div style={{
@@ -756,7 +777,7 @@ function DashboardInner() {
                         fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cream)',
                       }}>AI</div>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)' }}>
-                        BespoxAI · Financial Assistant
+                        {(branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI') + ' · Financial Assistant'}
                       </span>
                     </div>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.7 }}>
@@ -1126,7 +1147,7 @@ function DashboardInner() {
                   const dataHTML = buildDataHTML(exportItem.displayHint, exportItem.data)
 
                   const w = window.open('', '_blank')!
-                  w.document.write(`<!DOCTYPE html><html><head><title>BespoxAI — ${exportItem.question.slice(0,60)}</title><style>
+                  w.document.write(`<!DOCTYPE html><html><head><title>${branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'} — ${exportItem.question.slice(0,60)}</title><style>
                     body { font-family: Georgia, serif; max-width: 720px; margin: 40px auto; color: #1a1a1a; line-height: 1.7; }
                     .logo { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #888; margin-bottom: 32px; }
                     .question { font-size: 18px; font-weight: 600; margin-bottom: 24px; color: #0a5c46; }
@@ -1147,11 +1168,11 @@ function DashboardInner() {
                     .chart-note { font-size: 11px; color: #888; margin-bottom: 8px; font-style: italic; }
                     @media print { body { margin: 20px; } .kpi-grid { break-inside: avoid; } table { break-inside: auto; } }
                   </style></head><body>
-                    <div class="logo">BespoxAI · ${tenantName} · ${new Date().toLocaleDateString('en-NZ', { dateStyle: 'long' })}</div>
+                    <div class="logo">${branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'} · ${tenantName} · ${new Date().toLocaleDateString('en-NZ', { dateStyle: 'long' })}</div>
                     <div class="question">${exportItem.question}</div>
                     <div class="answer">${exportText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
                     ${dataHTML}
-                    <div class="meta">Generated by BespoxAI CFO Assistant · ${exportItem.ts.toLocaleString()}</div>
+                    <div class="meta">Generated by ${branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'} CFO Assistant · ${exportItem.ts.toLocaleString()}</div>
                   </body></html>`)
                   w.document.close()
                   setExportItemId(null)

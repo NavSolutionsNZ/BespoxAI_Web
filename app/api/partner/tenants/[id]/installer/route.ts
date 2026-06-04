@@ -62,7 +62,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
 
-  let tenant = await (prisma as any).tenant.findUnique({ where: { id: params.id } })
+  let tenant = await (prisma as any).tenant.findUnique({
+    where: { id: params.id },
+    include: { partnerAccount: { select: { isWhiteLabel: true, agentBrandName: true } } },
+  })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
 
   // Auto-provision tunnel on first installer download
@@ -119,6 +122,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Could not fetch tunnel token: ' + e.message }, { status: 502 })
   }
 
+  const partnerBranding = (tenant as any).partnerAccount
+  const agentBrandName = (partnerBranding?.isWhiteLabel && partnerBranding?.agentBrandName)
+    ? partnerBranding.agentBrandName
+    : 'BespoxAI'
+
   const scriptPath = join(process.cwd(), 'scripts', 'Install-BespoxAI.ps1')
   let script: string
   try { script = readFileSync(scriptPath, 'utf-8') }
@@ -143,7 +151,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${tenant.testBcInstance || ''}',`)
     .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${tenant.testBcCompany || ''}',`)
     .replace('[int]    $TestNavManagementPort  = 7045',       `[int]    $TestNavManagementPort  = ${tenant.testNavManagementPort || 7045}`)
-    .replace("[string] $SupportAccountPassword = ''",         `[string] $SupportAccountPassword = '${rdpPassword}'`)
+    .replace("[string] $SupportAccountPassword = \'\'"  ,         `[string] $SupportAccountPassword = '${rdpPassword}'`)
+    .replace("[string] $BrandName = 'BespoxAI'",             `[string] $BrandName = '${agentBrandName}'`)
 
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')
   const chunks: string[] = []
@@ -152,11 +161,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const bat = `@echo off
 setlocal EnableDelayedExpansion
-title BespoxAI Installer ^| ${tenant.name}
+title ${agentBrandName} Installer ^| ${tenant.name}
 color 0A
 echo.
 echo  ============================================================
-echo    BespoxAI Agent Installer
+echo    ${agentBrandName} Agent Installer
 echo    Tenant: ${tenant.name}
 echo    BC:     ${bcInstance || tenant.bcInstance} / ${bcCompany || tenant.bcCompany}
 echo  ============================================================

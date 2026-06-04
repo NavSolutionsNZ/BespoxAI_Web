@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import type { BrandingConfig } from '@/lib/branding'
+import { DEFAULT_BRANDING } from '@/lib/branding'
 
 const NAV_ITEMS = [
   { href: '/partner/dashboard', label: 'Clients',     icon: '◈' },
@@ -17,6 +19,14 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING)
+
+  useEffect(() => {
+    fetch('/api/branding')
+      .then(r => r.ok ? r.json() : null)
+      .then(b => { if (b) setBranding(b) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -80,16 +90,20 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           padding: '20px 20px 16px',
           borderBottom: '1px solid #21262D',
         }}>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: '#58A6FF',
-            marginBottom: 2,
-          }}>
-            BespoxAI
-          </div>
+          {branding.isWhiteLabel && branding.logoUrl ? (
+            <img src={branding.logoUrl} alt={branding.brandName} style={{ height: 28, objectFit: 'contain', marginBottom: 4 }} />
+          ) : (
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: branding.isWhiteLabel && branding.primaryColour ? branding.primaryColour : '#58A6FF',
+              marginBottom: 2,
+            }}>
+              {branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'}
+            </div>
+          )}
           <div style={{
             fontFamily: 'var(--font-body)',
             fontSize: 13,
@@ -211,8 +225,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           >
             ☰
           </button>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#58A6FF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            BespoxAI Partner
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: branding.isWhiteLabel && branding.primaryColour ? branding.primaryColour : '#58A6FF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            {(branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI') + ' Partner'}
           </span>
           <div style={{ width: 28 }} />
         </div>
