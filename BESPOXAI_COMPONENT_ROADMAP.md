@@ -1,12 +1,23 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 4, 2026 (Session 13)
+**Last Updated:** June 4, 2026 (Session 14)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 14 — Partner Phase 4 White-label Branding**
+- [x] `/api/branding` route — resolves BrandingConfig per user (partner, managed client, or BespoxAI default)
+- [x] Partner layout: fetches branding on mount, applies brandName/logoUrl/primaryColour/secondaryColour when isWhiteLabel
+- [x] Dashboard: fetches branding, applies to sidebar logo, CFO heading, print export title/header/footer
+- [x] CSS variable injection: --forest (primaryColour) and --jade (secondaryColour) overridden at runtime when isWhiteLabel
+- [x] secondaryColour field added to PartnerAccount schema + SQL applied
+- [x] resolveBranding: HEX6 validation on both colour fields, invalid values fall back to BespoxAI defaults
+- [x] Partner settings: secondaryColour input added to Branding section
+- [x] Installer routes (settings + partner): agentBrandName resolved from partnerAccount, injected into PS1 + bat
+- [x] Install-BespoxAI.ps1: $BrandName param added, all terminal output/paths/task/account names use it; X-BespoxAI-Key + id=BespoxAI left as internal protocol strings
 
 **Session 13 — Partner Phase 2 Session 3**
 - [x] `/partner/team` page — invite, role change, remove (admin edit / developer read-only)
@@ -95,10 +106,10 @@ Requires BCAgent Start-Job background threading + portal polling endpoint + UI p
 - bespoxai_collected: standard Stripe checkout for partner clients
 - partner_collected: revenue share invoicing to partner
 
-#### 5. Partner Phase 4 — White-label Branding
-- Apply resolveBranding() to portal rendering
-- agentBrandName wired into installer generation
-- Full SMTP per partner (currently fromEmail stored, BespoxAI SMTP used)
+#### 5. Partner Phase 4 — White-label Branding ✅ COMPLETE
+- [x] resolveBranding() applied to partner portal + customer dashboard
+- [x] agentBrandName wired into installer generation (both settings + partner routes)
+- [ ] Full SMTP per partner (fromEmail stored, BespoxAI SMTP still used — deferred)
 
 #### 6. Collapsible Sections in Admin Requirements View
 All panels independently collapsible.

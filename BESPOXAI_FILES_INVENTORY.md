@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 4, 2026 (Session 13)**
+**Last Updated: June 4, 2026 (Session 14)**
 
 ---
 
@@ -92,6 +92,7 @@
 | `api/settings/profile/change-password/route.ts` | POST — change password. Used by partner settings page too. |
 | `api/settings/users/route.ts` | GET + POST invite. Sends notifyUserWelcome with tenantId. |
 | `api/settings/users/[id]/route.ts` | PATCH + DELETE. |
+| `api/branding/route.ts` | GET — resolves BrandingConfig per authenticated user. isWhiteLabel gate applied. |
 | `api/admin/signups/route.ts` | Lists unactivated signup requests only |
 | `api/admin/provision/route.ts` | Provision new tenant. Sends notifyUserWelcome with tenantId. |
 | `api/admin/provision-rdp/route.ts` | POST — adds CF RDP ingress + DNS. |
