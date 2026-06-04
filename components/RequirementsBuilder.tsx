@@ -299,7 +299,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
   const [collapsedCards, setCC] = useState({} as {[k:string]:boolean})
-  function isCardCollapsed(id: string, map?: {[k:string]:boolean}): boolean {
+  function isCardCollapsed(id: string, map?: typeof collapsedCards) {
     return isCardCollapsedFn(id, reqs, map ?? collapsedCards)
   }
   function toggleCard(key: string) { setCC(prev => ({ ...prev, [key]: !isCardCollapsedFn(key, reqs, prev) })) }
