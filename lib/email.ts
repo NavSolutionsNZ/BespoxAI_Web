@@ -37,8 +37,8 @@ export async function sendVerificationEmail(to: string, companyName: string, tok
   })
 }
 
-export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  await transporter.sendMail({ from: FROM, to, subject, html })
+export async function sendEmail({ to, subject, html, from }: { to: string; subject: string; html: string; from?: string }) {
+  await transporter.sendMail({ from: from ?? FROM, to, subject, html })
 }
 
 export async function sendWelcomeEmail(to: string, companyName: string, tempPassword: string) {

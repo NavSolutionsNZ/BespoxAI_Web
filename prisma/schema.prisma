@@ -380,6 +380,7 @@ model PartnerAccount {
   bankAccount          String?       // masked in UI, for revenue share payouts
   githubOrg            String?
   githubToken          String?       // AES-256-GCM encrypted, never exposed in API responses
+  fromEmail            String?       // white-label from address e.g. support@partnerco.com
 
   isActive             Boolean       @default(true)
   createdAt            DateTime      @default(now())

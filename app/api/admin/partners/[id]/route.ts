@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     'monthlyAccessFee', 'perDeveloperFee', 'perTenantFee', 'perUserFee',
     'revenueSharePartner', 'paymentMode',
     'isWhiteLabel', 'brandName', 'logoUrl', 'primaryColour', 'agentBrandName',
-    'githubOrg', 'githubToken',
+    'githubOrg', 'githubToken', 'fromEmail',
     'isActive',
   ]
 

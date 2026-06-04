@@ -60,6 +60,7 @@ export async function POST(
   })
 
   notifyCustomerProdDeployed({
+    tenantId:      requirement.tenantId,
     customerEmail: requirement.user.email,
     customerName:  requirement.user.name ?? '',
     title:         requirement.title,

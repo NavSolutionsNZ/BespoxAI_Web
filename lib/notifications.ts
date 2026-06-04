@@ -93,18 +93,21 @@ async function getCustomerEmail(requirementId: string): Promise<{ email: string;
 // ── Account / onboarding notifications ───────────────────────────────────────
 
 export async function notifyUserWelcome(params: {
+  tenantId?:    string
   to:           string
   name:         string | null
   tempPassword: string
   tenantName:   string
   role:         'tenant_admin' | 'user' | 'developer'
 }) {
-  const { to, name, tempPassword, tenantName, role } = params
+  const { to, name, tempPassword, tenantName, role, tenantId } = params
+  const partnerFrom = tenantId ? await getPartnerFromEmail(tenantId) : null
   const greeting = name ? 'Hi ' + name + ',' : 'Hi,'
   const roleLabel = role === 'tenant_admin' ? 'Administrator' : role === 'developer' ? 'Developer' : 'User'
   try {
     await sendEmail({
       to,
+      from:    partnerFrom ?? undefined,
       subject: 'Your BespoxAI account is ready',
       html: wrap(`
         <p>${greeting}</p>
@@ -259,14 +262,17 @@ export async function notifyAdminsDepositPaid(params: {
 // ── Customer notifications ────────────────────────────────────────────────────
 
 export async function notifyCustomerNeedsClarif(params: {
+  tenantId:      string
   customerEmail: string
   customerName:  string
   title:         string
   tenantName:    string
   questions:     string
 }) {
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: `We have some questions — ${params.title}`,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -282,6 +288,7 @@ export async function notifyCustomerNeedsClarif(params: {
 }
 
 export async function notifyCustomerQuoted(params: {
+  tenantId:       string
   customerEmail:  string
   customerName:   string
   title:          string
@@ -292,8 +299,10 @@ export async function notifyCustomerQuoted(params: {
   const noteBlock = params.consultantNote
     ? `<div style="background:#fff;border:1px solid #e0dbd4;border-radius:8px;padding:16px 20px;margin:12px 0"><p style="margin:0;font-size:14px;white-space:pre-wrap">${params.consultantNote}</p></div>`
     : ''
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: `Your quote is ready — ${params.title}`,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -312,13 +321,16 @@ export async function notifyCustomerQuoted(params: {
 }
 
 export async function notifyCustomerInDevelopment(params: {
+  tenantId:      string
   customerEmail: string
   customerName:  string
   title:         string
   tenantName:    string
 }) {
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: `Development started — ${params.title}`,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -331,13 +343,16 @@ export async function notifyCustomerInDevelopment(params: {
 }
 
 export async function notifyCustomerReadyForUAT(params: {
+  tenantId:      string
   customerEmail: string
   customerName:  string
   title:         string
   tenantName:    string
 }) {
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: `Ready for testing — ${params.title}`,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -350,14 +365,17 @@ export async function notifyCustomerReadyForUAT(params: {
 }
 
 export async function notifyCustomerBalanceDue(params: {
+  tenantId:       string
   customerEmail:  string
   customerName:   string
   title:          string
   tenantName:     string
   balanceAmount:  number
 }) {
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: `Balance payment due — ${params.title}`,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -377,14 +395,17 @@ export async function notifyCustomerBalanceDue(params: {
 // ── Production deployment notifications ───────────────────────────────────────
 
 export async function notifyCustomerProdApproval(params: {
+  tenantId:      string
   customerEmail: string
   customerName:  string
   title:         string
   tenantName:    string
   goLiveDoc:     string
 }) {
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: 'Go-live approval required — ' + params.title,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -422,13 +443,16 @@ export async function notifyAdminsProdApproved(params: {
 }
 
 export async function notifyCustomerProdDeployed(params: {
+  tenantId:      string
   customerEmail: string
   customerName:  string
   title:         string
   tenantName:    string
 }) {
+  const partnerFrom = await getPartnerFromEmail(params.tenantId)
   await sendEmail({
     to:      params.customerEmail,
+    from:    partnerFrom ?? undefined,
     subject: '🚀 Live in production — ' + params.title,
     html: wrap(`
       <p>Hi ${params.customerName || 'there'},</p>
@@ -493,5 +517,76 @@ export async function notifyPartnerWelcome(params: {
     })
   } catch (e) {
     console.error('[notifyPartnerWelcome]', e)
+  }
+}
+
+// ── Partner helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Returns the white-label from address for a tenant's partner account,
+ * or null if the tenant has no partner, the partner is not white-label,
+ * or no fromEmail is configured.
+ */
+export async function getPartnerFromEmail(tenantId: string): Promise<string | null> {
+  if (!tenantId) return null
+  try {
+    const tenant = await (prisma as any).tenant.findUnique({
+      where:  { id: tenantId },
+      select: {
+        partnerAccount: {
+          select: { isWhiteLabel: true, fromEmail: true },
+        },
+      },
+    })
+    const p = tenant?.partnerAccount
+    if (p?.isWhiteLabel && p?.fromEmail) return p.fromEmail as string
+    return null
+  } catch {
+    return null
+  }
+}
+
+// ── Partner team notifications ────────────────────────────────────────────────
+
+export async function notifyPartnerTeamWelcome(params: {
+  to:          string
+  firstName:   string | null
+  partnerName: string
+  role:        string
+  tempPassword: string
+  fromEmail:   string | null
+}) {
+  const { to, firstName, partnerName, role, tempPassword, fromEmail } = params
+  const greeting  = firstName ? 'Hi ' + firstName + ',' : 'Hi,'
+  const roleLabel = role === 'partner_admin' ? 'Administrator' : 'Developer'
+  const brandLabel = partnerName
+  try {
+    await sendEmail({
+      to,
+      from:    fromEmail ? fromEmail + ' <' + fromEmail + '>' : undefined,
+      subject: 'Your ' + brandLabel + ' partner account is ready',
+      html: wrap(`
+        <p>${greeting}</p>
+        <p>You've been added to the <strong>${brandLabel}</strong> partner account as a <strong>${roleLabel}</strong>.</p>
+
+        <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0">
+          <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b7b70">Your temporary credentials</p>
+          <p style="margin:0 0 4px"><strong>Email:</strong> ${to}</p>
+          <p style="margin:0"><strong>Temporary password:</strong> <code style="background:#e8e8e0;padding:2px 6px;border-radius:4px;font-size:15px">${tempPassword}</code></p>
+        </div>
+
+        <p style="background:#fff8e8;border-left:3px solid #C8952A;padding:10px 14px;border-radius:0 6px 6px 0;margin:20px 0;font-size:13px">
+          <strong>You will be asked to set a permanent password</strong> the first time you sign in.
+        </p>
+
+        ${cta('Sign in to Partner Portal', PORTAL + '/login')}
+
+        <p style="font-size:12px;color:#8a9a8e;margin-top:24px">
+          If you weren't expecting this email, you can safely ignore it.
+        </p>
+      `),
+    })
+  } catch (e) {
+    console.error('[notifyPartnerTeamWelcome]', e)
   }
 }

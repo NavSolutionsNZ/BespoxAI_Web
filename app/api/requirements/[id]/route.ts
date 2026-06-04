@@ -161,18 +161,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (isSuperadmin) {
     // Admin → customer notifications
     if (updateData.status === 'needs_clarification' && updateData.adminQuestions) {
-      notifyCustomerNeedsClarif({ customerEmail, customerName, title: reqTitle, tenantName, questions: updateData.adminQuestions })
+      notifyCustomerNeedsClarif({ tenantId: existing.tenantId, customerEmail, customerName, title: reqTitle, tenantName, questions: updateData.adminQuestions })
     }
     if (updateData.status === 'quoted' && updateData.quote !== undefined) {
       const quoteAmt = typeof updateData.quote === 'number' ? updateData.quote : parseFloat(updateData.quote ?? '0')
-      notifyCustomerQuoted({ customerEmail, customerName, title: reqTitle, tenantName, quoteAmount: quoteAmt, consultantNote: updateData.consultantNote })
+      notifyCustomerQuoted({ tenantId: existing.tenantId, customerEmail, customerName, title: reqTitle, tenantName, quoteAmount: quoteAmt, consultantNote: updateData.consultantNote })
     }
     if (updateData.status === 'in_development') {
-      notifyCustomerInDevelopment({ customerEmail, customerName, title: reqTitle, tenantName })
+      notifyCustomerInDevelopment({ tenantId: existing.tenantId, customerEmail, customerName, title: reqTitle, tenantName })
     }
     if (updateData.status === 'complete_pending_payment') {
       const balance = updated.quote ? parseFloat(updated.quote.toString()) * 0.8 : 0
-      notifyCustomerBalanceDue({ customerEmail, customerName, title: reqTitle, tenantName, balanceAmount: balance })
+      notifyCustomerBalanceDue({ tenantId: existing.tenantId, customerEmail, customerName, title: reqTitle, tenantName, balanceAmount: balance })
     }
   } else {
     // Customer → admin notifications

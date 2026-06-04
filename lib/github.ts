@@ -20,15 +20,32 @@
 const GITHUB_API  = 'https://api.github.com'
 const DEFAULT_ORG = 'NavSolutionsNZ'
 
-function token(): string {
+function token(override?: string | null): string {
+  if (override) return override
   const t = process.env.GITHUB_CUSTOMER_REPOS_TOKEN
   if (!t) throw new Error('GITHUB_CUSTOMER_REPOS_TOKEN env var not set')
   return t
 }
 
-function headers(extra: Record<string, string> = {}): Record<string, string> {
+/**
+ * Resolve the GitHub token for a partner account.
+ * Decrypts the stored AES-256-GCM token if present; falls back to the
+ * environment variable token otherwise.
+ */
+export async function resolvePartnerToken(encryptedToken: string | null | undefined): Promise<string | null> {
+  if (!encryptedToken) return null
+  try {
+    const { decryptToken } = await import('@/lib/crypto')
+    return decryptToken(encryptedToken)
+  } catch (e) {
+    console.error('[github] failed to decrypt partner token:', e)
+    return null
+  }
+}
+
+function headers(extra: Record<string, string> = {}, tokenOverride?: string | null): Record<string, string> {
   return {
-    Authorization:        `Bearer ${token()}`,
+    Authorization:        `Bearer ${token(tokenOverride)}`,
     Accept:               'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'Content-Type':       'application/json',
@@ -72,18 +89,19 @@ export function branchName(requirementId: string, title: string): string {
 export async function ensureRepo(
   tenantName: string,
   org: string = DEFAULT_ORG,
+  tokenOverride?: string | null,
 ): Promise<{ repo: string; owner: string }> {
   const repo = repoName(tenantName)
 
   // Get authenticated user (repo lives under personal account)
-  const meRes = await fetch(`${GITHUB_API}/user`, { headers: headers() })
+  const meRes = await fetch(`${GITHUB_API}/user`, { headers: headers({}, tokenOverride) })
   const me    = await meRes.json()
   const owner = (me as any).login as string
   if (!owner) throw new Error('Could not determine GitHub user from token')
 
   // Check if repo already exists under owner
   const check = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
-    headers: headers(),
+    headers: headers({}, tokenOverride),
   })
 
   if (check.status === 200) return { repo, owner } // already exists
@@ -96,7 +114,7 @@ export async function ensureRepo(
   // Create under authenticated user (works with repo-scoped PAT without org admin rights)
   const create = await fetch(`${GITHUB_API}/user/repos`, {
     method: 'POST',
-    headers: headers(),
+    headers: headers({}, tokenOverride),
     body: JSON.stringify({
       name:        repo,
       description: `BespoxAI — ${tenantName} BC/NAV object repository`,
@@ -121,10 +139,10 @@ export async function ensureRepo(
 /**
  * Get the SHA of the HEAD commit on a branch (or main if not found).
  */
-async function getBranchSha(org: string, repo: string, branch: string): Promise<string | null> {
+async function getBranchSha(org: string, repo: string, branch: string, tokenOverride?: string | null): Promise<string | null> {
   const res = await fetch(
     `${GITHUB_API}/repos/${org}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`,
-    { headers: headers() },
+    { headers: headers({}, tokenOverride) },
   )
   if (!res.ok) return null
   const data = await res.json()
@@ -140,17 +158,18 @@ export async function ensureBranch(
   org: string,
   repo: string,
   branch: string,
+  tokenOverride?: string | null,
 ): Promise<string> {
-  const existing = await getBranchSha(org, repo, branch)
+  const existing = await getBranchSha(org, repo, branch, tokenOverride)
   if (existing) return branch
 
   // Get main SHA to branch from
-  const mainSha = await getBranchSha(org, repo, 'main')
+  const mainSha = await getBranchSha(org, repo, 'main', tokenOverride)
   if (!mainSha) throw new Error(`Could not find main branch SHA in ${org}/${repo}`)
 
   const res = await fetch(`${GITHUB_API}/repos/${org}/${repo}/git/refs`, {
     method:  'POST',
-    headers: headers(),
+    headers: headers({}, tokenOverride),
     body:    JSON.stringify({ ref: `refs/heads/${branch}`, sha: mainSha }),
   })
 
@@ -180,12 +199,13 @@ export async function pushFiles(
   branch: string,
   files: GitHubFile[],
   commitMessage: string,
+  tokenOverride?: string | null,
 ): Promise<void> {
   for (const file of files) {
     // Check if file exists (need its SHA to update)
     const existing = await fetch(
       `${GITHUB_API}/repos/${org}/${repo}/contents/${file.path}?ref=${encodeURIComponent(branch)}`,
-      { headers: headers() },
+      { headers: headers({}, tokenOverride) },
     )
 
     const body: Record<string, any> = {
@@ -201,7 +221,7 @@ export async function pushFiles(
 
     const res = await fetch(
       `${GITHUB_API}/repos/${org}/${repo}/contents/${file.path}`,
-      { method: 'PUT', headers: headers(), body: JSON.stringify(body) },
+      { method: 'PUT', headers: headers({}, tokenOverride), body: JSON.stringify(body) },
     )
 
     if (!res.ok) {
@@ -220,10 +240,11 @@ export async function getFile(
   repo: string,
   branch: string,
   path: string,
+  tokenOverride?: string | null,
 ): Promise<string | null> {
   const res = await fetch(
     `${GITHUB_API}/repos/${org}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`,
-    { headers: headers() },
+    { headers: headers({}, tokenOverride) },
   )
   if (!res.ok) return null
   const data = await res.json()
@@ -241,10 +262,11 @@ export async function listFiles(
   repo: string,
   branch: string,
   dirPath: string = 'objects',
+  tokenOverride?: string | null,
 ): Promise<Array<{ path: string; name: string; size: number; sha: string }>> {
   const res = await fetch(
     `${GITHUB_API}/repos/${org}/${repo}/contents/${dirPath}?ref=${encodeURIComponent(branch)}`,
-    { headers: headers() },
+    { headers: headers({}, tokenOverride) },
   )
   if (res.status === 404) return []
   if (!res.ok) return []
@@ -258,10 +280,11 @@ export async function listFiles(
 // ── High-level workflow helpers ───────────────────────────────────────────────
 
 export interface PushObjectsParams {
-  tenantName:      string
-  tenantGithubOrg?: string | null
-  requirementId:   string
-  requirementTitle: string
+  tenantName:           string
+  tenantGithubOrg?:     string | null
+  partnerGithubToken?:  string | null   // decrypted partner token; falls back to env var
+  requirementId:        string
+  requirementTitle:     string
   objects: Array<{
     objectType: string
     objectId:   number | null
@@ -284,10 +307,11 @@ export async function pushObjectsToGitHub(params: PushObjectsParams): Promise<{
   repo:   string
   branch: string
 }> {
-  const { repo, owner } = await ensureRepo(params.tenantName, params.tenantGithubOrg || DEFAULT_ORG)
+  const tok = params.partnerGithubToken ?? null
+  const { repo, owner } = await ensureRepo(params.tenantName, params.tenantGithubOrg || DEFAULT_ORG, tok)
   const branch          = branchName(params.requirementId, params.requirementTitle)
 
-  await ensureBranch(owner, repo, branch)
+  await ensureBranch(owner, repo, branch, tok)
 
   const files: GitHubFile[] = params.objects.map(o => ({
     path:    `objects/${o.objectType}_${o.objectId ?? 'X'}_${o.objectName.replace(/[^a-zA-Z0-9_\-. ]/g, '_')}.txt`,
@@ -296,7 +320,7 @@ export async function pushObjectsToGitHub(params: PushObjectsParams): Promise<{
 
   const msg = params.commitMessage ?? `chore: fetch ${files.length} object${files.length !== 1 ? 's' : ''} for requirement ${params.requirementId.slice(0, 8)}`
 
-  await pushFiles(owner, repo, branch, files, msg)
+  await pushFiles(owner, repo, branch, files, msg, tok)
 
   return { org: owner, repo, branch }
 }

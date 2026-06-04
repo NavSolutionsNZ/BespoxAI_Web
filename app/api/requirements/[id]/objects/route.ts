@@ -74,7 +74,7 @@ export async function POST(
     where:  { id: params.id },
     select: {
       tenantId: true, status: true, title: true,
-      tenant: { select: { name: true, githubOrg: true, githubRepo: true } },
+      tenant: { select: { name: true, githubOrg: true, githubRepo: true, partnerAccount: { select: { githubToken: true } } } },
     },
   })
   if (!requirement) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -168,14 +168,16 @@ export async function POST(
       const objectsWithContent = inbound.filter(o => o.content)
       if (objectsWithContent.length > 0) {
         try {
-          const { pushObjectsToGitHub } = await import('@/lib/github')
+          const { pushObjectsToGitHub, resolvePartnerToken } = await import('@/lib/github')
+          const partnerGithubToken = await resolvePartnerToken(requirement.tenant.partnerAccount?.githubToken)
           githubResult = await pushObjectsToGitHub({
-            tenantName:       requirement.tenant.name,
-            tenantGithubOrg:  requirement.tenant.githubOrg,
-            requirementId:    params.id,
-            requirementTitle: requirement.title,
-            objects:          objectsWithContent,
-            commitMessage:    `feat: save ${objectsWithContent.length} object${objectsWithContent.length !== 1 ? 's' : ''} to knowledge base`,
+            tenantName:          requirement.tenant.name,
+            tenantGithubOrg:     requirement.tenant.githubOrg,
+            partnerGithubToken,
+            requirementId:       params.id,
+            requirementTitle:    requirement.title,
+            objects:             objectsWithContent,
+            commitMessage:       `feat: save ${objectsWithContent.length} object${objectsWithContent.length !== 1 ? 's' : ''} to knowledge base`,
           })
           await Promise.all([
             (prisma as any).requirement.update({

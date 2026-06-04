@@ -12,16 +12,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
-import { pushFiles }                 from '@/lib/github'
+import { pushFiles, resolvePartnerToken } from '@/lib/github'
 
 export const dynamic = 'force-dynamic'
 
-async function getGitHubOwner(): Promise<string> {
-  const t = process.env.GITHUB_CUSTOMER_REPOS_TOKEN
+async function getGitHubOwner(tokenOverride?: string | null): Promise<string> {
+  const t = tokenOverride ?? process.env.GITHUB_CUSTOMER_REPOS_TOKEN
   if (!t) throw new Error('GITHUB_CUSTOMER_REPOS_TOKEN not set')
   const res  = await fetch('https://api.github.com/user', {
     headers: {
-      Authorization:          `Bearer ${t}`,
+      Authorization:          'Bearer ' + t,
       Accept:                 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
@@ -46,7 +46,7 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:   { id: params.id },
-    include: { tenant: true },
+    include: { tenant: { include: { partnerAccount: { select: { githubToken: true } } } } },
   })
   if (!requirement)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -55,7 +55,8 @@ export async function POST(
     return NextResponse.json({ error: 'No GitHub branch linked to this requirement' }, { status: 400 })
 
   try {
-    const owner  = await getGitHubOwner()
+    const partnerToken = await resolvePartnerToken(requirement.tenant?.partnerAccount?.githubToken)
+    const owner  = await getGitHubOwner(partnerToken)
     const repo   = requirement.tenant.githubRepo
     const branch = requirement.githubBranch
 
@@ -65,7 +66,7 @@ export async function POST(
 
     const msg = commitMessage?.trim() || `chore: update ${safeName} via Coding Assistant`
 
-    await pushFiles(owner, repo, branch, [{ path, content }], msg)
+    await pushFiles(owner, repo, branch, [{ path, content }], msg, partnerToken)
 
     return NextResponse.json({ ok: true, path, branch })
   } catch (e: any) {

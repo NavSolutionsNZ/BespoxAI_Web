@@ -28,7 +28,7 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:  { id: params.id },
-    select: { id: true, title: true, status: true, deploymentNotes: true,
+    select: { id: true, title: true, status: true, tenantId: true, deploymentNotes: true,
               user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
   })
   if (!requirement)
@@ -57,6 +57,7 @@ export async function POST(
   })
 
   notifyCustomerReadyForUAT({
+    tenantId:      requirement.tenantId,
     customerEmail: requirement.user.email,
     customerName:  requirement.user.name ?? '',
     title:         requirement.title,

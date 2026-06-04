@@ -61,6 +61,7 @@ export async function POST(
       data:  { prodDeployedAt: now, prodDeploySnapshotId: snapshotId },
     })
     notifyCustomerProdDeployed({
+      tenantId:      requirement.tenantId,
       customerEmail: requirement.user.email,
       customerName:  requirement.user.name ?? '',
       title:         requirement.title,
@@ -114,6 +115,7 @@ export async function POST(
 
     // Notify customer — changes are live
     notifyCustomerProdDeployed({
+      tenantId:      requirement.tenantId,
       customerEmail: requirement.user.email,
       customerName:  requirement.user.name ?? '',
       title:         requirement.title,

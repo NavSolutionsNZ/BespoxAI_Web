@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const allowed = ['brandName', 'logoUrl', 'primaryColour', 'isWhiteLabel', 'billingEmail']
+  const allowed = ['brandName', 'logoUrl', 'primaryColour', 'isWhiteLabel', 'billingEmail', 'fromEmail']
 
   const data: any = { updatedAt: new Date() }
   for (const key of allowed) {

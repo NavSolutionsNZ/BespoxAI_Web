@@ -149,6 +149,7 @@ export async function POST(
 
   // Fire-and-forget email to customer
   notifyCustomerProdApproval({
+    tenantId:      requirement.tenantId,
     customerEmail: requirement.user.email,
     customerName:  requirement.user.name ?? '',
     title:         requirement.title,

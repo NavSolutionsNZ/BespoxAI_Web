@@ -12,17 +12,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
-import { listFiles, getFile }        from '@/lib/github'
+import { listFiles, getFile, resolvePartnerToken } from '@/lib/github'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60
 
-async function getGitHubOwner(): Promise<string> {
-  const t = process.env.GITHUB_CUSTOMER_REPOS_TOKEN
+async function getGitHubOwner(tokenOverride?: string | null): Promise<string> {
+  const t = tokenOverride ?? process.env.GITHUB_CUSTOMER_REPOS_TOKEN
   if (!t) throw new Error('GITHUB_CUSTOMER_REPOS_TOKEN not set')
   const res  = await fetch('https://api.github.com/user', {
     headers: {
-      Authorization:          `Bearer ${t}`,
+      Authorization:          'Bearer ' + t,
       Accept:                 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
@@ -42,7 +42,7 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:   { id: params.id },
-    include: { tenant: { select: { id: true, name: true, githubRepo: true, githubOrg: true } } },
+    include: { tenant: { select: { id: true, name: true, githubRepo: true, githubOrg: true, partnerAccount: { select: { githubToken: true } } } } },
   })
   if (!requirement)
     return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
@@ -52,12 +52,13 @@ export async function POST(
       error: 'No GitHub branch linked to this requirement. Fetch objects from BCAgent first.',
     }, { status: 400 })
 
-  const owner = await getGitHubOwner()
+  const partnerToken = await resolvePartnerToken(requirement.tenant.partnerAccount?.githubToken)
+  const owner = await getGitHubOwner(partnerToken)
   const repo  = requirement.tenant.githubRepo
   const branch = requirement.githubBranch
 
   // List files in objects/ on the branch
-  const fileList = await listFiles(owner, repo, branch, 'objects')
+  const fileList = await listFiles(owner, repo, branch, 'objects', partnerToken)
   if (!fileList.length)
     return NextResponse.json({ error: 'No files found in objects/ folder on branch: ' + branch }, { status: 404 })
 
@@ -66,7 +67,7 @@ export async function POST(
 
   for (const f of fileList) {
     try {
-      const content = await getFile(owner, repo, branch, f.path)
+      const content = await getFile(owner, repo, branch, f.path, partnerToken)
       if (!content) { errors.push(f.name + ': empty'); continue }
 
       // Parse type/id/name from filename: Type_Id_Name.txt

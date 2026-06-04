@@ -17,19 +17,19 @@ import { prisma }                    from '@/lib/db'
 import { getAiConfig }               from '@/lib/ai-config'
 import { logAiUsage }                from '@/lib/ai-usage'
 import { buildTenantContext }        from '@/lib/tenant-context'
-import { listFiles, getFile }        from '@/lib/github'
+import { listFiles, getFile, resolvePartnerToken } from '@/lib/github'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 120   // C/AL context can be large; give plenty of time
 
 // ── GitHub owner helper ───────────────────────────────────────────────────────
 
-async function getGitHubOwner(): Promise<string> {
-  const t = process.env.GITHUB_CUSTOMER_REPOS_TOKEN
+async function getGitHubOwner(tokenOverride?: string | null): Promise<string> {
+  const t = tokenOverride ?? process.env.GITHUB_CUSTOMER_REPOS_TOKEN
   if (!t) throw new Error('GITHUB_CUSTOMER_REPOS_TOKEN not set')
   const res  = await fetch('https://api.github.com/user', {
     headers: {
-      Authorization:          `Bearer ${t}`,
+      Authorization:          'Bearer ' + t,
       Accept:                 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
@@ -47,16 +47,17 @@ interface CalObject {
 }
 
 async function loadObjectsFromGitHub(
-  owner:  string,
-  repo:   string,
-  branch: string,
+  owner:         string,
+  repo:          string,
+  branch:        string,
+  tokenOverride?: string | null,
 ): Promise<CalObject[]> {
-  const fileList = await listFiles(owner, repo, branch, 'objects')
+  const fileList = await listFiles(owner, repo, branch, 'objects', tokenOverride)
   if (!fileList.length) return []
 
   const results: CalObject[] = []
   for (const f of fileList) {
-    const content = await getFile(owner, repo, branch, f.path)
+    const content = await getFile(owner, repo, branch, f.path, tokenOverride)
     if (content) results.push({ filename: f.name, content })
   }
   return results
@@ -88,7 +89,7 @@ export async function POST(
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:   { id: params.id },
-    include: { tenant: true, user: { select: { name: true, email: true } } },
+    include: { tenant: { include: { partnerAccount: { select: { githubToken: true } } } }, user: { select: { name: true, email: true } } },
   })
   if (!requirement)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -100,8 +101,9 @@ export async function POST(
   let objects: CalObject[] = []
   let loadError = ''
   try {
-    const owner = await getGitHubOwner()
-    objects = await loadObjectsFromGitHub(owner, requirement.tenant.githubRepo, requirement.githubBranch)
+    const partnerToken = await resolvePartnerToken(requirement.tenant?.partnerAccount?.githubToken)
+    const owner = await getGitHubOwner(partnerToken)
+    objects = await loadObjectsFromGitHub(owner, requirement.tenant.githubRepo, requirement.githubBranch, partnerToken)
   } catch (e: any) {
     loadError = e.message ?? 'Unknown error loading objects from GitHub'
     console.error('[coding-assistant] GitHub load error:', loadError)

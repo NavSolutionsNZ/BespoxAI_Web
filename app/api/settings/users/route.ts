@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
   // Get tenant name for the email
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } })
   notifyUserWelcome({
+    tenantId: user.tenantId,
     to:           email,
     name:         name || null,
     tempPassword,

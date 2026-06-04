@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
 
         // Send welcome email with temp password
         notifyUserWelcome({
+          tenantId:     tenant.id,
           to:           customerEmail,
           name:         customerName?.trim() || null,
           tempPassword: tempPassword!,

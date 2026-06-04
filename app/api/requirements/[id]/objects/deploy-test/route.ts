@@ -67,6 +67,7 @@ export async function POST(
     })
     if (reqForNotify) {
       notifyCustomerReadyForUAT({
+        tenantId:      requirement.tenantId,
         customerEmail: reqForNotify.user.email,
         customerName:  reqForNotify.user.name ?? '',
         title:         reqForNotify.title,
@@ -149,6 +150,7 @@ export async function POST(
     })
     if (reqForNotify) {
       notifyCustomerReadyForUAT({
+        tenantId:      requirement.tenantId,
         customerEmail: reqForNotify.user.email,
         customerName:  reqForNotify.user.name ?? '',
         title:         reqForNotify.title,
