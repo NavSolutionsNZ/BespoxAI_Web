@@ -279,7 +279,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     const reqId  = key.slice(dash + 1)
     const r      = reqs.find(x => x.id === reqId)
     const st     = r?.status ?? 'draft'
-    const openFor: Record<string, string[]> = {
+    const openFor = {
       desc:      ['draft','submitted','needs_clarification','in_review','quote_rejected','rejected'],
       spec:      ['draft','submitted','needs_clarification','in_review','quote_rejected','in_development'],
       feasib:    ['submitted','needs_clarification','in_review','quote_rejected'],
@@ -287,9 +287,10 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       uat:       ['in_uat','uat_rejected','uat_confirmed'],
       proddep:   ['uat_confirmed','complete_pending_payment','fully_paid'],
       documents: ['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'],
-      addenda:   [],
-    }
-    return !(openFor[prefix] ?? []).includes(st)
+      addenda:   [] as string[],
+    } as const
+    const list = (openFor as Record<string, readonly string[]>)[prefix] ?? []
+    return !list.includes(st)
   }
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
