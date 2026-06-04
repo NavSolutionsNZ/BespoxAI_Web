@@ -278,7 +278,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [feasErr, setFeasErr]             = useState('')
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
-  const [collapsedCards, setCC] = useState<Record<string,boolean>>({})
+  const [collapsedCards, setCC] = useState<{[k:string]:boolean}>({})
   function toggleCard(key: string) { setCC(prev => ({ ...prev, [key]: !prev[key] })) }
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
