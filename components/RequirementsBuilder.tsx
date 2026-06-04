@@ -361,7 +361,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
   function selectReq(req:Requirement) {
     const s = req.status
-    const open: string[] = []
+    const open = [] as string[]
     if (['draft','submitted','needs_clarification','in_review','quote_rejected','rejected'].includes(s)) open.push('desc-'+req.id)
     if (['draft','submitted','needs_clarification','in_review','quote_rejected','in_development'].includes(s)) open.push('spec-'+req.id)
     if (['submitted','needs_clarification','in_review','quote_rejected'].includes(s)) open.push('feasib-'+req.id)
