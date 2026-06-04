@@ -190,6 +190,26 @@ function renderMdLight(text: string): React.ReactNode {
   })
 }
 
+const CARD_OPEN_FOR: { [key: string]: string[] } = {
+  desc:    ['draft','needs_clarification','quote_rejected'],
+  spec:    ['draft','submitted','needs_clarification','quote_rejected','in_review'],
+  feasib:  ['submitted','needs_clarification','in_review'],
+  quote:   ['quoted','deposit_required','complete_pending_payment','fully_paid'],
+  uat:     ['in_uat','uat_confirmed','uat_rejected'],
+  proddep: ['uat_confirmed','complete_pending_payment','fully_paid'],
+  addenda: [],
+}
+
+function isCardCollapsedFn(id: string, reqs: Requirement[], map: { [k: string]: boolean }): boolean {
+  if (id in map) return map[id]
+  const dash   = id.lastIndexOf('-')
+  const prefix = id.slice(0, dash)
+  const reqId  = id.slice(dash + 1)
+  const req    = reqs.find((r) => r.id === reqId)
+  const st     = req?.status ?? 'draft'
+  return !(CARD_OPEN_FOR[prefix] ?? []).includes(st)
+}
+
 function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
     <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }} title={collapsed ? 'Expand' : 'Collapse'}>
@@ -280,25 +300,9 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [reviewLoading, setReviewLoading]     = useState(false)
   const [collapsedCards, setCC] = useState({} as {[k:string]:boolean})
   function isCardCollapsed(id: string, map?: {[k:string]:boolean}): boolean {
-    const m = map ?? collapsedCards
-    if (id in m) return m[id]
-    const dash   = id.lastIndexOf('-')
-    const prefix = id.slice(0, dash)
-    const reqId  = id.slice(dash + 1)
-    const req    = reqs.find((r: any) => r.id === reqId)
-    const st     = req?.status ?? 'draft'
-    const openFor: Record<string, string[]> = {
-      desc:    ['draft','needs_clarification','quote_rejected'],
-      spec:    ['draft','submitted','needs_clarification','quote_rejected','in_review'],
-      feasib:  ['submitted','needs_clarification','in_review'],
-      quote:   ['quoted','deposit_required','complete_pending_payment','fully_paid'],
-      uat:     ['in_uat','uat_confirmed','uat_rejected'],
-      proddep: ['uat_confirmed','complete_pending_payment','fully_paid'],
-      addenda: [],
-    }
-    return !(openFor[prefix] ?? []).includes(st)
+    return isCardCollapsedFn(id, reqs, map ?? collapsedCards)
   }
-  function toggleCard(key: string) { setCC(prev => ({ ...prev, [key]: !isCardCollapsed(key, prev) })) }
+  function toggleCard(key: string) { setCC(prev => ({ ...prev, [key]: !isCardCollapsedFn(key, reqs, prev) })) }
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
   const [showPayModal, setShowPayModal]       = useState(false)
