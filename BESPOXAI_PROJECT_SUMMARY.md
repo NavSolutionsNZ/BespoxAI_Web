@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 4, 2026 (Session 12)
+**Last Updated:** June 4, 2026 (Session 13)
 
 ---
 
@@ -47,142 +47,62 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
-## Session 9 Key Changes (May 26, 2026)
+## Session 13 Key Changes (June 4, 2026)
 
-### Manual Deployment Pipeline
-- New: `POST /api/requirements/[id]/manual-deploy-test` — sets `in_uat`, appends deployment note, sends UAT notification, skips BCAgent
-- New: `POST /api/requirements/[id]/manual-deploy-prod` — sets `prodDeployedAt`, appends note, notifies customer
-- `schema.prisma`: `deploymentNotes String? @db.Text` added to Requirement
-- Admin deploy-to-test panel: "Mark as manually deployed" checkbox skips Steps 1 & 2
-- Admin deploy-to-prod panel: checkbox on Step 2
-- Deployment notes displayed superadmin-only below respective deploy buttons
+### Partner Programme — Phase 2 Session 3 (Team, Settings, White-label, GitHub token)
 
-### UAT Customer Notification
-- `lib/notifications.ts`: `notifyCustomerReadyForUAT` added
-- Fires on successful automated deploy-to-test (debug + real paths)
-- Fires on manual deploy-to-test confirm
+#### Partner Team Management
+- `GET/POST /api/partner/users` — list team, invite new member (admin only)
+- `PATCH/DELETE /api/partner/users/[id]` — change role / remove (admin only)
+- Guards: cannot demote or remove last admin
+- Invite creates User with `mustChangePassword=true`, sends `notifyPartnerTeamWelcome`
+- `/partner/team/page.tsx` — full team management page (separate route, not dashboard tab)
+- `/partner/settings/page.tsx` — company settings page (see below)
+- `app/partner/dashboard/page.tsx` — reverted to clean clients-only (no tabs)
+- Partner layout: Settings + Team nav now visible to `partner_developer` role (read-only view)
 
-### Pipeline Dates — All Stages
-- `schema.prisma`: 6 new date fields stamped on transitions:
-  `submittedAt`, `inReviewAt`, `quotedAt`, `depositRequiredAt`, `inDevelopmentAt`, `completePendingPaymentAt`
-- Also using: `depositPaidAt`, `balancePaidAt`, `testDeployedAt`, `uatApprovedAt`, `createdAt`
-- Pipeline graphic in customer RequirementsBuilder shows dates under every node
-- Pipeline graphic in admin requirement detail also shows all dates
-- `requirements/[id]/route.ts` stamps all 6 new dates on status transitions
+#### Partner Settings Page (`/partner/settings`)
+- **Company Info**: `contactName`, `phone`, `address`, `gstNumber`, `billingEmail` — `name` is read-only (superadmin only)
+- **Branding**: `brandName`, `agentBrandName`, `logoUrl`, `primaryColour`, `isWhiteLabel` checkbox
+- **White-label Email**: `fromEmail` — with SPF/DKIM warning note
+- **GitHub**: `githubOrg`, `githubToken` (encrypted on save, placeholder `••••••••` = no change)
+- **Change Password**: uses existing `/api/settings/profile/change-password`
+- Admins: all sections editable. Developers: all sections read-only.
 
-### Collapsible Cards (Admin only — customer deferred)
-- `app/admin/page.tsx`: AI Spec, Q&A Log, Description cards are collapsible
-- ▴/▾ arrow toggle, start expanded
-- `AdminCardToggleBtn` standalone component extracted before `AdminRequirementsTab`
-- **Customer-facing collapsible cards in RequirementsBuilder.tsx deferred** — SWC/JSX parser constraint with this file's deep nesting + `} as const` pattern prevents adding wrapping divs in the current file structure. Needs a clean session approach (possibly extract the spec card section into a separate component file).
+#### White-label From-address
+- `PartnerAccount.fromEmail String?` added to schema
+- SQL applied: `ALTER TABLE "PartnerAccount" ADD COLUMN IF NOT EXISTS "fromEmail" TEXT;`
+- `lib/email.ts`: `sendEmail` accepts optional `from` override
+- `lib/notifications.ts`: `getPartnerFromEmail(tenantId)` helper looks up partner's fromEmail
+- All 7 customer-facing notify functions + `notifyUserWelcome` accept `tenantId?` and pass partner fromEmail through
+- `notifyPartnerTeamWelcome` added — uses partner brandName + fromEmail if white-label
+- 8 API callers updated to pass `tenantId` to notification calls
+- Admin + partner account PATCH routes allow `fromEmail`
 
-### GST — "excl. GST" → "plus GST" Site-wide
-- `RequirementsBuilder.tsx` (19), `app/billing/page.tsx` (3), `components/UpgradePrompt.tsx` (1), `lib/notifications.ts` (3)
+#### GitHub Partner Token Resolution
+- `lib/github.ts`: `resolvePartnerToken(encryptedToken)` exported — decrypts via `lib/crypto.ts`
+- `tokenOverride` threaded through all 6 internal functions: `ensureRepo`, `getBranchSha`, `ensureBranch`, `pushFiles`, `getFile`, `listFiles` and `pushObjectsToGitHub`
+- `objects`, `sync-from-github`, `coding-assistant`, `commit` routes fetch and pass decrypted partner token
+- Falls back to `GITHUB_CUSTOMER_REPOS_TOKEN` env var if no partner token set
 
-### SQL Run This Session
-```sql
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "deploymentNotes" TEXT;
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "submittedAt" TIMESTAMP;
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "inReviewAt" TIMESTAMP;
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "quotedAt" TIMESTAMP;
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "depositRequiredAt" TIMESTAMP;
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "inDevelopmentAt" TIMESTAMP;
-ALTER TABLE "Requirement" ADD COLUMN IF NOT EXISTS "completePendingPaymentAt" TIMESTAMP;
-```
-All applied ✅
+#### `/api/partner/account` PATCH expanded
+- Now covers: `contactName`, `phone`, `address`, `gstNumber`, `billingEmail`, `brandName`, `logoUrl`, `primaryColour`, `isWhiteLabel`, `agentBrandName`, `fromEmail`, `githubOrg`, `githubToken` (encrypted)
 
----
-
-## Session 11 Key Changes (June 4, 2026)
-
-### Partner Programme — Phase 2
-
-#### Schema
-- `User.tenantId` made nullable (`String?`, `tenant Tenant?`) — partner users have no tenant
-- SQL applied: `ALTER TABLE "User" ALTER COLUMN "tenantId" DROP NOT NULL;`
-- `prisma/schema.prisma` updated
-
-#### Partner User Activation Fix
-- `app/api/admin/partners/[id]/activate/route.ts`: removed placeholder tenant hack, now sets `tenantId: null`
-
-#### Requirements Guard
-- `app/api/requirements/route.ts`: POST now returns 403 if `user.tenantId` is null (partner users cannot create requirements via the standard route)
-
-#### Null-guard Fix
-- `app/api/migration/enquiry/route.ts`: `user.tenant?.name` — was crashing after tenantId nullable change
-
-#### Partner Tenant View (`/partner/tenants/[id]`)
-- 4-tab client management view: Overview, Requirements, Users, Settings
-- Requirements tab: full pipeline — list, raise, submit, Q&A, quote accept/reject (no Stripe payment, no BCAgent panels)
-- Settings tab: read-only BC config with "contact support" note
-
-#### New API Routes
-- `GET /api/partner/tenants/[id]` — single tenant + users
-- `GET/POST /api/partner/tenants/[id]/requirements` — list + raise on behalf
-- `GET/PATCH /api/partner/tenants/[id]/requirements/[reqId]` — detail + customer-side actions
-
-#### Add Client (`/partner/tenants/new`)
-- Full-page form: company name, subdomain (auto-generated on blur), product toggle (BC/NAV), version, last CU
-- Production environment: BC instance, company, SQL server, database, server instance, OData port, agent port, management port
-- BC service account: username (stored in DB) + password (never stored — baked into installer at download, same as existing customer flow)
-- Test environment: collapsible section, all test env fields
-- `POST /api/partner/tenants`: creates tenant record with `partnerAccountId` from session, no tunnel — auto-provisioned on first installer download
-- Subdomain uniqueness checked at create time (409 if taken)
-
-### Test Data (seed SQL delivered this session)
-- Partner account: "Test Partner Ltd" (slug: testpartner)
-- Partner login: `partner@testpartner.com` / `Partner123!`
-- Two seed tenants: Acme Distribution Ltd (acmedist, BC25) + Pinnacle Manufacturing NZ (pinnaclemfg, NAV12)
-- Three seed requirements across both tenants (submitted, in_development, draft)
+#### Settings Overview — BC Installer hint hidden for partner-managed users
+- "To configure, go to the BC Installer tab" hidden when `managedByPartner=true`
+- Both Production Environment and Test Environment cards affected
 
 ---
-
-## Session 10 Key Changes (June 4, 2026)
-
-### Partner Programme — Phase 1 Complete
-- **DB/Schema:** PartnerAccount, PartnerUser, PartnerSignupRequest tables live
-- **lib/crypto.ts** — AES-256-GCM encrypt/decrypt (`PARTNER_GITHUB_TOKEN_ENCRYPTION_KEY` env var, 64 hex chars)
-- **lib/branding.ts** — BrandingConfig + DEFAULT_BRANDING + resolveBranding() — Phase 4 ready
-- **lib/partner-auth.ts** — requirePartnerSession() + assertTenantBelongsToPartner()
-- **lib/auth.ts** — partner context in JWT/session; login redirects to /partner/dashboard
-- **middleware.ts** — partners.bespoxai.com rewrites to /partner-site/*
-- **Partner portal** — dark GitHub-style sidebar layout + dashboard with tenant table
-- **Partner self-serve signup** — partners.bespoxai.com landing + form (company/contact/GST/address/phone/payment mode/bank account) + verify flow
-- **Superadmin Partners tab** — create/edit partner accounts, pending applications + Activate button, partner pill on tenant rows
-- **partners.bespoxai.com** — Cloudflare CNAME + Vercel Production domain configured
-
-### PartnerAccount key fields
-paymentMode: 'bespoxai_collected' | 'partner_collected'
-agentBrandName: replaces 'BespoxAI' in agent paths/filenames (wired Phase 4, stored now)
-bankAccount: for revenue share payouts (masked in UI)
-githubToken: AES-256-GCM encrypted
-revenueSharePartner: default 0.60
-
-### Partner payment modes
-- bespoxai_collected: standard Stripe (Phase 3); approval buttons labelled "Approve & Begin Development" / "Approve & Release to Client" with "This will be invoiced to your BespoxAI account"
-- partner_collected: partner bills clients directly; BespoxAI invoices partner for revenue share
-
-### Known schema debt
-User.tenantId is required FK; partner users get placeholder tenantId on activation. Make nullable in Phase 2.
 
 ## Session 12 Key Changes (June 4, 2026)
 
 ### Partner Programme — Phase 2 BCAgent + Client UX
 - **Partner BCAgent routes** — `POST /api/partner/tenants/[id]/installer`, `sync-config`, `provision-rdp`
-  - All scoped behind `requirePartnerSession('partner_admin')` + `assertTenantBelongsToPartner()`
-  - Installer auto-provisions Cloudflare tunnel on first download, generates rdpPassword
-  - Tunnel provision clears `connectionRequestedAt/ToEmail` on the Tenant
-- **BCAgent tab** in `/partner/tenants/[id]` — full Production + Test env form (editable, refs pattern),
-  Sync Config + Provision RDP buttons (conditional on `tunnelId`), Download Installer button
-- **`managedByPartner`** flag added to JWT/session for regular tenant users whose tenant has a `partnerAccountId`
+- **BCAgent tab** in `/partner/tenants/[id]` — full Production + Test env form (editable, refs pattern)
+- **`managedByPartner`** flag added to JWT/session for tenant users whose tenant has a `partnerAccountId`
 - **Client user settings** — BC Installer tab hidden for partner-managed users; URL redirect guard added
 - **Dashboard** — partner-managed clients: Upgrade/Billing sidebar hidden, installer setup prompt replaced
-  with neutral "not yet connected" box, CFO greeting updated
 - **Request Connection / Request Upgrade buttons** — `POST /api/partner/request`, `GET /api/partner/request-state`
-  - Sends email to partner `billingEmail` + all BespoxAI superadmins
-  - Persists to Tenant: `connectionRequestedAt`, `connectionRequestedToEmail`, `upgradeRequestedAt`, `upgradeRequestedToEmail`
-  - No re-request once submitted; connection request cleared when tunnel is provisioned
-  - Dashboard loads persisted state on mount, shows "Requested [date] — sent to [email]" instead of button
 
 ### Schema changes — Session 12
 ```sql
@@ -192,38 +112,30 @@ ALTER TABLE "Tenant"
   ADD COLUMN IF NOT EXISTS "upgradeRequestedAt"         TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS "upgradeRequestedToEmail"    TEXT;
 ```
-Applied ✅. prisma/schema.prisma updated ✅.
+Applied ✅
 
-### Interactive question widget pattern
-- Always use sequential single-question widgets (one question at a time, `innerHTML` re-render on answer)
-- Never use hidden elements (`display:none`) in widgets — they fail to render during iframe streaming
-- Outer container must have `min-height` set to prevent iframe collapse
-- Use inline `onclick` handlers, not `addEventListener` (runs after streaming)
+---
 
-### Test seed data
-- Partner: Test Partner Ltd (slug: testpartner), login: partner@testpartner.com / Partner123!
-- Client tenants: Acme Distribution Ltd (acmedist, BC25), Pinnacle Manufacturing NZ (pinnaclemfg, NAV12)
-- Test client user: client@acmedist.com / password (tenant_admin on Acme, managedByPartner=true)
+## Session 11 Key Changes (June 4, 2026)
 
-## Session 8 Key Changes (May 26, 2026)
+### Partner Programme — Phase 2
+- `User.tenantId` made nullable — partner users have no tenant
+- SQL: `ALTER TABLE "User" ALTER COLUMN "tenantId" DROP NOT NULL;`
+- `/partner/tenants/[id]` — 4-tab client management: Overview, Requirements, Users, Settings
+- `POST /api/partner/tenants` — creates tenant with `partnerAccountId`, no tunnel
+- Add Client form at `/partner/tenants/new`
 
-### RDP End-to-End Test — Confirmed Working (TestCo1)
-- RDP via Cloudflare tunnel fully tested and working on TestCo1
-- Local machine requires: `cloudflared.exe` from https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
-- Connect command: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
-- Then RDP to `localhost:3390` with username `.\BespoxAI-Support` and password from Admin panel copy button
+---
 
-### Bug Fix: SupportAccountPassword Inject (Step 8 was silently skipped)
-- **Root cause:** route.ts `.replace()` searched for `[string] $SupportAccountPassword = '',` (with trailing comma) but PS1 has no trailing comma on last param — replace never matched, password stayed empty, Step 8 skipped with "Skipped — no support account password provided"
-- **Fix:** Removed trailing comma from both sides of the `.replace()` in `app/api/settings/installer/route.ts`
+## Session 10 Key Changes (June 4, 2026)
 
-### Bug Fix: agent.config.json version hardcoded as '2.4'
-- **Root cause:** Step 5 of installer had `version = '2.4'` hardcoded — never updated across versions
-- **Fix:** Changed to `version = $AgentVersion` — now always reflects current installer version dynamically
-
-### BCAgent Version Bump → 3.2
-- `$AgentVersion` and `$Version` in `Install-BespoxAI.ps1` → `'3.2'`
-- `AGENT_VERSION` in `app/api/settings/installer/route.ts` → `'3.2'`
+### Partner Programme — Phase 1
+- PartnerAccount, PartnerUser, PartnerSignupRequest tables
+- `lib/crypto.ts`, `lib/branding.ts`, `lib/partner-auth.ts`
+- Partner portal dark sidebar layout + dashboard
+- Partner self-serve signup flow
+- Superadmin Partners tab
+- partners.bespoxai.com domain
 
 ---
 
@@ -232,13 +144,19 @@ Applied ✅. prisma/schema.prisma updated ✅.
 - **Provider:** PostgreSQL via Vercel Postgres
 - **ORM:** Prisma — no migrations, uses `db push` or raw SQL
 - **Never run** `prisma migrate`
-- **No local clone needed** — Vercel runs `prisma generate` on deploy from schema.prisma in GitHub
 
 ### Known Test IDs
 - **TestCo1 Tenant ID:** `cmpgqbg8l0001tqej9wpqsx6g` (tunnelSubdomain: testco1, agentPort: 9099)
-- **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev — NOT the test tenant)
-- **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
-- **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
+- **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev)
+- **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx`
+- **Test Partner:** slug: testpartner, login: partner@testpartner.com / Partner123!
+- **Test client user:** client@acmedist.com / password (tenant_admin on Acme, managedByPartner=true)
+
+### Schema changes — Session 13
+```sql
+ALTER TABLE "PartnerAccount" ADD COLUMN IF NOT EXISTS "fromEmail" TEXT;
+```
+Applied ✅. prisma/schema.prisma updated ✅.
 
 ---
 
@@ -288,10 +206,10 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
 1. Sign up → select BC or NAV version → verify email
 2. Email triggers `notifyAdminsSignupVerified` to superadmins
 3. Superadmin activates from Admin → Signups
-4. Customer receives temp credentials + welcome email with password change warning
-5. Login → onboarding Step 0 (set permanent password) → Step 1-5 (name, product, connection)
-6. Settings → BC Installer → Download (auto-creates tunnel first time, generates rdpPassword on first download only)
-7. Run installer on Windows server as Administrator (port 9099) — no uninstall needed for reinstall
+4. Customer receives temp credentials + welcome email
+5. Login → onboarding Step 0 (set permanent password) → Step 1-5
+6. Settings → BC Installer → Download
+7. Run installer on Windows server as Administrator (port 9099)
 
 ---
 
@@ -301,9 +219,9 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
 - **Signup tagline:** "CFO Intelligence for Business Central & Microsoft NAV"
 - **Homepage hero:** "Your Business Central. One portal. Complete control."
 - **Primary brand line:** "Bespoke AI. Built for the ERP Microsoft left behind."
-- **Backgrounds:** White (`#ffffff`) throughout portal — `--white: #ffffff` in globals.css
-- **Placeholder color:** `#8a9a8e` (global CSS)
-- **GST:** All prices show "plus GST" (not "excl. GST") — changed session 9
+- **Backgrounds:** White (`#ffffff`) throughout portal
+- **Placeholder color:** `#8a9a8e`
+- **GST:** All prices show "plus GST"
 
 ---
 
@@ -343,4 +261,10 @@ if (cfg.provider === 'anthropic') {
 - Settings always has tab in URL — `router.replace('/settings?tab=overview')` on load if none
 - Dashboard: `?view=xxx` — uses `router.push` (not replace) for back button support
 - Unconnected users → default to `customisations` tab
-- Back button works correctly across: Settings tabs, Dashboard nav, Admin tabs
+
+---
+
+## Vercel MCP Access
+- **Team ID:** `team_eZ4MqWjZdsPA2iWoK4exjjPF`
+- **Project ID:** `prj_AT4GXatATIi2FaUCS62Ttp2AivRo`
+- Use `Vercel:list_deployments` + `Vercel:get_deployment_build_logs` to check errors

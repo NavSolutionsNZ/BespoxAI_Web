@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 4, 2026 (Session 11)
+**Last Updated:** June 4, 2026 (Session 13)
 
 ---
 
@@ -8,177 +8,143 @@
 
 ### ✅ Production & Working
 
-**Session 10 — Partner Programme Phase 1**
-- [x] PartnerAccount + PartnerUser + PartnerSignupRequest models + schema
+**Session 13 — Partner Phase 2 Session 3**
+- [x] `/partner/team` page — invite, role change, remove (admin edit / developer read-only)
+- [x] `/partner/settings` page — Company Info, Branding, White-label Email, GitHub, Change Password
+- [x] Partner dashboard reverted to clean clients-only (no tabs)
+- [x] Partner layout: Settings + Team nav visible to partner_developer role
+- [x] `PartnerAccount.fromEmail` added to schema + SQL applied
+- [x] `sendEmail` accepts optional `from` override
+- [x] `getPartnerFromEmail(tenantId)` helper in notifications.ts
+- [x] All 7 customer-facing notify functions + notifyUserWelcome accept tenantId for white-label from address
+- [x] `notifyPartnerTeamWelcome` added
+- [x] `resolvePartnerToken()` in lib/github.ts — decrypts AES-256-GCM partner token
+- [x] tokenOverride threaded through all github.ts functions
+- [x] objects, sync-from-github, coding-assistant, commit routes resolve + pass partner token
+- [x] `/api/partner/users` GET/POST + `/api/partner/users/[id]` PATCH/DELETE
+- [x] `/api/partner/account` PATCH expanded to cover all settings fields
+- [x] Settings overview: "To configure, go to BC Installer tab" hidden for partner-managed users
+
+**Session 12 — Partner Phase 2 BCAgent + Client UX**
+- [x] Partner BCAgent routes (installer, sync-config, provision-rdp)
+- [x] BCAgent tab in /partner/tenants/[id]
+- [x] managedByPartner flag in JWT/session
+- [x] BC Installer tab hidden for partner-managed users
+- [x] Request Connection / Request Upgrade flow
+
+**Session 11 — Partner Phase 2 Core**
+- [x] User.tenantId nullable
+- [x] /partner/tenants/[id] 4-tab view
+- [x] Add Client form at /partner/tenants/new
+- [x] Partner tenant API routes
+
+**Session 10 — Partner Phase 1**
+- [x] PartnerAccount, PartnerUser, PartnerSignupRequest tables
 - [x] lib/crypto.ts, lib/branding.ts, lib/partner-auth.ts
-- [x] Auth — partner JWT context + login redirect
-- [x] middleware.ts — partners.bespoxai.com routing
-- [x] Partner portal shell (layout + dashboard)
-- [x] Partner self-serve signup flow (landing, form, verify)
-- [x] Superadmin Partners tab (create, edit, activate pending signups)
-- [x] Tenant pill for partner-managed tenants
-- [x] partners.bespoxai.com DNS + Vercel domain
+- [x] Partner portal dark sidebar layout
+- [x] Partner self-serve signup
+- [x] Superadmin Partners tab
+- [x] partners.bespoxai.com domain
 
-**Session 8 — RDP Bug Fixes (v3.2)**
-- [x] SupportAccountPassword inject fix — trailing comma mismatch in route.ts .replace() caused Step 8 to silently skip
-- [x] agent.config.json version field was hardcoded '2.4' — now uses $AgentVersion dynamically
-- [x] BCAgent bumped to v3.2 (PS1 x2 + installer/route.ts)
-- [x] RDP end-to-end tested and confirmed working on TestCo1
+**Session 9 — Manual Deploy + Pipeline Dates**
+- [x] Manual deploy routes (test + prod)
+- [x] Pipeline date fields on all status transitions
+- [x] notifyCustomerReadyForUAT
+- [x] Collapsible cards in admin (AI Spec, Q&A, Description)
+- [x] GST: "plus GST" site-wide
 
-**Session 7 — UAT Status Pipeline**
-- [x] deploy-test → status: 'in_uat' on success
-- [x] uat-approve → status: 'uat_confirmed'
-- [x] uat-reject → status: 'uat_rejected'
-- [x] STATUS_PIPELINE + STATUS_COLOR + statusLabel updated (RequirementsBuilder + admin)
-- [x] UAT panel driven by status not testDeployedAt
-- [x] Null-guard on testDeployedAt date display
+**Session 8 — BCAgent v3.2 + RDP**
+- [x] SupportAccountPassword inject fix
+- [x] agent.config.json version dynamic
+- [x] BCAgent v3.2
+- [x] RDP end-to-end confirmed working on TestCo1
 
-**Session 7 — RDP Remote Support (v3.1)**
-- [x] BCAgent Step 8: BespoxAI-Support account + RDP enable
-- [x] rdpPassword generated on installer download, stored in DB
-- [x] lib/cloudflare.ts: addRdpIngress() + createRdpDnsRecord() (isolated)
-- [x] POST /api/admin/provision-rdp route
-- [x] Admin tenants table: RDP button + copy password button
-- [x] schema.prisma: rdpPassword added
+**Session 7 — UAT Pipeline + Preferred Name**
+- [x] UAT status pipeline (in_uat, uat_confirmed, uat_rejected)
+- [x] RDP remote support (BCAgent Step 8)
+- [x] Preferred name site-wide
+- [x] Settings overview cards
 
-**Session 7 — UX Fixes**
-- [x] Back button: Settings tabs + Dashboard nav use router.push (history entries)
-- [x] Settings always has ?tab= in URL
-- [x] Preferred name site-wide: auth JWT, session, sidebars, CFO assistant, notifications
-- [x] Installer download filename includes version (Install-BespoxAI-v3.2.zip)
-- [x] --white CSS variable → true #ffffff
-- [x] Settings overview: Production/Test Environment Details cards (consistent grid layout)
-- [x] Settings overview: removed System Configuration card, Agent URL, Status, Member Since
-- [x] Settings overview: "leave blank" instruction removed from test env (read-only)
-- [x] Vercel MCP connected — Claude can pull deployment logs directly
-
-**Session 6 — Deploy Pipeline (MAJOR MILESTONE)**
-- [x] Deploy + Compile to Test — ✅ FULLY WORKING end-to-end on GWM Dev
-- [x] BCAgent auto-stop on reinstall — ✅ confirmed seamless (Session 7)
-- [x] Sync Config to Agent endpoint
-- [x] navManagementPort + testNavManagementPort config fields
-- [x] Installer overhaul (tenant DB values direct, version in filename, auto-stop)
-
-**Session 5 — Security & Onboarding**
-- [x] mustChangePassword + onboarding Step 0
-- [x] Mobile responsiveness across all pages
-- [x] notifyUserWelcome auto-sent on provision + invite
-
-**C/AL Export Pipeline (Session 4)**
-- [x] finsql.exe direct export, grouped by type, ANSI fix, ZUP isolation
-
-**AI System**
-- [x] AI provider switchable (OpenAI or Anthropic)
-- [x] CFO Assistant — router + planner jsonMode:true
-- [x] Per-tenant token limits + usage tracking
+**Session 6 — Deploy Pipeline**
+- [x] Deploy + Compile to Test — ✅ FULLY WORKING
+- [x] Sync Config to Agent
 
 ---
 
 ## Work Backlog (Prioritized)
 
-**Session 12 — Partner Programme Phase 2 BCAgent + Client UX**
-- [x] Partner BCAgent routes — installer, sync-config, provision-rdp (partner-scoped, assertTenantBelongsToPartner)
-- [x] BCAgent tab in partner tenant view — full editable form, conditional Sync + RDP buttons
-- [x] managedByPartner in JWT/session for client tenant users
-- [x] BC Installer tab hidden for partner-managed users in Settings
-- [x] Dashboard: billing hidden, installer prompts replaced, neutral "not yet connected" copy
-- [x] Request Connection / Request Upgrade buttons — email partner + superadmins, persist to DB, no re-request
-- [x] GET /api/partner/request-state — load persisted state on dashboard mount
-- [x] Sequential single-question widget pattern established (replaces hidden-element approach)
-- [x] Test client user: client@acmedist.com on Acme Distribution Ltd
-
-**Session 11 — Partner Programme Phase 2 (Partial)**
-- [x] User.tenantId nullable — SQL applied, schema updated, activate route fixed
-- [x] POST /api/partner/tenants — create client tenant (no tunnel; auto-provisioned on installer download)
-- [x] /partner/tenants/[id] — 4-tab client management view (Overview, Requirements, Users, Settings)
-- [x] /partner/tenants/new — Add Client form (full BC/NAV config, BC service account, optional test env)
-- [x] Partner requirements pipeline — raise, submit, Q&A, quote approve/reject on behalf of client
-- [x] Test seed data: Test Partner Ltd + 2 client tenants + 3 requirements
-
-### Partner Programme — Phase 2 Remaining
-- [ ] /partner/team page + api/partner/users/* routes (partner staff management)
-- [ ] lib/github.ts — GitHub token resolution (partner org → BespoxAI fallback)
-- [ ] White-label sender name in notifications
-
 ### 🔴 HIGH PRIORITY
 
 #### 1. Deploy + Compile to Production — Test When Ready
-**Status:** Code complete. Same logic as test. Will be tested when Rich is ready.
+**Status:** Code complete. Will be tested when Rich is ready.
 
 #### 2. CFO Assistant — NAV v14 OData Planner Tuning
-**Status:** Live data flowing. Planner generates unsupported queries on some entities.
 **Known issues:**
 - `$orderby=Posting_Date desc` returns 400 on GeneralLedgerEntry, SalesInvoice in NAV v14
 - `$filter` on Posting_Date not supported on posted documents
-- Tiles show `,` for Overdue Debtors, Cash & Bank, Outstanding Payables (Month Revenue working)
+- Some tiles show `,` (Overdue Debtors, Cash & Bank, Outstanding Payables)
 **Fix:** Update planner system prompt in `app/api/query/route.ts`
 
 #### 3. Async Job Pattern for Deploy Timeout
-**Status:** Discussed, not implemented. Currently 60s timeout cuts connection before success.
-Option B: BCAgent returns jobId immediately, portal polls for completion.
+BCAgent returns jobId immediately, portal polls for completion.
 Requires BCAgent Start-Job background threading + portal polling endpoint + UI progress.
 
 ### 🟡 MEDIUM PRIORITY
 
-#### 4. Collapsible Sections in Admin Requirements View
-All panels (AI spec, feasibility, dev plan, coding assistant, deploy panel etc.) should be independently collapsible.
+#### 4. Partner Phase 3 — Billing
+- bespoxai_collected: standard Stripe checkout for partner clients
+- partner_collected: revenue share invoicing to partner
 
-#### 5. Customer Requirement View — UAT Rejection History
+#### 5. Partner Phase 4 — White-label Branding
+- Apply resolveBranding() to portal rendering
+- agentBrandName wired into installer generation
+- Full SMTP per partner (currently fromEmail stored, BespoxAI SMTP used)
 
-#### 6. Human-Readable Deployment Folder Names
-Currently: `C:\BespoxAI\Deployments\{requirementId}\{timestamp}_deploy\`
-Should be: `C:\BespoxAI\Deployments\{reqSlug}_{shortId}\{timestamp}_deploy\`
+#### 6. Collapsible Sections in Admin Requirements View
+All panels independently collapsible.
 
-#### 7. Installer — Directory creation message
-"Directories created under C:\BespoxAI" → "Directories verified/created under C:\BespoxAI"
+#### 7. Customer Requirement View — UAT Rejection History
 
-#### 8. Onboarding — Enforce name entry
+#### 8. Human-Readable Deployment Folder Names
 
-#### 9. Health Scanner — Real Data
+#### 9. Installer — Directory creation message
+"Directories created" → "Directories verified/created"
 
-#### 10. Dynamic Web Service Creation (CFO Assistant)
-Note: Also prerequisite for auto-fetching Last CU from BC instance (requires custom web service exposed in BC).
+#### 10. Health Scanner — Real Data
 
-#### 11. Last CU — Auto-fetch from BC
-Currently manual field. BC doesn't expose CU version via standard OData.
-Requires custom web service in BC (ties into #10). Deferred.
+#### 11. Dynamic Web Service Creation (CFO Assistant prerequisite)
+
+#### 12. Last CU — Auto-fetch from BC
 
 ### 🟢 LOW PRIORITY
 
-#### 12. Save AI Dev Notes to Requirement
-#### 13. Phase 2 — Scheduled Production Deployment (deferred)
-#### 14. VS Code Extension for Coding Assistant
-#### 15. Cash Flow Intelligence (Phase 3)
-#### 16. Month-End Close Assistant (Phase 2)
-#### 17. Bundle cloudflared in installer zip
+#### 13. Save AI Dev Notes to Requirement
+#### 14. Phase 2 — Scheduled Production Deployment
+#### 15. VS Code Extension for Coding Assistant
+#### 16. Bundle cloudflared in installer zip
 
 ---
 
 ## How Claude Should Work on This Project
 
 1. **Get PAT from Rich** at start of session
-2. **Sparse checkout** — never full clone. Use `--no-cone "app" "components" "lib" "scripts" "prisma" "BESPOXAI_PROJECT_SUMMARY.md" "BESPOXAI_COMPONENT_ROADMAP.md" "BESPOXAI_FILES_INVENTORY.md"`
-3. **Check imports** before every push
-4. **Never import `@anthropic-ai/sdk`** — use provider-agnostic fetch pattern
-5. **Never use `router.back()`** — always explicit `router.push()`
-6. **Write Python fix scripts to `/tmp/fix_xxx.py`** — never heredocs in bash
-7. **Targeted edits** — always verify target string is unique before replacing; view file immediately before editing
-8. **Push:** `git push origin master:main`
-9. **Vercel auto-deploys** in ~30–60s — can check logs via Vercel MCP (team_eZ4MqWjZdsPA2iWoK4exjjPF / prj_AT4GXatATIi2FaUCS62Ttp2AivRo)
-10. **DB changes:** SQL in Vercel → Storage → Postgres → Query, then update prisma/schema.prisma
-11. **Settings inputs:** always use refs + defaultValue — NEVER controlled inputs
-12. **Update context files** at end of session
-13. **BCAgent edits:** installer contains embedded BCAgent code — edit Install-BespoxAI.ps1 only
-14. **BATCH DEPLOY RULE:** Do NOT push changes without explicit confirmation from Rich
-15. **DIAGNOSE BEFORE ARCHITECTING:** Always ask for logs/errors before proposing solutions (use Vercel MCP for build errors)
-16. **DISCUSS SIGNIFICANT CHANGES** before implementing
-17. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts — THREE values, all must match
-
-### Interactive Question Widgets
-- Always use sequential single-question pattern: one question at a time, `innerHTML` re-render on answer, `sendPrompt()` at end
-- Never use `display:none` hidden elements — they collapse during iframe streaming
-- Always set `min-height` on outer container
-- Use inline `onclick` handlers only — never `addEventListener` (fires after streaming)
+2. **Sparse checkout** — never full clone
+3. **Read context files first** — never guess at file structure or API signatures
+4. **Check imports** before every push
+5. **Never import `@anthropic-ai/sdk`** — use provider-agnostic fetch pattern
+6. **Never use `router.back()`** — always explicit `router.push()`
+7. **Full file rewrites** — use `create_file` or bash heredoc, NOT Python str_replace patches, when rewriting an entire page component. Python patches are only for targeted single-occurrence replacements in large files.
+8. **Targeted edits** — always verify target string is unique before replacing; view file immediately before editing
+9. **Push:** `git push origin master:main`
+10. **Vercel auto-deploys** in ~30–60s — check logs via Vercel MCP on errors
+11. **DB changes:** SQL in Vercel → Storage → Postgres → Query, then update prisma/schema.prisma
+12. **Settings inputs:** always use refs + defaultValue — NEVER controlled inputs
+13. **Update context files** at end of session
+14. **BCAgent edits:** edit Install-BespoxAI.ps1 only
+15. **NEVER push without explicit confirmation from Rich**
+16. **DIAGNOSE BEFORE ARCHITECTING:** always check Vercel MCP logs before proposing solutions
+17. **DISCUSS SIGNIFICANT CHANGES** before implementing
+18. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts
 
 ### SWC/JSX Rules (critical)
 - Use `cond ? <JSX/> : null` NOT `cond && <JSX/>` in large function returns

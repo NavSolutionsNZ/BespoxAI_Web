@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 4, 2026 (Session 10)**
+**Last Updated: June 4, 2026 (Session 13)**
 
 ---
 
@@ -49,62 +49,72 @@
 | `app/login/page.tsx` | Login. White background. Corner links at 20px for mobile. |
 | `app/signup/page.tsx` | Signup. BC + NAV version dropdown with optgroups. Card padding uses clamp(). |
 | `app/signup/verify/page.tsx` | Email verification. useEffect calls API on load. Sends notifyAdminsSignupVerified. |
-| `app/partner/layout.tsx` | Partner portal — dark sidebar layout, auth guard |
-| `app/partner/tenants/[id]/page.tsx` | Client management view — 4 tabs: Overview, Requirements, Users, Settings |
+| `app/onboarding/page.tsx` | Post-signup onboarding. Step 0: force password change. Sidebar hidden on mobile. |
+| `app/settings/page.tsx` | Customer settings. ProdEnvForm + TestEnvForm sub-components. BC Installer tab hidden for managedByPartner users. "To configure" hint hidden for partner-managed users. |
+| `app/partner/layout.tsx` | Partner portal — dark sidebar layout, auth guard. Settings + Team nav visible to all partner roles. |
+| `app/partner/dashboard/page.tsx` | Partner dashboard — clients-only (stat cards + tenant table). No tabs. |
+| `app/partner/team/page.tsx` | Partner team management — invite, role change, remove. Admin edit / developer read-only. |
+| `app/partner/settings/page.tsx` | Partner settings — Company Info, Branding, White-label Email, GitHub, Change Password. Admin edit / developer read-only. |
+| `app/partner/tenants/[id]/page.tsx` | Client management view — 4 tabs: Overview, Requirements, Users, BCAgent |
 | `app/partner/tenants/new/page.tsx` | Add Client form — full BC/NAV config, BC service account, optional test env |
-| `app/partner/dashboard/page.tsx` | Partner dashboard — tenant list + stat cards |
 | `app/partner-site/page.tsx` | partners.bespoxai.com marketing landing page |
 | `app/partner-site/signup/page.tsx` | Partner signup form |
 | `app/partner-site/signup/verify/page.tsx` | Email verification status page |
-| `app/onboarding/page.tsx` | Post-signup onboarding. Step 0: force password change. Sidebar hidden on mobile. |
-| `app/settings/page.tsx` | Customer settings. ProdEnvForm + TestEnvForm sub-components. Mobile: sticky top nav. ChangePasswordCard. Tab changes use router.push (history). Always has ?tab= in URL. Overview shows Production/Test Environment Details cards. |
 
 ### API Routes (`/app/api`)
 
 | Route | Purpose |
 |-------|---------|
 | `api/query/route.ts` | CFO Assistant. Router + planner use jsonMode:true. Addresses user by preferredName ?? firstName. |
-| `api/requirements/route.ts` | List/create requirements |
-| `api/requirements/[id]/route.ts` | GET/update/delete |
+| `api/requirements/route.ts` | List/create requirements. Returns 403 if tenantId is null (partner users). |
+| `api/requirements/[id]/route.ts` | GET/update/delete. All customer notify calls pass tenantId. |
 | `api/requirements/[id]/ai-spec/route.ts` | Spec gen |
 | `api/requirements/[id]/feasibility/route.ts` | Feasibility |
 | `api/requirements/[id]/dev-notes/route.ts` | Dev assistant streaming |
 | `api/requirements/[id]/dev-plan/route.ts` | Dev plan |
-| `api/requirements/[id]/coding-assistant/route.ts` | Loads C/AL from GitHub branch |
-| `api/requirements/[id]/coding-assistant/commit/route.ts` | Commits C/AL back to branch |
-| `api/requirements/[id]/prod-approval/route.ts` | AI generates go-live doc |
+| `api/requirements/[id]/coding-assistant/route.ts` | Loads C/AL from GitHub branch. Resolves partner token. |
+| `api/requirements/[id]/coding-assistant/commit/route.ts` | Commits C/AL back to branch. Resolves partner token. |
+| `api/requirements/[id]/prod-approval/route.ts` | AI generates go-live doc. Passes tenantId to notification. |
 | `api/requirements/[id]/prod-approve/route.ts` | Customer approves go-live |
-| `api/requirements/[id]/objects/route.ts` | GET + POST JSON upsert |
-| `api/requirements/[id]/objects/write/route.ts` | Writes object files to BCAgent deployment folder. Saves snapshotId to DB. |
-| `api/requirements/[id]/objects/sync-from-github/route.ts` | Pulls latest files from GitHub branch into TenantObjectFile DB. |
-| `api/requirements/[id]/objects/deploy-test/route.ts` | Deploy to test env. Sets status: 'in_uat' on success. |
-| `api/requirements/[id]/objects/deploy-prod/route.ts` | BCAgent prod deploy. |
+| `api/requirements/[id]/objects/route.ts` | GET + POST JSON upsert. Resolves partner token for GitHub push. |
+| `api/requirements/[id]/objects/write/route.ts` | Writes object files to BCAgent deployment folder. |
+| `api/requirements/[id]/objects/sync-from-github/route.ts` | Pulls latest files from GitHub branch. Resolves partner token. |
+| `api/requirements/[id]/objects/deploy-test/route.ts` | Deploy to test env. Sets status: 'in_uat'. Passes tenantId to notify. |
+| `api/requirements/[id]/objects/deploy-prod/route.ts` | BCAgent prod deploy. Passes tenantId to notify. |
+| `api/requirements/[id]/manual-deploy-test/route.ts` | Manual deploy to test. Sets in_uat, notifies UAT. |
+| `api/requirements/[id]/manual-deploy-prod/route.ts` | Manual deploy to prod. Stamps prodDeployedAt, notifies. |
 | `api/requirements/[id]/uat-approve/route.ts` | UAT sign-off. Sets status: 'uat_confirmed'. |
 | `api/requirements/[id]/uat-reject/route.ts` | AI scope-creep check. Sets status: 'uat_rejected'. |
-| `api/settings/route.ts` | GET/PATCH tenant. Includes navManagementPort + testNavManagementPort. |
-| `api/settings/installer/route.ts` | GET returns `{ version: AGENT_VERSION }`. POST generates installer zip. Generates rdpPassword on first download. |
-| `api/settings/sync-config/route.ts` | POST — reads all tenant fields from DB, POSTs to BCAgent /bespoxai/update-config. |
+| `api/settings/route.ts` | GET/PATCH tenant. |
+| `api/settings/installer/route.ts` | GET returns `{ version: AGENT_VERSION }`. POST generates installer zip. |
+| `api/settings/sync-config/route.ts` | POST — POSTs to BCAgent /bespoxai/update-config. |
 | `api/settings/profile/route.ts` | GET/PATCH user firstName/lastName/preferredName |
-| `api/settings/profile/change-password/route.ts` | POST — change password. |
-| `api/settings/users/route.ts` | GET + POST invite. Sends notifyUserWelcome. mustChangePassword=true on create. |
+| `api/settings/profile/change-password/route.ts` | POST — change password. Used by partner settings page too. |
+| `api/settings/users/route.ts` | GET + POST invite. Sends notifyUserWelcome with tenantId. |
 | `api/settings/users/[id]/route.ts` | PATCH + DELETE. |
 | `api/admin/signups/route.ts` | Lists unactivated signup requests only |
-| `api/admin/provision/route.ts` | Provision new tenant. agentPort default: 9099. mustChangePassword=true. |
-| `api/admin/provision-rdp/route.ts` | POST — adds CF RDP ingress + DNS for {subdomain}-rdp.bespoxai.com. Isolated from main tunnel flow. |
-| `api/partner/tenants/route.ts` | GET list + POST create client tenant (partner session, no tunnel) |
-| `api/partner/tenants/[id]/route.ts` | GET single tenant + users (assertTenantBelongsToPartner) |
-| `api/partner/tenants/[id]/requirements/route.ts` | GET list + POST raise on behalf of tenant |
-| `api/partner/tenants/[id]/requirements/[reqId]/route.ts` | GET + PATCH customer-side actions (submit, Q&A, quote approve/reject) |
+| `api/admin/provision/route.ts` | Provision new tenant. Sends notifyUserWelcome with tenantId. |
+| `api/admin/provision-rdp/route.ts` | POST — adds CF RDP ingress + DNS. |
 | `api/admin/ai-config/route.ts` | GET/POST AI config |
 | `api/admin/users/[id]/route.ts` | PATCH + DELETE. |
 | `api/admin/partners/route.ts` | GET list + POST create partner accounts |
-| `api/admin/partners/[id]/route.ts` | GET + PATCH partner account |
-| `api/admin/partners/[id]/activate/route.ts` | POST activate partner signup |
+| `api/admin/partners/[id]/route.ts` | GET + PATCH. Allows fromEmail field. |
+| `api/admin/partners/[id]/activate/route.ts` | POST activate partner signup. Sets tenantId: null. |
 | `api/admin/partner-signups/route.ts` | GET pending partner signup requests |
 | `api/partner-signup/route.ts` | POST submit partner signup request |
 | `api/partner-signup/verify/route.ts` | GET verify email token |
-| `api/partner/account/route.ts` | GET/PATCH own PartnerAccount |
-| `api/partner/tenants/route.ts` | GET partner's client tenants |
+| `api/partner/account/route.ts` | GET/PATCH own PartnerAccount. PATCH covers: contactName, phone, address, gstNumber, billingEmail, brandName, logoUrl, primaryColour, isWhiteLabel, agentBrandName, fromEmail, githubOrg, githubToken (encrypted). |
+| `api/partner/tenants/route.ts` | GET list + POST create client tenant |
+| `api/partner/tenants/[id]/route.ts` | GET single tenant + users |
+| `api/partner/tenants/[id]/requirements/route.ts` | GET list + POST raise on behalf of tenant |
+| `api/partner/tenants/[id]/requirements/[reqId]/route.ts` | GET + PATCH customer-side actions |
+| `api/partner/tenants/[id]/installer/route.ts` | POST generate installer for partner tenant |
+| `api/partner/tenants/[id]/sync-config/route.ts` | POST sync config to agent |
+| `api/partner/tenants/[id]/provision-rdp/route.ts` | POST provision RDP for partner tenant |
+| `api/partner/users/route.ts` | GET list + POST invite team member (admin only). Sends notifyPartnerTeamWelcome. |
+| `api/partner/users/[id]/route.ts` | PATCH role + DELETE remove. Guards last admin. |
+| `api/partner/request/route.ts` | POST connection/upgrade request |
+| `api/partner/request-state/route.ts` | GET connection/upgrade request state |
 | `api/billing/create-checkout/route.ts` | Stripe subscription checkout |
 | `api/onboarding/route.ts` | GET/POST onboarding data. |
 | `api/signup/verify/route.ts` | Verifies token, fires notifyAdminsSignupVerified |
@@ -122,28 +132,23 @@
 
 | File | Purpose |
 |------|---------|
-| `notifications.ts` | All lifecycle emails. displayName() helper: preferredName ?? firstName. getCustomerEmail fetches both fields. |
+| `notifications.ts` | All lifecycle emails. getPartnerFromEmail(tenantId) helper. All customer-facing functions + notifyUserWelcome accept tenantId? for white-label from address. notifyPartnerTeamWelcome added. |
+| `email.ts` | sendEmail — accepts optional `from` override for white-label. |
 | `cloudflare.ts` | createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken, addRdpIngress, createRdpDnsRecord |
 | `tenant-context.ts` | `buildTenantContext()` |
 | `tenants.ts` | `getTenantById()`, `buildODataUrl()`. agentPort fallback: 9099. |
-| `github.ts` | Per-customer GitHub repos. |
+| `github.ts` | Per-customer GitHub repos. resolvePartnerToken() exported. tokenOverride threaded through all functions. |
 | `crypto.ts` | encryptToken/decryptToken — AES-256-GCM, key from PARTNER_GITHUB_TOKEN_ENCRYPTION_KEY |
 | `branding.ts` | BrandingConfig, DEFAULT_BRANDING, resolveBranding() |
 | `partner-auth.ts` | requirePartnerSession() + assertTenantBelongsToPartner() |
 | `ai-config.ts` | `getAiConfig()` |
-| `auth.ts` | NextAuth config. JWT includes: tenantId, role, onboardingDone, mustChangePassword, navProduct, persona, firstName, preferredName. |
-
-### Middleware
-
-| File | Purpose |
-|------|---------|
-| `middleware.ts` | partners.bespoxai.com hostname → rewrites to /partner-site/* |
+| `auth.ts` | NextAuth config. JWT includes: tenantId, role, onboardingDone, mustChangePassword, navProduct, persona, firstName, preferredName, managedByPartner, partnerRole, partnerAccountId. |
 
 ### Scripts (`/scripts`)
 
 | File | Purpose |
 |------|---------|
-| `Install-BespoxAI.ps1` | BCAgent v3.2 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. |
+| `Install-BespoxAI.ps1` | BCAgent v3.2 installer. Step 8: BespoxAI-Support account + RDP enable. |
 | `Uninstall-BespoxAI.ps1` | Full cleanup. |
 | `Uninstall-BespoxAI.bat` | Right-click Run as Administrator shim. |
 
@@ -158,6 +163,7 @@ firstName          String?
 lastName           String?
 preferredName      String?   -- address by this if set, else firstName (never full name)
 mustChangePassword Boolean   @default(false)
+tenantId           String?   -- nullable: partner users have no tenant
 role: "superadmin" | "tenant_admin" | "user" | "developer"
 ```
 
@@ -165,23 +171,51 @@ role: "superadmin" | "tenant_admin" | "user" | "developer"
 ```
 tunnelId              String?
 tunnelSubdomain       String?
+partnerAccountId      String?   -- set if managed by a partner
 bcPort                Int      -- default 8048
 agentPort             Int      -- default 9099
 navDatabaseServer     String?
 navDatabaseName       String?
 navServerInstance     String?
-navManagementPort     Int?     @default(7045)
+navManagementPort     Int?
 bcInstance            String?
 bcCompany             String?
-lastCU                String?  -- Last Cumulative Update (manual entry)
+lastCU                String?
 testNavDatabaseServer String?
 testNavDatabaseName   String?
 testNavServerInstance String?
-testNavManagementPort Int?     @default(7045)
+testNavManagementPort Int?
 testBcInstance        String?
 testBcCompany         String?
 testBcPort            Int?
-rdpPassword           String?  -- BespoxAI-Support account password (generated on installer download)
+rdpPassword           String?
+connectionRequestedAt      DateTime?
+connectionRequestedToEmail String?
+upgradeRequestedAt         DateTime?
+upgradeRequestedToEmail    String?
+```
+
+### PartnerAccount (key fields)
+```
+name             String
+slug             String   @unique
+contactName      String?
+phone            String?
+address          String?
+gstNumber        String?
+billingEmail     String
+brandName        String?
+logoUrl          String?
+primaryColour    String?
+agentBrandName   String?
+isWhiteLabel     Boolean  @default(false)
+fromEmail        String?  -- white-label from address (BespoxAI SMTP, display name only for now)
+githubOrg        String?
+githubToken      String?  -- AES-256-GCM encrypted
+paymentMode      String   -- 'bespoxai_collected' | 'partner_collected'
+revenueSharePartner Decimal @default(0.60)
+bankAccount      String?
+isActive         Boolean  @default(true)
 ```
 
 ### Requirement — Status Values
@@ -207,14 +241,6 @@ complete_pending_payment | fully_paid | rejected
 2. `$Version = '3.2'` in `Install-BespoxAI.ps1`
 3. `const AGENT_VERSION = '3.2'` in `app/api/settings/installer/route.ts`
 
-### RDP Support (Step 8 of installer)
-- Creates `BespoxAI-Support` local account (or updates password if exists)
-- Adds to Remote Desktop Users + Administrators groups
-- Enables RDP: `Set-ItemProperty fDenyTSConnections = 0`
-- Enables RDP firewall rule
-- Password baked in from `$SupportAccountPassword` param
-- Password generated in installer route, stored as `rdpPassword` in DB
-
 ### Sync Config to Agent
 - **UI:** "↑ Sync Config to Agent" button in Settings → BC Installer tab
 - **API:** POST /api/settings/sync-config
@@ -228,7 +254,6 @@ Admin UI → Sync from GitHub → DB
          → Deploy + Compile to Test  ✅ WORKING
          → Deploy + Compile to Production  (code ready, not yet tested)
 ```
-On successful deploy to test → requirement status set to 'in_uat'
 
 ---
 
@@ -244,7 +269,6 @@ On successful deploy to test → requirement status set to 'in_uat'
 - Back buttons: Settings/Billing → `/dashboard`
 - Settings: always push tab changes to URL; `router.replace('/settings?tab=overview')` on load if no tab
 - Dashboard nav: `router.push` (not replace) — back button works through tab history
-- Unconnected dashboard users default to `customisations` tab
 
 ---
 
@@ -264,10 +288,8 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't use controlled inputs in settings page — use refs + defaultValue
 - ❌ Don't default agent port to 8080 — it's 9099
 - ❌ Don't run BCAgent as SYSTEM — it must run as the BC user account
-- ❌ Don't use HttpClient in BCAgent — use HttpWebRequest (WinHTTP-backed NTLM)
 - ❌ Don't push changes without explicit confirmation from Rich
-- ❌ Don't assume timeout on deploy errors — check Vercel MCP logs first
-- ❌ Don't implement significant architectural changes without discussion first
-- ❌ Don't bump version in only one place — always ALL THREE: $AgentVersion + $Version in PS1 + AGENT_VERSION in installer/route.ts
+- ❌ Don't bump version in only one place — always ALL THREE
 - ❌ Don't address users by full name — use preferredName ?? firstName only
 - ❌ Don't use router.replace for tab navigation — use router.push for history
+- ❌ Don't rewrite large files via Python str_replace — use create_file or heredoc for full rewrites; Python patches are for targeted single-occurrence replacements only
