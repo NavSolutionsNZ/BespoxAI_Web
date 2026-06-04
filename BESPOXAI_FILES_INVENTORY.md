@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 4, 2026 (Session 14 continued)**
+**Last Updated: June 5, 2026 (Session 15)**
 
 ---
 
@@ -286,6 +286,8 @@ Admin UI → Sync from GitHub → DB
 - ❌ Don't push without checking imports
 - ❌ Don't import `@anthropic-ai/sdk` in API routes
 - ❌ Don't use `router.back()` — always explicit `router.push()`
+- ❌ Don't use TypeScript generics `Record<K,V>` or `useState<Type>({})` in large component bodies — use `as` casts instead: `useState({} as MyType)`, `const x = {} as MyType`. SWC misreads `<>` as JSX in large `.tsx` files
+- ❌ Don't use `as const` on object literals inside component functions — it confuses SWC when file is large
 - ❌ Don't use controlled inputs in settings page — use refs + defaultValue
 - ❌ Don't default agent port to 8080 — it's 9099
 - ❌ Don't run BCAgent as SYSTEM — it must run as the BC user account
