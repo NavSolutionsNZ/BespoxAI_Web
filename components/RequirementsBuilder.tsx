@@ -190,6 +190,27 @@ function renderMdLight(text: string): React.ReactNode {
   })
 }
 
+function getCardCollapsed(key: string, map: Record<string,boolean>, reqs: {id: string; status: string}[]): boolean {
+  if (key in map) return map[key]
+  const dash = key.lastIndexOf('-')
+  const prefix = key.slice(0, dash)
+  const reqId = key.slice(dash + 1)
+  const r = reqs.find(x => x.id === reqId)
+  const st = r ? r.status : 'draft'
+  const openMap: {[k: string]: string[]} = {
+    'desc':      ['draft','submitted','needs_clarification','in_review','quote_rejected','rejected'],
+    'spec':      ['draft','submitted','needs_clarification','in_review','quote_rejected','in_development'],
+    'feasib':    ['submitted','needs_clarification','in_review','quote_rejected'],
+    'quote':     ['quoted','deposit_required','deposit_paid','complete_pending_payment','fully_paid'],
+    'uat':       ['in_uat','uat_rejected','uat_confirmed'],
+    'proddep':   ['uat_confirmed','complete_pending_payment','fully_paid'],
+    'documents': ['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'],
+    'addenda':   [],
+  }
+  const hits = openMap[prefix]
+  return hits ? !hits.includes(st) : true
+}
+
 export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const router = useRouter()
@@ -271,27 +292,8 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
   const [collapsedCards, setCollapsedCards] = useState<Record<string,boolean>>({})
-  function toggleCard(key: string) { setCollapsedCards(prev => ({ ...prev, [key]: !isCardCollapsed(key) })) }
-  function isCardCollapsed(key: string): boolean {
-    if (key in collapsedCards) return collapsedCards[key]
-    const dash   = key.lastIndexOf('-')
-    const prefix = key.slice(0, dash)
-    const reqId  = key.slice(dash + 1)
-    const r      = reqs.find(x => x.id === reqId)
-    const st     = r?.status ?? 'draft'
-    const openFor = {
-      desc:      ['draft','submitted','needs_clarification','in_review','quote_rejected','rejected'],
-      spec:      ['draft','submitted','needs_clarification','in_review','quote_rejected','in_development'],
-      feasib:    ['submitted','needs_clarification','in_review','quote_rejected'],
-      quote:     ['quoted','deposit_required','deposit_paid','complete_pending_payment','fully_paid'],
-      uat:       ['in_uat','uat_rejected','uat_confirmed'],
-      proddep:   ['uat_confirmed','complete_pending_payment','fully_paid'],
-      documents: ['deposit_required','deposit_paid','in_development','complete_pending_payment','fully_paid'],
-      addenda:   [] as string[],
-    } as const
-    const list = (openFor as Record<string, readonly string[]>)[prefix] ?? []
-    return !list.includes(st)
-  }
+  function toggleCard(key: string) { setCollapsedCards(prev => ({ ...prev, [key]: !getCardCollapsed(key, prev, reqs) })) }
+  function isCardCollapsed(key: string) { return getCardCollapsed(key, collapsedCards, reqs) }
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
   const [showPayModal, setShowPayModal]       = useState(false)
