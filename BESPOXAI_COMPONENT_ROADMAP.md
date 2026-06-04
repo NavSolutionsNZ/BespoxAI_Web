@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 4, 2026 (Session 14 continued)
+**Last Updated:** June 5, 2026 (Session 15)
 
 ---
 
@@ -89,6 +89,36 @@
 
 ---
 
+## Session 15 Key Changes (June 5, 2026)
+
+### Admin Collapsible Panels ✅
+- Dev Plan, Deploy to Test, Deploy to Production, Quote info, Addenda
+- All default collapsed; open panel determined by requirement status via `isAdminCardCollapsed()`
+- `isAdminCardCollapsed` uses `openFor` lookup table keyed by status
+
+### Customer Portal Collapsible Panels — INCOMPLETE ⚠️
+- CardToggleBtn standalone component added (same pattern as AdminCardToggleBtn)
+- collapsedCards state + toggleCard function added to RequirementsBuilder
+- selectReq resets collapsedCards to status-appropriate defaults on selection
+- Sections wrapped: Description, Feasibility, AI Spec, Quote, UAT, Prod Deploy, Addenda
+- **BLOCKED by SWC parse error** — `RequirementsBuilder.tsx` is 2500+ lines and SWC
+  misreads TypeScript type annotations inside the large component as JSX
+- Root cause: any `{ ... : ... }` type annotation inside the component confuses SWC
+  at Vercel's Next.js 14.2.35 SWC version when the component is this size
+- Fix approach for next session: extract customer detail section into a separate
+  named component file (e.g. `components/RequirementDetail.tsx`) — SWC handles
+  smaller components correctly
+
+### SWC Rules Learned This Session (CRITICAL)
+- `Record<K,V>` generics in component body → use `{[k:K]:V}` index signatures
+- `as const` on object literals near JSX return statements → remove
+- `useState<T>` with complex T → use `useState(x as T)` cast instead
+- inline type annotations `const x: ComplexType = {}` → use `const x = {} as ComplexType`
+- The underlying issue: SWC in this Next.js version struggles with large .tsx files
+  that mix TypeScript generics and JSX — splitting into smaller component files is safer
+
+---
+
 ## Work Backlog (Prioritized)
 
 ### 🔴 HIGH PRIORITY
@@ -119,7 +149,8 @@ Requires BCAgent Start-Job background threading + portal polling endpoint + UI p
 - [ ] Full SMTP per partner (fromEmail stored, BespoxAI SMTP still used — deferred)
 
 #### 6. Collapsible Sections in Admin Requirements View
-All panels independently collapsible.
+- [x] Admin panels done (Dev Plan, Deploy to Test, Deploy to Prod, Quote, Addenda)
+- [ ] Customer portal panels — blocked by SWC issue, see Session 15 notes above
 
 #### 7. Customer Requirement View — UAT Rejection History
 
