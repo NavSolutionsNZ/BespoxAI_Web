@@ -1,4 +1,6 @@
 'use client'
+import type { BrandingConfig } from '@/lib/branding'
+import { DEFAULT_BRANDING } from '@/lib/branding'
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
@@ -156,6 +158,22 @@ function SettingsInner() {
 
   const user       = session?.user as any
   const managedByPartner = user?.managedByPartner ?? false
+  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING)
+
+  useEffect(() => {
+    fetch('/api/branding')
+      .then(r => r.ok ? r.json() : null)
+      .then(b => {
+        if (!b) return
+        setBranding(b)
+        if (b.isWhiteLabel) {
+          const root = document.documentElement
+          if (b.primaryColour)   root.style.setProperty('--forest', b.primaryColour)
+          if (b.secondaryColour) root.style.setProperty('--jade',   b.secondaryColour)
+        }
+      })
+      .catch(() => {})
+  }, [])
   const visibleNav = managedByPartner ? NAV.filter(item => item.id !== 'installer') : NAV
   const [profile, setProfile] = useState<{ firstName: string; lastName: string; preferredName: string }>({ firstName: '', lastName: '', preferredName: '' })
   const profileRefs = { firstName: useRef<HTMLInputElement>(null), lastName: useRef<HTMLInputElement>(null), preferredName: useRef<HTMLInputElement>(null) }
@@ -352,8 +370,16 @@ function SettingsInner() {
         {!isMobile && (
           <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: 'var(--cream)', letterSpacing: '-0.3px' }}>Bespox</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17, color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3 }}>AI</span>
+              {branding.isWhiteLabel && branding.logoUrl ? (
+                <img src={branding.logoUrl} alt={branding.brandName} style={{ height: 28, objectFit: 'contain' }} />
+              ) : branding.isWhiteLabel && branding.brandName ? (
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20, color: 'var(--cream)', letterSpacing: '-0.3px' }}>{branding.brandName}</span>
+              ) : (
+                <>
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: 'var(--cream)', letterSpacing: '-0.3px' }}>Bespox</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17, color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3 }}>AI</span>
+                </>
+              )}
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: hOk ? 'rgba(10,92,70,0.25)' : hErr ? 'rgba(163,45,45,0.2)' : 'rgba(100,100,100,0.15)', border: '1px solid ' + (hOk ? 'rgba(10,92,70,0.4)' : hErr ? 'rgba(163,45,45,0.35)' : 'rgba(100,100,100,0.25)'), borderRadius: 12, padding: '4px 10px' }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: hColor }} />

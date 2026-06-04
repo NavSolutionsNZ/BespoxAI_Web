@@ -29,6 +29,7 @@ function BillingPageInner() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
     if (user?.role === 'superadmin') router.push('/admin')
+    if ((user as any)?.managedByPartner) router.push('/dashboard')
   }, [status, user])
 
   useEffect(() => {

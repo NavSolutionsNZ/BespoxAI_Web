@@ -760,8 +760,28 @@ function DashboardInner() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* Tier blocked */}
-            {tierBlocked && (
+            {tierBlocked && !managedByPartner && (
               <UpgradePrompt reason={tierBlocked.reason} trialEndsAt={tierBlocked.trialEndsAt} />
+            )}
+            {tierBlocked && managedByPartner && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '96px 32px', textAlign: 'center' }}>
+                <div style={{ background: '#0c1610', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 16, padding: '40px', maxWidth: 440, width: '100%' }}>
+                  <div style={{ fontSize: 28, marginBottom: 16 }}>⭐</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--cream)', marginBottom: 12 }}>Usage limit reached</div>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--slate)', lineHeight: 1.7, marginBottom: 24 }}>
+                    Your AI token allowance for this month has been used. Contact your partner to request an upgrade.
+                  </p>
+                  {partnerReqState.upgradeRequestedAt ? (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E' }}>
+                      {'Upgrade requested ' + new Date(partnerReqState.upgradeRequestedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}
+                    </span>
+                  ) : (
+                    <button onClick={() => sendPartnerRequest('upgrade')} disabled={partnerReqLoading === 'upgrade'} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 6, color: 'var(--amber)', padding: '10px 20px', cursor: 'pointer' }}>
+                      {partnerReqSent === 'upgrade' ? '✓ Request sent' : 'Request upgrade'}
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* Chat area */}
