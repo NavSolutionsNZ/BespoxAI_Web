@@ -1,12 +1,19 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 4, 2026 (Session 14)
+**Last Updated:** June 4, 2026 (Session 14 continued)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 14 — Partner Phase 4 White-label Branding (continued)**
+- [x] primaryColour/secondaryColour removed from branding stack — name and logo only
+- [x] Client portal fully isolated: billing page redirects managedByPartner users, UpgradePrompt replaced with contact-partner screen
+- [x] Settings page: branding fetch + sidebar logo branding-aware
+- [x] Misleading test env placeholders fixed (both settings + partner tenant detail)
+- [x] DB: primaryColour + secondaryColour columns dropped from PartnerAccount
 
 **Session 14 — Partner Phase 4 White-label Branding**
 - [x] `/api/branding` route — resolves BrandingConfig per user (partner, managed client, or BespoxAI default)
@@ -107,7 +114,7 @@ Requires BCAgent Start-Job background threading + portal polling endpoint + UI p
 - partner_collected: revenue share invoicing to partner
 
 #### 5. Partner Phase 4 — White-label Branding ✅ COMPLETE
-- [x] resolveBranding() applied to partner portal + customer dashboard
+- [x] resolveBranding() applied to partner portal + customer dashboard (name + logo only — no colour overrides)
 - [x] agentBrandName wired into installer generation (both settings + partner routes)
 - [ ] Full SMTP per partner (fromEmail stored, BespoxAI SMTP still used — deferred)
 

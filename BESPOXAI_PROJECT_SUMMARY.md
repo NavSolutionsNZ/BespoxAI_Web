@@ -47,6 +47,20 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
+## Session 14 Key Changes (June 4, 2026)
+
+### Partner Phase 4 — White-label Branding
+- `/api/branding` — resolves BrandingConfig per user (partner own, managedByPartner via tenant, default for all others)
+- Partner layout, dashboard, settings: branding fetch on mount; shows partner logoUrl or brandName when isWhiteLabel
+- BrandingConfig: brandName + logoUrl + agentBrandName only — no colour fields, BespoxAI colours always used
+- Install-BespoxAI.ps1: `$BrandName` param, all paths/task/account/terminal output branded
+- Both installer routes: resolve agentBrandName from partnerAccount when isWhiteLabel
+- Client portal isolated: billing redirects managedByPartner users; UpgradePrompt replaced with contact-partner screen
+- Test env placeholders fixed — no longer imply production fallback
+- DB: primaryColour + secondaryColour columns dropped from PartnerAccount
+
+---
+
 ## Session 13 Key Changes (June 4, 2026)
 
 ### Partner Programme — Phase 2 Session 3 (Team, Settings, White-label, GitHub token)
