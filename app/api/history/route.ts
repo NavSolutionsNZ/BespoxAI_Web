@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 // GET /api/history
-// Returns the last 30 queries for the current user, newest first.
+// Returns the last 10 queries for the current user, newest first.
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,7 +17,7 @@ export async function GET() {
   const logs = await prisma.queryLog.findMany({
     where:   { userId },
     orderBy: { createdAt: 'desc' },
-    take:    30,
+    take:    10,
     select: {
       id:          true,
       question:    true,
