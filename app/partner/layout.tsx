@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import type { BrandingConfig } from '@/lib/branding'
-import { DEFAULT_BRANDING } from '@/lib/branding'
+import { useBranding } from '@/app/branding-provider'
 
 const NAV_ITEMS = [
   { href: '/partner/dashboard', label: 'Clients',     icon: '◈' },
@@ -19,18 +18,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING)
-
-  useEffect(() => {
-    fetch('/api/branding')
-      .then(r => r.ok ? r.json() : null)
-      .then(b => {
-        if (!b) return
-        setBranding(b)
-
-      })
-      .catch(() => {})
-  }, [])
+  const branding = useBranding()
 
   useEffect(() => {
     if (status === 'unauthenticated') {

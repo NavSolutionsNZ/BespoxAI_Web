@@ -1,12 +1,11 @@
 'use client'
-import type { BrandingConfig } from '@/lib/branding'
-import { DEFAULT_BRANDING } from '@/lib/branding'
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import React from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useBranding } from '@/app/branding-provider'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,18 +157,7 @@ function SettingsInner() {
 
   const user       = session?.user as any
   const managedByPartner = user?.managedByPartner ?? false
-  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING)
-
-  useEffect(() => {
-    fetch('/api/branding')
-      .then(r => r.ok ? r.json() : null)
-      .then(b => {
-        if (!b) return
-        setBranding(b)
-
-      })
-      .catch(() => {})
-  }, [])
+  const branding = useBranding()
   const visibleNav = managedByPartner ? NAV.filter(item => item.id !== 'installer') : NAV
   const [profile, setProfile] = useState<{ firstName: string; lastName: string; preferredName: string }>({ firstName: '', lastName: '', preferredName: '' })
   const profileRefs = { firstName: useRef<HTMLInputElement>(null), lastName: useRef<HTMLInputElement>(null), preferredName: useRef<HTMLInputElement>(null) }

@@ -7,7 +7,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { DisplayHint, StructuredData } from '@/app/api/query/route'
 import type { BrandingConfig } from '@/lib/branding'
-import { DEFAULT_BRANDING } from '@/lib/branding'
+import { useBranding } from '@/app/branding-provider'
 import DataVisualizer from '@/components/DataVisualizer'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
 import RequirementsBuilder from '@/components/RequirementsBuilder'
@@ -144,7 +144,7 @@ function DashboardInner() {
   const searchParams = useSearchParams()
   const user = session?.user as any
   const managedByPartner = !!(user?.managedByPartner)
-  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING)
+  const branding = useBranding()
   const isTenantAdmin = user?.role === 'tenant_admin' || user?.role === 'superadmin'
   const [partnerReqSent, setPartnerReqSent] = useState<'upgrade' | 'connection' | null>(null)
   const [partnerReqLoading, setPartnerReqLoading] = useState<'upgrade' | 'connection' | null>(null)
@@ -159,17 +159,6 @@ function DashboardInner() {
       if (d) setPartnerReqState(d)
     }).catch(() => {})
   }, [managedByPartner])
-
-  useEffect(() => {
-    fetch('/api/branding')
-      .then(r => r.ok ? r.json() : null)
-      .then(b => {
-        if (!b) return
-        setBranding(b)
-
-      })
-      .catch(() => {})
-  }, [])
 
   async function sendPartnerRequest(type: 'upgrade' | 'connection') {
     setPartnerReqLoading(type)
