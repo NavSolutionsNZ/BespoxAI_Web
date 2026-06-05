@@ -609,8 +609,12 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     finally { setPayLoading(false) }
   }
 
-  if (error)   return <div style={{padding:40,textAlign:'center'}}><p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p><button onClick={load} style={sBTN}>Retry</button></div>
-
+  if (error) return (
+    <div style={{padding:40,textAlign:'center'}}>
+      <p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p>
+      <button onClick={load} style={sBTN}>Retry</button>
+    </div>
+  )
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
