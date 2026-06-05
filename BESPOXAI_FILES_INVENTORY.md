@@ -296,3 +296,4 @@ Admin UI → Sync from GitHub → DB
 - ❌ Don't address users by full name — use preferredName ?? firstName only
 - ❌ Don't use router.replace for tab navigation — use router.push for history
 - ❌ Don't rewrite large files via Python str_replace — use create_file or heredoc for full rewrites; Python patches are for targeted single-occurrence replacements only
+- ❌ After any Python patch that inserts JSX, verify open/close tag and fragment (`<>`/`</>`) balance before pushing — `tsc --noEmit` does NOT catch JSX imbalance; use `@swc/core` parseSync locally to validate
