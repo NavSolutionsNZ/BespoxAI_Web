@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notifyAdminsNewRequirement } from '@/lib/notifications'
+import { unstable_cache } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,9 +12,39 @@ function sessionGuard(session: any) {
   return null
 }
 
+// Cached requirements lookup — 60s TTL per user+pagination key
+const getCachedRequirements = unstable_cache(
+  async (tenantId: string | null, skip: number, take: number, isSuperadmin: boolean) => {
+    const [requirements, total] = await Promise.all([
+      prisma.requirement.findMany({
+        where: isSuperadmin ? {} : { tenantId: tenantId || undefined },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        include: {
+          user:   { select: { name: true, email: true } },
+          tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+          addenda: {
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
+          },
+        },
+      }),
+      prisma.requirement.count({
+        where: isSuperadmin ? {} : { tenantId: tenantId || undefined },
+      }),
+    ])
+
+    return { requirements, total }
+  },
+  ['requirements'],
+  { revalidate: 60 } // cache for 60 seconds
+)
+
 // GET /api/requirements — list requirements for current user's tenant
 // superadmin sees all
-export async function GET() {
+// Query params: ?skip=0&take=20 (pagination, defaults to first 20)
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const guard = sessionGuard(session)
   if (guard) return guard
@@ -21,30 +52,31 @@ export async function GET() {
   const user = session!.user as any
   const isSuperadmin = user.role === 'superadmin'
 
-  try {
-    const requirements = await prisma.requirement.findMany({
-      where: isSuperadmin ? {} : { tenantId: user.tenantId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user:   { select: { name: true, email: true } },
-        tenant: { select: { name: true, country: true, paymentTermsKey: true } },
-        addenda: {
-          orderBy: { createdAt: 'asc' },
-          select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
-        },
-      },
-    })
+  // Parse pagination params
+  const url = new URL(req.url)
+  const skip = Math.max(0, parseInt(url.searchParams.get('skip') || '0'))
+  const take = Math.min(100, Math.max(1, parseInt(url.searchParams.get('take') || '20'))) // max 100 per request
 
-    // Return all requirements (incl. addenda) so customers can navigate into them.
-    // The UI filters the displayed list to top-level only; addenda are reachable via parent's addenda list.
+  try {
+    const { requirements, total } = await getCachedRequirements(
+      user.tenantId || null,
+      skip,
+      take,
+      isSuperadmin
+    )
+
+    // Sanitize response for non-superadmins
     const sanitised = isSuperadmin
       ? requirements
       : requirements.map(({ devPlan, ...rest }: any) => rest)
 
-    return NextResponse.json({ requirements: sanitised })
+    return NextResponse.json({
+      requirements: sanitised,
+      pagination: { skip, take, total }
+    })
   } catch (err: any) {
     console.error('[requirements GET] DB error:', err?.message)
-    return NextResponse.json({ error: 'Database error — run npx prisma db push', details: err?.message }, { status: 500 })
+    return NextResponse.json({ error: 'Database error', details: err?.message }, { status: 500 })
   }
 }
 
