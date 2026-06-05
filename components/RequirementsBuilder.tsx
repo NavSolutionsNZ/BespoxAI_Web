@@ -1087,15 +1087,15 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             const needsAction=['needs_clarification','quote_rejected','deposit_required','complete_pending_payment'].includes(req.status)&&!isSuperadmin
             const isAct=selected?.id===req.id
             return (
-              <div key={req.id} onClick={()=>selectReq(req)} style={{background:needsAction?'rgba(163,45,45,0.03)':isAct?'rgba(10,92,70,0.05)':'var(--white)',border:`1px solid ${needsAction?'rgba(163,45,45,0.2)':isAct?'rgba(10,92,70,0.22)':'var(--fog)'}`,borderRadius:9,padding:'11px 13px',marginBottom:7,cursor:'pointer',transition:'border-color 0.15s'}}>
+              <div key={req.id} onClick={()=>selectReq(req)} style={{background:needsAction?'rgba(163,45,45,0.03)':isAct?'rgba(10,92,70,0.05)':'var(--white)',border:'1px solid '+(needsAction?'rgba(163,45,45,0.2)':isAct?'rgba(10,92,70,0.22)':'var(--fog)'),borderRadius:9,padding:'11px 13px',marginBottom:7,cursor:'pointer',transition:'border-color 0.15s'}}>
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:6}}>
                   <p style={{fontFamily:'var(--font-body)',fontSize:13,fontWeight:600,color:'var(--ink)',lineHeight:1.3,flex:1,margin:0}}>
                     {needsAction&&'⚠️ '}{req.title}
                   </p>
-                  <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.08em',textTransform:'uppercase',color:prio.color,background:prio.bg,border:`1px solid ${prio.border}`,padding:'2px 7px',borderRadius:6,flexShrink:0}}>{prio.label}</span>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.08em',textTransform:'uppercase',color:prio.color,background:prio.bg,border:'1px solid '+prio.border,padding:'2px 7px',borderRadius:6,flexShrink:0}}>{prio.label}</span>
                 </div>
                 <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
-                  <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:`1px solid ${sc.border}`,padding:'2px 7px',borderRadius:6}}>{statusLabel(req.status)}</span>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:'1px solid '+sc.border,padding:'2px 7px',borderRadius:6}}>{statusLabel(req.status)}</span>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>{req.bcArea}</span>
                   {isSuperadmin&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--jade)',marginLeft:'auto'}}>{req.tenant.name}</span>}
                   {req.feasibility==='cfo_assistant'&&!req.aiSpec&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#C8952A',background:'rgba(200,149,42,0.08)',padding:'1px 5px',borderRadius:4}}>💡 no dev needed</span>}
@@ -1249,8 +1249,8 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   ) : null}
                   <h2 style={{fontFamily:'var(--font-display)',fontSize:21,fontWeight:500,color:'var(--ink)',lineHeight:1.3,marginBottom:10}}>{req.title}</h2>
                   <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-                    <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:`1px solid ${sc.border}`,padding:'3px 10px',borderRadius:20}}>{statusLabel(req.status)}</span>
-                    <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:prio.color,background:prio.bg,border:`1px solid ${prio.border}`,padding:'3px 10px',borderRadius:20}}>{prio.label}</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:'1px solid '+sc.border,padding:'3px 10px',borderRadius:20}}>{statusLabel(req.status)}</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:prio.color,background:prio.bg,border:'1px solid '+prio.border,padding:'3px 10px',borderRadius:20}}>{prio.label}</span>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--slate)'}}>{req.bcArea}</span>
                     {isSuperadmin&&<span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--jade)'}}>{req.tenant.name} · {req.user.name??req.user.email}</span>}
                   </div>
@@ -1487,7 +1487,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                     <div>
                       <label style={lbl}>AI-Generated Functional Spec</label>
                       <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
-                        <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',padding:'2px 8px',borderRadius:6,background:cxBg(spec.complexity),color:cxCol(spec.complexity),border:`1px solid ${cxBdr(spec.complexity)}`}}>{spec.complexity}</span>
+                        <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',padding:'2px 8px',borderRadius:6,background:cxBg(spec.complexity),color:cxCol(spec.complexity),border:'1px solid '+cxBdr(spec.complexity)}}>{spec.complexity}</span>
                         <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>Est. {spec.estimatedDays} day{spec.estimatedDays!==1?'s':''}</span>
                         {!isSuperadmin&&(()=>{
                           const gc=getGenCount(req)
@@ -2122,7 +2122,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                           style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:6,background:'var(--white)',border:'1px solid var(--fog)',cursor:'pointer',textAlign:'left',width:'100%'}}
                         >
                           <span style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--ink)',flex:1,lineHeight:1.3}}>{add.title}</span>
-                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:`1px solid ${sc.border}`,padding:'2px 7px',borderRadius:6,whiteSpace:'nowrap'}}>{add.status.replace(/_/g,' ')}</span>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:'1px solid '+sc.border,padding:'2px 7px',borderRadius:6,whiteSpace:'nowrap'}}>{add.status.replace(/_/g,' ')}</span>
                           {add.quote ? <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',whiteSpace:'nowrap',fontWeight:600}}>${parseFloat(add.quote).toLocaleString()}</span> : null}
                           <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>→</span>
                         </button>
@@ -2170,8 +2170,8 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {objFiles.length>0&&(
                     <div style={{display:'flex',flexDirection:'column',gap:6}}>
                       {objFiles.map((obj:any)=>(
-                        <div key={obj.id} style={{display:'flex',alignItems:'center',gap:8,background:obj.parseError?'rgba(163,45,45,0.04)':'var(--cream)',border:`1px solid ${obj.parseError?'rgba(163,45,45,0.2)':'var(--fog)'}`,borderRadius:7,padding:'7px 10px'}}>
-                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.08em',textTransform:'uppercase',color:obj.parseError?'#A32D2D':'var(--forest)',background:obj.parseError?'rgba(163,45,45,0.08)':'rgba(10,92,70,0.08)',border:`1px solid ${obj.parseError?'rgba(163,45,45,0.2)':'rgba(10,92,70,0.2)'}`,borderRadius:4,padding:'2px 6px',flexShrink:0}}>
+                        <div key={obj.id} style={{display:'flex',alignItems:'center',gap:8,background:obj.parseError?'rgba(163,45,45,0.04)':'var(--cream)',border:'1px solid '+(obj.parseError?'rgba(163,45,45,0.2)':'var(--fog)'),borderRadius:7,padding:'7px 10px'}}>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.08em',textTransform:'uppercase',color:obj.parseError?'#A32D2D':'var(--forest)',background:obj.parseError?'rgba(163,45,45,0.08)':'rgba(10,92,70,0.08)',border:'1px solid '+(obj.parseError?'rgba(163,45,45,0.2)':'rgba(10,92,70,0.2)'),borderRadius:4,padding:'2px 6px',flexShrink:0}}>
                             {obj.parseError?'parse err':obj.objectType}
                           </span>
                           {obj.objectId&&<span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--slate)',flexShrink:0}}>#{obj.objectId}</span>}
@@ -2286,7 +2286,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               </div>
 
               {/* Amount summary */}
-              <div style={{background:accentBg,border:`1px solid ${accentBdr}`,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
+              <div style={{background:accentBg,border:'1px solid '+accentBdr,borderRadius:10,padding:'14px 16px',marginBottom:20}}>
                 {(isDeposit ? [
                   {label:'Total project quote (plus GST)', amt:`$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   ...(reviewCredit ? [{label:'Spec review fee — credited', amt:`− $249.00 NZD`, bold:false, credit:true}] : []),
@@ -2300,13 +2300,13 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   {label:'GST (15%)', amt:`$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:false, credit:false},
                   {label:'Total balance incl. GST', amt:`$${totalInclGst.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD`, bold:true, credit:false},
                 ]).map((r,i,arr)=>(
-                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<arr.length-1?`1px solid ${accentBdr}`:'none'}}>
+                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<arr.length-1?'1px solid '+accentBdr:'none'}}>
                     <span style={{fontFamily:'var(--font-body)',fontSize:12,color:r.credit?'var(--forest)':'var(--slate)'}}>{r.label}</span>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:r.bold?14:12,fontWeight:r.bold?700:400,color:r.bold?accentColor:r.credit?'var(--forest)':'var(--ink)'}}>{r.amt}</span>
                   </div>
                 ))}
                 {isBankOnly && (
-                  <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${accentBdr}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid '+accentBdr,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.08em',textTransform:'uppercase',color:accentColor}}>Payment due</span>
                     <span style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,color:accentColor}}>{dueDate}</span>
                   </div>
@@ -2357,7 +2357,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 <>
                   <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--slate)',marginBottom:12}}>How would you like to pay?</p>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-                    <button onClick={()=>setPaymentMode('stripe')} style={{padding:'14px',borderRadius:10,border:`2px solid ${paymentMode==='stripe'?accentColor:'var(--fog)'}`,background:paymentMode==='stripe'?accentBg:'var(--white)',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
+                    <button onClick={()=>setPaymentMode('stripe')} style={{padding:'14px',borderRadius:10,border:'2px solid '+(paymentMode==='stripe'?accentColor:'var(--fog)'),background:paymentMode==='stripe'?accentBg:'var(--white)',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
                       <div style={{fontSize:22,marginBottom:6}}>💳</div>
                       <div style={{fontFamily:'var(--font-body)',fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:3}}>Pay by Card</div>
                       <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',letterSpacing:'0.04em'}}>Instant · {isIntl?'3.50%':'2.65%'} + NZ$0.30 fee</div>
@@ -2378,7 +2378,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         </div>
                       )}
                     </button>
-                    <button onClick={()=>setPaymentMode('invoice')} style={{padding:'14px',borderRadius:10,border:`2px solid ${paymentMode==='invoice'?accentColor:'var(--fog)'}`,background:paymentMode==='invoice'?accentBg:'var(--white)',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
+                    <button onClick={()=>setPaymentMode('invoice')} style={{padding:'14px',borderRadius:10,border:'2px solid '+(paymentMode==='invoice'?accentColor:'var(--fog)'),background:paymentMode==='invoice'?accentBg:'var(--white)',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
                       <div style={{fontSize:22,marginBottom:6}}>📄</div>
                       <div style={{fontFamily:'var(--font-body)',fontSize:13,fontWeight:600,color:'var(--ink)',marginBottom:3}}>Bank Transfer</div>
                       <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',letterSpacing:'0.04em'}}>Download invoice · No card fee</div>
