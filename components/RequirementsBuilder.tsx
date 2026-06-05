@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { generateInvoicePDF, generateReviewInvoicePDF, CollapseMap, CARD_OPEN_FOR, isCardCollapsedFn, BANNER_CONFIG } from './invoicePDF'
 
 // ── Stripe surcharge helpers (mirrors lib/stripe-fees.ts for client-side preview) ──
 const STRIPE_DOMESTIC_PCT   = 0.0265
@@ -125,14 +124,6 @@ function getGenCount(req:Requirement):number { try { return req.aiSpec?JSON.pars
 const MAX_GENS = 4
 
 // Parse customerAnswers — could be JSON [{q,a}] or plain text
-function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  return (
-    <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }} title={collapsed ? 'Expand' : 'Collapse'}>
-      {collapsed ? '\u25be' : '\u25b4'}
-    </button>
-  )
-}
-
 function parseAnswers(raw:string|null): QAPair[]|string|null {
   if (!raw) return null
   try {
@@ -192,11 +183,15 @@ function renderMdLight(text: string): React.ReactNode {
       return <div key={i} style={{ display: 'flex', gap: 6, margin: '2px 0', alignItems: 'flex-start', paddingLeft: 20 }}><span style={{ color: 'var(--forest)', flexShrink: 0, marginTop: 1 }}>–</span><span style={{ lineHeight: 1.6, color: 'var(--ink)' }}>{mdInlineLight(line.replace(/^[-–] /, ''))}</span></div>
     if (/^\d+\. /.test(line)) {
       const num = line.match(/^(\d+)/)?.[1]
-      return <div key={i} style={{ display: 'flex', gap: 8, margin: '4px 0 1px', alignItems: 'baseline' }}><span style={{ color: 'var(--forest)', flexShrink: 0, minWidth: 16, fontWeight: 600, textAlign: 'right' }}>{num}.</span><span style={{ lineHeight: 1.5, color: 'var(--ink)', fontWeight: 600 }}>{mdInlineLight(line.replace(/^\d+\.\s/, ''))}</span></div>
+      return <div key={i} style={{ display: 'flex', gap: 8, margin: '4px 0 1px', alignItems: 'baseline' }}><span style={{ color: 'var(--forest)', flexShrink: 0, minWidth: 16, fontWeight: 600, textAlign: 'right' as const }}>{num}.</span><span style={{ lineHeight: 1.5, color: 'var(--ink)', fontWeight: 600 }}>{mdInlineLight(line.replace(/^\d+\.\s/, ''))}</span></div>
     }
     if (line === '') return <div key={i} style={{ height: 4 }} />
     return <p key={i} style={{ margin: '2px 0', lineHeight: 1.7, color: 'var(--ink)' }}>{mdInlineLight(line)}</p>
   })
+}
+
+function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1 }} title={collapsed ? 'Expand' : 'Collapse'}>{collapsed ? '▾' : '▴'}</button>
 }
 
 export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
@@ -279,11 +274,27 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   const [feasErr, setFeasErr]             = useState('')
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
-  const [collapsedCards, setCC] = useState({})
-  function isCardCollapsed(id: string, map?: CollapseMap) {
-    return isCardCollapsedFn(id, reqs, (map ?? collapsedCards) as CollapseMap)
+  const [collapsedCards, setCC] = useState<Record<string,boolean>>({})
+  function toggleCard(id: string) { setCC(prev => ({ ...prev, [id]: !isCardCollapsed(id, prev) })) }
+  function isCardCollapsed(id: string, map?: Record<string,boolean>): boolean {
+    const m = map ?? collapsedCards
+    if (id in m) return m[id]
+    const dash   = id.lastIndexOf('-')
+    const prefix = id.slice(0, dash)
+    const reqId  = id.slice(dash + 1)
+    const req    = reqs.find((r: any) => r.id === reqId)
+    const st     = req?.status ?? 'draft'
+    const openFor: Record<string, string[]> = {
+      desc:    ['draft','needs_clarification','quote_rejected'],
+      spec:    ['draft','submitted','needs_clarification','quote_rejected','in_review'],
+      feasib:  ['submitted','needs_clarification','in_review'],
+      quote:   ['quoted','deposit_required','complete_pending_payment','fully_paid'],
+      uat:     ['in_uat','uat_confirmed','uat_rejected'],
+      proddep: ['uat_confirmed','complete_pending_payment','fully_paid'],
+      addenda: [],
+    }
+    return !(openFor[prefix] ?? []).includes(st)
   }
-  function toggleCard(key: string) { setCC(prev => Object.assign({}, prev, {[key]: !isCardCollapsedFn(key, reqs, prev as CollapseMap)})) }
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
   const [showPayModal, setShowPayModal]       = useState(false)
@@ -602,19 +613,376 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
           ...(po ? { poNumber: po } : {}),
         })
       }
-      generateInvoicePDF(bizConfig, req, po, amt, isDeposit, 'bank_transfer', null)
+      generateInvoicePDF(req, po, amt, isDeposit, 'bank_transfer', null)
       closePayModal()
       await load()
     } catch { alert('Error generating invoice') }
     finally { setPayLoading(false) }
   }
 
-  if (error) return (
-    <div style={{padding:40,textAlign:'center'}}>
-      <p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p>
-      <button onClick={load} style={sBTN}>Retry</button>
+  function generateInvoicePDF(
+    req: Requirement,
+    po: string,
+    amtStr: string,
+    isDeposit: boolean = true,
+    paymentMethod: 'stripe' | 'bank_transfer' = 'bank_transfer',
+    paidAt?: string | null
+  ) {
+    const biz           = bizConfig
+    const companyName   = biz?.companyName   ?? 'Nav Solutions NZ'
+    const gstNumber     = biz?.gstNumber     ?? null
+    const bizEmail      = biz?.email         ?? 'auckland@bespoxai.com'
+    const bizWebsite    = biz?.website       ?? 'bespoxai.com'
+    const bizAddress    = biz?.address       ?? ''
+    const bankName      = biz?.bankName      ?? ''
+    const bankAccount   = biz?.bankAccount   ?? ''
+    const bankAccName   = biz?.bankAccountName ?? ''
+    const footer        = biz?.invoiceFooter ?? 'Thank you for choosing BespoxAI'
+
+    // Terms text
+    const termsKey      = req.tenant.paymentTermsKey ?? 'terms1'
+    let   termsText     = biz?.terms1Text ?? '20% deposit on acceptance; 80% on delivery'
+    if (termsKey === 'terms2') termsText = biz?.terms2Text ?? '20% deposit on acceptance; balance due 20th of following month'
+    if (termsKey === 'terms3') termsText = biz?.terms3Text ?? 'Full amount due 20th of the following month'
+
+    const monthly       = isMonthlyBilling(termsKey)
+    const dueDate       = monthly ? getPaymentDueDate() : null
+
+    const invoiceNum    = `BX-${new Date().getFullYear()}-${req.id.slice(0, 6).toUpperCase()}`
+    const dateStr       = new Date().toLocaleDateString('en-NZ', { dateStyle: 'long' })
+    const quote         = parseFloat(req.quote ?? '0')
+    const hasReviewCredit = isDeposit && !!(req.reviewPaidAt)
+    const reviewCredit  = hasReviewCredit ? 249 : 0
+    // amtStr is passed in — for deposit invoices it should already reflect the credit
+    // but we recalculate here to be safe
+    const paymentAmt    = isDeposit
+      ? Math.max(0, Math.round((quote * 0.2 - reviewCredit) * 100) / 100)
+      : parseFloat(amtStr)
+    const gstAmt        = Math.round(paymentAmt * 0.15 * 100) / 100
+    const totalInclGST  = Math.round((paymentAmt + gstAmt) * 100) / 100
+    const depositPd     = isDeposit ? paymentAmt : parseFloat(req.depositAmount ?? '0')
+    const balanceExcl   = quote - (isDeposit ? quote * 0.2 : depositPd)
+
+    const invoiceTitle  = isDeposit ? (monthly ? 'Amount Due' : '20% Deposit — Due Now') : 'Balance — Due Now'
+    const dueLine       = dueDate ? `Payment due: ${dueDate}` : (isDeposit ? '' : 'Due on completion')
+
+    // Payment instruction
+    const refStr        = `<strong>${invoiceNum}</strong>${po ? ` and PO <strong>${po.replace(/</g,'&lt;')}</strong>` : ''}`
+    let paymentNote = ''
+    if (paymentMethod === 'stripe' && paidAt) {
+      const paidDate = new Date(paidAt).toLocaleDateString('en-NZ', { dateStyle: 'long' })
+      paymentNote = `This invoice was paid by card on <strong>${paidDate}</strong>. Thank you — ${isDeposit ? 'development scheduling is underway.' : 'your customisation will be delivered shortly.'}`
+    } else if (paymentMethod === 'bank_transfer') {
+      const bankDetails = (bankName || bankAccount) ? `<br><br>Bank: <strong>${bankName}</strong><br>Account Name: <strong>${bankAccName}</strong><br>Account Number: <strong>${bankAccount}</strong>` : ''
+      if (isDeposit) {
+        paymentNote = `Please pay by bank transfer, referencing ${refStr} on your payment.${bankDetails}<br><br>Email <strong>${bizEmail}</strong> to confirm receipt and we will begin development scheduling.${hasReviewCredit ? ' Your $249 specification review fee has been credited against the project total.' : ''}`
+      } else {
+        const duePart = dueDate ? ` by <strong>${dueDate}</strong>` : ''
+        paymentNote = `Please arrange payment${duePart}, referencing ${refStr} on your transfer.${bankDetails}<br><br>Email <strong>${bizEmail}</strong> to confirm — delivery of your customisation will follow.`
+      }
+    }
+
+    const w = window.open('', '_blank')!
+    w.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Invoice ${invoiceNum} — ${companyName}</title>
+  <meta charset="UTF-8"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;color:#040E09;padding:48px;max-width:760px;margin:0 auto;font-size:14px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:2px solid #0A5C46}
+    .logo{font-size:26px;font-weight:700;color:#040E09;letter-spacing:-0.5px}
+    .logo-ai{color:#C8952A;font-family:monospace;font-size:17px;letter-spacing:0.04em}
+    .tagline{font-size:10px;color:#3B5249;font-style:italic;margin-top:4px}
+    .company-details{font-size:11px;color:#3B5249;line-height:1.8;text-align:right}
+    h1{font-size:38px;font-weight:300;color:#0A5C46;margin-bottom:28px;font-family:Georgia,serif}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px}
+    .meta-label{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:#3B5249;margin-bottom:6px;font-family:monospace}
+    .meta-value{font-size:13px;color:#040E09;line-height:1.6}
+    .section-label{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#3B5249;font-family:monospace;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #D6D9D4}
+    .service-block{margin-bottom:28px}
+    .service-name{font-size:16px;font-weight:600;color:#040E09;margin-bottom:5px}
+    .service-desc{font-size:12px;color:#3B5249;line-height:1.65;font-style:italic;margin-top:4px}
+    .totals{margin-bottom:20px}
+    .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #EDE8DC;font-size:13px;align-items:center}
+    .row .lbl{color:#3B5249}
+    .row .amt{font-family:monospace;color:#040E09}
+    .row.credit .amt{color:#0A5C46}
+    .row.gst{background:rgba(10,92,70,0.03)}
+    .row.total{border-bottom:none;font-weight:600}
+    .amount-due{display:flex;justify-content:space-between;align-items:center;background:rgba(10,92,70,0.06);border:1px solid rgba(10,92,70,0.2);border-radius:10px;padding:14px 18px;margin:16px 0 28px}
+    .amount-due .lbl{font-size:13px;font-weight:600;color:#040E09}
+    .amount-due .amt{font-family:monospace;font-size:22px;font-weight:700;color:#0A5C46}
+    .amount-due .due{font-size:10px;color:#7A5200;font-family:monospace;margin-top:4px}
+    .note{background:#F4EFE4;border-left:3px solid #0A5C46;padding:12px 16px;font-size:12px;color:#3B5249;line-height:1.7;margin-bottom:32px;border-radius:0 8px 8px 0}
+    .paid-stamp{display:inline-block;border:2px solid #0A5C46;color:#0A5C46;font-family:monospace;font-size:11px;letter-spacing:0.15em;padding:3px 10px;border-radius:4px;transform:rotate(-2deg);margin-bottom:8px}
+    .footer{padding-top:20px;border-top:1px solid #D6D9D4;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#3B5249}
+    @media print{body{padding:24px}@page{margin:1.5cm}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">Bespox<span class="logo-ai">AI</span></div>
+      <div class="tagline">Your Business Central. One portal. Complete control.</div>
     </div>
-  )
+    <div class="company-details">
+      <strong>${companyName}</strong><br>
+      ${bizAddress ? bizAddress.replace(/\n/g,'<br>') + '<br>' : ''}
+      ${bizEmail}<br>
+      ${bizWebsite}
+      ${gstNumber ? '<br>GST No: ' + gstNumber : ''}
+    </div>
+  </div>
+
+  <h1>Invoice</h1>
+
+  <div class="meta-grid">
+    <div>
+      <div class="meta-label">Invoice To</div>
+      <div class="meta-value">
+        <strong>${req.tenant.name.replace(/</g,'&lt;')}</strong><br>
+        ${req.user.name ? req.user.name.replace(/</g,'&lt;') + '<br>' : ''}
+        <span style="font-size:11px;color:#3B5249">${req.user.email}</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-label">Invoice Details</div>
+      <div class="meta-value" style="font-size:12px;line-height:1.85">
+        <strong>Invoice No:</strong>&nbsp; ${invoiceNum}<br>
+        <strong>Date:</strong>&nbsp; ${dateStr}<br>
+        ${po ? `<strong>PO / Reference:</strong>&nbsp; ${po.replace(/</g,'&lt;')}<br>` : ''}
+        <strong>Terms:</strong>&nbsp; ${termsText}
+      </div>
+    </div>
+  </div>
+
+  <div class="service-block">
+    <div class="section-label">Services</div>
+    <div class="service-name">${req.title.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    <div class="service-desc">Business Central area: ${req.bcArea}</div>
+    ${req.consultantNote ? `<div class="service-desc" style="margin-top:6px">${req.consultantNote.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
+  </div>
+
+  <div class="totals">
+    <div class="section-label">Payment Schedule</div>
+
+    ${isDeposit ? `
+    <div class="row"><span class="lbl">Total project quote (plus GST)</span><span class="amt">$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row subdued"><span class="lbl">80% balance — due ${monthly ? 'on invoice (20th of following month)' : 'on completion'}</span><span class="amt" style="color:#3B5249">$${balanceExcl.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row" style="border-top:2px solid #EDE8DC;margin-top:4px;padding-top:10px"><span class="lbl">20% deposit</span><span class="amt">$${(quote*0.2).toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    ${hasReviewCredit ? `<div class="row credit"><span class="lbl">Less: Specification review fee (credited)</span><span class="amt credit">− $249.00 NZD</span></div>` : ''}
+    <div class="row"><span class="lbl">Net deposit (plus GST)</span><span class="amt">$${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row total"><span class="lbl">Total deposit due (incl. GST)</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    ` : `
+    <div class="row"><span class="lbl">Total project quote (plus GST)</span><span class="amt">$${quote.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row subdued"><span class="lbl">Less: 20% deposit already paid</span><span class="amt" style="color:#3B5249">− $${depositPd.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row" style="border-top:2px solid #EDE8DC;margin-top:4px;padding-top:10px"><span class="lbl">Balance (plus GST)</span><span class="amt">$${paymentAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    <div class="row total"><span class="lbl">Total balance due (incl. GST)</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</span></div>
+    `}
+  </div>
+
+  <div class="amount-due">
+    <div>
+      ${paymentMethod === 'stripe' ? '<div class="paid-stamp">PAID</div><br>' : ''}
+      <div class="lbl">${invoiceTitle}</div>
+      ${dueLine ? `<div class="due">${dueLine}</div>` : ''}
+    </div>
+    <div class="amt">$${totalInclGST.toLocaleString('en-NZ',{minimumFractionDigits:2})} NZD</div>
+  </div>
+
+  ${paymentMethod === 'bank_transfer' && (bankName || bankAccount) ? `
+  <div class="bank-block">
+    <div class="section-label" style="margin-bottom:10px">Bank Transfer Details</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div><div class="bank-lbl">Bank</div><div class="bank-val">${bankName || '—'}</div></div>
+      <div><div class="bank-lbl">Account Name</div><div class="bank-val">${bankAccName || '—'}</div></div>
+      <div><div class="bank-lbl">Account Number</div><div class="bank-val">${bankAccount || '—'}</div></div>
+    </div>
+  </div>` : paymentMethod === 'bank_transfer' ? `
+  <div class="bank-block">
+    <p style="font-size:12px;color:#3B5249">Please contact <strong>${bizEmail}</strong> for bank transfer details.</p>
+  </div>` : ''}
+
+  <div class="note">${paymentNote}</div>
+
+  <div class="footer">
+    <span style="font-style:italic">${footer}</span>
+    <span style="font-family:monospace">${gstNumber ? `GST No: ${gstNumber} · ` : ''}${bizWebsite}</span>
+  </div>
+</body>
+</html>`)
+    w.document.close()
+    setTimeout(() => { w.focus(); w.print() }, 450)
+  }
+
+  function generateReviewInvoicePDF(req: Requirement, po: string = '') {
+    const biz            = bizConfig
+    const companyName    = biz?.companyName    ?? 'Nav Solutions NZ'
+    const gstNumber      = biz?.gstNumber      ?? null
+    const bizEmail       = biz?.email          ?? 'auckland@bespoxai.com'
+    const bizWebsite     = biz?.website        ?? 'bespoxai.com'
+    const bizAddress     = biz?.address        ?? ''
+    const footer         = biz?.invoiceFooter  ?? 'Thank you for choosing BespoxAI'
+
+    const invoiceNum     = `BX-REV-${new Date().getFullYear()}-${req.id.slice(0, 6).toUpperCase()}`
+    const dateStr        = new Date(req.reviewPaidAt!).toLocaleDateString('en-NZ', { dateStyle: 'long' })
+    const feeExcl        = 249
+    const gstAmt         = Math.round(feeExcl * 0.15 * 100) / 100
+    const totalInclGST   = feeExcl + gstAmt
+
+    const w = window.open('', '_blank')!
+    w.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Invoice ${invoiceNum} — ${companyName}</title>
+  <meta charset="UTF-8"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;color:#040E09;padding:48px;max-width:760px;margin:0 auto;font-size:14px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:2px solid #0A5C46}
+    .logo{font-size:26px;font-weight:700;color:#040E09;letter-spacing:-0.5px}
+    .logo-ai{color:#C8952A;font-family:monospace;font-size:17px;letter-spacing:0.04em}
+    .tagline{font-size:10px;color:#3B5249;font-style:italic;margin-top:4px}
+    .company-details{font-size:11px;color:#3B5249;line-height:1.8;text-align:right}
+    h1{font-size:38px;font-weight:300;color:#0A5C46;margin-bottom:28px}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px}
+    .meta-label{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:#3B5249;margin-bottom:6px;font-family:monospace}
+    .meta-value{font-size:13px;color:#040E09;line-height:1.6}
+    .section-label{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#3B5249;font-family:monospace;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #D6D9D4}
+    .service-block{margin-bottom:28px}
+    .service-name{font-size:16px;font-weight:600;color:#040E09;margin-bottom:5px}
+    .service-desc{font-size:12px;color:#3B5249;line-height:1.65;font-style:italic;margin-top:4px}
+    .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #EDE8DC;font-size:13px;align-items:baseline}
+    .row .lbl{color:#3B5249;flex:1;padding-right:16px}
+    .row .amt{font-family:monospace;color:#040E09;white-space:nowrap}
+    .row.subdued .lbl{color:#8A9E96;font-size:12px}
+    .row.subdued .amt{color:#8A9E96;font-size:12px}
+    .row.credit .lbl{color:#0A5C46}
+    .row.credit .amt{color:#0A5C46 !important}
+    .row.gst{background:rgba(10,92,70,0.03)}
+    .row.total{border-bottom:none;font-weight:600;padding-top:10px}
+    .bank-block{background:#F4EFE4;border-radius:8px;padding:14px 16px;margin:16px 0}
+    .bank-lbl{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#3B5249;font-family:monospace;margin-bottom:3px}
+    .bank-val{font-size:13px;font-weight:600;color:#040E09}
+    .amount-due{display:flex;justify-content:space-between;align-items:center;background:rgba(10,92,70,0.06);border:1px solid rgba(10,92,70,0.2);border-radius:10px;padding:14px 18px;margin:16px 0 28px}
+    .amount-due .lbl{font-size:13px;font-weight:600;color:#040E09}
+    .amount-due .amt{font-family:monospace;font-size:22px;font-weight:700;color:#0A5C46}
+    .paid-stamp{display:inline-block;border:2px solid #0A5C46;color:#0A5C46;font-family:monospace;font-size:11px;letter-spacing:0.15em;padding:3px 10px;border-radius:4px;transform:rotate(-2deg);margin-bottom:8px}
+    .note{background:#F4EFE4;border-left:3px solid #0A5C46;padding:12px 16px;font-size:12px;color:#3B5249;line-height:1.7;margin-bottom:32px;border-radius:0 8px 8px 0}
+    .credit-note{background:rgba(10,92,70,0.04);border:1px solid rgba(10,92,70,0.15);border-radius:8px;padding:10px 14px;font-size:12px;color:#0A5C46;line-height:1.6;margin-bottom:28px}
+    .footer{padding-top:20px;border-top:1px solid #D6D9D4;display:flex;justify-content:space-between;font-size:11px;color:#3B5249}
+    @media print{body{padding:24px}@page{margin:1.5cm}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">Bespox<span class="logo-ai">AI</span></div>
+      <div class="tagline">Your Business Central. One portal. Complete control.</div>
+    </div>
+    <div class="company-details">
+      <strong>${companyName}</strong><br>
+      ${bizAddress ? bizAddress.replace(/\n/g,'<br>') + '<br>' : ''}
+      ${bizEmail}<br>${bizWebsite}
+      ${gstNumber ? '<br>GST No: ' + gstNumber : ''}
+    </div>
+  </div>
+
+  <h1>Invoice</h1>
+
+  <div class="meta-grid">
+    <div>
+      <div class="meta-label">Invoice To</div>
+      <div class="meta-value">
+        <strong>${req.tenant.name.replace(/</g,'&lt;')}</strong><br>
+        ${req.user.name ? req.user.name.replace(/</g,'&lt;') + '<br>' : ''}
+        <span style="font-size:11px;color:#3B5249">${req.user.email}</span>
+      </div>
+    </div>
+    <div>
+      <div class="meta-label">Invoice Details</div>
+      <div class="meta-value" style="font-size:12px;line-height:1.85">
+        <strong>Invoice No:</strong>&nbsp; ${invoiceNum}<br>
+        <strong>Date:</strong>&nbsp; ${dateStr}<br>
+        ${po ? `<strong>PO / Reference:</strong>&nbsp; ${po.replace(/</g,'&lt;')}<br>` : ''}
+        <strong>Type:</strong>&nbsp; Specification Review Fee
+      </div>
+    </div>
+  </div>
+
+  <div class="service-block">
+    <div class="section-label">Services</div>
+    <div class="service-name">Senior BC Developer Specification Review</div>
+    <div class="service-desc">${req.title.replace(/</g,'&lt;')}</div>
+    <div class="service-desc" style="margin-top:6px">Business Central area: ${req.bcArea}</div>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <div class="section-label">Payment</div>
+    <div class="row"><span class="lbl">Specification review fee (plus GST)</span><span class="amt">$${feeExcl.toFixed(2)} NZD</span></div>
+    <div class="row gst"><span class="lbl">GST (15%)</span><span class="amt">$${gstAmt.toFixed(2)} NZD</span></div>
+    <div class="row total"><span class="lbl">Total incl. GST</span><span class="amt" style="font-size:15px;color:#0A5C46">$${totalInclGST.toFixed(2)} NZD</span></div>
+  </div>
+
+  <div class="amount-due">
+    <div>
+      <div class="paid-stamp">PAID</div><br>
+      <div class="lbl">Specification Review Fee</div>
+    </div>
+    <div class="amt">$${totalInclGST.toFixed(2)} NZD</div>
+  </div>
+
+  <div class="credit-note">
+    ✦ This $${feeExcl.toFixed(2)} NZD (plus GST) review fee will be credited in full against your development deposit if you proceed with this customisation.
+  </div>
+
+  <div class="note">
+    Paid by card on ${dateStr}. Thank you — your specification is now in review with our senior BC development team.
+    We will be in touch with a quote and development plan.
+  </div>
+
+  <div class="footer">
+    <span style="font-style:italic">${footer}</span>
+    <span style="font-family:monospace">${bizWebsite}</span>
+  </div>
+</body>
+</html>`)
+    w.document.close()
+    setTimeout(() => { w.focus(); w.print() }, 450)
+  }
+  if (error)   return <div style={{padding:40,textAlign:'center'}}><p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p><button onClick={load} style={sBTN}>Retry</button></div>
+
+  // ── Banner config ─────────────────────────────────────────────────────────
+  const BANNER_CONFIG = {
+    review: {
+      icon: '🔍',
+      title: 'Review request received — thank you!',
+      body: "Our senior developer will review your requirements and get back to you with a quote. The $249 review fee will be credited against your development deposit.",
+      color: '#0A5C46',
+      bg: 'rgba(10,92,70,0.06)',
+      border: 'rgba(10,92,70,0.2)',
+    },
+    deposit: {
+      icon: '✅',
+      title: 'Deposit confirmed — development is underway!',
+      body: "Your deposit has been received and your project is now in the development queue. We'll keep you updated as work progresses.",
+      color: '#0F6E56',
+      bg: 'rgba(26,146,114,0.07)',
+      border: 'rgba(26,146,114,0.25)',
+    },
+    balance: {
+      icon: '🎉',
+      title: 'Final payment received — project complete!',
+      body: "Thank you for your payment. Your customisation is fully paid and complete. Download your balance invoice from the requirement below.",
+      color: '#0A5C46',
+      bg: 'rgba(10,92,70,0.06)',
+      border: 'rgba(10,92,70,0.2)',
+    },
+  } as const
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1089,12 +1457,8 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
 
               {/* Description */}
               <div style={crd}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('desc-'+req.id)?0:8}}>
-                  <label style={{...lbl,marginBottom:0}}>Description</label>
-                  <CardToggleBtn collapsed={!!isCardCollapsed('desc-'+req.id)} onToggle={()=>toggleCard('desc-'+req.id)} />
-                </div>
-                <div style={{overflow:'hidden',maxHeight:isCardCollapsed('desc-'+req.id)?0:'9999px',transition:'max-height 0.25s ease'}}>
-                <p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.75,whiteSpace:'pre-wrap'}}>{req.description}</p>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('desc-'+req.id)?0:8}}><label style={{...lbl,marginBottom:0}}>Description</label><CardToggleBtn collapsed={!!isCardCollapsed('desc-'+req.id)} onToggle={()=>toggleCard('desc-'+req.id)} /></div>
+                <div style={{overflow:'hidden',maxHeight:isCardCollapsed('desc-'+req.id)?0:'9999px',transition:'max-height 0.25s ease'}}><p style={{fontFamily:'var(--font-body)',fontSize:13,color:'var(--ink)',lineHeight:1.75,whiteSpace:'pre-wrap'}}>{req.description}</p>
 
                 {/* Q&A context — show question + answer pairs */}
                 {(savedQA.length>0||savedText)&&(
@@ -1386,10 +1750,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
               {/* Quote */}
               {req.quote&&(
                 <div style={{...crd,background:req.quoteApprovedAt?'rgba(10,92,70,0.04)':'var(--white)',borderColor:req.quoteApprovedAt?'rgba(10,92,70,0.2)':'var(--fog)'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('quote-'+req.id)?0:8}}>
-                    <label style={{...lbl,marginBottom:0}}>Quote from BespoxAI</label>
-                    <CardToggleBtn collapsed={!!isCardCollapsed('quote-'+req.id)} onToggle={()=>toggleCard('quote-'+req.id)} />
-                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('quote-'+req.id)?0:8}}><label style={{...lbl,marginBottom:0}}>Quote from BespoxAI</label><CardToggleBtn collapsed={!!isCardCollapsed('quote-'+req.id)} onToggle={()=>toggleCard('quote-'+req.id)} /></div>
                   <div style={{overflow:'hidden',maxHeight:isCardCollapsed('quote-'+req.id)?0:'9999px',transition:'max-height 0.25s ease'}}>
                   <div style={{display:'flex',alignItems:'baseline',gap:6}}>
                     <span style={{fontFamily:'var(--font-display)',fontSize:30,fontWeight:500,color:'var(--forest)',lineHeight:1}}>${parseFloat(req.quote).toLocaleString()}</span>
@@ -1545,7 +1906,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         onClick={()=>{
                           const depositAmt = Math.max(0, (parseFloat(req.quote!)*0.2) - (req.reviewPaidAt ? 249 : 0))
                           const paidViaStripe = !!(req.depositStripeSessionId)
-                          generateInvoicePDF(bizConfig, req, '', depositAmt.toFixed(2), true, paidViaStripe ? 'stripe' : 'bank_transfer', req.depositPaidAt)
+                          generateInvoicePDF(req, '', depositAmt.toFixed(2), true, paidViaStripe ? 'stripe' : 'bank_transfer', req.depositPaidAt)
                         }}
                         style={{background:'var(--white)',border:'1px solid var(--fog)',color:'var(--ink)',borderRadius:7,padding:'7px 12px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
                       >
@@ -1567,7 +1928,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                             const depositAmt = parseFloat(req.depositAmount ?? '0')
                             const balanceAmt = (parseFloat(req.quote!)-depositAmt).toFixed(2)
                             const paidViaStripe = !!(req.balanceStripeSessionId)
-                            generateInvoicePDF(bizConfig, req, '', balanceAmt, false, paidViaStripe ? 'stripe' : 'bank_transfer', req.balancePaidAt)
+                            generateInvoicePDF(req, '', balanceAmt, false, paidViaStripe ? 'stripe' : 'bank_transfer', req.balancePaidAt)
                           }}
                           style={{background:'var(--white)',border:'1px solid var(--fog)',color:'var(--ink)',borderRadius:7,padding:'7px 12px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:12,display:'flex',alignItems:'center',gap:6}}
                         >
@@ -1607,10 +1968,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {/* ── UAT Panel (customer-facing when test env is deployed) ── */}
                 {!isSuperadmin&&(req.status==='in_uat'||req.status==='uat_rejected'||req.status==='uat_confirmed')&&(
                   <div style={{...crd,borderColor:req.uatApprovedAt?'rgba(10,92,70,0.3)':req.uatRejectedAt?'rgba(163,45,45,0.3)':'rgba(200,149,42,0.3)',background:req.uatApprovedAt?'rgba(10,92,70,0.04)':req.uatRejectedAt?'rgba(163,45,45,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('uat-'+req.id)?0:10}}>
-                      <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:req.uatApprovedAt?'#0A5C46':req.uatRejectedAt?'#A32D2D':'#9A6A00'}}>{req.uatApprovedAt?'UAT Approved':req.uatRejectedAt?'UAT Rejected':'UAT Ready for Sign-off'}</span>
-                      <CardToggleBtn collapsed={!!isCardCollapsed('uat-'+req.id)} onToggle={()=>toggleCard('uat-'+req.id)} />
-                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('uat-'+req.id)?0:10}}><span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:req.uatApprovedAt?'#0A5C46':req.uatRejectedAt?'#A32D2D':'#9A6A00'}}>{req.uatApprovedAt?'UAT Approved':req.uatRejectedAt?'UAT Rejected':'UAT Ready'}</span><CardToggleBtn collapsed={!!isCardCollapsed('uat-'+req.id)} onToggle={()=>toggleCard('uat-'+req.id)} /></div>
                     <div style={{overflow:'hidden',maxHeight:isCardCollapsed('uat-'+req.id)?0:'9999px',transition:'max-height 0.25s ease'}}>
                     {req.uatApprovedAt?(
                       <div>
@@ -1696,16 +2054,12 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         )}
                       </div>
                     )}
-                    </div>
                   </div>
                 )}
                 {/* ── Production Deployment — go-live doc & approval (customer) ── */}
                 {!isSuperadmin&&req.prodApprovalSentAt&&!req.prodDeployedAt&&(
                   <div style={{...crd,borderColor:req.prodApprovedAt?'rgba(10,92,70,0.3)':'rgba(200,149,42,0.3)',background:req.prodApprovedAt?'rgba(10,92,70,0.04)':'rgba(200,149,42,0.04)',marginTop:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('proddep-'+req.id)?0:10}}>
-                      <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:req.prodApprovedAt?'#0A5C46':'#9A6A00'}}>{req.prodApprovedAt?'Go-Live Approved':'Production Go-Live Approval Required'}</span>
-                      <CardToggleBtn collapsed={!!isCardCollapsed('proddep-'+req.id)} onToggle={()=>toggleCard('proddep-'+req.id)} />
-                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('proddep-'+req.id)?0:10}}><span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',color:req.prodApprovedAt?'#0A5C46':'#9A6A00'}}>{req.prodApprovedAt?'Go-Live Approved':'Go-Live Approval Required'}</span><CardToggleBtn collapsed={!!isCardCollapsed('proddep-'+req.id)} onToggle={()=>toggleCard('proddep-'+req.id)} /></div>
                     <div style={{overflow:'hidden',maxHeight:isCardCollapsed('proddep-'+req.id)?0:'9999px',transition:'max-height 0.25s ease'}}>
                     {req.prodApprovedAt?(
                       <div>
@@ -1755,10 +2109,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 {/* ── Addenda list ── */}
                 {req.addenda && req.addenda.length > 0 ? (
                   <div style={{borderTop:'1px solid var(--fog)',paddingTop:12,display:'flex',flexDirection:'column',gap:6}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('addenda-'+req.id)?0:6}}>
-                      <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',margin:0}}>Addenda ({req.addenda.length})</p>
-                      <CardToggleBtn collapsed={!!isCardCollapsed('addenda-'+req.id)} onToggle={()=>toggleCard('addenda-'+req.id)} />
-                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:isCardCollapsed('addenda-'+req.id)?0:6}}><p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--slate)',margin:0}}>Addenda ({req.addenda.length})</p><CardToggleBtn collapsed={!!isCardCollapsed('addenda-'+req.id)} onToggle={()=>toggleCard('addenda-'+req.id)} /></div>
                     <div style={{overflow:'hidden',maxHeight:isCardCollapsed('addenda-'+req.id)?0:'9999px',transition:'max-height 0.25s ease',display:'flex',flexDirection:'column',gap:6}}>
                     {req.addenda.map(add => {
                       const sc = STATUS_COLOR[add.status] ?? STATUS_COLOR.draft
@@ -2098,7 +2449,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             <input
               value={reviewPo}
               onChange={e=>setReviewPo(e.target.value)}
-              onKeyDown={e=>{ if(e.key==='Enter'){ generateReviewInvoicePDF(bizConfig, reviewPoReq,reviewPo); setReviewPoReq(null) }}}
+              onKeyDown={e=>{ if(e.key==='Enter'){ generateReviewInvoicePDF(reviewPoReq,reviewPo); setReviewPoReq(null) }}}
               placeholder="e.g. PO-2026-0042"
               autoFocus
               style={{width:'100%',background:'var(--cream)',border:'1px solid var(--fog)',borderRadius:8,padding:'9px 12px',fontSize:13,fontFamily:'var(--font-body)',color:'var(--ink)',outline:'none',boxSizing:'border-box'}}
@@ -2107,7 +2458,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
             />
             <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:16}}>
               <button onClick={()=>setReviewPoReq(null)} style={sBTN}>Cancel</button>
-              <button onClick={()=>{ generateReviewInvoicePDF(bizConfig, reviewPoReq,reviewPo); setReviewPoReq(null) }} style={{...pBTN,background:'var(--forest)'}}>
+              <button onClick={()=>{ generateReviewInvoicePDF(reviewPoReq,reviewPo); setReviewPoReq(null) }} style={{...pBTN,background:'var(--forest)'}}>
                 ↓ Download Invoice
               </button>
             </div>
