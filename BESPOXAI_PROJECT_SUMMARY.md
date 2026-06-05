@@ -133,3 +133,27 @@ if (cfg.provider === 'anthropic') {
   })
 }
 ```
+
+---
+
+## Session 9 Completion — Database Indexes Applied ✅
+
+**All 5 indexes successfully applied to Vercel Postgres:**
+
+```sql
+CREATE INDEX idx_requirement_tenantId ON "Requirement"("tenantId");
+CREATE INDEX idx_requirement_createdAt ON "Requirement"("createdAt" DESC);
+CREATE INDEX idx_requirement_status ON "Requirement"("status");
+CREATE INDEX idx_requirement_parentId ON "Requirement"("parentId");
+CREATE INDEX idx_tenant_partnerAccountId ON "Tenant"("partnerAccountId");
+```
+
+**Result:** Significant speed improvement confirmed. Site is now snappier across all API calls.
+
+**Timeline:**
+- Start: 998ms–2250ms per endpoint
+- After caching: ~200ms warm cache, but cold start still slow
+- After indexes: ~200-300ms even on cold start
+- **Overall improvement: 70-85% latency reduction**
+
+---
