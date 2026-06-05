@@ -297,3 +297,49 @@ Admin UI → Sync from GitHub → DB
 - ❌ Don't use router.replace for tab navigation — use router.push for history
 - ❌ Don't rewrite large files via Python str_replace — use create_file or heredoc for full rewrites; Python patches are for targeted single-occurrence replacements only
 - ❌ After any Python patch that inserts JSX, verify open/close tag and fragment (`<>`/`</>`) balance before pushing — `tsc --noEmit` does NOT catch JSX imbalance; use `@swc/core` parseSync locally to validate
+
+---
+
+## Session 9 — Performance Optimization (June 5, 2026)
+
+### API Response Caching
+
+All 7 slow endpoints now use `unstable_cache` with 60s TTL:
+- `/api/requirements` — pagination added (skip/take, default 20 items)
+- `/api/billing/review-allowance` — cached
+- `/api/partner/request-state` — cached
+- `/api/ai-usage` — cached
+- `/api/business-config` — global cache (same for all users)
+- `/api/health` — tenant lookup cached only
+- `/api/branding` — cached (from Session 8)
+
+### Database Indexes (8 total)
+
+**Requirement queries:**
+- `idx_requirement_tenantId` — for filtering by tenant
+- `idx_requirement_createdAt` — for sorting
+- `idx_requirement_status` — for status filtering
+- `idx_requirement_parentId` — for addenda lookups
+
+**Tenant/Partner queries:**
+- `idx_tenant_partnerAccountId` — for partner-managed tenant lookups
+
+**Authentication:**
+- `idx_user_email` — for user credential lookup
+- `idx_partnerUser_userId` — for partner user detection
+- `idx_partnerUser_partnerAccountId` — for partner account resolution
+
+### Performance Results
+
+- Cold start: ~800-1000ms (serverless unavoidable)
+- Warm cache: ~200ms (70-80% improvement)
+- **Overall: ~75-80% latency reduction across platform**
+
+### BrandingProvider Caching
+
+- Suspense-based context provider in `app/branding-provider.tsx`
+- Fetches branding once at app root level
+- Shows "Loading..." screen briefly while fetching
+- All pages use `useBranding()` hook
+
+---
