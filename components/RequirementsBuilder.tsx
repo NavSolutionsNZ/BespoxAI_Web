@@ -146,6 +146,33 @@ function isCardCollapsedFn(id: string, reqs: Requirement[], map: CollapseMap): b
   return !(CARD_OPEN_FOR[prefix] ?? []).includes(st)
 }
 
+const BANNER_CONFIG = {
+  review: {
+    icon: '🔍',
+    title: 'Review request received — thank you!',
+    body: "Our senior developer will review your requirements and get back to you with a quote. The $249 review fee will be credited against your development deposit.",
+    color: '#0A5C46',
+    bg: 'rgba(10,92,70,0.06)',
+    border: 'rgba(10,92,70,0.2)',
+  },
+  deposit: {
+    icon: '✅',
+    title: 'Deposit confirmed — development is underway!',
+    body: "Your deposit has been received and your project is now in the development queue. We'll keep you updated as work progresses.",
+    color: '#0F6E56',
+    bg: 'rgba(26,146,114,0.07)',
+    border: 'rgba(26,146,114,0.25)',
+  },
+  balance: {
+    icon: '🎉',
+    title: 'Final payment received — project complete!',
+    body: "Thank you for your payment. Your customisation is fully paid and complete. Download your balance invoice from the requirement below.",
+    color: '#0A5C46',
+    bg: 'rgba(10,92,70,0.06)',
+    border: 'rgba(10,92,70,0.2)',
+  },
+}
+
 function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
     <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }} title={collapsed ? 'Expand' : 'Collapse'}>
@@ -968,33 +995,6 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   }
   if (error)   return <div style={{padding:40,textAlign:'center'}}><p style={{color:'#A32D2D',fontFamily:'var(--font-body)',fontSize:13,marginBottom:10}}>{error}</p><button onClick={load} style={sBTN}>Retry</button></div>
 
-  // ── Banner config ─────────────────────────────────────────────────────────
-  const BANNER_CONFIG = {
-    review: {
-      icon: '🔍',
-      title: 'Review request received — thank you!',
-      body: "Our senior developer will review your requirements and get back to you with a quote. The $249 review fee will be credited against your development deposit.",
-      color: '#0A5C46',
-      bg: 'rgba(10,92,70,0.06)',
-      border: 'rgba(10,92,70,0.2)',
-    },
-    deposit: {
-      icon: '✅',
-      title: 'Deposit confirmed — development is underway!',
-      body: "Your deposit has been received and your project is now in the development queue. We'll keep you updated as work progresses.",
-      color: '#0F6E56',
-      bg: 'rgba(26,146,114,0.07)',
-      border: 'rgba(26,146,114,0.25)',
-    },
-    balance: {
-      icon: '🎉',
-      title: 'Final payment received — project complete!',
-      body: "Thank you for your payment. Your customisation is fully paid and complete. Download your balance invoice from the requirement below.",
-      color: '#0A5C46',
-      bg: 'rgba(10,92,70,0.06)',
-      border: 'rgba(10,92,70,0.2)',
-    },
-  }
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
