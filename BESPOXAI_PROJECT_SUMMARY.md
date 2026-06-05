@@ -5,7 +5,32 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 4, 2026 (Session 13)
+**Last Updated:** June 5, 2026 (Session 16)
+
+---
+
+## Session 16 Key Changes (June 5, 2026)
+
+### RESOLVED: RequirementsBuilder.tsx SWC parse failure (the "16-session" bug)
+The long-running Vercel build failure (`Unexpected token 'div'. Expected jsx identifier`) was **NOT** a position-sensitive SWC parser bug, despite what `SWC_BUG_REPORT.md` hypothesised. It was three real, locatable JSX structural errors that the collapsible-panels work introduced:
+
+1. **Four collapse-wrapper `<div>`s opened but never closed** — the `quote`, `uat`, `proddep`, and `addenda` panels each got a `maxHeight` wrapper `<div>` but only `feasib` and `desc` had matching `</div>`. Fixed by adding the four missing `</div>`.
+2. **Unclosed body fragment** — commit `0d68e29` wrapped the whole return body in `{!error && <>` but never added the closing `</>}`. **This was the true reason the error always pointed at the main `return (`** — an unbalanced fragment desyncs SWC's tag stack, so it reports the failure at the first/last JSX it can't reconcile (not the actual offending line). Fixed by adding `</>}` before the root `</div>`.
+3. **Corrupted `Sect` component** — its closing had become `</> }` + a stray `</div>` where the working baseline had a clean `</div>`. Restored to baseline form.
+
+Commits: `7d3b89f` (structural fix, 5 ins / 2 del — first green build after ~16 consecutive ERROR deploys) and `d32f9b1` (template-literal cleanup, below). Both deployed READY. Collapsible panels feature is now LIVE in the customer requirements view.
+
+### Style-prop template literals → string concatenation
+Converted all **11** template literals inside `style={{...}}` props (e.g. ``border:`1px solid ${sc.border}` `` → `border:'1px solid '+sc.border`) to comply with the project's SWC rule. Ternary cases parenthesised to preserve precedence (`'1px solid '+(cond?a:b)`). The **55 JS-context template literals** (fetch URLs, `.map()` joins, label strings) were deliberately **left untouched** — they are idiomatic and safe; the SWC rule applies to JSX contexts only.
+
+### ⚠️ Key diagnostic lesson — `tsc` does NOT validate JSX the way SWC does
+`tsc --noEmit` passed clean on every failed attempt because **`tsc` does not use SWC's JSX/TSX parser**. For SWC-only build failures, the correct local diagnostic is to parse the file with `@swc/core` directly:
+```js
+const swc = require('@swc/core')
+try { swc.parseSync(require('fs').readFileSync('components/X.tsx','utf8'), { syntax:'typescript', tsx:true }); console.log('PARSE OK') }
+catch(e){ console.log(e.message) }
+```
+SWC reports the FIRST tag/fragment mismatch it hits — fix it, re-parse, repeat until `PARSE OK`. Do this BEFORE pushing. Also: SWC reports the wrong *location* for fragment/tag imbalances (always near the nearest JSX), so trust tag/fragment balance counts over the reported line number. `SWC_BUG_REPORT.md` and its "position-sensitive SWC bug" hypothesis are superseded by this entry.
 
 ---
 

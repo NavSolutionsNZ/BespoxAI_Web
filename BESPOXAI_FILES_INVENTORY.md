@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 5, 2026 (Session 15)**
+**Last Updated: June 5, 2026 (Session 16)**
 
 ---
 
@@ -125,7 +125,7 @@
 
 | File | Purpose |
 |------|---------|
-| `RequirementsBuilder.tsx` | Full customer flow. STATUS_PIPELINE includes in_uat, uat_confirmed, uat_rejected. UAT panel driven by status. |
+| `RequirementsBuilder.tsx` | Full customer flow. STATUS_PIPELINE includes in_uat, uat_confirmed, uat_rejected. UAT panel driven by status. Collapsible panels (desc/feasib/quote/uat/proddep/addenda) LIVE as of Session 16. ~2500 lines. All style props use string concatenation, not template literals. If SWC build fails, parse locally with `@swc/core` (tsc won't catch JSX tag/fragment imbalance). |
 | `SuperAdminDashboard.tsx` | Admin overview KPIs. |
 | `BillingCharts` (inside SuperAdminDashboard.tsx) | Extracted sub-component — do NOT merge back. |
 
@@ -281,13 +281,13 @@ Admin UI → Sync from GitHub → DB
 - ❌ Don't use `git push origin main` — use `git push origin master:main`
 - ❌ Don't use old repo URL (BespokeAI_Web) — use BespoxAI_Web
 - ❌ Don't use `&&` shortcircuit JSX in large functions — use `cond ? <JSX/> : null`
-- ❌ Don't use template literals `${var}` in JSX — use string concatenation
+- ❌ Don't use template literals `${var}` in JSX (style props, text, children) — use string concatenation. (JS-context template literals like fetch URLs and `.map()` joins are fine.)
 - ❌ Don't merge BillingCharts back into SuperAdminDashboard — it's extracted for SWC
 - ❌ Don't push without checking imports
 - ❌ Don't import `@anthropic-ai/sdk` in API routes
 - ❌ Don't use `router.back()` — always explicit `router.push()`
-- ❌ Don't use TypeScript generics `Record<K,V>` or `useState<Type>({})` in large component bodies — use `as` casts instead: `useState({} as MyType)`, `const x = {} as MyType`. SWC misreads `<>` as JSX in large `.tsx` files
-- ❌ Don't use `as const` on object literals inside component functions — it confuses SWC when file is large
+- ⚠️ SWC build failures are almost always real JSX tag/fragment imbalances (unclosed `<div>`, unbalanced `<>`/`</>`), NOT a "large file" or "position-sensitive SWC bug." That earlier theory (in SWC_BUG_REPORT.md) was WRONG — the real Session-16 cause was 4 unclosed wrapper divs + 1 unclosed fragment + a corrupted `Sect` close. `Record<K,V>`, `useState<Type>({})`, and `as const` are all fine in large component bodies (admin/page.tsx uses them at 4000+ lines). Generics did NOT cause the failure.
+- ✅ DIAGNOSE SWC failures locally: `npm i @swc/core` then parse the file with `swc.parseSync(code, {syntax:'typescript', tsx:true})`. `tsc --noEmit` will NOT catch JSX tag/fragment imbalance — it doesn't use SWC's parser. SWC reports the wrong *line* (nearest JSX), so trust tag/fragment balance counts over the reported location; fix the first mismatch, re-parse, repeat until PARSE OK.
 - ❌ Don't use controlled inputs in settings page — use refs + defaultValue
 - ❌ Don't default agent port to 8080 — it's 9099
 - ❌ Don't run BCAgent as SYSTEM — it must run as the BC user account

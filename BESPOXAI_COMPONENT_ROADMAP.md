@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 5, 2026 (Session 15)
+**Last Updated:** June 5, 2026 (Session 16)
 
 ---
 
@@ -96,26 +96,31 @@
 - All default collapsed; open panel determined by requirement status via `isAdminCardCollapsed()`
 - `isAdminCardCollapsed` uses `openFor` lookup table keyed by status
 
-### Customer Portal Collapsible Panels — INCOMPLETE ⚠️
-- CardToggleBtn standalone component added (same pattern as AdminCardToggleBtn)
-- collapsedCards state + toggleCard function added to RequirementsBuilder
-- selectReq resets collapsedCards to status-appropriate defaults on selection
+### Customer Portal Collapsible Panels — ✅ RESOLVED & LIVE (Session 16)
+- CardToggleBtn standalone component (same pattern as AdminCardToggleBtn)
+- collapsedCards state + toggleCard + isCardCollapsed in RequirementsBuilder
+- selectReq resets collapse state to status-appropriate defaults on selection
 - Sections wrapped: Description, Feasibility, AI Spec, Quote, UAT, Prod Deploy, Addenda
-- **BLOCKED by SWC parse error** — `RequirementsBuilder.tsx` is 2500+ lines and SWC
-  misreads TypeScript type annotations inside the large component as JSX
-- Root cause: any `{ ... : ... }` type annotation inside the component confuses SWC
-  at Vercel's Next.js 14.2.35 SWC version when the component is this size
-- Fix approach for next session: extract customer detail section into a separate
-  named component file (e.g. `components/RequirementDetail.tsx`) — SWC handles
-  smaller components correctly
+- **Was NEVER an SWC bug.** The build failure was three real JSX structural errors:
+  1. Four collapse-wrapper `<div>`s (quote/uat/proddep/addenda) opened but never closed
+  2. An unclosed `{!error && <>` fragment (no matching `</>}`) — this is what made the
+     error always point at the main `return (`; an unbalanced fragment desyncs SWC's stack
+  3. A corrupted `Sect` component close (`</> }` + stray `</div>`)
+- Fixed in commits `7d3b89f` (structural) + `d32f9b1` (template-literal cleanup). Both deployed READY.
+- No component extraction was needed — the file is still ~2500 lines and builds fine.
 
-### SWC Rules Learned This Session (CRITICAL)
-- `Record<K,V>` generics in component body → use `{[k:K]:V}` index signatures
-- `as const` on object literals near JSX return statements → remove
-- `useState<T>` with complex T → use `useState(x as T)` cast instead
-- inline type annotations `const x: ComplexType = {}` → use `const x = {} as ComplexType`
-- The underlying issue: SWC in this Next.js version struggles with large .tsx files
-  that mix TypeScript generics and JSX — splitting into smaller component files is safer
+### SWC Diagnosis — CORRECTED (Session 16 supersedes Session 15)
+The Session-15 hypothesis ("SWC misreads TS generics/`as const`/large files as JSX") was WRONG.
+`Record<K,V>`, `useState<T>({})`, and `as const` are all fine — admin/page.tsx uses them at 4000+ lines.
+- **Real rule:** SWC build failures = real JSX tag/fragment imbalance. Find the unclosed
+  `<div>` or `<>`/`</>` and close it.
+- **Diagnose locally:** `npm i @swc/core`, then `swc.parseSync(code, {syntax:'typescript', tsx:true})`.
+  `tsc --noEmit` does NOT catch JSX tag/fragment imbalance (it doesn't use SWC's parser) — that's
+  why every prior `tsc`-clean attempt still failed at Vercel.
+- SWC reports the wrong *line* (nearest JSX it can't reconcile). Trust tag/fragment balance
+  counts over the reported location. Fix first mismatch → re-parse → repeat until PARSE OK.
+- Style-prop template literals → string concatenation (done for all 11 in RequirementsBuilder).
+  JS-context template literals (fetch URLs, `.map()` joins) are fine — leave them.
 
 ---
 
@@ -150,7 +155,7 @@ Requires BCAgent Start-Job background threading + portal polling endpoint + UI p
 
 #### 6. Collapsible Sections in Admin Requirements View
 - [x] Admin panels done (Dev Plan, Deploy to Test, Deploy to Prod, Quote, Addenda)
-- [ ] Customer portal panels — blocked by SWC issue, see Session 15 notes above
+- [x] Customer portal panels — DONE & LIVE (Session 16). Was a JSX tag/fragment imbalance, not an SWC bug.
 
 #### 7. Customer Requirement View — UAT Rejection History
 
@@ -196,9 +201,10 @@ Requires BCAgent Start-Job background threading + portal polling endpoint + UI p
 18. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts
 
 ### SWC/JSX Rules (critical)
+- **SWC build failure = real JSX tag/fragment imbalance, NOT a parser bug or file-size issue.** Find the unclosed `<div>` / unbalanced `<>`/`</>` and close it. Diagnose locally with `@swc/core` (`swc.parseSync(code,{syntax:'typescript',tsx:true})`) — `tsc --noEmit` does NOT catch this. SWC reports the wrong line (nearest JSX); trust balance counts, fix first mismatch, re-parse until PARSE OK.
 - Use `cond ? <JSX/> : null` NOT `cond && <JSX/>` in large function returns
-- No template literals `${vars}` in JSX — use string concatenation
-- No template literals in style — use string concatenation
+- No template literals `${vars}` in JSX (style props, text, children) — use string concatenation. JS-context literals (fetch URLs, `.map()` joins) are fine.
+- `Record<K,V>`, `useState<T>({})`, `as const` are all SAFE in large component bodies (disproven Session-15 myth) — do not waste time refactoring these to fix a build.
 - Large components: extract sub-sections as separate named functions OUTSIDE main component
 - `React.useState` fails in standalone functions — use destructured `useState`
 - Never import `@anthropic-ai/sdk` — use provider-agnostic fetch pattern
