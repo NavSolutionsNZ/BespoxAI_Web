@@ -21,26 +21,28 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Single user lookup with tenant relation
         const user = await (prisma as any).user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
           include: { tenant: { select: { id: true, name: true, active: true, navProduct: true, partnerAccountId: true } } },
         })
 
         if (!user || !user.active) return null
-        // Partner users may not have an active direct tenant — check tenant only for non-partner users
-        const partnerCheck = await (prisma as any).partnerUser.findFirst({ where: { userId: user.id } })
-        if (!partnerCheck && !user.tenant?.active) return null
 
+        // Check password
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) return null
 
-        // Check if this user is also a PartnerUser
+        // Single partner lookup (no redundant second query)
         const partnerUser = await (prisma as any).partnerUser.findFirst({
           where: { userId: user.id },
           include: { partnerAccount: { select: { id: true, slug: true, isActive: true } } },
         })
 
         const isPartner = partnerUser && partnerUser.partnerAccount?.isActive
+
+        // Non-partner users must have active tenant
+        if (!isPartner && !user.tenant?.active) return null
 
         return {
           id: user.id,
