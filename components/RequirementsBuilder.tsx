@@ -693,7 +693,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     }
 
     const w = window.open('', '_blank')!
-    w.document.write(`<!DOCTYPE html>
+    const __html1 = `<!DOCTYPE html>
 <html>
 <head>
   <title>Invoice ${invoiceNum} — ${companyName}</title>
@@ -825,6 +825,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   </div>
 </body>
 </html>`)
+    w.document.write(__html2)
     w.document.close()
     setTimeout(() => { w.focus(); w.print() }, 450)
   }
@@ -845,7 +846,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     const totalInclGST   = feeExcl + gstAmt
 
     const w = window.open('', '_blank')!
-    w.document.write(`<!DOCTYPE html>
+    const __html2 = `<!DOCTYPE html>
 <html>
 <head>
   <title>Invoice ${invoiceNum} — ${companyName}</title>
@@ -961,6 +962,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
   </div>
 </body>
 </html>`)
+    w.document.write(__html1)
     w.document.close()
     setTimeout(() => { w.focus(); w.print() }, 450)
   }
