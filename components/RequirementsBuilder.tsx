@@ -1781,6 +1781,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               )}
 
@@ -2054,6 +2055,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                       </div>
                     )}
                   </div>
+                  </div>
                 )}
                 {/* ── Production Deployment — go-live doc & approval (customer) ── */}
                 {!isSuperadmin&&req.prodApprovalSentAt&&!req.prodDeployedAt&&(
@@ -2084,6 +2086,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         >✓ Approve Go-Live</button>
                       </div>
                     )}
+                  </div>
                   </div>
                 )}
 
@@ -2125,6 +2128,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                         </button>
                       )
                     })}
+                  </div>
                   </div>
                 ) : null}
 
@@ -2466,6 +2470,7 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
       )}
 
     </div>
+    </>}
     </div>
   )
 }
@@ -2477,8 +2482,6 @@ function Sect({title,titleColor,children}:{title:string;titleColor?:string;child
         {title}<div style={{flex:1,height:1,background:'var(--fog)'}}/>
       </div>
       {children}
-    </>
-    }
     </div>
   )
 }
