@@ -36,9 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable} ${dmMono.variable}`}>
       <body>
-        <BrandingProvider>
-          <SessionProvider>{children}</SessionProvider>
-        </BrandingProvider>
+        <SessionProvider>
+          <BrandingProvider>{children}</BrandingProvider>
+        </SessionProvider>
       </body>
     </html>
   )
