@@ -1,5 +1,54 @@
 import type { Requirement } from "./RequirementsBuilder"
 
+export type CollapseMap = {[key:string]:boolean}
+
+export const CARD_OPEN_FOR: {[k:string]:string[]} = {
+  desc:    ['draft','needs_clarification','quote_rejected'],
+  spec:    ['draft','submitted','needs_clarification','quote_rejected','in_review'],
+  feasib:  ['submitted','needs_clarification','in_review'],
+  quote:   ['quoted','deposit_required','complete_pending_payment','fully_paid'],
+  uat:     ['in_uat','uat_confirmed','uat_rejected'],
+  proddep: ['uat_confirmed','complete_pending_payment','fully_paid'],
+  addenda: [],
+}
+
+export function isCardCollapsedFn(id: string, reqs: {id:string;status:string}[], map: CollapseMap): boolean {
+  if (id in map) return map[id]
+  const dash   = id.lastIndexOf('-')
+  const prefix = id.slice(0, dash)
+  const reqId  = id.slice(dash + 1)
+  const req    = reqs.find((r) => r.id === reqId)
+  const st     = req ? req.status : 'draft'
+  return !(CARD_OPEN_FOR[prefix] ?? []).includes(st)
+}
+
+export const BANNER_CONFIG = {
+  review: {
+    icon: '🔍',
+    title: 'Review request received — thank you!',
+    body: "Our senior developer will review your requirements and get back to you with a quote. The $249 review fee will be credited against your development deposit.",
+    color: '#0A5C46',
+    bg: 'rgba(10,92,70,0.06)',
+    border: 'rgba(10,92,70,0.2)',
+  },
+  deposit: {
+    icon: '✅',
+    title: 'Deposit confirmed — development is underway!',
+    body: "Your deposit has been received and your project is now in the development queue. We'll keep you updated as work progresses.",
+    color: '#0F6E56',
+    bg: 'rgba(26,146,114,0.07)',
+    border: 'rgba(26,146,114,0.25)',
+  },
+  balance: {
+    icon: '🎉',
+    title: 'Final payment received — project complete!',
+    body: "Thank you for your payment. Your customisation is fully paid and complete. Download your balance invoice from the requirement below.",
+    color: '#0A5C46',
+    bg: 'rgba(10,92,70,0.06)',
+    border: 'rgba(10,92,70,0.2)',
+  },
+}
+
 export interface BizConfig {
   companyName:string;gstNumber:string|null;email:string;phone:string|null
   website:string;address:string|null;bankName:string|null;bankAccount:string|null

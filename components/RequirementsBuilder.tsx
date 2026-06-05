@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { generateInvoicePDF, generateReviewInvoicePDF } from './invoicePDF'
+import { generateInvoicePDF, generateReviewInvoicePDF, CollapseMap, CARD_OPEN_FOR, isCardCollapsedFn, BANNER_CONFIG } from './invoicePDF'
 
 // ── Stripe surcharge helpers (mirrors lib/stripe-fees.ts for client-side preview) ──
 const STRIPE_DOMESTIC_PCT   = 0.0265
@@ -125,55 +125,6 @@ function getGenCount(req:Requirement):number { try { return req.aiSpec?JSON.pars
 const MAX_GENS = 4
 
 // Parse customerAnswers — could be JSON [{q,a}] or plain text
-type CollapseMap = {[key:string]:boolean}
-
-const CARD_OPEN_FOR: {[k:string]:string[]} = {
-  desc:    ['draft','needs_clarification','quote_rejected'],
-  spec:    ['draft','submitted','needs_clarification','quote_rejected','in_review'],
-  feasib:  ['submitted','needs_clarification','in_review'],
-  quote:   ['quoted','deposit_required','complete_pending_payment','fully_paid'],
-  uat:     ['in_uat','uat_confirmed','uat_rejected'],
-  proddep: ['uat_confirmed','complete_pending_payment','fully_paid'],
-  addenda: [],
-}
-
-function isCardCollapsedFn(id: string, reqs: Requirement[], map: CollapseMap): boolean {
-  if (id in map) return map[id]
-  const dash   = id.lastIndexOf('-')
-  const prefix = id.slice(0, dash)
-  const reqId  = id.slice(dash + 1)
-  const req    = reqs.find((r) => r.id === reqId)
-  const st     = req ? req.status : 'draft'
-  return !(CARD_OPEN_FOR[prefix] ?? []).includes(st)
-}
-
-const BANNER_CONFIG = {
-  review: {
-    icon: '🔍',
-    title: 'Review request received — thank you!',
-    body: "Our senior developer will review your requirements and get back to you with a quote. The $249 review fee will be credited against your development deposit.",
-    color: '#0A5C46',
-    bg: 'rgba(10,92,70,0.06)',
-    border: 'rgba(10,92,70,0.2)',
-  },
-  deposit: {
-    icon: '✅',
-    title: 'Deposit confirmed — development is underway!',
-    body: "Your deposit has been received and your project is now in the development queue. We'll keep you updated as work progresses.",
-    color: '#0F6E56',
-    bg: 'rgba(26,146,114,0.07)',
-    border: 'rgba(26,146,114,0.25)',
-  },
-  balance: {
-    icon: '🎉',
-    title: 'Final payment received — project complete!',
-    body: "Thank you for your payment. Your customisation is fully paid and complete. Download your balance invoice from the requirement below.",
-    color: '#0A5C46',
-    bg: 'rgba(10,92,70,0.06)',
-    border: 'rgba(10,92,70,0.2)',
-  },
-}
-
 function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
     <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }} title={collapsed ? 'Expand' : 'Collapse'}>
