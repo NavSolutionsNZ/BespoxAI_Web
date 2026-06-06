@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useSession } from 'next-auth/react'
+import { canPartnerUseWhiteLabel } from '@/lib/partner-plans'import { useSession } from 'next-auth/react'
 
 type PartnerAccount = {
   id: string
@@ -120,6 +120,7 @@ export default function PartnerSettings() {
   const [pwMsg, setPwMsg] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
 
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
   useEffect(() => {
     Promise.all([
       fetch('/api/partner/account').then(r => r.ok ? r.json() : null),
@@ -173,6 +174,40 @@ export default function PartnerSettings() {
     const body: Record<string, unknown> = {}
     fd.forEach((v, k) => { body[k] = v })
     saveSection(section, body)
+  }
+
+  async function handleWhiteLabelToggle(enabled: boolean) {
+    if (!enabled || canPartnerUseWhiteLabel(account?.subscriptionTier)) {
+      // Can toggle freely or disabling white-label
+      return
+    }
+    // Trying to enable white-label but not on branded plan -> trigger checkout
+    setCheckoutLoading(true)
+    try {
+      const priceId = process.env.NEXT_PUBLIC_STRIPE_PARTNER_PRICE_BRANDED_MONTHLY
+      if (!priceId) {
+        console.error('Partner branded price ID not configured')
+        return
+      }
+      const res = await fetch('/api/partner/billing/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else if (data.updated || data.alreadyOnPlan) {
+        // Already has subscription or updated successfully
+        // Proceed with local state update
+      } else {
+        console.error('Checkout creation failed:', data)
+      }
+    } catch (err) {
+      console.error('Checkout error:', err)
+    } finally {
+      setCheckoutLoading(false)
+    }
   }
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -301,17 +336,16 @@ export default function PartnerSettings() {
             const fd = new FormData(e.currentTarget)
             const body: Record<string, unknown> = {}
             fd.forEach((v, k) => { body[k] = v })
-            body.isWhiteLabel = fd.get('isWhiteLabel') === 'true'
+            const enableWhiteLabel = fd.get('isWhiteLabel') === 'true'
+            body.isWhiteLabel = enableWhiteLabel
+            // If enabling white-label but not on branded plan, trigger checkout instead
+            if (enableWhiteLabel && !account.isWhiteLabel && !canPartnerUseWhiteLabel(account?.subscriptionTier)) {
+              handleWhiteLabelToggle(true)
+              return
+            }
             saveSection('branding', body)
           }}>
-            <div style={{ ...grid(2), marginBottom: 16 }}>
-              <Input label="Brand name" name="brandName" defaultValue={account.brandName} placeholder="Acme ERP Solutions" hint="Shown to clients in place of BespoxAI." />
-              <Input label="Agent brand name" name="agentBrandName" defaultValue={account.agentBrandName} placeholder="AcmeAgent" hint="Replaces 'BespoxAI' in agent paths and service names." />
-            </div>
-            <div style={{ ...grid(2), marginBottom: 16 }}>
-              <Input label="Logo URL" name="logoUrl" defaultValue={account.logoUrl} placeholder="https://cdn.example.com/logo.png" />
-
-            </div>
+            {/* White-label enable/disable toggle at top */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: isAdmin ? 'pointer' : 'default' }}>
                 <input
@@ -319,18 +353,46 @@ export default function PartnerSettings() {
                   name="isWhiteLabel"
                   defaultChecked={account.isWhiteLabel}
                   value="true"
-                  style={{ width: 14, height: 14, accentColor: '#0A5C46' }}
+                  disabled={checkoutLoading}
+                  style={{ width: 14, height: 14, accentColor: '#0A5C46', cursor: checkoutLoading ? 'not-allowed' : 'pointer' }}
                 />
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9' }}>
                   Enable white-label mode
                 </span>
               </label>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B7B70', marginTop: 4, marginLeft: 24 }}>
-                When enabled, client-facing emails and portal elements use your brand name instead of BespoxAI.
+                {canPartnerUseWhiteLabel(account?.subscriptionTier)
+                  ? 'When enabled, client-facing emails and portal elements use your brand name instead of BespoxAI.'
+                  : 'Upgrade to unlock white-label branding and custom email sender'}
               </div>
             </div>
+
+            {/* Branding fields — disabled unless white-label is enabled */}
+            <fieldset disabled={!account.isWhiteLabel} style={{ border: 'none', padding: 0, margin: 0, opacity: account.isWhiteLabel ? 1 : 0.5 }}>
+              <div style={{ ...grid(2), marginBottom: 16 }}>
+                <Input label="Brand name" name="brandName" defaultValue={account.brandName} placeholder="Acme ERP Solutions" hint="Shown to clients in place of BespoxAI." />
+                <Input label="Agent brand name" name="agentBrandName" defaultValue={account.agentBrandName} placeholder="AcmeAgent" hint="Replaces 'BespoxAI' in agent paths and service names." />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <Input label="Logo URL" name="logoUrl" defaultValue={account.logoUrl} placeholder="https://cdn.example.com/logo.png" />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <Input
+                  label="From email address"
+                  name="fromEmail"
+                  defaultValue={account.fromEmail}
+                  placeholder="support@yourcompany.com"
+                  type="email"
+                  hint="Client-facing emails will show this as the sender."
+                />
+              </div>
+              <div style={{ background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, fontFamily: 'var(--font-body)', fontSize: 12, color: '#C8952A' }}>
+                Note: emails are currently sent via BespoxAI SMTP infrastructure. For the From address to display correctly and avoid spam filters, your domain will need SPF/DKIM records pointing to our sending servers. Contact BespoxAI support to configure this.
+              </div>
+            </fieldset>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <SaveButton saving={savingSection === 'branding'} />
+              <SaveButton saving={savingSection === 'branding'} label={checkoutLoading ? 'Redirecting...' : 'Save changes'} />
               {sectionMsg.branding ? <span style={msgStyle(sectionMsg.branding)}>{sectionMsg.branding}</span> : null}
             </div>
           </form>
@@ -339,38 +401,12 @@ export default function PartnerSettings() {
             <Field label="Brand name" value={account.brandName} />
             <Field label="Agent brand name" value={account.agentBrandName} />
             <Field label="Logo URL" value={account.logoUrl} />
+            <Field label="From email" value={account.fromEmail} />
             <Field label="White-label mode" value={account.isWhiteLabel ? 'Enabled' : 'Disabled'} />
           </div>
         )}
       </Card>
 
-      {/* ── White-label Email ── */}
-      <Card>
-        <SectionHeader title="White-label Email" description="Send client notifications from your own email address instead of BespoxAI." />
-        {isAdmin ? (
-          <form onSubmit={e => handleSection('email', e)}>
-            <div style={{ marginBottom: 20 }}>
-              <Input
-                label="From email address"
-                name="fromEmail"
-                defaultValue={account.fromEmail}
-                placeholder="support@yourcompany.com"
-                type="email"
-                hint="Client-facing emails will show this as the sender. Requires white-label mode to be enabled."
-              />
-            </div>
-            <div style={{ background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, fontFamily: 'var(--font-body)', fontSize: 12, color: '#C8952A' }}>
-              Note: emails are currently sent via BespoxAI SMTP infrastructure. For the From address to display correctly and avoid spam filters, your domain will need SPF/DKIM records pointing to our sending servers. Contact BespoxAI support to configure this.
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <SaveButton saving={savingSection === 'email'} />
-              {sectionMsg.email ? <span style={msgStyle(sectionMsg.email)}>{sectionMsg.email}</span> : null}
-            </div>
-          </form>
-        ) : (
-          <Field label="From email address" value={account.fromEmail} />
-        )}
-      </Card>
 
       {/* ── GitHub ── */}
       <Card>

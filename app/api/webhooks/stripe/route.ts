@@ -93,6 +93,31 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
 
   if (!priceId) return
 
+  // ── Check if this is a partner subscription ──
+  const partner = await (prisma as any).partnerAccount.findUnique({
+    where: { stripeCustomerId: customerId },
+  })
+
+  if (partner) {
+    // Handle partner subscription
+    const { getPartnerPlanByPriceId } = await import('@/lib/partner-plans')
+    const plan = getPartnerPlanByPriceId(priceId)
+    const tier = plan?.id ?? 'unbranded'
+
+    await (prisma as any).partnerAccount.update({
+      where: { id: partner.id },
+      data: {
+        stripeSubscriptionId: sub.id,
+        subscriptionStatus: status,
+        subscriptionTier: status === 'active' || status === 'trialing' ? tier : 'unbranded',
+        // Auto-enable white-label if on branded plan and subscription is active
+        isWhiteLabel: status === 'active' && tier === 'branded' ? true : partner.isWhiteLabel,
+      },
+    })
+    return
+  }
+
+  // ── Otherwise handle as tenant subscription ──
   const plan = getPlanByPriceId(priceId)
   const tier = plan?.id ?? 'free'
 
@@ -110,6 +135,27 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
 async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   const customerId = sub.customer as string
   const details = (sub as any).cancellation_details ?? {}
+
+  // ── Check if this is a partner subscription ──
+  const partner = await (prisma as any).partnerAccount.findUnique({
+    where: { stripeCustomerId: customerId },
+  })
+
+  if (partner) {
+    // Handle partner subscription cancellation
+    await (prisma as any).partnerAccount.update({
+      where: { id: partner.id },
+      data: {
+        stripeSubscriptionId: null,
+        subscriptionStatus: 'cancelled',
+        subscriptionTier: 'unbranded',
+        isWhiteLabel: false, // Disable white-label on cancellation
+      },
+    })
+    return
+  }
+
+  // ── Otherwise handle as tenant subscription ──
   await (prisma as any).tenant.updateMany({
     where: { stripeCustomerId: customerId },
     data: {

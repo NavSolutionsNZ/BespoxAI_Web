@@ -353,6 +353,11 @@ model PartnerAccount {
   billingEmail         String
   stripeCustomerId     String?
 
+  // Stripe subscription (for white-label + other premium features)
+  stripeSubscriptionId String?       // Stripe subscription ID for partner plan
+  subscriptionStatus   String?       // active | trialing | past_due | canceled | incomplete
+  subscriptionTier     String?       // unbranded | branded (matches PartnerPlanId)
+
   // Fees (all in smallest currency unit, e.g. cents/pence)
   monthlyAccessFee     Int           @default(0)
   perDeveloperFee      Int           @default(0)
