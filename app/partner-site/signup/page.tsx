@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import AgreementScroll from '@/components/AgreementScroll'
 
 const inp: React.CSSProperties = {
   width: '100%',
@@ -55,6 +56,7 @@ export default function PartnerSignupPage() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [showAgreement, setShowAgreement] = useState(false)
 
   function set(key: string, value: string) {
     setForm(f => ({ ...f, [key]: value }))
@@ -74,7 +76,14 @@ export default function PartnerSignupPage() {
       return
     }
 
+    // Show agreement modal instead of submitting immediately
+    setShowAgreement(true)
+  }
+
+  async function handleAcceptAgreement() {
     setSubmitting(true)
+    setError('')
+    
     const res = await fetch('/api/partner-signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,10 +97,16 @@ export default function PartnerSignupPage() {
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
       setError(d.error ?? 'Something went wrong. Please try again.')
+      setShowAgreement(false)
       return
     }
 
+    setShowAgreement(false)
     setDone(true)
+  }
+
+  function handleDeclineAgreement() {
+    setShowAgreement(false)
   }
 
   if (done) {
@@ -113,6 +128,15 @@ export default function PartnerSignupPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#040E09', color: '#F4EFE4', fontFamily: 'var(--font-body)' }}>
+
+      {/* Agreement modal */}
+      {showAgreement && (
+        <AgreementScroll
+          onAccept={handleAcceptAgreement}
+          onDecline={handleDeclineAgreement}
+          isSubmitting={submitting}
+        />
+      )}
 
       {/* Nav */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 48px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
