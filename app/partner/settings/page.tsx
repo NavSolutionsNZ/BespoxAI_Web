@@ -20,6 +20,9 @@ type PartnerAccount = {
   fromEmail: string | null
   githubOrg: string | null
   githubToken: string | null
+  stripeSubscriptionId: string | null
+  subscriptionStatus: string | null
+  subscriptionTier: string | null
 }
 type UserProfile = {
   firstName: string | null
