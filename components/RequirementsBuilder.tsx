@@ -334,6 +334,9 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [assignModalReqId, setAssignModalReqId] = useState<string|null>(null)
   const [markinUnable, setMarkinUnable] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<any[]>([])
+  const [selectedDevId, setSelectedDevId] = useState<string|null>(null)
+  const [assignLoading, setAssignLoading] = useState(false)
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
   const [showPayModal, setShowPayModal]       = useState(false)
@@ -377,6 +380,19 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
         .catch(() => {})
     }
   }, [isSuperadmin])
+
+  useEffect(() => {
+    if (showAssignModal && tenantId) {
+      setTeamMembers([])
+      setSelectedDevId(null)
+      fetch(`/api/settings/users`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.users) setTeamMembers(d.users)
+        })
+        .catch(() => {})
+    }
+  }, [showAssignModal, tenantId])
 
   useEffect(() => {
     if (isSuperadmin && selected?.status === 'fully_paid') {
@@ -598,6 +614,31 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
       alert(e.message)
     } finally {
       setMarkinUnable(false)
+    }
+  }
+
+  async function confirmAssign() {
+    if (!selectedDevId || !assignModalReqId) return
+    setAssignLoading(true)
+    try {
+      const res = await fetch(`/api/requirements/${assignModalReqId}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedDeveloperId: selectedDevId }),
+      })
+      const d = await res.json()
+      if (res.ok) {
+        setShowAssignModal(false)
+        setAssignModalReqId(null)
+        setSelectedDevId(null)
+        load()
+      } else {
+        alert(d.error || 'Failed to assign')
+      }
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setAssignLoading(false)
     }
   }
 
@@ -2518,6 +2559,39 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
               <button onClick={()=>{ generateReviewInvoicePDF(reviewPoReq,reviewPo); setReviewPoReq(null) }} style={{...pBTN,background:'var(--forest)'}}>
                 ↓ Download Invoice
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assignment modal */}
+      {showAssignModal && assignModalReqId && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}} onClick={(e)=>{if(e.target===e.currentTarget)setShowAssignModal(false)}}>
+          <div style={{background:'var(--white)',borderRadius:12,width:'90%',maxWidth:500,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+            <div style={{padding:'20px',borderBottom:'0.5px solid var(--fog)'}}>
+              <h2 style={{margin:0,fontSize:20,fontWeight:500,color:'var(--ink)'}}>Reassign to Team Member</h2>
+            </div>
+            <div style={{padding:'20px',maxHeight:400,overflowY:'auto'}}>
+              {teamMembers.length===0?(
+                <p style={{color:'var(--slate)',fontSize:13,textAlign:'center',paddingBottom:10}}>Loading team members…</p>
+              ):(
+                teamMembers.map(dev=>{
+                  const selected = selected?.assignedDeveloperId === dev.id
+                  return (
+                    <label key={dev.id} style={{display:'flex',alignItems:'center',padding:'12px',marginBottom:8,border:'0.5px solid var(--fog)',borderRadius:8,cursor:'pointer',background:selectedDevId===dev.id?'rgba(10,92,70,0.1)':'transparent',borderColor:selectedDevId===dev.id?'#0A5C46':'var(--fog)',transition:'all 0.2s'}}>
+                      <input type="radio" name="dev" value={dev.id} checked={selectedDevId===dev.id} onChange={()=>setSelectedDevId(dev.id)} style={{marginRight:12,cursor:'pointer'}}/>
+                      <div>
+                        <div style={{fontWeight:500,color:'var(--ink)',fontSize:14}}>{dev.preferredName??dev.firstName??dev.email}</div>
+                        <div style={{fontSize:12,color:'var(--slate)',marginTop:2}}>{dev.email}</div>
+                      </div>
+                    </label>
+                  )
+                })
+              )}
+            </div>
+            <div style={{padding:'16px 20px',borderTop:'0.5px solid var(--fog)',display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={()=>{setShowAssignModal(false);setSelectedDevId(null)}} style={sBTN}>Cancel</button>
+              <button onClick={confirmAssign} disabled={!selectedDevId||assignLoading} style={{...pBTN,background:'var(--forest)',opacity:!selectedDevId||assignLoading?0.5:1}}>{assignLoading?'Assigning…':'Assign'}</button>
             </div>
           </div>
         </div>
