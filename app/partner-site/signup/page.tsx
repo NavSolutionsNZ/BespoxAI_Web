@@ -231,9 +231,7 @@ export default function PartnerSignupPage() {
           {submitting ? 'Submitting...' : 'Submit application'}
         </button>
 
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(244,239,228,0.3)', textAlign: 'center' as const, marginTop: 16, lineHeight: 1.6 }}>
-          By submitting you agree to the BespoxAI Partner terms. Revenue share is 60% to you, 40% to BespoxAI — configurable by agreement.
-        </p>
+
       </div>
     </div>
   )
