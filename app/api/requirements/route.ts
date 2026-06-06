@@ -101,17 +101,19 @@ export async function POST(req: NextRequest) {
 
   const requirement = await prisma.requirement.create({
     data: {
-      tenantId:    user.tenantId,
-      userId:      user.id,
-      title:       title.trim(),
-      description: description.trim(),
+      tenantId:           user.tenantId,
+      userId:             user.id,
+      assignedDeveloperId: user.id, // auto-assign to creating user
+      title:              title.trim(),
+      description:        description.trim(),
       bcArea,
       priority,
-      status:      'draft',
+      status:             'draft',
     },
     include: {
-      user:   { select: { name: true, email: true } },
-      tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+      user:             { select: { name: true, email: true, firstName: true, preferredName: true } },
+      tenant:           { select: { name: true, country: true, paymentTermsKey: true } },
+      assignedDeveloper: { select: { id: true, firstName: true, preferredName: true, email: true } },
     },
   })
 

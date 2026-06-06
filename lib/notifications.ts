@@ -633,3 +633,76 @@ export async function notifySendPartnerAgreement(params: {
     console.error('[notifySendPartnerAgreement]', e)
   }
 }
+
+// ── Requirement assignment notifications ───────────────────────────────────────
+
+export async function notifyRequirementAssigned(params: {
+  to:           string
+  devName:      string | null
+  requirementTitle: string
+  tenantName:   string
+  requirementId: string
+  fromEmail?:   string | null
+}) {
+  const { to, devName, requirementTitle, tenantName, requirementId, fromEmail } = params
+  const greeting = devName ? 'Hi ' + devName + ',' : 'Hi,'
+  try {
+    await sendEmail({
+      to,
+      from: fromEmail ? fromEmail + ' <' + fromEmail + '>' : undefined,
+      subject: 'New requirement assigned to you: ' + requirementTitle,
+      html: wrap(`
+        <p>${greeting}</p>
+        <p>A new requirement has been assigned to you by the administrator.</p>
+
+        <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0">
+          <p style="margin:0 0 12px"><strong>Requirement:</strong> ${requirementTitle}</p>
+          <p style="margin:0"><strong>Customer:</strong> ${tenantName}</p>
+        </div>
+
+        ${cta('View in Portal', PORTAL + '/dashboard?view=customisations')}
+
+        <p style="font-size:12px;color:#8a9a8e;margin-top:24px">
+          If you're unable to complete this requirement, you can mark it as unable to complete in the portal and the administrator will be notified.
+        </p>
+      `),
+    })
+  } catch (e) {
+    console.error('[notifyRequirementAssigned]', e)
+  }
+}
+
+export async function notifyAdminRequirementUnableToComplete(params: {
+  to:           string
+  devName:      string | null
+  requirementTitle: string
+  tenantName:   string
+  requirementId: string
+}) {
+  const { to, devName, requirementTitle, tenantName, requirementId } = params
+  const greeting = 'Hi,'
+  try {
+    await sendEmail({
+      to,
+      subject: 'Developer marked requirement as unable: ' + requirementTitle,
+      html: wrap(`
+        <p>${greeting}</p>
+        <p>${devName || 'A developer'} has marked a requirement as unable to complete and requires your attention.</p>
+
+        <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0">
+          <p style="margin:0 0 12px"><strong>Requirement:</strong> ${requirementTitle}</p>
+          <p style="margin:0 0 12px"><strong>Developer:</strong> ${devName || 'Unknown'}</p>
+          <p style="margin:0"><strong>Customer:</strong> ${tenantName}</p>
+        </div>
+
+        <p style="font-size:13px;color:#2a3a2e;line-height:1.6">
+          You can reassign this requirement to another team member or take it back yourself.
+        </p>
+
+        ${cta('Review in Admin Panel', PORTAL + '/admin')}
+      `),
+    })
+  } catch (e) {
+    console.error('[notifyAdminRequirementUnableToComplete]', e)
+  }
+}

@@ -188,8 +188,10 @@ model Requirement {
   testDeploySnapshotId  String?           // BCAgent snapshotId deployed to test
   testDeployedAt        DateTime?         // when deployed to test env
   githubBranch          String?           // GitHub branch for this requirement e.g. req/abc123-shopify
-  assignedDeveloperId   String?           // nullable — developer assigned to this req (null = visible to all devs)
-  assignedDeveloper     User?             @relation("RequirementDeveloper", fields: [assignedDeveloperId], references: [id], onDelete: SetNull)
+  assignedDeveloperId   String            // developer assigned to this req (defaults to creating user on creation)
+  assignedDeveloper     User              @relation("RequirementDeveloper", fields: [assignedDeveloperId], references: [id], onDelete: Restrict)
+  assignedAt            DateTime          @default(now())  // when assignment was made
+  unableToCompleteAt    DateTime?         // when dev marked this as unable to complete
   uatApprovedAt         DateTime?         // customer signed off UAT
   uatApprovedById       String?           // userId who approved
   uatRejectedAt         DateTime?         // customer rejected UAT
