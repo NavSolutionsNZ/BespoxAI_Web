@@ -1,11 +1,11 @@
 # BespoxAI Web Portal — Project Summary
 
-**Project Owner:** Rich Lancaster  
-**Current Status:** Full Next.js application deployed to Vercel. Live at bespoxai.com.  
-**Repository:** NavSolutionsNZ/BespoxAI_Web  
-**Hosting:** Vercel (auto-deploys on push to main)  
-**Created:** April 2026  
-**Last Updated:** June 5, 2026 (Session 9)
+**Project Owner:** Rich Lancaster (richard.lancaster — Windows/MINGW64 environment)
+**Current Status:** Full Next.js application deployed to Vercel. Live at bespoxai.com.
+**Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
+**Hosting:** Vercel (auto-deploys on push to main)
+**Created:** April 2026
+**Last Updated:** June 6, 2026 (Session 17)
 
 ---
 
@@ -17,7 +17,7 @@
 - Prisma ORM + PostgreSQL (Vercel Postgres)
 - Stripe billing
 - Cloudflare tunnel for BC/NAV connectivity
-- Multiple API routes with caching + pagination
+- Multiple API routes
 - AI provider switchable (OpenAI or Anthropic — use fetch pattern, not SDK)
 - GitHub per-customer repos
 
@@ -25,51 +25,129 @@
 
 ---
 
-## Session 9 Key Changes (June 5, 2026)
+## GitHub Access
 
-### 🔥 Performance Optimization — All Slow Endpoints
+- **Repo:** `NavSolutionsNZ/BespoxAI_Web` (renamed from BespokeAI_Web — old URL still redirects)
+- **Branch:** `main`
+- **Claude uses sparse checkout** — never clones the full repo. Include `"prisma"` and context files in set.
+- **api.github.com is blocked** — but `github.com` git operations work
+- **Push:** `git push origin master:main`
+- **Remote URL:** `https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git`
 
-**Diagnosed & fixed 7 slow API endpoints using `unstable_cache` + pagination:**
-
-| Endpoint | Before | After | Fix |
-|----------|--------|-------|-----|
-| `/api/requirements` | 2250ms | ~200ms* | Added `skip`/`take` pagination (default 20), 60s cache |
-| `/api/billing/review-allowance` | 2230ms | ~200ms* | Added `unstable_cache`, 60s TTL |
-| `/api/partner/request-state` | 2030ms | ~200ms* | Added `unstable_cache`, 60s TTL |
-| `/api/ai-usage` | 1020ms | ~200ms* | Added `unstable_cache`, 60s TTL |
-| `/api/business-config` | 792ms | ~200ms* | Global cache (same for all users), 60s TTL |
-| `/api/health` | 764ms | ~200ms* | Cached tenant lookup only |
-| `/api/branding` | 998ms | ~200ms* | Cached (previous session) |
-
-*Warm cache (repeat requests within 60s). First request may still be 800ms+ due to cold start, but subsequent loads instant.
-
-**Database indexes recommended (apply via Vercel Postgres):**
-```sql
-CREATE INDEX idx_requirement_tenantId ON "Requirement"("tenantId");
-CREATE INDEX idx_requirement_createdAt ON "Requirement"("createdAt" DESC);
-CREATE INDEX idx_requirement_status ON "Requirement"("status");
-CREATE INDEX idx_invoice_tenantId ON "Invoice"("tenantId");
-CREATE INDEX idx_invoice_status ON "Invoice"("status");
-CREATE INDEX idx_tenant_partnerAccountId ON "Tenant"("partnerAccountId");
-CREATE INDEX idx_addendum_requirementId ON "Addendum"("parentId");
+### Sparse Checkout Setup (every session)
+```bash
+cd /home/claude
+git init repo && cd repo
+git remote add origin https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git
+git sparse-checkout init
+git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "BESPOXAI_PROJECT_SUMMARY.md" "BESPOXAI_COMPONENT_ROADMAP.md" "BESPOXAI_FILES_INVENTORY.md"
+git pull origin main
+git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
-
-**Pagination for requirements:**
-- Query params: `?skip=0&take=20` (defaults to first 20)
-- Returns: `{ requirements, pagination: { skip, take, total } }`
-- Enables infinite scroll on frontend
-
-**Commit:** `70de8d4` — "Optimize all slow API endpoints with unstable_cache + pagination"
 
 ---
 
-## GitHub Access
+## Session 17 Key Changes (June 6, 2026)
 
-- **Repo:** `NavSolutionsNZ/BespoxAI_Web` (renamed from BespokeAI_Web)
-- **Branch:** `main`
-- **Claude uses sparse checkout** — never clones full repo
-- **Push:** `git push origin master:main`
-- **Remote URL:** `https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git`
+### Requirement Assignment System — LIVE
+- Schema: `assignedDeveloperId` (non-nullable, defaults to creating user), `assignedAt`, `unableToCompleteAt`
+- **Auto-assignment:** Requirements auto-assign to user who creates them
+- **Admin reassign:** `/api/requirements/[id]/assign` — PATCH to reassign to another developer
+- **Developer mark unable:** `/api/requirements/[id]/mark-unable` — POST to flag requirement as unable to complete
+- **Developer filtered view:** Developers see only their assigned requirements in list
+- **Assignment modal:** Circular selectors with workload indicators (counts active reqs per dev: light/moderate/heavy)
+- **Modal fix:** Proper state management — circles now fill correctly on click, Assign button responsive
+- **Notifications:** `notifyRequirementAssigned()` sent to newly assigned dev, `notifyAdminRequirementUnableToComplete()` sent to tenant admins when dev marks unable
+- **Affects:** Both BespoxAI and partner portals (same functionality)
+- **Tested & confirmed:** Live and working ✅
+
+### Next Priority
+- **AI-Generated Functional Spec** section in admin requirement detail to be independently collapsible
+
+---
+
+## Session 8 Key Changes (May 26, 2026)
+
+### RDP End-to-End Test — Confirmed Working (TestCo1)
+- RDP via Cloudflare tunnel fully tested and working on TestCo1
+- Local machine requires: `cloudflared.exe` from https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+- Connect command: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
+- Then RDP to `localhost:3390` with username `.\BespoxAI-Support` and password from Admin panel copy button
+
+### Bug Fix: SupportAccountPassword Inject (Step 8 was silently skipped)
+- **Root cause:** route.ts `.replace()` searched for `[string] $SupportAccountPassword = '',` (with trailing comma) but PS1 has no trailing comma on last param — replace never matched, password stayed empty, Step 8 skipped with "Skipped — no support account password provided"
+- **Fix:** Removed trailing comma from both sides of the `.replace()` in `app/api/settings/installer/route.ts`
+
+### Bug Fix: agent.config.json version hardcoded as '2.4'
+- **Root cause:** Step 5 of installer had `version = '2.4'` hardcoded — never updated across versions
+- **Fix:** Changed to `version = $AgentVersion` — now always reflects current installer version dynamically
+
+### BCAgent Version Bump → 3.2
+- `$AgentVersion` and `$Version` in `Install-BespoxAI.ps1` → `'3.2'`
+- `AGENT_VERSION` in `app/api/settings/installer/route.ts` → `'3.2'`
+
+### RDP Cleanup Script (for post-testing removal of BespoxAI-Support)
+```powershell
+net user BespoxAI-Support /delete
+net user BespoxAI-Support  # verify gone
+```
+RDP setting and firewall rule can be left — do not disable RDP as it locks out other admin access.
+
+---
+
+## Session 7 Key Changes (May 26, 2026)
+
+### UAT Status Pipeline
+- deploy-test → sets `status: 'in_uat'` on success
+- uat-approve → sets `status: 'uat_confirmed'`
+- uat-reject → sets `status: 'uat_rejected'`
+- STATUS_PIPELINE, STATUS_COLOR, statusLabel updated in RequirementsBuilder + admin
+- UAT panel condition driven by status not testDeployedAt
+- Null-guard on testDeployedAt date display
+
+### RDP Remote Support (v3.1)
+- BCAgent installer Step 8: creates `BespoxAI-Support` local Windows account, adds to Administrators + Remote Desktop Users, enables RDP (port 3389)
+- `$SupportAccountPassword` param baked in at installer download, stored as `rdpPassword` in DB
+- `lib/cloudflare.ts`: `addRdpIngress()` + `createRdpDnsRecord()` — isolated, existing functions untouched
+- `POST /api/admin/provision-rdp`: adds CF ingress + DNS for `{subdomain}-rdp.bespoxai.com`
+- Admin tenants table: `[RDP — Tenant Name]` button + `[⧉]` copy password button
+- Schema: `rdpPassword String?` added to Tenant
+- SQL applied: `ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;`
+
+### Back Button Fixes
+- Settings tabs: `router.push('/settings?tab=x')` instead of `setTab()` — history entries created
+- Settings: `router.replace` to `?tab=overview` on load if no tab param
+- Dashboard settings icon: pushes `/settings?tab=overview` (distinct history entry)
+- Dashboard nav: `router.replace` → `router.push` for tab changes
+
+### Preferred Name — Site-wide
+- `lib/auth.ts`: `firstName` + `preferredName` added to JWT, session, and session refresh
+- Rule: `preferredName ?? firstName` only — no fallback to full name
+- Dashboard greeting + sidebar, Admin sidebar, Settings sidebar all use preferred name
+- `lib/notifications.ts`: `displayName()` helper + `getCustomerEmail` fetches both fields
+- CFO assistant answerer: addresses user by `preferredName ?? firstName`
+- **Users must log out and back in** for token to pick up new fields
+
+### Installer Filename
+- Download button now triggers `Install-BespoxAI-v3.2.zip` (versioned filename)
+- Fixed in `app/settings/page.tsx` — `download` attribute was hardcoded
+
+### White Backgrounds
+- `--white` CSS variable changed from `#FAFAF8` → `#ffffff` — true white site-wide
+
+### Settings Overview — Production/Test Environment Cards
+- Renamed "BC Connection" → "Production Environment Details"
+- Removed "System Configuration" card
+- Added Product + Last CU fields to Production Environment Details (read-only from DB)
+- Removed Agent URL, Status, Member Since from display
+- Both cards use consistent grid layout (label above value, font-body text)
+- Test env shows all fields with `—` for blanks
+- "Leave blank" instruction removed from test env overview (it's read-only)
+
+### Vercel MCP
+- Connected Session 7 — Claude can now pull deployment logs directly via Vercel MCP
+- Team ID: `team_eZ4MqWjZdsPA2iWoK4exjjPF`
+- Project ID: `prj_AT4GXatATIi2FaUCS62Ttp2AivRo`
 
 ---
 
@@ -77,7 +155,20 @@ CREATE INDEX idx_addendum_requirementId ON "Addendum"("parentId");
 
 - **Provider:** PostgreSQL via Vercel Postgres
 - **ORM:** Prisma — no migrations, uses `db push` or raw SQL
-- **Response caching:** All 7 slow endpoints now use `unstable_cache` with 60s TTL
+- **Never run** `prisma migrate`
+- **No local clone needed** — Vercel runs `prisma generate` on deploy from schema.prisma in GitHub
+
+### Known Test IDs
+- **TestCo1 Tenant ID:** `cmpgqbg8l0001tqej9wpqsx6g` (tunnelSubdomain: testco1, agentPort: 9099)
+- **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev — NOT the test tenant)
+- **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
+- **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
+
+### Schema Changes — Session 7
+```sql
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "rdpPassword" TEXT;
+```
+Applied ✅. prisma/schema.prisma updated ✅.
 
 ---
 
@@ -98,6 +189,63 @@ const [val, setVal] = useState('')
 
 ---
 
+## BCAgent v3.2 — Architecture
+
+```
+Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
+  → cloudflared (Windows service, --protocol http2, runs as SYSTEM)
+  → localhost:9099 (BCAgent scheduled task, runs as BC user account)
+  → localhost:8048/{bcInstance} (BC/NAV OData, NTLM via UseDefaultCredentials)
+
+RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
+  → localhost:3389 (Windows RDP)
+  → BespoxAI-Support account (local admin, RDP enabled by installer Step 8)
+```
+
+### RDP Connection (Rich's local machine)
+1. Download cloudflared: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+2. Run: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
+3. RDP to `localhost:3390` — username `.\BespoxAI-Support`, password from Admin panel
+
+### Known NAV v14 OData Limitations
+- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice
+- `$filter` on Posting_Date NOT supported on posted documents
+- `$apply`, `groupby`, `aggregate()` NOT supported
+
+---
+
+## CFO Assistant Query Pipeline
+
+1. **Router** (jsonMode:true) — classify needsData
+2. **Planner** (jsonMode:true) — pick entity + OData params
+3. **OData fetch** — via tunnel → BCAgent → BC
+4. **Answerer** — formats response, addresses user by preferredName ?? firstName
+
+---
+
+## Customer Onboarding Flow
+
+1. Sign up → select BC or NAV version → verify email
+2. Email triggers `notifyAdminsSignupVerified` to superadmins
+3. Superadmin activates from Admin → Signups
+4. Customer receives temp credentials + welcome email with password change warning
+5. Login → onboarding Step 0 (set permanent password) → Step 1-5 (name, product, connection)
+6. Settings → BC Installer → Download (auto-creates tunnel first time, generates rdpPassword on first download only)
+7. Run installer on Windows server as Administrator (port 9099) — no uninstall needed for reinstall
+
+---
+
+## Brand & Messaging
+
+- **Login tagline:** "Business Central & Microsoft NAV Intelligence Portal"
+- **Signup tagline:** "CFO Intelligence for Business Central & Microsoft NAV"
+- **Homepage hero:** "Your Business Central. One portal. Complete control."
+- **Primary brand line:** "Bespoke AI. Built for the ERP Microsoft left behind."
+- **Backgrounds:** White (`#ffffff`) throughout portal — `--white: #ffffff` in globals.css
+- **Placeholder color:** `#8a9a8e` (global CSS)
+
+---
+
 ## Plans & Pricing
 
 | Plan | Price | AI Tokens/month |
@@ -108,15 +256,6 @@ const [val, setVal] = useState('')
 | Manager | $499/mo | 750,000 |
 | Executive | $999/mo | 3,000,000 |
 | Specification Review | $249 one-time | — |
-
----
-
-## Navigation Rules
-
-- **Never** `router.back()` — always explicit `router.push()`
-- Settings deep-links: `?tab=installer`, `?tab=overview`, `?tab=users`, `?tab=entities`
-- Dashboard: `?view=xxx` — uses `router.push` for back button support
-- Unconnected users → default to `customisations` tab
 
 ---
 
@@ -136,61 +275,11 @@ if (cfg.provider === 'anthropic') {
 
 ---
 
-## Session 9 Completion — Database Indexes Applied ✅
+## Navigation Rules
 
-**All 5 indexes successfully applied to Vercel Postgres:**
-
-```sql
-CREATE INDEX idx_requirement_tenantId ON "Requirement"("tenantId");
-CREATE INDEX idx_requirement_createdAt ON "Requirement"("createdAt" DESC);
-CREATE INDEX idx_requirement_status ON "Requirement"("status");
-CREATE INDEX idx_requirement_parentId ON "Requirement"("parentId");
-CREATE INDEX idx_tenant_partnerAccountId ON "Tenant"("partnerAccountId");
-```
-
-**Result:** Significant speed improvement confirmed. Site is now snappier across all API calls.
-
-**Timeline:**
-- Start: 998ms–2250ms per endpoint
-- After caching: ~200ms warm cache, but cold start still slow
-- After indexes: ~200-300ms even on cold start
-- **Overall improvement: 70-85% latency reduction**
-
----
-
----
-
-## Session 9 Bonus: Login Performance Optimization ✅
-
-**3 authentication indexes applied to Vercel Postgres:**
-
-```sql
-CREATE INDEX idx_user_email ON "User"("email");
-CREATE INDEX idx_partnerUser_userId ON "PartnerUser"("userId");
-CREATE INDEX idx_partnerUser_partnerAccountId ON "PartnerUser"("partnerAccountId");
-```
-
-**What these optimize:**
-
-| Query | Purpose | Index |
-|-------|---------|-------|
-| 1 | User credential lookup | `idx_user_email` |
-| 2 | Check if partner user | `idx_partnerUser_userId` |
-| 3 | Fetch partner + subdomain | `idx_partnerUser_userId` + `idx_partnerUser_partnerAccountId` |
-
-**Result:** Login is now faster for both regular tenants and partner-managed users.
-
----
-
-## Session 9 Final Results
-
-**All performance optimizations completed and deployed:**
-
-✅ 7 API endpoints cached + paginated (60-85% faster)  
-✅ 5 database indexes for requirements/billing queries  
-✅ 3 database indexes for authentication  
-✅ Branding provider with Suspense caching  
-
-**Total improvements across platform: ~75-80% latency reduction on average**
-
----
+- **Never** `router.back()` — always explicit `router.push()`
+- Settings deep-links: `?tab=installer`, `?tab=overview`, `?tab=users`, `?tab=entities`
+- Settings always has tab in URL — `router.replace('/settings?tab=overview')` on load if none
+- Dashboard: `?view=xxx` — uses `router.push` (not replace) for back button support
+- Unconnected users → default to `customisations` tab
+- Back button works correctly across: Settings tabs, Dashboard nav, Admin tabs

@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 5, 2026 (Session 16)
+**Last Updated:** June 6, 2026 (Session 17)
 
 ---
 
@@ -8,119 +8,70 @@
 
 ### ✅ Production & Working
 
-**Session 14 — Partner Phase 4 White-label Branding (continued)**
-- [x] primaryColour/secondaryColour removed from branding stack — name and logo only
-- [x] Client portal fully isolated: billing page redirects managedByPartner users, UpgradePrompt replaced with contact-partner screen
-- [x] Settings page: branding fetch + sidebar logo branding-aware
-- [x] Misleading test env placeholders fixed (both settings + partner tenant detail)
-- [x] DB: primaryColour + secondaryColour columns dropped from PartnerAccount
+**Session 17 — Requirement Assignment System**
+- [x] Schema: `assignedDeveloperId` (non-nullable), `assignedAt`, `unableToCompleteAt`
+- [x] Auto-assign to creating user on requirement creation
+- [x] Admin can reassign to other developers via modal picker
+- [x] Developers see only their assigned requirements (filtered list)
+- [x] Developers can mark requirement "unable to complete" → admin notified
+- [x] Assignment modal: circular selectors with workload indicators (light/moderate/heavy)
+- [x] Modal fixes: proper state management, circles fill on click
+- [x] Notifications: notifyRequirementAssigned, notifyAdminRequirementUnableToComplete
+- [x] API routes: `/api/requirements/[id]/assign`, `/api/requirements/[id]/mark-unable`
+- [x] Tested & confirmed live
 
-**Session 14 — Partner Phase 4 White-label Branding**
-- [x] `/api/branding` route — resolves BrandingConfig per user (partner, managed client, or BespoxAI default)
-- [x] Partner layout: fetches branding on mount, applies brandName/logoUrl/primaryColour/secondaryColour when isWhiteLabel
-- [x] Dashboard: fetches branding, applies to sidebar logo, CFO heading, print export title/header/footer
-- [x] CSS variable injection: --forest (primaryColour) and --jade (secondaryColour) overridden at runtime when isWhiteLabel
-- [x] secondaryColour field added to PartnerAccount schema + SQL applied
-- [x] resolveBranding: HEX6 validation on both colour fields, invalid values fall back to BespoxAI defaults
-- [x] Partner settings: secondaryColour input added to Branding section
-- [x] Installer routes (settings + partner): agentBrandName resolved from partnerAccount, injected into PS1 + bat
-- [x] Install-BespoxAI.ps1: $BrandName param added, all terminal output/paths/task/account names use it; X-BespoxAI-Key + id=BespoxAI left as internal protocol strings
+**Session 8 — RDP Bug Fixes (v3.2)**
+- [x] SupportAccountPassword inject fix — trailing comma mismatch in route.ts .replace() caused Step 8 to silently skip
+- [x] agent.config.json version field was hardcoded '2.4' — now uses $AgentVersion dynamically
+- [x] BCAgent bumped to v3.2 (PS1 x2 + installer/route.ts)
+- [x] RDP end-to-end tested and confirmed working on TestCo1
 
-**Session 13 — Partner Phase 2 Session 3**
-- [x] `/partner/team` page — invite, role change, remove (admin edit / developer read-only)
-- [x] `/partner/settings` page — Company Info, Branding, White-label Email, GitHub, Change Password
-- [x] Partner dashboard reverted to clean clients-only (no tabs)
-- [x] Partner layout: Settings + Team nav visible to partner_developer role
-- [x] `PartnerAccount.fromEmail` added to schema + SQL applied
-- [x] `sendEmail` accepts optional `from` override
-- [x] `getPartnerFromEmail(tenantId)` helper in notifications.ts
-- [x] All 7 customer-facing notify functions + notifyUserWelcome accept tenantId for white-label from address
-- [x] `notifyPartnerTeamWelcome` added
-- [x] `resolvePartnerToken()` in lib/github.ts — decrypts AES-256-GCM partner token
-- [x] tokenOverride threaded through all github.ts functions
-- [x] objects, sync-from-github, coding-assistant, commit routes resolve + pass partner token
-- [x] `/api/partner/users` GET/POST + `/api/partner/users/[id]` PATCH/DELETE
-- [x] `/api/partner/account` PATCH expanded to cover all settings fields
-- [x] Settings overview: "To configure, go to BC Installer tab" hidden for partner-managed users
+**Session 7 — UAT Status Pipeline**
+- [x] deploy-test → status: 'in_uat' on success
+- [x] uat-approve → status: 'uat_confirmed'
+- [x] uat-reject → status: 'uat_rejected'
+- [x] STATUS_PIPELINE + STATUS_COLOR + statusLabel updated (RequirementsBuilder + admin)
+- [x] UAT panel driven by status not testDeployedAt
+- [x] Null-guard on testDeployedAt date display
 
-**Session 12 — Partner Phase 2 BCAgent + Client UX**
-- [x] Partner BCAgent routes (installer, sync-config, provision-rdp)
-- [x] BCAgent tab in /partner/tenants/[id]
-- [x] managedByPartner flag in JWT/session
-- [x] BC Installer tab hidden for partner-managed users
-- [x] Request Connection / Request Upgrade flow
+**Session 7 — RDP Remote Support (v3.1)**
+- [x] BCAgent Step 8: BespoxAI-Support account + RDP enable
+- [x] rdpPassword generated on installer download, stored in DB
+- [x] lib/cloudflare.ts: addRdpIngress() + createRdpDnsRecord() (isolated)
+- [x] POST /api/admin/provision-rdp route
+- [x] Admin tenants table: RDP button + copy password button
+- [x] schema.prisma: rdpPassword added
 
-**Session 11 — Partner Phase 2 Core**
-- [x] User.tenantId nullable
-- [x] /partner/tenants/[id] 4-tab view
-- [x] Add Client form at /partner/tenants/new
-- [x] Partner tenant API routes
+**Session 7 — UX Fixes**
+- [x] Back button: Settings tabs + Dashboard nav use router.push (history entries)
+- [x] Settings always has ?tab= in URL
+- [x] Preferred name site-wide: auth JWT, session, sidebars, CFO assistant, notifications
+- [x] Installer download filename includes version (Install-BespoxAI-v3.2.zip)
+- [x] --white CSS variable → true #ffffff
+- [x] Settings overview: Production/Test Environment Details cards (consistent grid layout)
+- [x] Settings overview: removed System Configuration card, Agent URL, Status, Member Since
+- [x] Settings overview: "leave blank" instruction removed from test env (read-only)
+- [x] Vercel MCP connected — Claude can pull deployment logs directly
 
-**Session 10 — Partner Phase 1**
-- [x] PartnerAccount, PartnerUser, PartnerSignupRequest tables
-- [x] lib/crypto.ts, lib/branding.ts, lib/partner-auth.ts
-- [x] Partner portal dark sidebar layout
-- [x] Partner self-serve signup
-- [x] Superadmin Partners tab
-- [x] partners.bespoxai.com domain
+**Session 6 — Deploy Pipeline (MAJOR MILESTONE)**
+- [x] Deploy + Compile to Test — ✅ FULLY WORKING end-to-end on GWM Dev
+- [x] BCAgent auto-stop on reinstall — ✅ confirmed seamless (Session 7)
+- [x] Sync Config to Agent endpoint
+- [x] navManagementPort + testNavManagementPort config fields
+- [x] Installer overhaul (tenant DB values direct, version in filename, auto-stop)
 
-**Session 9 — Manual Deploy + Pipeline Dates**
-- [x] Manual deploy routes (test + prod)
-- [x] Pipeline date fields on all status transitions
-- [x] notifyCustomerReadyForUAT
-- [x] Collapsible cards in admin (AI Spec, Q&A, Description)
-- [x] GST: "plus GST" site-wide
+**Session 5 — Security & Onboarding**
+- [x] mustChangePassword + onboarding Step 0
+- [x] Mobile responsiveness across all pages
+- [x] notifyUserWelcome auto-sent on provision + invite
 
-**Session 8 — BCAgent v3.2 + RDP**
-- [x] SupportAccountPassword inject fix
-- [x] agent.config.json version dynamic
-- [x] BCAgent v3.2
-- [x] RDP end-to-end confirmed working on TestCo1
+**C/AL Export Pipeline (Session 4)**
+- [x] finsql.exe direct export, grouped by type, ANSI fix, ZUP isolation
 
-**Session 7 — UAT Pipeline + Preferred Name**
-- [x] UAT status pipeline (in_uat, uat_confirmed, uat_rejected)
-- [x] RDP remote support (BCAgent Step 8)
-- [x] Preferred name site-wide
-- [x] Settings overview cards
-
-**Session 6 — Deploy Pipeline**
-- [x] Deploy + Compile to Test — ✅ FULLY WORKING
-- [x] Sync Config to Agent
-
----
-
-## Session 15 Key Changes (June 5, 2026)
-
-### Admin Collapsible Panels ✅
-- Dev Plan, Deploy to Test, Deploy to Production, Quote info, Addenda
-- All default collapsed; open panel determined by requirement status via `isAdminCardCollapsed()`
-- `isAdminCardCollapsed` uses `openFor` lookup table keyed by status
-
-### Customer Portal Collapsible Panels — ✅ RESOLVED & LIVE (Session 16)
-- CardToggleBtn standalone component (same pattern as AdminCardToggleBtn)
-- collapsedCards state + toggleCard + isCardCollapsed in RequirementsBuilder
-- selectReq resets collapse state to status-appropriate defaults on selection
-- Sections wrapped: Description, Feasibility, AI Spec, Quote, UAT, Prod Deploy, Addenda
-- **Was NEVER an SWC bug.** The build failure was three real JSX structural errors:
-  1. Four collapse-wrapper `<div>`s (quote/uat/proddep/addenda) opened but never closed
-  2. An unclosed `{!error && <>` fragment (no matching `</>}`) — this is what made the
-     error always point at the main `return (`; an unbalanced fragment desyncs SWC's stack
-  3. A corrupted `Sect` component close (`</> }` + stray `</div>`)
-- Fixed in commits `7d3b89f` (structural) + `d32f9b1` (template-literal cleanup). Both deployed READY.
-- No component extraction was needed — the file is still ~2500 lines and builds fine.
-
-### SWC Diagnosis — CORRECTED (Session 16 supersedes Session 15)
-The Session-15 hypothesis ("SWC misreads TS generics/`as const`/large files as JSX") was WRONG.
-`Record<K,V>`, `useState<T>({})`, and `as const` are all fine — admin/page.tsx uses them at 4000+ lines.
-- **Real rule:** SWC build failures = real JSX tag/fragment imbalance. Find the unclosed
-  `<div>` or `<>`/`</>` and close it.
-- **Diagnose locally:** `npm i @swc/core`, then `swc.parseSync(code, {syntax:'typescript', tsx:true})`.
-  `tsc --noEmit` does NOT catch JSX tag/fragment imbalance (it doesn't use SWC's parser) — that's
-  why every prior `tsc`-clean attempt still failed at Vercel.
-- SWC reports the wrong *line* (nearest JSX it can't reconcile). Trust tag/fragment balance
-  counts over the reported location. Fix first mismatch → re-parse → repeat until PARSE OK.
-- Style-prop template literals → string concatenation (done for all 11 in RequirementsBuilder).
-  JS-context template literals (fetch URLs, `.map()` joins) are fine — leave them.
+**AI System**
+- [x] AI provider switchable (OpenAI or Anthropic)
+- [x] CFO Assistant — router + planner jsonMode:true
+- [x] Per-tenant token limits + usage tracking
 
 ---
 
@@ -128,108 +79,83 @@ The Session-15 hypothesis ("SWC misreads TS generics/`as const`/large files as J
 
 ### 🔴 HIGH PRIORITY
 
-#### 1. Deploy + Compile to Production — Test When Ready
-**Status:** Code complete. Will be tested when Rich is ready.
+#### 1. AI-Generated Functional Spec — Make Collapsible
+**Status:** Next to work on. The spec panel in admin requirement detail should be independently collapsible like other panels.
+**Affects:** Admin portal requirement detail view — RequirementsBuilder component
 
-#### 2. CFO Assistant — NAV v14 OData Planner Tuning
+#### 2. Deploy + Compile to Production — Test When Ready
+**Status:** Code complete. Same logic as test. Will be tested when Rich is ready.
+
+#### 3. CFO Assistant — NAV v14 OData Planner Tuning
+**Status:** Live data flowing. Planner generates unsupported queries on some entities.
 **Known issues:**
 - `$orderby=Posting_Date desc` returns 400 on GeneralLedgerEntry, SalesInvoice in NAV v14
 - `$filter` on Posting_Date not supported on posted documents
-- Some tiles show `,` (Overdue Debtors, Cash & Bank, Outstanding Payables)
+- Tiles show `,` for Overdue Debtors, Cash & Bank, Outstanding Payables (Month Revenue working)
 **Fix:** Update planner system prompt in `app/api/query/route.ts`
 
-#### 3. Async Job Pattern for Deploy Timeout
-BCAgent returns jobId immediately, portal polls for completion.
+#### 4. Async Job Pattern for Deploy Timeout
+**Status:** Discussed, not implemented. Currently 60s timeout cuts connection before success.
+Option B: BCAgent returns jobId immediately, portal polls for completion.
 Requires BCAgent Start-Job background threading + portal polling endpoint + UI progress.
 
 ### 🟡 MEDIUM PRIORITY
 
-#### 4. Partner Phase 3 — Billing
-- bespoxai_collected: standard Stripe checkout for partner clients
-- partner_collected: revenue share invoicing to partner
+#### 5. Customer Requirement View — UAT Rejection History
 
-#### 5. Partner Phase 4 — White-label Branding ✅ COMPLETE
-- [x] resolveBranding() applied to partner portal + customer dashboard (name + logo only — no colour overrides)
-- [x] agentBrandName wired into installer generation (both settings + partner routes)
-- [ ] Full SMTP per partner (fromEmail stored, BespoxAI SMTP still used — deferred)
+#### 6. Human-Readable Deployment Folder Names
+Currently: `C:\BespoxAI\Deployments\{requirementId}\{timestamp}_deploy\`
+Should be: `C:\BespoxAI\Deployments\{reqSlug}_{shortId}\{timestamp}_deploy\`
 
-#### 6. Collapsible Sections in Admin Requirements View
-- [x] Admin panels done (Dev Plan, Deploy to Test, Deploy to Prod, Quote, Addenda)
-- [x] Customer portal panels — DONE & LIVE (Session 16). Was a JSX tag/fragment imbalance, not an SWC bug.
+#### 7. Installer — Directory creation message
+"Directories created under C:\BespoxAI" → "Directories verified/created under C:\BespoxAI"
 
-#### 7. Customer Requirement View — UAT Rejection History
+#### 8. Onboarding — Enforce name entry
 
-#### 8. Human-Readable Deployment Folder Names
+#### 9. Health Scanner — Real Data
 
-#### 9. Installer — Directory creation message
-"Directories created" → "Directories verified/created"
+#### 10. Dynamic Web Service Creation (CFO Assistant)
+Note: Also prerequisite for auto-fetching Last CU from BC instance (requires custom web service exposed in BC).
 
-#### 10. Health Scanner — Real Data
-
-#### 11. Dynamic Web Service Creation (CFO Assistant prerequisite)
-
-#### 12. Last CU — Auto-fetch from BC
+#### 11. Last CU — Auto-fetch from BC
+Currently manual field. BC doesn't expose CU version via standard OData.
+Requires custom web service in BC (ties into #10). Deferred.
 
 ### 🟢 LOW PRIORITY
 
-#### 13. Save AI Dev Notes to Requirement
-#### 14. Phase 2 — Scheduled Production Deployment
-#### 15. VS Code Extension for Coding Assistant
-#### 16. Bundle cloudflared in installer zip
+#### 12. Save AI Dev Notes to Requirement
+#### 13. Phase 2 — Scheduled Production Deployment (deferred)
+#### 14. VS Code Extension for Coding Assistant
+#### 15. Cash Flow Intelligence (Phase 3)
+#### 16. Month-End Close Assistant (Phase 2)
+#### 17. Bundle cloudflared in installer zip
 
 ---
 
 ## How Claude Should Work on This Project
 
 1. **Get PAT from Rich** at start of session
-2. **Sparse checkout** — never full clone
-3. **Read context files first** — never guess at file structure or API signatures
-4. **Check imports** before every push
-5. **Never import `@anthropic-ai/sdk`** — use provider-agnostic fetch pattern
-6. **Never use `router.back()`** — always explicit `router.push()`
-7. **Full file rewrites** — use `create_file` or bash heredoc, NOT Python str_replace patches, when rewriting an entire page component. Python patches are only for targeted single-occurrence replacements in large files.
-8. **Targeted edits** — always verify target string is unique before replacing; view file immediately before editing
-9. **Push:** `git push origin master:main`
-10. **Vercel auto-deploys** in ~30–60s — check logs via Vercel MCP on errors
-11. **DB changes:** SQL in Vercel → Storage → Postgres → Query, then update prisma/schema.prisma
-12. **Settings inputs:** always use refs + defaultValue — NEVER controlled inputs
-13. **Update context files** at end of session
-14. **BCAgent edits:** edit Install-BespoxAI.ps1 only
-15. **NEVER push without explicit confirmation from Rich**
-16. **DIAGNOSE BEFORE ARCHITECTING:** always check Vercel MCP logs before proposing solutions
-17. **DISCUSS SIGNIFICANT CHANGES** before implementing
-18. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts
+2. **Sparse checkout** — never full clone. Use `--no-cone "app" "components" "lib" "scripts" "prisma" "BESPOXAI_PROJECT_SUMMARY.md" "BESPOXAI_COMPONENT_ROADMAP.md" "BESPOXAI_FILES_INVENTORY.md"`
+3. **Check imports** before every push
+4. **Never import `@anthropic-ai/sdk`** — use provider-agnostic fetch pattern
+5. **Never use `router.back()`** — always explicit `router.push()`
+6. **Write Python fix scripts to `/tmp/fix_xxx.py`** — never heredocs in bash
+7. **Targeted edits** — always verify target string is unique before replacing; view file immediately before editing
+8. **Push:** `git push origin master:main`
+9. **Vercel auto-deploys** in ~30–60s — can check logs via Vercel MCP (team_eZ4MqWjZdsPA2iWoK4exjjPF / prj_AT4GXatATIi2FaUCS62Ttp2AivRo)
+10. **DB changes:** SQL in Vercel → Storage → Postgres → Query, then update prisma/schema.prisma
+11. **Settings inputs:** always use refs + defaultValue — NEVER controlled inputs
+12. **Update context files** at end of session
+13. **BCAgent edits:** installer contains embedded BCAgent code — edit Install-BespoxAI.ps1 only
+14. **BATCH DEPLOY RULE:** Do NOT push changes without explicit confirmation from Rich
+15. **DIAGNOSE BEFORE ARCHITECTING:** Always ask for logs/errors before proposing solutions (use Vercel MCP for build errors)
+16. **DISCUSS SIGNIFICANT CHANGES** before implementing
+17. **BUMP VERSION on every push** — `$AgentVersion`/`$Version` in PS1 + `AGENT_VERSION` in installer/route.ts — THREE values, all must match
 
 ### SWC/JSX Rules (critical)
-- **SWC build failure = real JSX tag/fragment imbalance, NOT a parser bug or file-size issue.** Find the unclosed `<div>` / unbalanced `<>`/`</>` and close it. Diagnose locally with `@swc/core` (`swc.parseSync(code,{syntax:'typescript',tsx:true})`) — `tsc --noEmit` does NOT catch this. SWC reports the wrong line (nearest JSX); trust balance counts, fix first mismatch, re-parse until PARSE OK.
 - Use `cond ? <JSX/> : null` NOT `cond && <JSX/>` in large function returns
-- No template literals `${vars}` in JSX (style props, text, children) — use string concatenation. JS-context literals (fetch URLs, `.map()` joins) are fine.
-- `Record<K,V>`, `useState<T>({})`, `as const` are all SAFE in large component bodies (disproven Session-15 myth) — do not waste time refactoring these to fix a build.
+- No template literals `${vars}` in JSX — use string concatenation
+- No template literals in style — use string concatenation
 - Large components: extract sub-sections as separate named functions OUTSIDE main component
 - `React.useState` fails in standalone functions — use destructured `useState`
 - Never import `@anthropic-ai/sdk` — use provider-agnostic fetch pattern
-
----
-
-## Session 9 Completion — Performance Optimization ✅
-
-**All API endpoints optimized for speed:**
-
-✅ 7 slow endpoints cached + paginated (60-85% faster)
-✅ 8 database indexes for hot query paths
-✅ BrandingProvider context caching with Suspense
-✅ Requirements pagination (skip/take params)
-✅ Authentication indexes for login speed
-
-**Expected impact:**
-- Dashboard loads much faster
-- API responses ~70-80% quicker
-- Login faster for both tenant and partner users
-- Partner portal interactions snappier
-
-**Next steps if further optimization needed:**
-- Monitor Vercel runtime logs for remaining bottlenecks
-- Consider implementing GraphQL for selective field fetching (Phase 2+)
-- Analyze which endpoints users access most frequently for targeted optimization
-
----
