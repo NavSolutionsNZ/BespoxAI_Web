@@ -9,7 +9,12 @@ export async function GET(req: NextRequest) {
 
   const partner = await (prisma as any).partnerAccount.findUnique({
     where: { id: session.partnerAccountId },
-    include: {
+    select: {
+      id: true, name: true, slug: true, contactName: true, phone: true, address: true,
+      gstNumber: true, billingEmail: true, brandName: true, logoUrl: true,
+      agentBrandName: true, isWhiteLabel: true, fromEmail: true, githubOrg: true,
+      githubToken: true, stripeCustomerId: true, stripeSubscriptionId: true,
+      subscriptionStatus: true, subscriptionTier: true, createdAt: true, updatedAt: true,
       _count: { select: { tenants: true, users: true } },
     },
   })
