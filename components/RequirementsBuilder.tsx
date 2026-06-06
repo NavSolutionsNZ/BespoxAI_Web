@@ -2581,19 +2581,22 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                   const workloadLevel = count === 0 ? 'light' : count <= 2 ? 'moderate' : 'heavy'
                   const workloadColor = workloadLevel === 'light' ? '#0F6E56' : workloadLevel === 'moderate' ? '#C8952A' : '#A32D2D'
                   const workloadBg = workloadLevel === 'light' ? 'rgba(26,146,114,0.08)' : workloadLevel === 'moderate' ? 'rgba(200,149,42,0.08)' : 'rgba(163,45,45,0.08)'
+                  const isSelected = selectedDevId === dev.id
                   
                   return (
-                    <label key={dev.id} style={{display:'flex',alignItems:'center',padding:'12px',marginBottom:8,border:'0.5px solid var(--fog)',borderRadius:8,cursor:'pointer',background:selectedDevId===dev.id?'rgba(10,92,70,0.1)':'transparent',borderColor:selectedDevId===dev.id?'#0A5C46':'var(--fog)',transition:'all 0.2s'}}>
-                      <input type="radio" name="dev" value={dev.id} checked={selectedDevId===dev.id} onChange={()=>setSelectedDevId(dev.id)} style={{marginRight:12,cursor:'pointer'}}/>
+                    <div key={dev.id} onClick={()=>setSelectedDevId(dev.id)} style={{display:'flex',alignItems:'center',padding:'12px',marginBottom:8,border:'0.5px solid var(--fog)',borderRadius:8,cursor:'pointer',background:isSelected?'rgba(10,92,70,0.1)':'transparent',borderColor:isSelected?'#0A5C46':'var(--fog)',transition:'all 0.2s'}}>
+                      <div style={{width:20,height:20,borderRadius:'50%',border:'2px solid '+(isSelected?'#0A5C46':'var(--fog)'),background:isSelected?'#0A5C46':'transparent',marginRight:12,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        {isSelected&&<div style={{width:8,height:8,borderRadius:'50%',background:'white'}}/>}
+                      </div>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:500,color:'var(--ink)',fontSize:14}}>{dev.preferredName??dev.firstName??dev.email}</div>
                         <div style={{fontSize:12,color:'var(--slate)',marginTop:2}}>{dev.email}</div>
                       </div>
-                      <div style={{display:'flex',alignItems:'center',gap:8,marginLeft:12}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginLeft:12,flexShrink:0}}>
                         <span style={{fontFamily:'var(--font-mono)',fontSize:11,padding:'4px 10px',borderRadius:6,background:workloadBg,color:workloadColor,fontWeight:600,whiteSpace:'nowrap'}}>{count} {count===1?'req':'reqs'}</span>
                         <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)',textTransform:'uppercase',letterSpacing:'0.05em',whiteSpace:'nowrap'}}>{workloadLevel}</span>
                       </div>
-                    </label>
+                    </div>
                   )
                 })
               )}
