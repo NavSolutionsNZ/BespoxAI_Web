@@ -20,6 +20,14 @@ type PartnerAccount = {
   githubOrg: string | null
   githubToken: string | null
 }
+type UserProfile = {
+  firstName: string | null
+  lastName: string | null
+  preferredName: string | null
+  email: string
+}
+
+
 
 // ── Shared UI helpers ─────────────────────────────────────────────────────────
 
@@ -101,6 +109,7 @@ export default function PartnerSettings() {
   const [loading, setLoading] = useState(true)
 
   // Per-section saving + feedback
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [savingSection, setSavingSection] = useState<string | null>(null)
   const [sectionMsg, setSectionMsg] = useState<Record<string, string>>({})
 
@@ -112,10 +121,13 @@ export default function PartnerSettings() {
   const [pwSaving, setPwSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/partner/account')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setAccount(data) })
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch('/api/partner/account').then(r => r.ok ? r.json() : null),
+      fetch('/api/partner/profile').then(r => r.ok ? r.json() : null),
+    ]).then(([accData, profData]) => {
+      if (accData) setAccount(accData)
+      if (profData?.profile) setProfile(profData.profile)
+    }).finally(() => setLoading(false))
   }, [])
 
   function feedback(section: string, msg: string) {
@@ -136,6 +148,22 @@ export default function PartnerSettings() {
       setAccount(prev => prev ? { ...prev, ...data } : data)
       feedback(section, 'Saved')
     } catch { feedback(section, 'Network error') }
+    finally { setSavingSection(null) }
+  }
+
+  async function saveProfile(body: Record<string, unknown>) {
+    setSavingSection('profile')
+    try {
+      const res = await fetch('/api/partner/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) { feedback('profile', data.error ?? 'Save failed'); return }
+      setProfile(data.profile)
+      feedback('profile', 'Saved')
+    } catch { feedback('profile', 'Network error') }
     finally { setSavingSection(null) }
   }
 
@@ -198,6 +226,35 @@ export default function PartnerSettings() {
           {!isAdmin ? ' \u2014 view only' : ''}
         </p>
       </div>
+
+      {/* ── User Details ── */}
+      <Card>
+        <SectionHeader title="User Details" description="Your personal profile information." />
+        {profile ? (
+          <form onSubmit={e => {
+            e.preventDefault()
+            const fd = new FormData(e.currentTarget)
+            const body: Record<string, unknown> = {}
+            fd.forEach((v, k) => { body[k] = (v as string)?.trim() || null })
+            saveProfile(body)
+          }}>
+            <div style={{ ...grid(2), marginBottom: 16 }}>
+              <Input label="First name" name="firstName" defaultValue={profile.firstName} placeholder="Jane" />
+              <Input label="Last name" name="lastName" defaultValue={profile.lastName} placeholder="Smith" />
+            </div>
+            <div style={{ ...grid(2), marginBottom: 16 }}>
+              <Input label="Preferred name" name="preferredName" defaultValue={profile.preferredName} placeholder="How you'd like to be addressed" />
+              <Field label="Email" value={profile.email} hint="Contact support to change your email address." />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <SaveButton saving={savingSection === 'profile'} />
+              {sectionMsg.profile ? <span style={msgStyle(sectionMsg.profile)}>{sectionMsg.profile}</span> : null}
+            </div>
+          </form>
+        ) : (
+          <div style={{ color: '#8B949E', fontFamily: 'var(--font-body)', fontSize: 13 }}>Could not load profile.</div>
+        )}
+      </Card>
 
       {/* ── Company Information ── */}
       <Card>
