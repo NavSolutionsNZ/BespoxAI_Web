@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { canPartnerUseWhiteLabel } from '@/lib/partner-plans'import { useSession } from 'next-auth/react'
+import { canPartnerUseWhiteLabel } from '@/lib/partner-plans'
+import { useSession } from 'next-auth/react'
 
 type PartnerAccount = {
   id: string
