@@ -1119,6 +1119,7 @@ function DashboardInner() {
         {activeNav === 'customisations' && (
           <RequirementsBuilder
             userRole={user?.role ?? 'user'}
+            userId={user?.id ?? ''}
             tenantId={user?.tenantId ?? ''}
             bcConnected={isConnected}
             erpLabel={erpLabel}

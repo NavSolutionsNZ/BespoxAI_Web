@@ -58,9 +58,14 @@ export interface Requirement {
   prodApprovedById: string | null
   prodDeployedAt: string | null
   prodDeploySnapshotId: string | null
+  // Assignment tracking
+  assignedDeveloperId: string
+  assignedAt: string
+  unableToCompleteAt: string | null
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string; country: string | null; paymentTermsKey: string | null }
+  assignedDeveloper: { id: string; firstName: string | null; preferredName: string | null; email: string }
   parentId: string | null
   addenda: { id: string; title: string; status: string; quote: string | null; createdAt: string; parentId: string }[]
 }
@@ -135,6 +140,7 @@ function parseAnswers(raw:string|null): QAPair[]|string|null {
 
 interface Props {
   userRole:string
+  userId: string
   tenantId:string
   bcConnected?:boolean
   erpLabel?:string
@@ -221,8 +227,9 @@ function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
   return <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1 }} title={collapsed ? 'Expand' : 'Collapse'}>{collapsed ? '▾' : '▴'}</button>
 }
 
-export default function RequirementsBuilder({ userRole, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
+export default function RequirementsBuilder({ userRole, userId, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
+  const isDeveloper = userRole === 'developer'
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -322,6 +329,11 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     }
     return !(openFor[prefix] ?? []).includes(st)
   }
+
+  // Assignment state
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [assignModalReqId, setAssignModalReqId] = useState<string|null>(null)
+  const [markinUnable, setMarkinUnable] = useState(false)
 
   // Accept quote / payment modal — covers deposit (quoted) and balance (complete_pending_payment)
   const [showPayModal, setShowPayModal]       = useState(false)
@@ -571,8 +583,27 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
     else alert('Delete failed')
   }
 
+  async function markUnableToComplete(reqId: string) {
+    setMarkinUnable(true)
+    try {
+      const res = await fetch(`/api/requirements/${reqId}/mark-unable`, { method: 'POST' })
+      const d = await res.json()
+      if (res.ok) {
+        alert('Marked as unable. Admin has been notified.')
+        load()
+      } else {
+        alert(d.error || 'Failed to mark as unable')
+      }
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setMarkinUnable(false)
+    }
+  }
+
   const filtered = reqs.filter(r=>{
     if (r.parentId) return false   // addenda are navigated via parent — not shown in main list
+    if (isDeveloper && r.assignedDeveloperId !== userId) return false  // devs only see their assignments
     if (filterStatus!=='all'&&r.status!==filterStatus) return false
     if (filterArea!=='all'&&r.bcArea!==filterArea) return false
     return true
@@ -1098,6 +1129,8 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                   <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:'1px solid '+sc.border,padding:'2px 7px',borderRadius:6}}>{statusLabel(req.status)}</span>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>{req.bcArea}</span>
                   {isSuperadmin&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--jade)',marginLeft:'auto'}}>{req.tenant.name}</span>}
+                  {(isSuperadmin||userRole==='tenant_admin'||userRole==='partner_admin')&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',marginLeft:isSuperadmin?0:'auto'}}>→ {req.assignedDeveloper?.preferredName??req.assignedDeveloper?.firstName??'Unknown'}</span>}
+                  {req.unableToCompleteAt&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',background:'rgba(163,45,45,0.1)',border:'1px solid rgba(163,45,45,0.3)',padding:'1px 6px',borderRadius:4}}>⚠ dev unable</span>}
                   {req.feasibility==='cfo_assistant'&&!req.aiSpec&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#C8952A',background:'rgba(200,149,42,0.08)',padding:'1px 5px',borderRadius:4}}>💡 no dev needed</span>}
                   {req.feasibility==='infeasible'&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',background:'rgba(163,45,45,0.07)',padding:'1px 5px',borderRadius:4}}>⚠ constrained</span>}
                   {isSuperadmin&&spec&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--jade)'}}>✦ spec</span>}
@@ -1257,6 +1290,27 @@ export default function RequirementsBuilder({ userRole, tenantId, bcConnected=fa
                 </div>
                 <button onClick={()=>clearReq()} style={xBTN}>✕</button>
               </div>
+
+              {/* Assignment section - for admins and developers */}
+              {(isSuperadmin||userRole==='tenant_admin'||userRole==='partner_admin'||isDeveloper)&&(
+                <div style={{background:'rgba(10,92,70,0.04)',border:'1px solid rgba(10,92,70,0.15)',borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                  <div>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--slate)',marginBottom:4,marginTop:0}}>Assigned to</p>
+                    <p style={{fontFamily:'var(--font-body)',fontSize:14,fontWeight:600,color:'var(--forest)',margin:0}}>{req.assignedDeveloper?.preferredName??req.assignedDeveloper?.firstName??req.assignedDeveloper?.email??'Unknown'}</p>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    {(isSuperadmin||userRole==='tenant_admin'||userRole==='partner_admin')&&(
+                      <button onClick={()=>{setShowAssignModal(true); setAssignModalReqId(req.id)}} style={{fontFamily:'var(--font-body)',fontSize:12,fontWeight:600,color:'var(--forest)',background:'rgba(10,92,70,0.1)',border:'1px solid rgba(10,92,70,0.2)',borderRadius:6,padding:'6px 12px',cursor:'pointer',transition:'all 0.2s'}} onMouseEnter={(e)=>{e.currentTarget.style.background='rgba(10,92,70,0.15)'}} onMouseLeave={(e)=>{e.currentTarget.style.background='rgba(10,92,70,0.1)'}}>Reassign</button>
+                    )}
+                    {isDeveloper&&req.assignedDeveloperId===userId&&!req.unableToCompleteAt&&(
+                      <button onClick={()=>markUnableToComplete(req.id)} disabled={markinUnable} style={{fontFamily:'var(--font-body)',fontSize:12,fontWeight:600,color:'#A32D2D',background:'rgba(163,45,45,0.1)',border:'1px solid rgba(163,45,45,0.2)',borderRadius:6,padding:'6px 12px',cursor:markinUnable?'not-allowed':'pointer',opacity:markinUnable?0.6:1,transition:'all 0.2s'}} onMouseEnter={(e)=>{if(!markinUnable)e.currentTarget.style.background='rgba(163,45,45,0.15)'}} onMouseLeave={(e)=>{if(!markinUnable)e.currentTarget.style.background='rgba(163,45,45,0.1)'}}>Unable to Complete</button>
+                    )}
+                    {req.unableToCompleteAt&&(
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'#A32D2D',background:'rgba(163,45,45,0.1)',padding:'6px 12px',borderRadius:6,fontWeight:600}}>⚠ Marked Unable</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Needs clarification banner */}
               {needsClarif&&!isSuperadmin&&req.adminQuestions&&(

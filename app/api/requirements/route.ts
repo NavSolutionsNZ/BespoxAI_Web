@@ -22,8 +22,9 @@ const getCachedRequirements = unstable_cache(
         skip,
         take,
         include: {
-          user:   { select: { name: true, email: true } },
-          tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+          user:              { select: { name: true, email: true } },
+          tenant:            { select: { name: true, country: true, paymentTermsKey: true } },
+          assignedDeveloper: { select: { id: true, firstName: true, preferredName: true, email: true } },
           addenda: {
             orderBy: { createdAt: 'asc' },
             select: { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
