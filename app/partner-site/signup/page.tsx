@@ -210,6 +210,22 @@ export default function PartnerSignupPage() {
           </p>
         ) : null}
 
+        <div style={{ 
+          background: 'rgba(255,255,255,0.04)', 
+          border: '1px solid rgba(255,255,255,0.08)', 
+          borderRadius: 6, 
+          padding: '16px 14px', 
+          marginBottom: 20,
+          fontSize: 13
+        }}>
+          <p style={{ margin: '0 0 12px', color: '#F4EFE4' }}>
+            By submitting this application, you agree to our <Link href="/partners/resources/agreement" style={{ color: '#7CFFB2', textDecoration: 'underline' }} target="_blank">Partner Agreement</Link>.
+          </p>
+          <p style={{ margin: 0, color: 'rgba(244,239,228,0.6)', fontSize: 12 }}>
+            Your use of the BespoxAI Partner Portal constitutes acceptance of the terms and conditions.
+          </p>
+        </div>
+
         <button
           onClick={handleSubmit}
           disabled={submitting}

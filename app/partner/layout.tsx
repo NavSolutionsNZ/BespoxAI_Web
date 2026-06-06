@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/partner/team',      label: 'Team',        icon: '◎' },
   { href: '/partner/billing',   label: 'Billing',     icon: '◇' },
   { href: '/partner/settings',  label: 'Settings',    icon: '⊙' },
+  { href: '/partners/resources/agreement', label: 'Agreement', icon: '📋', external: true },
 ]
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
@@ -112,10 +113,13 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
             // Hide billing from non-admins; settings and team are visible to all
             if (!isAdmin && item.href === '/partner/billing') return null
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
+            const isExternal = (item as any).external
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                target={isExternal ? '_blank' : undefined}
+                rel={isExternal ? 'noopener noreferrer' : undefined}
                 onClick={() => setSidebarOpen(false)}
                 style={{
                   display: 'flex',
@@ -124,30 +128,31 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                   padding: '8px 12px',
                   borderRadius: 6,
                   marginBottom: 2,
-                  background: active ? '#1F2937' : 'transparent',
-                  color: active ? '#F0F6FC' : '#8B949E',
+                  background: active && !isExternal ? '#1F2937' : 'transparent',
+                  color: active && !isExternal ? '#F0F6FC' : '#8B949E',
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,
-                  fontWeight: active ? 600 : 400,
+                  fontWeight: active && !isExternal ? 600 : 400,
                   textDecoration: 'none',
                   transition: 'background 0.15s, color 0.15s',
-                  border: active ? '1px solid #30363D' : '1px solid transparent',
+                  border: active && !isExternal ? '1px solid #30363D' : '1px solid transparent',
                 }}
                 onMouseEnter={e => {
-                  if (!active) {
+                  if (!active || isExternal) {
                     e.currentTarget.style.background = '#1C2128'
                     e.currentTarget.style.color = '#C9D1D9'
                   }
                 }}
                 onMouseLeave={e => {
-                  if (!active) {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = '#8B949E'
+                  if (!active || isExternal) {
+                    e.currentTarget.style.background = active && !isExternal ? '#1F2937' : 'transparent'
+                    e.currentTarget.style.color = active && !isExternal ? '#F0F6FC' : '#8B949E'
                   }
                 }}
               >
                 <span style={{ fontSize: 14, opacity: 0.8 }}>{item.icon}</span>
                 {item.label}
+                {isExternal && <span style={{ fontSize: 11, marginLeft: 'auto', opacity: 0.6 }}>↗</span>}
               </Link>
             )
           })}
