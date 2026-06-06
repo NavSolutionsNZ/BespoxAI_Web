@@ -24,16 +24,15 @@ export default function PartnerAgreementPage() {
       {/* Main content */}
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 20px' }}>
         
-        {/* Download buttons */}
+        {/* Download button */}
         <div style={{ 
           background: '#f9f9f9', 
           border: '1px solid #e0e0e0', 
           borderRadius: 8, 
           padding: 24, 
           marginBottom: 40,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16
+          display: 'flex',
+          justifyContent: 'center'
         }}>
           <a 
             href="/legal/BespoxAI_Partner_Agreement_Signable.pdf" 
@@ -43,14 +42,15 @@ export default function PartnerAgreementPage() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: 16,
+              padding: 24,
               background: '#fff',
               border: '1px solid #d0d0d0',
               borderRadius: 6,
               textDecoration: 'none',
               color: '#1a1a1a',
               transition: 'all 0.2s',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              minWidth: 200
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#f0f0f0'
@@ -61,40 +61,9 @@ export default function PartnerAgreementPage() {
               e.currentTarget.style.borderColor = '#d0d0d0'
             }}
           >
-            <span style={{ fontSize: 24, marginBottom: 8 }}>📄</span>
-            <span style={{ fontWeight: 600, marginBottom: 4 }}>Download PDF</span>
-            <span style={{ fontSize: 12, color: '#999' }}>41 KB</span>
-          </a>
-
-          <a 
-            href="/legal/BespoxAI_Partner_Agreement_Signable.docx" 
-            download 
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 16,
-              background: '#fff',
-              border: '1px solid #d0d0d0',
-              borderRadius: 6,
-              textDecoration: 'none',
-              color: '#1a1a1a',
-              transition: 'all 0.2s',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f0f0f0'
-              e.currentTarget.style.borderColor = '#0066cc'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff'
-              e.currentTarget.style.borderColor = '#d0d0d0'
-            }}
-          >
-            <span style={{ fontSize: 24, marginBottom: 8 }}>📋</span>
-            <span style={{ fontWeight: 600, marginBottom: 4 }}>Download Word</span>
-            <span style={{ fontSize: 12, color: '#999' }}>(.docx, 9.8 KB)</span>
+            <span style={{ fontSize: 32, marginBottom: 12 }}>📄</span>
+            <span style={{ fontWeight: 600, marginBottom: 4, fontSize: 16 }}>Download PDF</span>
+            <span style={{ fontSize: 12, color: '#999' }}>38 KB</span>
           </a>
         </div>
 

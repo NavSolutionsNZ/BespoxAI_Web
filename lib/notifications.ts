@@ -590,3 +590,46 @@ export async function notifyPartnerTeamWelcome(params: {
     console.error('[notifyPartnerTeamWelcome]', e)
   }
 }
+
+// ── Send partner agreement after signup verification ─────────────────────────────
+
+export async function notifySendPartnerAgreement(params: {
+  to:          string
+  contactName: string
+  companyName: string
+}) {
+  const { to, contactName, companyName } = params
+  const greeting = contactName ? 'Hi ' + contactName + ',' : 'Hi,'
+  try {
+    await sendEmail({
+      to,
+      subject: 'Review the BespoxAI Partner Agreement',
+      html: wrap(`
+        <p>${greeting}</p>
+        <p>Thank you for applying to become a BespoxAI Partner. We've received your application for <strong>${companyName}</strong>.</p>
+
+        <p>As the next step, please review our <strong>Partner Agreement</strong> below. Your use of the Partner Portal after our approval constitutes your acceptance of these terms.</p>
+
+        <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0;text-align:center">
+          <p style="margin:0 0 12px;font-size:14px;font-weight:600">Partner Agreement (PDF)</p>
+          <p style="margin:0 0 12px;font-size:12px;color:#666">
+            Please download and review before we activate your account.
+          </p>
+          <a href="${PORTAL}/legal/BespoxAI_Partner_Agreement_Signable.pdf" style="display:inline-block;background:#0A5C46;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+            Download Agreement (PDF)
+          </a>
+        </div>
+
+        <p style="font-size:13px;color:#2a3a2e;line-height:1.6">
+          Our team is currently reviewing your application. Once approved, you'll receive your account credentials and can start inviting team members and managing your clients through the Partner Portal.
+        </p>
+
+        <p style="font-size:12px;color:#8a9a8e;margin-top:24px">
+          Questions about the agreement? <a href="mailto:partners@bespoxai.com" style="color:#0A5C46;text-decoration:none">Contact our partner team.</a>
+        </p>
+      `),
+    })
+  } catch (e) {
+    console.error('[notifySendPartnerAgreement]', e)
+  }
+}
