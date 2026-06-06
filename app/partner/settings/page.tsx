@@ -372,7 +372,7 @@ export default function PartnerSettings() {
             </div>
 
             {/* Branding fields — disabled unless white-label is enabled */}
-            <fieldset disabled={!account.isWhiteLabel} style={{ border: 'none', padding: 0, margin: 0, opacity: account.isWhiteLabel ? 1 : 0.5 }}>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0, opacity: account.isWhiteLabel ? 1 : 0.5, pointerEvents: account.isWhiteLabel ? 'auto' : 'none' }}>
               <div style={{ ...grid(2), marginBottom: 16 }}>
                 <Input label="Brand name" name="brandName" defaultValue={account.brandName} placeholder="Acme ERP Solutions" hint="Shown to clients in place of BespoxAI." />
                 <Input label="Agent brand name" name="agentBrandName" defaultValue={account.agentBrandName} placeholder="AcmeAgent" hint="Replaces 'BespoxAI' in agent paths and service names." />
