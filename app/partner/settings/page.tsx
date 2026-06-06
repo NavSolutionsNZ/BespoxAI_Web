@@ -125,15 +125,28 @@ export default function PartnerSettings() {
   const [pwSaving, setPwSaving] = useState(false)
 
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [enableWhiteLabel, setEnableWhiteLabel] = useState(false)
+  
+  // Load initial data
   useEffect(() => {
     Promise.all([
       fetch('/api/partner/account').then(r => r.ok ? r.json() : null),
       fetch('/api/partner/profile').then(r => r.ok ? r.json() : null),
     ]).then(([accData, profData]) => {
-      if (accData) setAccount(accData)
+      if (accData) {
+        setAccount(accData)
+        setEnableWhiteLabel(accData.isWhiteLabel)
+      }
       if (profData?.profile) setProfile(profData.profile)
     }).finally(() => setLoading(false))
   }, [])
+
+  // Sync local state when account updates after save
+  useEffect(() => {
+    if (account) {
+      setEnableWhiteLabel(account.isWhiteLabel)
+    }
+  }, [account?.isWhiteLabel])
 
   function feedback(section: string, msg: string) {
     setSectionMsg(prev => ({ ...prev, [section]: msg }))
@@ -356,6 +369,7 @@ export default function PartnerSettings() {
                   type="checkbox"
                   name="isWhiteLabel"
                   defaultChecked={account.isWhiteLabel}
+                  onChange={e => setEnableWhiteLabel(e.target.checked)}
                   value="true"
                   disabled={checkoutLoading}
                   style={{ width: 14, height: 14, accentColor: '#0A5C46', cursor: checkoutLoading ? 'not-allowed' : 'pointer' }}
@@ -372,7 +386,7 @@ export default function PartnerSettings() {
             </div>
 
             {/* Branding fields — disabled unless white-label is enabled */}
-            <fieldset style={{ border: 'none', padding: 0, margin: 0, opacity: account.isWhiteLabel ? 1 : 0.5, pointerEvents: account.isWhiteLabel ? 'auto' : 'none' }}>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0, opacity: enableWhiteLabel ? 1 : 0.5, pointerEvents: enableWhiteLabel ? 'auto' : 'none' }}>
               <div style={{ ...grid(2), marginBottom: 16 }}>
                 <Input label="Brand name" name="brandName" defaultValue={account.brandName} placeholder="Acme ERP Solutions" hint="Shown to clients in place of BespoxAI." />
                 <Input label="Agent brand name" name="agentBrandName" defaultValue={account.agentBrandName} placeholder="AcmeAgent" hint="Replaces 'BespoxAI' in agent paths and service names." />
