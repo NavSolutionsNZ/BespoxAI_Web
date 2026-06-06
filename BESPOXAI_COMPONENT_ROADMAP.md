@@ -8,6 +8,15 @@
 
 ### ✅ Production & Working
 
+**Session 18 — AI-Generated Functional Spec Collapsible**
+- [x] Spec panel in RequirementsBuilder now independently collapsible
+- [x] Status-dependent default: open when draft/submitted/needs_clarification/in_review/quote_rejected; closed otherwise
+- [x] Toggle button styled like AdminCardToggleBtn (▴/▾ arrow)
+- [x] Complexity/days/regenerations badges only shown when panel open
+- [x] Refine button only shown when panel open
+- [x] BCAgent bumped to v3.3 (all three version fields)
+- [x] Tested & confirmed live
+
 **Session 17 — Requirement Assignment System**
 - [x] Schema: `assignedDeveloperId` (non-nullable), `assignedAt`, `unableToCompleteAt`
 - [x] Auto-assign to creating user on requirement creation

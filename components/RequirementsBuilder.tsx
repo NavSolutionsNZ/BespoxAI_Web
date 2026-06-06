@@ -265,6 +265,12 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
   // Per-question answer state: { [questionIndex]: answerText }
   const [qaAnswers, setQAAnswers]   = useState<Record<number,string>>({})
   const [showQAPanel, setShowQAP]   = useState(false)
+  // Spec panel collapse state — status-dependent default
+  const [showSpecPanel, setShowSpecPanel] = useState(() => {
+    const st = req.status ?? 'draft'
+    const openFor = ['draft','submitted','needs_clarification','in_review','quote_rejected']
+    return openFor.includes(st)
+  })
   // Refinement panel — customer edits to drive next regeneration
   const [showRefine, setShowRefine]         = useState(false)
   const [refinementText, setRefinementText] = useState('')
@@ -1578,24 +1584,35 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
               {/* AI Spec */}
               {spec?(
                 <div style={{...crd,padding:'18px 20px'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-                    <div>
-                      <label style={lbl}>AI-Generated Functional Spec</label>
-                      <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
-                        <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',padding:'2px 8px',borderRadius:6,background:cxBg(spec.complexity),color:cxCol(spec.complexity),border:'1px solid '+cxBdr(spec.complexity)}}>{spec.complexity}</span>
-                        <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>Est. {spec.estimatedDays} day{spec.estimatedDays!==1?'s':''}</span>
-                        {!isSuperadmin&&(()=>{
-                          const gc=getGenCount(req)
-                          const rem=MAX_GENS-gc
-                          return (
-                            <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:rem===0?'#A32D2D':rem===1?'#C8952A':'var(--slate)',letterSpacing:'0.08em'}}>
-                              {rem===0?'✕ no regenerations left':`↺ ${rem} regeneration${rem!==1?'s':''} left`}
-                            </span>
-                          )
-                        })()}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:showSpecPanel?16:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <button
+                        onClick={()=>setShowSpecPanel(!showSpecPanel)}
+                        style={{background:'none',border:'none',cursor:'pointer',padding:'0 2px',color:'var(--slate)',fontSize:13,lineHeight:1,display:'flex',alignItems:'center'}}
+                        title={showSpecPanel?'Collapse':'Expand'}
+                      >
+                        {showSpecPanel?'▴':'▾'}
+                      </button>
+                      <div>
+                        <label style={lbl}>AI-Generated Functional Spec</label>
+                        {showSpecPanel&&(
+                          <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
+                            <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',padding:'2px 8px',borderRadius:6,background:cxBg(spec.complexity),color:cxCol(spec.complexity),border:'1px solid '+cxBdr(spec.complexity)}}>{spec.complexity}</span>
+                            <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>Est. {spec.estimatedDays} day{spec.estimatedDays!==1?'s':''}</span>
+                            {!isSuperadmin&&(()=>{
+                              const gc=getGenCount(req)
+                              const rem=MAX_GENS-gc
+                              return (
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:rem===0?'#A32D2D':rem===1?'#C8952A':'var(--slate)',letterSpacing:'0.08em'}}>
+                                  {rem===0?'✕ no regenerations left':`↺ ${rem} regeneration${rem!==1?'s':''} left`}
+                                </span>
+                              )
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    {(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
+                    {showSpecPanel&&(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
                       const gc=getGenCount(req)
                       const atLimit=!isSuperadmin&&gc>=MAX_GENS
                       return atLimit ? (
@@ -1616,7 +1633,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                     })()}
                   </div>
 
-                  {/* Refinement panel */}
+                  {showSpecPanel&&(
                   {showRefine&&!isSuperadmin&&(()=>{
                     const gc=getGenCount(req)
                     const remsAfter=MAX_GENS-(gc+1)
@@ -1806,6 +1823,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                     </>
                   )}
                 </div>
+                  )}
               )}
 
               {/* Payment Terms Notice — shown when a quote is present and not yet accepted */}

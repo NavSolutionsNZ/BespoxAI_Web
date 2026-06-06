@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 6, 2026 (Session 17)
+**Last Updated: June 6, 2026 (Session 18)
 
 ---
 
@@ -9,7 +9,7 @@
 - Live product at bespoxai.com is a full **Next.js application**
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
-- BCAgent v3.2 — PowerShell HttpListener service, full deployment workflow
+- BCAgent v3.3 — PowerShell HttpListener service, full deployment workflow
 - C/AL export uses **finsql.exe directly** (not Export-NAVApplicationObject — removed in BC14)
 - finsql found via wildcard path search (BC14 paths first, then legacy NAV)
 - finsql writes ANSI/ASCII — read with Get-Content -Raw (not ReadAllBytes+Unicode decode)
@@ -117,7 +117,7 @@
 
 | File | Purpose |
 |------|---------|
-| `Install-BespoxAI.ps1` | BCAgent v3.2 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. |
+| `Install-BespoxAI.ps1` | BCAgent v3.3 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. |
 | `Uninstall-BespoxAI.ps1` | Full cleanup. |
 | `Uninstall-BespoxAI.bat` | Right-click Run as Administrator shim. |
 
@@ -182,12 +182,12 @@ unableToCompleteAt    DateTime?  -- nullable, set when developer marks unable
 
 ---
 
-## BCAgent v3.2 — Critical Implementation Notes
+## BCAgent v3.3 — Critical Implementation Notes
 
 ### Version — THREE values, all must match, bump every push
-1. `$AgentVersion = '3.2'` in `Install-BespoxAI.ps1`
-2. `$Version = '3.2'` in `Install-BespoxAI.ps1`
-3. `const AGENT_VERSION = '3.2'` in `app/api/settings/installer/route.ts`
+1. `$AgentVersion = '3.3'` in `Install-BespoxAI.ps1`
+2. `$Version = '3.3'` in `Install-BespoxAI.ps1`
+3. `const AGENT_VERSION = '3.3'` in `app/api/settings/installer/route.ts`
 
 ### RDP Support (Step 8 of installer)
 - Creates `BespoxAI-Support` local account (or updates password if exists)

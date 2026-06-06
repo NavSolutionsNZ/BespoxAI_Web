@@ -16,7 +16,7 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = '3.2'
+const AGENT_VERSION = '3.3'
 
 function generateRdpPassword(): string {
   const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
