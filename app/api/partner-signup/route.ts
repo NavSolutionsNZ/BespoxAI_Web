@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const {
     companyName, contactName, email, phone, address,
-    gstNumber, paymentMode, bankAccount, billingEmail,
+    gstNumber, paymentMode, bankAccount, billingEmail, acceptedAgreementAt,
   } = body
 
   // Required field validation
@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       paymentMode:  paymentMode ?? 'bespoxai_collected',
       bankAccount:  bankAccount ? bankAccount.trim() : null,
       verifyToken,
+      acceptedAgreementAt: acceptedAgreementAt ? new Date(acceptedAgreementAt) : null,
     },
   })
 

@@ -314,7 +314,7 @@ export default function AgreementScroll({ onAccept, onDecline, isSubmitting = fa
               }
             }}
           >
-            {isSubmitting ? 'Accepting...' : scrolledToBottom ? 'Accept & Continue' : 'Scroll to accept'}
+            {isSubmitting ? 'Accepting...' : scrolledToBottom ? 'I have read and accept the agreement' : 'Scroll to bottom to accept'}
           </button>
         </div>
       </div>

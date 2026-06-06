@@ -57,6 +57,7 @@ export default function PartnerSignupPage() {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [showAgreement, setShowAgreement] = useState(false)
+  const [agreementAcceptedAt, setAgreementAcceptedAt] = useState<string | null>(null)
 
   function set(key: string, value: string) {
     setForm(f => ({ ...f, [key]: value }))
@@ -83,6 +84,8 @@ export default function PartnerSignupPage() {
   async function handleAcceptAgreement() {
     setSubmitting(true)
     setError('')
+    const acceptedAt = new Date().toISOString()
+    setAgreementAcceptedAt(acceptedAt)
     
     const res = await fetch('/api/partner-signup', {
       method: 'POST',
@@ -90,6 +93,7 @@ export default function PartnerSignupPage() {
       body: JSON.stringify({
         ...form,
         billingEmail: form.billingEmail || form.email,
+        acceptedAgreementAt: acceptedAt,
       }),
     })
     setSubmitting(false)

@@ -420,6 +420,7 @@ model PartnerSignupRequest {
   bankAccount   String?
   verifyToken   String    @unique
   verifiedAt    DateTime?
+  acceptedAgreementAt DateTime?
   activatedAt   DateTime?
   createdAt     DateTime  @default(now())
 }
