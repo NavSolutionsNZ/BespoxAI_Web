@@ -101,18 +101,19 @@ function LoginForm() {
 
       {/* Back to site */}
       <div style={{ position: 'absolute', top: 20, left: 20 }}>
-        <Link href="/index.html" style={{
+        <a href="/index.html" style={{
           display: 'flex', alignItems: 'center', gap: 8,
           fontFamily: 'var(--font-mono)', fontSize: 11,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           color: 'var(--slate)', textDecoration: 'none',
           transition: 'color 0.15s',
+          cursor: 'pointer',
         }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--forest)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--slate)')}
         >
           ← bespoxai.com
-        </Link>
+        </a>
       </div>
 
       {/* Request access — top right */}
