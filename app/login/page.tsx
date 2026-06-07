@@ -15,6 +15,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -201,21 +202,38 @@ function LoginForm() {
                   Forgot password?
                 </Link>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  background: 'var(--cream)', border: '1px solid var(--fog)',
-                  borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 14,
-                  color: 'var(--ink)', outline: 'none', transition: 'border-color 0.15s',
-                }}
-                onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--fog)')}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  style={{
+                    width: '100%', padding: '11px 14px 11px 14px',
+                    paddingRight: '40px',
+                    background: 'var(--cream)', border: '1px solid var(--fog)',
+                    borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 14,
+                    color: 'var(--ink)', outline: 'none', transition: 'border-color 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
+                  onBlur={e => (e.target.style.borderColor = 'var(--fog)')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--slate)', fontSize: 16, padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '👁' : '👁‍🗨'}
+                </button>
+              </div>
             </div>
 
             <button
