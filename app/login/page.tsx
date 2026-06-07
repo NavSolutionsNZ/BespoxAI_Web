@@ -357,13 +357,11 @@ function LoginForm() {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </div>
 
       <LapTimer />
     </div>
+  )
 }
-
-export default function LoginPage() {
   return (
     <Suspense fallback={<div style={{ minHeight: '100vh', background: '#ffffff' }} />}>
       <LoginForm />
