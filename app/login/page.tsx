@@ -28,14 +28,19 @@ function LoginForm() {
     if (res?.error) {
       setError('Invalid email or password. Please try again.')
     } else {
-      // Fetch session to detect partner vs direct user
+      // Give session time to update, then check user type
+      await new Promise(resolve => setTimeout(resolve, 500))
       const { getSession } = await import('next-auth/react')
       const session = await getSession()
       const user = session?.user as any
+      
       if (user?.partnerAccountId) {
+        // Partner — stay on partner subdomain
         router.push('/partner/dashboard')
       } else {
-        router.push(callbackUrl)
+        // Non-partner — redirect to main domain
+        const mainDomain = window.location.hostname === 'partners.bespoxai.com' ? 'bespoxai.com' : window.location.hostname
+        window.location.replace(`https://${mainDomain}${callbackUrl}`)
       }
     }
   }
