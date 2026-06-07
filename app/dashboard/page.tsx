@@ -138,28 +138,21 @@ export default function DashboardPage() {
 }
 
 function DashboardInner() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router     = useRouter()
   const pathname   = usePathname()
   const searchParams = useSearchParams()
   const user = session?.user as any
   
-  // Redirect to login if not authenticated
+  // Redirect if no session after a short delay (allows session to load)
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-    }
-  }, [status, router])
-  
-  // Show nothing while loading (Suspense will handle this)
-  if (status === 'loading') {
-    return null
-  }
-  
-  // Safety check
-  if (!session) {
-    return null
-  }
+    const timer = setTimeout(() => {
+      if (!session) {
+        router.push('/login')
+      }
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [session, router])
   
   const managedByPartner = !!(user?.managedByPartner)
   const branding = useBranding()
