@@ -434,19 +434,7 @@ function AdminPageInner() {
             </button>
           ))}
 
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <button onClick={() => router.push('/dashboard')} style={{
-              width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none',
-              background: 'transparent', cursor: 'pointer', textAlign: 'left',
-              fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(214,217,212,0.5)',
-              transition: 'color 0.15s',
-            }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(214,217,212,0.8)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(214,217,212,0.5)')}
-            >
-              ← CFO Assistant
-            </button>
-          </div>
+
         </nav>
 
         <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
