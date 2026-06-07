@@ -12,6 +12,7 @@ import DataVisualizer from '@/components/DataVisualizer'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
 import RequirementsBuilder from '@/components/RequirementsBuilder'
 import MigrationAnalyzerLanding from '@/components/MigrationAnalyzerLanding'
+import { LapTimer } from '@/components/LapTimer'
 // ─── PDF helpers ──────────────────────────────────────────────────────────────
 
 function buildDataHTML(hint: string | undefined, data: StructuredData | null | undefined): string {
@@ -146,10 +147,6 @@ function DashboardInner() {
   
   // Redirect if no session after a short delay (allows session to load)
   useEffect(() => {
-    // Mark dashboard start time on first mount
-    if (!(window as any).__dashboardStartTime) {
-      (window as any).__dashboardStartTime = performance.now()
-    }
     const timer = setTimeout(() => {
       if (!session) {
         router.push('/login')
@@ -304,14 +301,6 @@ function DashboardInner() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history])
-
-  // Mark dashboard as fully rendered and show timing
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      const totalTime = Math.round(performance.now() - ((window as any).__dashboardStartTime || 0))
-      alert(`✅ Dashboard ready!\nTotal time: ${totalTime}ms`)
-    })
-  }, [])
 
   // ── Greeting ────────────────────────────────────────────────────────────────
 
@@ -1310,6 +1299,8 @@ function LoadingDots() {
           40%            { transform: scale(1.35); opacity: 0.8; }
         }
       `}</style>
+
+      <LapTimer />
     </div>
   )
 }

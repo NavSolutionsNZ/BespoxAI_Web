@@ -7,6 +7,7 @@ import { useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { LapTimer } from '@/components/LapTimer'
 
 function LoginForm() {
   const router = useRouter()
@@ -38,13 +39,8 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    
-    const startTime = Date.now()
 
     const res = await signIn('credentials', { email, password, redirect: false })
-    const afterSignIn = Date.now()
-    const signInTime = afterSignIn - startTime
-    
     setLoading(false)
     
     if (res?.error) {
@@ -53,8 +49,6 @@ function LoginForm() {
       // Check user type to ensure they're using the correct portal
       try {
         const userRes = await fetch('/api/auth/me')
-        const afterUserCheck = Date.now()
-        const userCheckTime = afterUserCheck - startTime
         
         if (userRes.ok) {
           const user = await userRes.json()
@@ -75,7 +69,6 @@ function LoginForm() {
           }
           
           // Correct portal — proceed
-          alert(`✅ Sign-in complete!\nSign-in: ${signInTime}ms\nPortal check: ${userCheckTime - signInTime}ms\nTotal: ${userCheckTime}ms`)
           if (isPartner) {
             router.push('/partner/dashboard')
           } else {
@@ -365,7 +358,9 @@ function LoginForm() {
         }
       `}</style>
     </div>
-  )
+
+      <LapTimer />
+    </div>
 }
 
 export default function LoginPage() {
