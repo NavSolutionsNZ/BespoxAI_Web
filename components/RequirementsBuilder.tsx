@@ -266,11 +266,16 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
   const [qaAnswers, setQAAnswers]   = useState<Record<number,string>>({})
   const [showQAPanel, setShowQAP]   = useState(false)
   // Spec panel collapse state — status-dependent default
-  const [showSpecPanel, setShowSpecPanel] = useState(() => {
-    const st = req.status ?? 'draft'
-    const openFor = ['draft','submitted','needs_clarification','in_review','quote_rejected']
-    return openFor.includes(st)
-  })
+  const [showSpecPanel, setShowSpecPanel] = useState(true)
+  
+  // Update showSpecPanel based on selected requirement status
+  useEffect(() => {
+    if (selected) {
+      const st = selected.status ?? 'draft'
+      const openFor = ['draft','submitted','needs_clarification','in_review','quote_rejected']
+      setShowSpecPanel(openFor.includes(st))
+    }
+  }, [selected?.id])
   // Refinement panel — customer edits to drive next regeneration
   const [showRefine, setShowRefine]         = useState(false)
   const [refinementText, setRefinementText] = useState('')
