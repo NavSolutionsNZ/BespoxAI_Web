@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 7, 2026 (Session 19)
+**Last Updated:** June 7, 2026 (Session 19 — Final)
 
 ---
 
@@ -47,7 +47,18 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
-## Session 19 Key Changes (June 7, 2026)
+## Session 19 Key Changes — Part 2 (June 7, 2026)
+
+### Partner Portal UX Improvements
+- **Removed Agreement link:** Partner portal navigation menu no longer displays "Agreement" link — partners can access agreement through other channels if needed
+- **Password change on first sign-in:** New partners now see a modal overlay requiring password change on first sign-in
+  - Modal is non-dismissible until password is successfully set
+  - Minimum password length: 8 characters
+  - Matches customer onboarding UX (Step 0 password change)
+  - Uses `mustChangePassword` JWT flag (already set during partner provision)
+- **Modal styling:** Consistent with dark theme partner portal (GitHub-like dark colors)
+
+### Session 19 Key Changes — Part 1 (June 7, 2026)
 
 ### Spec Regeneration Locked After Customer Acceptance
 - **Customer portal (RequirementsBuilder):** Regen button ONLY shown in `draft` status
