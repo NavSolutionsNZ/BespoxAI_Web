@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 7, 2026 (Session 18)
+**Last Updated: June 7, 2026 (Session 19)
 
 ---
 
@@ -92,12 +92,13 @@
 | `api/onboarding/route.ts` | GET/POST onboarding data. |
 | `api/signup/verify/route.ts` | Verifies token, fires notifyAdminsSignupVerified |
 | `api/webhooks/stripe/route.ts` | Stripe webhook |
+| `api/partner/tenants/[id]/requirements/[reqId]/ai-spec/route.ts` | Partner spec generation. Mirrors customer ai-spec logic with partner auth. |
 
 ### Components (`/components`)
 
 | File | Purpose |
 |------|---------|
-| `RequirementsBuilder.tsx` | Full customer flow. STATUS_PIPELINE includes in_uat, uat_confirmed, uat_rejected. UAT panel driven by status. Assignment system: auto-assign to creator, admin reassign modal with workload indicators, dev mark unable. Developers see only their assigned requirements. |
+| `RequirementsBuilder.tsx` | Full customer flow. STATUS_PIPELINE includes in_uat, uat_confirmed, uat_rejected. UAT panel driven by status. Assignment system: auto-assign to creator, admin reassign modal with workload indicators, dev mark unable. Developers see only their assigned requirements. Regen button shown ONLY in draft status; spec read-only thereafter. |
 | `SuperAdminDashboard.tsx` | Admin overview KPIs. |
 | `BillingCharts` (inside SuperAdminDashboard.tsx) | Extracted sub-component — do NOT merge back. |
 

@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 7, 2026 (Session 18)
+**Last Updated:** June 7, 2026 (Session 19)
 
 ---
 
@@ -44,6 +44,23 @@ git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "B
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+
+---
+
+## Session 19 Key Changes (June 7, 2026)
+
+### Spec Regeneration Locked After Customer Acceptance
+- **Customer portal (RequirementsBuilder):** Regen button ONLY shown in `draft` status
+  - Once requirement is submitted (any other status), regen button disappears
+  - Spec remains read-only (was already read-only)
+- **Admin portal (AdminRequirementsTab):** Regen button hidden when status >= `quoted`
+  - Developers can regenerate spec while in pre-quote statuses: draft, submitted, in_review, needs_clarification, quote_rejected
+  - Once customer approves quote (status: quoted), spec locks for everyone
+- **Partner admin portal (RequirementDetail):** Regen button added with same pre-quote restriction
+  - New partner spec generation route: `POST /api/partner/tenants/[id]/requirements/[reqId]/ai-spec`
+  - Partners can regenerate spec up until customer acceptance (quoted status)
+- **Rationale:** Spec generation happens during discovery/refinement phase. Once customer accepts the quote, spec is final and should not be re-generated (only spec updates should be via addenda)
+- **Tested & confirmed:** All portals (customer, admin, partner) working with correct button visibility and API flows
 
 ---
 

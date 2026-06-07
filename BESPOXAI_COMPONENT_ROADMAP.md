@@ -1,12 +1,23 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 7, 2026 (Session 18)
+**Last Updated:** June 7, 2026 (Session 19)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 19 — Spec Lock After Customer Acceptance**
+- [x] Customer portal (RequirementsBuilder): Regen button ONLY shown in draft status
+- [x] Admin portal (AdminRequirementsTab): Regen button hidden once spec is accepted (quoted status)
+- [x] Partner admin portal (RequirementDetail): Regen button added with same pre-quote restriction
+- [x] New partner route: POST /api/partner/tenants/[id]/requirements/[reqId]/ai-spec
+- [x] Spec remains read-only for all users in all portals (already was read-only text)
+- [x] Developers (admin & partner) can regenerate spec up until customer acceptance (quoted status)
+- [x] Once quoted, spec is locked for everyone (no regen, only view)
+- [x] TypeScript compilation verified, no errors
+- [x] Tested & confirmed live
 
 **Session 18 — AI-Generated Functional Spec Collapsible + Admin Portal Cleanup + Partner Email Flow**
 - [x] Spec panel in RequirementsBuilder now independently collapsible
@@ -94,9 +105,13 @@
 
 ### 🔴 HIGH PRIORITY
 
-#### 1. AI-Generated Functional Spec — Make Collapsible
-**Status:** Next to work on. The spec panel in admin requirement detail should be independently collapsible like other panels.
-**Affects:** Admin portal requirement detail view — RequirementsBuilder component
+#### 1. ~~AI-Generated Functional Spec — Make Collapsible~~ ✅ DONE (Session 18)
+**Status:** Complete. Spec panel is independently collapsible. 
+
+**Session 19 addition:** Spec regeneration now locked after customer acceptance
+- Customer can only regenerate in draft status
+- Developers (admin & partner) can regenerate until spec is quoted (customer accepted)
+- Once quoted, spec becomes read-only for all users
 
 #### 2. Deploy + Compile to Production — Test When Ready
 **Status:** Code complete. Same logic as test. Will be tested when Rich is ready.
