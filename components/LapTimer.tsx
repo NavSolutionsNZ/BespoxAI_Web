@@ -1,26 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, forwardRef, useImperativeHandle } from 'react'
 
-export function LapTimer({ autoStart = false }: { autoStart?: boolean }) {
-  const [isActive, setIsActive] = useState(autoStart)
+export const LapTimer = forwardRef<{ start: () => void }, {}>(function LapTimer(_, ref) {
+  const [isActive, setIsActive] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
   const [laps, setLaps] = useState<{ lap: number; time: number; elapsed: number }[]>([])
 
-  useEffect(() => {
-    if (autoStart && !startTime) {
+  useImperativeHandle(ref, () => ({
+    start: () => {
       const now = performance.now()
+      setIsActive(true)
       setStartTime(now)
       setLaps([])
     }
-  }, [autoStart, startTime])
-
-  function start() {
-    const now = performance.now()
-    setIsActive(true)
-    setStartTime(now)
-    setLaps([])
-  }
+  }))
 
   function lap() {
     if (!startTime) return
@@ -38,14 +32,7 @@ export function LapTimer({ autoStart = false }: { autoStart?: boolean }) {
   }
 
   if (!isActive) {
-    return (
-      <button
-        onClick={start}
-        className="fixed bottom-4 right-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 z-50"
-      >
-        Start Timer
-      </button>
-    )
+    return null
   }
 
   return (
@@ -84,4 +71,5 @@ export function LapTimer({ autoStart = false }: { autoStart?: boolean }) {
       </button>
     </div>
   )
-}
+})
+LapTimer.displayName = 'LapTimer'
