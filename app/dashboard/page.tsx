@@ -12,7 +12,6 @@ import DataVisualizer from '@/components/DataVisualizer'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
 import RequirementsBuilder from '@/components/RequirementsBuilder'
 import MigrationAnalyzerLanding from '@/components/MigrationAnalyzerLanding'
-import { LapTimer } from '@/components/LapTimer'
 // ─── PDF helpers ──────────────────────────────────────────────────────────────
 
 function buildDataHTML(hint: string | undefined, data: StructuredData | null | undefined): string {
@@ -1299,8 +1298,6 @@ function LoadingDots() {
           40%            { transform: scale(1.35); opacity: 0.8; }
         }
       `}</style>
-
-      <LapTimer />
     </div>
   )
 }

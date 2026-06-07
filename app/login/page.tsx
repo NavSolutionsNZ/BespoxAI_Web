@@ -2,18 +2,16 @@
 
 export const dynamic = 'force-dynamic'
 
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { LapTimer } from '@/components/LapTimer'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
-  const timerRef = useRef<{ start: () => void }>(null)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,7 +36,6 @@ function LoginForm() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    timerRef.current?.start()
     setLoading(true)
     setError('')
 
@@ -359,8 +356,6 @@ function LoginForm() {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-
-      <LapTimer ref={timerRef} />
     </div>
   )
 }
