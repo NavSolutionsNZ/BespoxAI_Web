@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 6, 2026 (Session 17)
+**Last Updated:** June 7, 2026 (Session 18)
 
 ---
 
@@ -8,12 +8,16 @@
 
 ### ✅ Production & Working
 
-**Session 18 — AI-Generated Functional Spec Collapsible**
+**Session 18 — AI-Generated Functional Spec Collapsible + Admin Portal Cleanup**
 - [x] Spec panel in RequirementsBuilder now independently collapsible
 - [x] Status-dependent default: open when draft/submitted/needs_clarification/in_review/quote_rejected; closed otherwise
 - [x] Toggle button styled like AdminCardToggleBtn (▴/▾ arrow)
 - [x] Complexity/days/regenerations badges only shown when panel open
 - [x] Refine button only shown when panel open
+- [x] Removed "← CFO Assistant" link from admin sidebar — superadmins don't need direct access
+- [x] Fixed null reference error in Users table — added null check for `u.tenant?.name || '—'`
+- [x] Diagnosed & fixed data integrity: Pat Partner (partner@testpartner.com) missing tenantId
+- [x] Assigned Pat Partner to TestCo1 tenant via SQL
 - [x] BCAgent bumped to v3.3 (all three version fields)
 - [x] Tested & confirmed live
 

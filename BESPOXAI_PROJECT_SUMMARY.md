@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 6, 2026 (Session 18)
+**Last Updated:** June 7, 2026 (Session 18)
 
 ---
 
@@ -47,15 +47,25 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
-## Session 18 Key Changes (June 6, 2026)
+## Session 18 Key Changes (June 7, 2026)
 
-### AI-Generated Functional Spec — Now Collapsible
-- **Status-dependent default state:** open for draft/submitted/needs_clarification/in_review/quote_rejected; closed otherwise
-- **Toggle button:** ▴/▾ arrow in spec header, styled like AdminCardToggleBtn
-- **Content visibility:** Complexity badge, estimated days, regenerations count, and refine button only show when panel is expanded
-- **Smooth behavior:** marginBottom on header adjusts based on expanded state
-- **Implementation:** `showSpecPanel` state in RequirementsBuilder with `useState` initializer using requirement status lookup
-- **BCAgent:** bumped to v3.3 (all three version fields: $AgentVersion, $Version in PS1 + AGENT_VERSION in installer/route.ts)
+### Admin Portal UI Cleanup & Bug Fixes
+- **Removed CFO Assistant link:** Superadmin sidebar no longer shows "← CFO Assistant" link — superadmins don't need direct access. Kept the feature flag in AI Setup (controls customer access).
+- **Fixed Users table null reference:** Added null check `u.tenant?.name || '—'` to prevent crashes when tenant is null
+- **Root cause diagnosed:** Pat Partner (partner@testpartner.com, user role) was created without tenantId
+- **Data integrity fixed:** Assigned Pat Partner to TestCo1 via SQL — `UPDATE "User" SET "tenantId" = 'cmpgqbg8l0001tqej9wpqsx6g' WHERE id = 'cx6r5i4m9r18fr5k5gy87z44g'`
+- **Commits:** 2 pushes (remove sidebar link + fix null check)
+
+### Notes on User tenantId
+- Schema allows `tenantId` to be nullable — users CAN legitimately have null tenant (e.g., superadmins)
+- Non-superadmin users must have a tenantId to be functional
+- Admin API POST `/api/admin/users` requires tenantId — prevents creating users without tenant
+- Should consider data validation to prevent orphaned users (tenant deleted but user remains)
+
+### Previous Session 18 Work (June 6)
+- AI-Generated Functional Spec now collapsible in RequirementsBuilder
+- Status-dependent defaults + toggle button styled like AdminCardToggleBtn
+- BCAgent v3.3
 
 ---
 
