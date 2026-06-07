@@ -162,6 +162,29 @@ Requires custom web service in BC (ties into #10). Deferred.
 
 ---
 
+### 🧹 CODE HYGIENE (incremental — do opportunistically, NOT a standalone push)
+
+#### H1. Centralize API auth guards
+**Status:** Helper drafted (Session 21), not yet rolled out.
+- ~96 `getServerSession(authOptions)` calls across 81 API routes, each re-implementing its guard inline. Superadmin check is written ~6 different ways; 4 near-identical guard functions (`adminGuard`, `superadminGuard`, `sessionGuard`, `isSuperadmin`) are copy-pasted across 7 route files.
+- **Proposed fix:** single `lib/api-auth.ts` exporting `requireUser` (401), `requireSuperadmin` (403), `requireSuperadminOrDeveloper` (403), `requireTenant` (401). Each returns the validated `Session` OR a `NextResponse` error.
+  - Call site: `const session = await requireSuperadmin(); if (session instanceof NextResponse) return session`
+  - Draft type-checks clean against the full project.
+- **Scope:** ~71 call sites (46 superadmin, 22 plain-auth, 3 superadmin-or-developer).
+- **Why incremental, not big-bang:** auth is the one area where a silent mistake = lockout, and a git revert only catches build failures, not a guard that compiles but evaluates wrong. Fold conversions in when already working in a given route, verify behavior as a side effect of testing the real change. Do NOT do as one large pre-go-live refactor.
+- **Benefit (honest):** no user-facing change. Closes a small security gap (consistent, vetted guard instead of 6 hand-written variants) and removes duplication. Modest — risk-reduction, not a feature.
+- **Enforcement after rollout (so new routes don't reintroduce inline guards):**
+  - Now / solo dev: rely on the "What NOT to Do" rule (see FILES_INVENTORY).
+  - When a 2nd dev joins: add ESLint `no-restricted-imports` rule blocking `getServerSession` anywhere under `app/api` except `lib/api-auth.ts`. (Needs `next lint` wired into a CI/build step — currently not.)
+
+#### H2. Final consistency sweep before go-live
+**Status:** Checkpoint — schedule shortly before launch.
+- NOT a heavy refactor. A light, read-only audit to confirm incremental cleanup actually converged: did any new route reintroduce an inline auth guard / old pattern that H1 (and similar) was meant to eliminate?
+- This is the legitimate kernel of "tidy up before launch" — a check that incremental work finished, done well away from the launch-day risk of a large behavior-touching change.
+- Purely-cosmetic, zero-behavior cleanups (formatting, dead-file removal, no-logic renames) CAN be batched into this sweep — they carry no rollback risk. Behavior-touching cleanups (like H1) must NOT wait for this; do them incrementally, early.
+
+---
+
 ## How Claude Should Work on This Project
 
 1. **Get PAT from Rich** at start of session

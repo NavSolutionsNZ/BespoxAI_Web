@@ -254,3 +254,15 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't bump version in only one place — always ALL THREE: $AgentVersion + $Version in PS1 + AGENT_VERSION in installer/route.ts
 - ❌ Don't address users by full name — use preferredName ?? firstName only
 - ❌ Don't use router.replace for tab navigation — use router.push for history
+- ❌ Don't call `getServerSession` directly in new API routes once `lib/api-auth.ts` is rolled out — use its `requireUser` / `requireSuperadmin` / `requireSuperadminOrDeveloper` / `requireTenant` guards (see Roadmap H1). Until rollout, match the guard style of the nearest existing route.
+
+---
+
+## ⚠️ Known Latent Traps (flagged, not yet fixed)
+
+### Misnamed auth guard — `superadminGuard` allows developers too
+- **File:** `app/api/admin/requirements/route.ts` (line ~8)
+- **Issue:** The function named `superadminGuard` actually permits BOTH `superadmin` AND `developer` roles (`['superadmin', 'developer'].includes(role)`), not superadmin-only as the name implies.
+- **Risk:** Anyone copying this guard into a new route by its name, assuming superadmin-only, silently grants developers access they shouldn't have — or breaks developer access if they "correct" the name without checking behavior.
+- **Behavior is probably intentional** (developers need to see requirements). The NAME is the problem.
+- **Fix when H1 rolled out:** replace with the honestly-named `requireSuperadminOrDeveloper`. Until then, leave behavior as-is; just be aware the name lies.
