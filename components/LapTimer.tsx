@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react'
 
-export function LapTimer() {
-  const [isActive, setIsActive] = useState(false)
+export function LapTimer({ autoStart = false }: { autoStart?: boolean }) {
+  const [isActive, setIsActive] = useState(autoStart)
   const [startTime, setStartTime] = useState<number | null>(null)
   const [laps, setLaps] = useState<{ lap: number; time: number; elapsed: number }[]>([])
+
+  useEffect(() => {
+    if (autoStart && !startTime) {
+      const now = performance.now()
+      setStartTime(now)
+      setLaps([])
+    }
+  }, [autoStart, startTime])
 
   function start() {
     const now = performance.now()

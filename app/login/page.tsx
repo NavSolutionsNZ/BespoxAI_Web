@@ -358,7 +358,7 @@ function LoginForm() {
         }
       `}</style>
 
-      <LapTimer />
+      <LapTimer autoStart={true} />
     </div>
   )
 }
