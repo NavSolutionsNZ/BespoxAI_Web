@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 7, 2026 (Session 19 — Final)
+**Last Updated:** June 7, 2026 (Session 19 — Complete)
 
 ---
 
@@ -57,6 +57,14 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
   - Matches customer onboarding UX (Step 0 password change)
   - Uses `mustChangePassword` JWT flag (already set during partner provision)
 - **Modal styling:** Consistent with dark theme partner portal (GitHub-like dark colors)
+
+### Login Screen UX Improvements
+- **Partner billing placeholder:** Created `/partner/billing` page with "Under Construction" message
+- **Password show/hide toggle:** Added eye icon button to login password field (both bespoxai.com/login and partners)
+  - Click to toggle between showing/hiding password text
+  - Uses emoji icons (👁 show, 👁‍🗨 hide)
+  - Only on actual login screens, not other password fields site-wide
+  - Improves UX when typing passwords on public/shared machines
 
 ### Session 19 Key Changes — Part 1 (June 7, 2026)
 
