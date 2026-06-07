@@ -692,7 +692,7 @@ function AdminPageInner() {
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--fog)' }}>
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ fontWeight: 500 }}>{u.name || '—'}</span></td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{u.email}</td>
-                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant.name}</td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant?.name || '—'}</td>
                         <td style={tdStyle}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : u.role === 'developer' ? 'rgba(59,82,163,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : u.role === 'developer' ? '#3B52A3' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : u.role === 'developer' ? 'rgba(59,82,163,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
                             {u.role === 'superadmin' ? 'Super Admin' : u.role === 'tenant_admin' ? 'Admin' : u.role === 'developer' ? 'Developer' : 'User'}
