@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { notifyAdminsPartnerSignupVerified, notifySendPartnerAgreement } from '@/lib/notifications'
+import { notifyAdminsPartnerSignupVerified } from '@/lib/notifications'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
@@ -24,13 +24,6 @@ export async function GET(req: NextRequest) {
       contactName: signup.contactName,
       email:       signup.email,
     }).catch(e => console.error('[partner-verify] notify admins failed:', e))
-
-    // Send partner agreement for review
-    notifySendPartnerAgreement({
-      to:          signup.email,
-      contactName: signup.contactName,
-      companyName: signup.companyName,
-    }).catch(e => console.error('[partner-verify] send agreement failed:', e))
   }
 
   return NextResponse.redirect(new URL('/partner-site/signup/verify?status=verified', req.url))
