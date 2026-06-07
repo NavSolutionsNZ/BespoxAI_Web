@@ -8,7 +8,7 @@
 
 ### ✅ Production & Working
 
-**Session 18 — AI-Generated Functional Spec Collapsible + Admin Portal Cleanup**
+**Session 18 — AI-Generated Functional Spec Collapsible + Admin Portal Cleanup + Partner Email Flow**
 - [x] Spec panel in RequirementsBuilder now independently collapsible
 - [x] Status-dependent default: open when draft/submitted/needs_clarification/in_review/quote_rejected; closed otherwise
 - [x] Toggle button styled like AdminCardToggleBtn (▴/▾ arrow)
@@ -18,6 +18,8 @@
 - [x] Fixed null reference error in Users table — added null check for `u.tenant?.name || '—'`
 - [x] Diagnosed & fixed data integrity: Pat Partner (partner@testpartner.com) missing tenantId
 - [x] Assigned Pat Partner to TestCo1 tenant via SQL
+- [x] **Removed redundant partner agreement email** — no longer sent during email verification
+- [x] **Partner activation flow now cleaner:** Email verification → superadmin notified only → activation → partner receives credentials email only
 - [x] BCAgent bumped to v3.3 (all three version fields)
 - [x] Tested & confirmed live
 

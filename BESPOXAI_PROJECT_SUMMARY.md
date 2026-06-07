@@ -54,7 +54,16 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 - **Fixed Users table null reference:** Added null check `u.tenant?.name || '—'` to prevent crashes when tenant is null
 - **Root cause diagnosed:** Pat Partner (partner@testpartner.com, user role) was created without tenantId
 - **Data integrity fixed:** Assigned Pat Partner to TestCo1 via SQL — `UPDATE "User" SET "tenantId" = 'cmpgqbg8l0001tqej9wpqsx6g' WHERE id = 'cx6r5i4m9r18fr5k5gy87z44g'`
-- **Commits:** 2 pushes (remove sidebar link + fix null check)
+- **Commits:** 4 pushes (sidebar link + null check + context files + email flow)
+
+### Partner Email Flow Cleanup
+- **Removed redundant email:** `notifySendPartnerAgreement()` no longer sent during partner email verification
+- **Rationale:** Modal in UI now handles agreement review; email was redundant
+- **New flow:** 
+  - Partner signs up → verifies email → superadmins notified (only)
+  - Superadmin activates → partner receives activation confirmation + temporary credentials
+  - Partner logs in with temp password → forced to set permanent password (`mustChangePassword: true`)
+- **Affected route:** `app/api/partner-signup/verify/route.ts` — removed agreement email call
 
 ### Notes on User tenantId
 - Schema allows `tenantId` to be nullable — users CAN legitimately have null tenant (e.g., superadmins)
