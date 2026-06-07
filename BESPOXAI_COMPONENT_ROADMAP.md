@@ -165,11 +165,16 @@ Requires custom web service in BC (ties into #10). Deferred.
 ### 🧹 CODE HYGIENE (incremental — do opportunistically, NOT a standalone push)
 
 #### H1. Centralize API auth guards
-**Status:** Helper drafted (Session 21), not yet rolled out.
+**Status:** Helper file `lib/api-auth.ts` is COMMITTED but DORMANT (Session 21) — nothing imports it yet, so it has zero runtime effect. Rollout = converting call sites to use it. Not started.
 - ~96 `getServerSession(authOptions)` calls across 81 API routes, each re-implementing its guard inline. Superadmin check is written ~6 different ways; 4 near-identical guard functions (`adminGuard`, `superadminGuard`, `sessionGuard`, `isSuperadmin`) are copy-pasted across 7 route files.
-- **Proposed fix:** single `lib/api-auth.ts` exporting `requireUser` (401), `requireSuperadmin` (403), `requireSuperadminOrDeveloper` (403), `requireTenant` (401). Each returns the validated `Session` OR a `NextResponse` error.
-  - Call site: `const session = await requireSuperadmin(); if (session instanceof NextResponse) return session`
-  - Draft type-checks clean against the full project.
+- **The helper (already in repo at `lib/api-auth.ts`):** exports `requireUser` (401), `requireSuperadmin` (403), `requireSuperadminOrDeveloper` (403), `requireTenant` (401). Each returns the validated `Session` OR a `NextResponse` error. Type-checks clean against the full project.
+  - Call site pattern: `const session = await requireSuperadmin(); if (session instanceof NextResponse) return session` — then `session` is a guaranteed-valid Session.
+- **Which guard replaces what, and where to apply it:**
+  - `requireUser` → the 22 routes using plain `if (!session?.user)` / `sessionGuard` (401). Customer-facing routes under `app/api/requirements`, `app/api/settings`, etc.
+  - `requireSuperadmin` → the 46 routes using `adminGuard` / `isSuperadmin` / inline `role !== 'superadmin'` (403). Mostly `app/api/admin/*`.
+  - `requireSuperadminOrDeveloper` → the 3 routes allowing both roles, incl. `app/api/admin/requirements/route.ts` (the misnamed `superadminGuard` — see FILES_INVENTORY latent-traps).
+  - `requireTenant` → routes needing a tenant-scoped user (those checking `session?.user?.tenantId`).
+  - Per-route conversion = swap the guard call + delete the now-unused local guard function + drop unused `getServerSession`/`authOptions` imports.
 - **Scope:** ~71 call sites (46 superadmin, 22 plain-auth, 3 superadmin-or-developer).
 - **Why incremental, not big-bang:** auth is the one area where a silent mistake = lockout, and a git revert only catches build failures, not a guard that compiles but evaluates wrong. Fold conversions in when already working in a given route, verify behavior as a side effect of testing the real change. Do NOT do as one large pre-go-live refactor.
 - **Benefit (honest):** no user-facing change. Closes a small security gap (consistent, vetted guard instead of 6 hand-written variants) and removes duplication. Modest — risk-reduction, not a feature.
