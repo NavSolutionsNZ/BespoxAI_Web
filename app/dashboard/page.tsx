@@ -307,11 +307,8 @@ function DashboardInner() {
 
   // Mark dashboard as fully rendered and show timing
   useEffect(() => {
-    // Use requestAnimationFrame to ensure DOM has fully painted
-    const startTime = performance.now()
     requestAnimationFrame(() => {
-      const endTime = performance.now()
-      const totalTime = Math.round(endTime - (window as any).__dashboardStartTime || startTime)
+      const totalTime = Math.round(performance.now() - ((window as any).__dashboardStartTime || 0))
       alert(`✅ Dashboard ready!\nTotal time: ${totalTime}ms`)
     })
   }, [])
