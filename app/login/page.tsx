@@ -21,6 +21,9 @@ function LoginForm() {
 
   // Detect if on partner portal
   const isPartnerPortal = typeof window !== 'undefined' && window.location.hostname === 'partners.bespoxai.com'
+
+  // Pre-fill email from URL params if redirected from wrong portal
+  useEffect(() => {
     const emailParam = searchParams.get('email')
     const msg = searchParams.get('msg')
     if (emailParam) {
@@ -35,7 +38,6 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    setPortalMismatch(null)
     
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
@@ -80,9 +82,6 @@ function LoginForm() {
     }
   }
   
-  // State for portal mismatch error
-  const [portalMismatch, setPortalMismatch] = useState<'partner-to-main' | 'main-to-partner' | null>(null)
-
   return (
     <div style={{
       minHeight: '100vh',
