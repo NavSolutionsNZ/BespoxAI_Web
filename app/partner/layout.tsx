@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: '/partner/team',      label: 'Team',        icon: '◎' },
   { href: '/partner/billing',   label: 'Billing',     icon: '◇' },
   { href: '/partner/settings',  label: 'Settings',    icon: '⊙' },
-  { href: '/partners/resources/agreement', label: 'Agreement', icon: '📋', external: true },
 ]
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +18,11 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showPwModal, setShowPwModal] = useState(false)
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
   const branding = useBranding()
 
   useEffect(() => {
@@ -33,6 +37,13 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
     }
   }, [status, session, router])
 
+  useEffect(() => {
+    const user = session?.user as any
+    if (status === 'authenticated' && user?.mustChangePassword) {
+      setShowPwModal(true)
+    }
+  }, [status, session])
+
   if (status === 'loading') {
     return (
       <div style={{ minHeight: '100vh', background: '#0D1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -45,6 +56,26 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   const displayName = user?.preferredName ?? user?.firstName ?? user?.email ?? ''
   const partnerRole = user?.partnerRole ?? ''
   const isAdmin = partnerRole === 'partner_admin'
+
+  async function handleSetPassword() {
+    setPwError('')
+    if (newPw.length < 8) { setPwError('Password must be at least 8 characters.'); return }
+    if (newPw !== confirmPw) { setPwError('Passwords do not match.'); return }
+    setPwSaving(true)
+    try {
+      const res = await fetch('/api/settings/profile/change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: newPw, clearMustChange: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPwError(data.error ?? 'Could not save password.'); return }
+      setShowPwModal(false)
+      setNewPw('')
+      setConfirmPw('')
+    } finally {
+      setPwSaving(false)
+    }
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0D1117' }}>
@@ -232,6 +263,54 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           {children}
         </main>
       </div>
+
+      {/* ── Password change modal ── */}
+      {showPwModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: 8, padding: '32px 40px', maxWidth: 400, width: '90%' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#F0F6FC', margin: '0 0 8px', fontWeight: 400 }}>Set your password</h2>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 24px', lineHeight: 1.5 }}>
+              You signed in with a temporary password. Please set a permanent one to continue.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+              <div>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E', display: 'block', marginBottom: 6 }}>New Password</label>
+                <input
+                  type="password"
+                  value={newPw}
+                  onChange={e => setNewPw(e.target.value)}
+                  placeholder="At least 8 characters"
+                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = '#58A6FF'}
+                  onBlur={e => e.target.style.borderColor = '#30363D'}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSetPassword() }}
+                />
+              </div>
+              <div>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E', display: 'block', marginBottom: 6 }}>Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  placeholder="Repeat your new password"
+                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = '#58A6FF'}
+                  onBlur={e => e.target.style.borderColor = '#30363D'}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSetPassword() }}
+                />
+              </div>
+            </div>
+            {pwError && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#F85149', margin: '0 0 16px' }}>{pwError}</p>}
+            <button
+              onClick={handleSetPassword}
+              disabled={pwSaving}
+              style={{ width: '100%', background: '#238636', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '10px', cursor: pwSaving ? 'not-allowed' : 'pointer', opacity: pwSaving ? 0.6 : 1 }}
+            >
+              {pwSaving ? 'Saving…' : 'Set Password & Continue →'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 768px) {
