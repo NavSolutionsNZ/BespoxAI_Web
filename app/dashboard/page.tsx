@@ -138,11 +138,29 @@ export default function DashboardPage() {
 }
 
 function DashboardInner() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router     = useRouter()
   const pathname   = usePathname()
   const searchParams = useSearchParams()
   const user = session?.user as any
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    }
+  }, [status, router])
+  
+  // Show nothing while loading (Suspense will handle this)
+  if (status === 'loading') {
+    return null
+  }
+  
+  // Safety check
+  if (!session) {
+    return null
+  }
+  
   const managedByPartner = !!(user?.managedByPartner)
   const branding = useBranding()
   const isTenantAdmin = user?.role === 'tenant_admin' || user?.role === 'superadmin'
