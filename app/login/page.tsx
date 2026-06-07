@@ -39,15 +39,26 @@ function LoginForm() {
     setLoading(true)
     setError('')
     
+    console.time('🔐 Sign-in total')
+    console.time('🔐 Sign-in request')
+
     const res = await signIn('credentials', { email, password, redirect: false })
+    
+    console.timeEnd('🔐 Sign-in request')
     setLoading(false)
     
     if (res?.error) {
+      console.log('❌ Sign-in failed:', res.error)
       setError('Invalid email or password. Please try again.')
     } else if (res?.ok) {
+      console.log('✅ Sign-in succeeded, checking user type...')
+      console.time('🔐 User type check')
+      
       // Check user type to ensure they're using the correct portal
       try {
         const userRes = await fetch('/api/auth/me')
+        console.timeEnd('🔐 User type check')
+        
         if (userRes.ok) {
           const user = await userRes.json()
           const isPartner = !!user.partnerAccountId
@@ -67,16 +78,20 @@ function LoginForm() {
           }
           
           // Correct portal — proceed
+          console.log('✅ User portal check passed, redirecting to dashboard...')
+          console.timeEnd('🔐 Sign-in total')
           if (isPartner) {
             router.push('/partner/dashboard')
           } else {
             router.push(callbackUrl)
           }
         } else {
+          console.log('⚠️ User check returned non-ok status')
           router.push(callbackUrl)
         }
       } catch (err) {
-        // Fallback: just push to callback
+        console.error('❌ User check failed:', err)
+        console.timeEnd('🔐 Sign-in total')
         router.push(callbackUrl)
       }
     }
