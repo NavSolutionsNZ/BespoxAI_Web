@@ -19,8 +19,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Pre-fill email from URL params if redirected from wrong portal
-  useEffect(() => {
+  // Detect if on partner portal
+  const isPartnerPortal = typeof window !== 'undefined' && window.location.hostname === 'partners.bespoxai.com'
     const emailParam = searchParams.get('email')
     const msg = searchParams.get('msg')
     if (emailParam) {
@@ -177,13 +177,17 @@ function LoginForm() {
             fontFamily: 'var(--font-display)', fontWeight: 300, fontSize: 26,
             color: 'var(--ink)', marginBottom: 6, lineHeight: 1.1,
           }}>
-            Sign in to your <em style={{ color: 'var(--emerald)', fontStyle: 'italic' }}>portal</em>
+            {isPartnerPortal ? (
+              <>Sign in to your <em style={{ color: 'var(--emerald)', fontStyle: 'italic' }}>partner portal</em></>
+            ) : (
+              <>Sign in to your <em style={{ color: 'var(--emerald)', fontStyle: 'italic' }}>portal</em></>
+            )}
           </h1>
           <p style={{
             fontFamily: 'var(--font-body)', fontSize: 13,
             color: 'var(--slate)', marginBottom: 28, lineHeight: 1.5,
           }}>
-            Connected to your live Business Central & NAV data.
+            {isPartnerPortal ? 'Connected to all your client instances.' : 'Connected to your live Business Central & NAV data.'}
           </p>
 
           {error && (
