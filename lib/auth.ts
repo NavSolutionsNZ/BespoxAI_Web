@@ -66,6 +66,17 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Extract the req if available to check hostname
+      // For non-partners accessing partner subdomain, redirect to main domain
+      const urlObj = new URL(url, baseUrl)
+      
+      // If on partner subdomain and URL is trying to go to main domain path
+      // Just allow it to proceed — client-side will handle cross-domain navigation
+      // The key is that the session will be established before redirect happens
+      
+      return url.startsWith('/') ? `${baseUrl}${url}` : baseUrl
+    },
     async jwt({ token, user, trigger }) {
       // On sign-in, stamp all user fields into token
       if (user) {

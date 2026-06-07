@@ -23,24 +23,35 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
+    
     if (res?.error) {
       setError('Invalid email or password. Please try again.')
-    } else {
-      // Give session time to update, then check user type
-      await new Promise(resolve => setTimeout(resolve, 500))
-      const { getSession } = await import('next-auth/react')
-      const session = await getSession()
-      const user = session?.user as any
-      
-      if (user?.partnerAccountId) {
-        // Partner — stay on partner subdomain
-        router.push('/partner/dashboard')
-      } else {
-        // Non-partner — redirect to main domain
-        const mainDomain = window.location.hostname === 'partners.bespoxai.com' ? 'bespoxai.com' : window.location.hostname
-        window.location.replace(`https://${mainDomain}${callbackUrl}`)
+    } else if (res?.ok) {
+      // Check user type via API to determine destination
+      try {
+        const userRes = await fetch('/api/auth/me')
+        if (userRes.ok) {
+          const user = await userRes.json()
+          const isPartner = !!user.partnerAccountId
+          const isPartnerDomain = window.location.hostname === 'partners.bespoxai.com'
+          
+          if (isPartner) {
+            router.push('/partner/dashboard')
+          } else if (isPartnerDomain) {
+            // Non-partner on partner domain — send to main domain
+            window.location.href = `https://bespoxai.com${callbackUrl}`
+          } else {
+            router.push(callbackUrl)
+          }
+        } else {
+          router.push(callbackUrl)
+        }
+      } catch (err) {
+        // Fallback: just push to callback
+        router.push(callbackUrl)
       }
     }
   }
