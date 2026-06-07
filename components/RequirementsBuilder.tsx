@@ -1634,6 +1634,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                   </div>
 
                   {showSpecPanel&&(
+                  <>
                   {showRefine&&!isSuperadmin&&(()=>{
                     const gc=getGenCount(req)
                     const remsAfter=MAX_GENS-(gc+1)
@@ -1799,6 +1800,8 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                       </Sect>
                     )}
                   </div>
+                  </>
+                )}
                 </div>
               ):(
                 <div style={{...crd,textAlign:'center',padding:'22px 20px'}}>
@@ -1976,7 +1979,8 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                       BespoxAI will review this addendum and issue a separate quote. Use the refine panel above to clarify anything in the meantime.
                     </p>
                   </div>
-                )}
+                </>
+                              )}
                 {!isSuperadmin&&req.status==='quoted'&&<>
                   <button onClick={()=>openDepositModal(req)} style={{...pBTN,background:'#085040'}}>{requiresDeposit(req.tenant.paymentTermsKey) ? '✓ Accept Quote & Proceed' : '✓ Accept & Begin Development'}</button>
                   <button onClick={()=>{setShowRQ(true)}} style={{background:'rgba(163,45,45,0.08)',border:'1px solid rgba(163,45,45,0.2)',color:'#A32D2D',borderRadius:8,padding:'9px 16px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:13}}>
