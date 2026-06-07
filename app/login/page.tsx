@@ -18,11 +18,13 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [portalMismatch, setPortalMismatch] = useState<'partner-to-main' | 'main-to-partner' | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setPortalMismatch(null)
     
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
@@ -30,7 +32,7 @@ function LoginForm() {
     if (res?.error) {
       setError('Invalid email or password. Please try again.')
     } else if (res?.ok) {
-      // Check user type via API to determine destination
+      // Check user type to ensure they're using the correct portal
       try {
         const userRes = await fetch('/api/auth/me')
         if (userRes.ok) {
@@ -38,11 +40,20 @@ function LoginForm() {
           const isPartner = !!user.partnerAccountId
           const isPartnerDomain = window.location.hostname === 'partners.bespoxai.com'
           
+          // Check for portal mismatch
+          if (isPartner && !isPartnerDomain) {
+            // Partner trying to sign in to main portal
+            setPortalMismatch('partner-to-main')
+            return
+          } else if (!isPartner && isPartnerDomain) {
+            // Non-partner trying to sign in to partner portal
+            setPortalMismatch('main-to-partner')
+            return
+          }
+          
+          // Correct portal — proceed
           if (isPartner) {
             router.push('/partner/dashboard')
-          } else if (isPartnerDomain) {
-            // Non-partner on partner domain — send to main domain
-            window.location.href = `https://bespoxai.com${callbackUrl}`
           } else {
             router.push(callbackUrl)
           }
@@ -55,6 +66,9 @@ function LoginForm() {
       }
     }
   }
+  
+  // State for portal mismatch error
+  const [portalMismatch, setPortalMismatch] = useState<'partner-to-main' | 'main-to-partner' | null>(null)
 
   return (
     <div style={{
@@ -167,6 +181,38 @@ function LoginForm() {
               lineHeight: 1.5,
             }}>
               {error}
+            </div>
+          )}
+
+          {portalMismatch === 'partner-to-main' && (
+            <div style={{
+              background: 'rgba(163,45,45,0.06)', border: '1px solid rgba(163,45,45,0.2)',
+              borderRadius: 8, padding: '10px 14px', marginBottom: 20,
+              fontFamily: 'var(--font-body)', fontSize: 13, color: '#A32D2D',
+              lineHeight: 1.5,
+            }}>
+              This account is for the partner portal.{' '}
+              <a href="https://partners.bespoxai.com/login" style={{
+                color: '#A32D2D', textDecoration: 'underline', fontWeight: 600,
+              }}>
+                Sign in at partners.bespoxai.com
+              </a>
+            </div>
+          )}
+
+          {portalMismatch === 'main-to-partner' && (
+            <div style={{
+              background: 'rgba(163,45,45,0.06)', border: '1px solid rgba(163,45,45,0.2)',
+              borderRadius: 8, padding: '10px 14px', marginBottom: 20,
+              fontFamily: 'var(--font-body)', fontSize: 13, color: '#A32D2D',
+              lineHeight: 1.5,
+            }}>
+              This account is for the main portal.{' '}
+              <a href="https://bespoxai.com/login" style={{
+                color: '#A32D2D', textDecoration: 'underline', fontWeight: 600,
+              }}>
+                Sign in at bespoxai.com
+              </a>
             </div>
           )}
 
