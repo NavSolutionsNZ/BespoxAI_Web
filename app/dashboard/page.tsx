@@ -146,14 +146,13 @@ function DashboardInner() {
   
   // Redirect if no session after a short delay (allows session to load)
   useEffect(() => {
-    console.log('📊 DashboardInner mounted')
-    console.time('⏱️ Dashboard interactive')
+    // Mark dashboard start time on first mount
+    if (!(window as any).__dashboardStartTime) {
+      (window as any).__dashboardStartTime = performance.now()
+    }
     const timer = setTimeout(() => {
       if (!session) {
-        console.log('❌ No session after 1s, redirecting to login')
         router.push('/login')
-      } else {
-        console.log('✅ Session loaded')
       }
     }, 1000)
     return () => clearTimeout(timer)
@@ -171,17 +170,9 @@ function DashboardInner() {
 
   useEffect(() => {
     if (!managedByPartner) return
-    console.time('🔄 Partner request state fetch')
-    fetch('/api/partner/request-state').then(r => {
-      console.log('✅ Partner request state response received')
-      return r.json()
-    }).then(d => {
-      console.timeEnd('🔄 Partner request state fetch')
+    fetch('/api/partner/request-state').then(r => r.json()).then(d => {
       if (d) setPartnerReqState(d)
-    }).catch(err => {
-      console.error('❌ Partner request state fetch failed:', err)
-      console.timeEnd('🔄 Partner request state fetch')
-    })
+    }).catch(() => {})
   }, [managedByPartner])
 
   async function sendPartnerRequest(type: 'upgrade' | 'connection') {
@@ -267,38 +258,18 @@ function DashboardInner() {
 
   // Load query history on mount
   useEffect(() => {
-    console.time('📋 Load query history')
     fetch('/api/history')
-      .then(r => {
-        console.log('✅ History response received')
-        return r.json()
-      })
-      .then(d => {
-        console.timeEnd('📋 Load query history')
-        setQueryLogs(d.logs ?? [])
-      })
-      .catch(err => {
-        console.error('❌ History fetch failed:', err)
-        console.timeEnd('📋 Load query history')
-      })
+      .then(r => r.json())
+      .then(d => setQueryLogs(d.logs ?? []))
+      .catch(() => {})
   }, [])
 
   // Load AI token usage on mount
   useEffect(() => {
-    console.time('💡 Load AI usage')
     fetch('/api/ai-usage')
-      .then(r => {
-        console.log('✅ AI usage response received')
-        return r.json()
-      })
-      .then(d => {
-        console.timeEnd('💡 Load AI usage')
-        if (!d.error) setAiUsage(d)
-      })
-      .catch(err => {
-        console.error('❌ AI usage fetch failed:', err)
-        console.timeEnd('💡 Load AI usage')
-      })
+      .then(r => r.json())
+      .then(d => { if (!d.error) setAiUsage(d) })
+      .catch(() => {})
   }, [])
 
   // Refresh AI usage meter whenever billing or payment success params appear
@@ -334,12 +305,14 @@ function DashboardInner() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history])
 
-  // Mark dashboard as fully rendered
+  // Mark dashboard as fully rendered and show timing
   useEffect(() => {
     // Use requestAnimationFrame to ensure DOM has fully painted
+    const startTime = performance.now()
     requestAnimationFrame(() => {
-      console.timeEnd('⏱️ Dashboard interactive')
-      console.log('✅ Dashboard fully rendered and interactive')
+      const endTime = performance.now()
+      const totalTime = Math.round(endTime - (window as any).__dashboardStartTime || startTime)
+      alert(`✅ Dashboard ready!\nTotal time: ${totalTime}ms`)
     })
   }, [])
 
