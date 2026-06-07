@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 7, 2026 (Session 19 — Complete)
+**Last Updated:** June 7, 2026 (Session 20 — In Progress)
 
 ---
 
@@ -44,6 +44,38 @@ git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "B
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+
+---
+
+## Session 20 Key Changes (June 7, 2026)
+
+### Partner Login Cross-Domain Redirect
+- **Problem:** Partner users signing in to main bespoxai.com portal instead of partners.bespoxai.com would get stuck or see wrong UI
+- **Solution:** Portal mismatch detection — after sign-in, portal checks user type and redirects to correct domain
+  - `app/login/page.tsx`: Added `useEffect` to detect partner portal from hostname
+  - `app/api/auth/me/route.ts` (NEW): Returns `{ id, email, firstName, preferredName, partnerAccountId, role }` from session
+  - `lib/auth.ts`: Minimal redirect callback — `async redirect({ url }) { return url }`
+  - `app/dashboard/page.tsx`: Added 1-second timeout session guard redirects to `/login` if no session
+  - Post-signin flow: checks `/api/auth/me` to see if user has `partnerAccountId`
+    - If user is non-partner but signed in via partners.bespoxai.com → redirect to bespoxai.com with email pre-filled
+    - If user is partner but signed in via bespoxai.com → redirect to partners.bespoxai.com with email pre-filled
+  - Error message shown: "You tried to sign in to the wrong portal. Please enter your password."
+- **Tested & confirmed:** Cross-portal redirects working correctly with email persistence and error messaging
+
+### Admin Endpoint Caching & Indexing (Performance Optimization)
+- **Prisma indexes added** (`prisma/schema.prisma`): `@@index([createdAt])` on Tenant, User, PartnerAccount models
+  - Deployed via SQL directly in Vercel Postgres dashboard
+- **Route caching applied** (60-second revalidation):
+  - `app/api/admin/tenants/route.ts`: `unstable_cache` with key `['admin-tenants']`
+  - `app/api/admin/users/route.ts`: `unstable_cache` with key `['admin-users']`
+  - `app/api/admin/stats/route.ts`: `unstable_cache` with key `['admin-stats']`
+  - `app/api/admin/partners/route.ts`: `unstable_cache` with key `['admin-partners']`
+- **Admin dashboard optimization** (`app/admin/page.tsx`):
+  - Removed duplicate `/api/admin/partners` fetch on tab switch
+  - Added `loadPartnerSignups()` method for partner-signups tab only
+- **Performance results:** users/stats/partners showed ~90% improvement on cached loads (316ms, 304ms, 380ms)
+  - Tenants endpoint still slow (~3.24s) due to complex join query — further optimization deferred
+  - Requirements endpoint also slow (~2.91s) — investigation deferred
 
 ---
 
