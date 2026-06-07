@@ -1634,7 +1634,8 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                   </div>
 
                   {showSpecPanel&&(
-                  {showRefine&&!isSuperadmin&&(()=>{
+                    <>
+                      {showRefine&&!isSuperadmin&&(()=>{
                     const gc=getGenCount(req)
                     const remsAfter=MAX_GENS-(gc+1)
                     return (
@@ -1799,6 +1800,8 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                       </Sect>
                     )}
                   </div>
+                    </>
+                  )}
                 </div>
               ):(
                 <div style={{...crd,textAlign:'center',padding:'22px 20px'}}>
