@@ -1831,7 +1831,6 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                     </>
                   )}
                 </div>
-                  )}
               )}
 
               {/* Payment Terms Notice — shown when a quote is present and not yet accepted */}
