@@ -3,32 +3,40 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { encryptToken } from '@/lib/crypto'
+import { unstable_cache } from 'next/cache'
 
 function isSuperadmin(session: any) {
   return session?.user?.role === 'superadmin'
 }
+
+const getCachedPartners = unstable_cache(
+  async () => {
+    const partners = await (prisma as any).partnerAccount.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { tenants: true, users: true },
+        },
+      },
+    })
+
+    // Strip githubToken from response — write-only
+    return partners.map((p: any) => ({
+      ...p,
+      githubToken: p.githubToken ? '••••••••' : null,
+      _count: p._count,
+    }))
+  },
+  ['admin-partners'],
+  { revalidate: 60 }
+)
 
 // GET /api/admin/partners — list all partner accounts with stats
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!isSuperadmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const partners = await (prisma as any).partnerAccount.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { tenants: true, users: true },
-      },
-    },
-  })
-
-  // Strip githubToken from response — write-only
-  const safe = partners.map((p: any) => ({
-    ...p,
-    githubToken: p.githubToken ? '••••••••' : null,
-    _count: p._count,
-  }))
-
+  const safe = await getCachedPartners()
   return NextResponse.json(safe)
 }
 

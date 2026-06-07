@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -12,21 +13,28 @@ function adminGuard(session: any) {
   return null
 }
 
+const getCachedTenants = unstable_cache(
+  async () => {
+    return await (prisma as any).tenant.findMany({
+      orderBy: { createdAt: 'asc' },
+      include: {
+        _count: { select: { users: true, queryLogs: true, requirements: true } },
+        queryLogs: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+        partnerAccount: { select: { id: true, name: true, slug: true } },
+      },
+    })
+  },
+  ['admin-tenants'],
+  { revalidate: 60 }
+)
+
 // GET /api/admin/tenants — list all tenants with user + query counts
 export async function GET() {
   const session = await getServerSession(authOptions)
   const guard = adminGuard(session)
   if (guard) return guard
 
-  const tenants = await (prisma as any).tenant.findMany({
-    orderBy: { createdAt: 'asc' },
-    include: {
-      _count: { select: { users: true, queryLogs: true, requirements: true } },
-      queryLogs: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
-      partnerAccount: { select: { id: true, name: true, slug: true } },
-    },
-  })
-
+  const tenants = await getCachedTenants()
   return NextResponse.json({ tenants })
 }
 

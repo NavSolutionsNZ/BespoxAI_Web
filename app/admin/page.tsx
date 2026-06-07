@@ -151,8 +151,16 @@ function AdminPageInner() {
 
   useEffect(() => {
     if (tab === 'signups' && !signupsLoaded) { loadSignups() }
-    if (tab === 'partners' && !partnersLoaded) { loadPartners() }
+    if (tab === 'partners' && !partnersLoaded) { loadPartnerSignups() }
   }, [tab, signupsLoaded, partnersLoaded])
+
+  function loadPartnerSignups() {
+    // Partners already fetched on init and cached; only load pending signups
+    fetch('/api/admin/partner-signups').then(r => r.json()).then(s => {
+      setPendingPartnerSignups(s.signups ?? [])
+      setPartnersLoaded(true)
+    }).catch(() => setPartnersLoaded(true))
+  }
 
   function loadPartners() {
     Promise.all([

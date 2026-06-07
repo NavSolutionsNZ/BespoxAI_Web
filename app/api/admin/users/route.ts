@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
@@ -13,27 +14,34 @@ function adminGuard(session: any) {
   return null
 }
 
+const getCachedUsers = unstable_cache(
+  async () => {
+    return await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id:        true,
+        email:     true,
+        name:      true,
+        role:      true,
+        active:    true,
+        tenantId:  true,
+        createdAt: true,
+        tenant:    { select: { name: true, active: true } },
+        _count:    { select: { queryLogs: true } },
+      },
+    })
+  },
+  ['admin-users'],
+  { revalidate: 60 }
+)
+
 // GET /api/admin/users — list all users across all tenants
 export async function GET() {
   const session = await getServerSession(authOptions)
   const guard = adminGuard(session)
   if (guard) return guard
 
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id:        true,
-      email:     true,
-      name:      true,
-      role:      true,
-      active:    true,
-      tenantId:  true,
-      createdAt: true,
-      tenant:    { select: { name: true, active: true } },
-      _count:    { select: { queryLogs: true } },
-    },
-  })
-
+  const users = await getCachedUsers()
   return NextResponse.json({ users })
 }
 

@@ -69,6 +69,8 @@ model Tenant {
   migrationEnquiries  MigrationEnquiry[]
   objectFiles         TenantObjectFile[]
   aiUsageLogs         AiUsageLog[]
+
+  @@index([createdAt])
 }
 
 model User {
@@ -96,6 +98,8 @@ model User {
   migrationEnquiries MigrationEnquiry[]
   uploadedObjects    TenantObjectFile[]
   partnerUsers       PartnerUser[]
+
+  @@index([createdAt])
 }
 
 model SignupRequest {
@@ -394,6 +398,8 @@ model PartnerAccount {
 
   tenants              Tenant[]
   users                PartnerUser[]
+
+  @@index([createdAt])
 }
 
 model PartnerUser {
