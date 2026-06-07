@@ -66,11 +66,10 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async redirect({ url, baseUrl }) {
-      // Allow relative paths, redirect absolute URLs to baseUrl
-      if (url.startsWith('/')) return `${baseUrl}${url}`
-      // Only allow same origin redirects for safety
-      return baseUrl
+    async redirect({ url }) {
+      // Just return the URL that NextAuth wants to go to
+      // NextAuth handles all the validation
+      return url
     },
     async jwt({ token, user, trigger }) {
       // On sign-in, stamp all user fields into token
