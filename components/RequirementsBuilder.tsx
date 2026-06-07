@@ -1617,7 +1617,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                         )}
                       </div>
                     </div>
-                    {showSpecPanel&&(req.status==='draft'||req.status==='submitted'&&!!req.parentId||req.status==='needs_clarification'||req.status==='quote_rejected'||isSuperadmin)&&(()=>{
+                    {showSpecPanel&&req.status==='draft'&&(()=>{
                       const gc=getGenCount(req)
                       const atLimit=!isSuperadmin&&gc>=MAX_GENS
                       return atLimit ? (

@@ -685,6 +685,8 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const [answersText, setAnswersText] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
+  const [genSpec, setGenSpec] = useState(false)
+  const [specErr, setSpecErr] = useState('')
   const spec = parseSpec(req.aiSpec)
   const qaLog = readQALog(req.adminQALog)
   const sc = STATUS_COLOR[req.status] ?? STATUS_COLOR.draft
@@ -717,6 +719,21 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
     if (!answersText.trim()) return
     patch({ status: 'submitted', customerAnswers: answersText })
     setAnswersText('')
+  }
+
+  async function generateSpec() {
+    setGenSpec(true)
+    setSpecErr('')
+    const res = await fetch(`/api/partner/tenants/${tenantId}/requirements/${req.id}/ai-spec`, { method: 'POST' })
+    if (!res.ok) {
+      const data = await res.json()
+      setSpecErr(data.error || 'Failed to generate spec')
+      setGenSpec(false)
+      return
+    }
+    const data = await res.json()
+    onUpdated(data.requirement)
+    setGenSpec(false)
   }
 
   const btnPrimary: React.CSSProperties = {
@@ -783,7 +800,10 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       {/* AI Spec */}
       {spec ? (
         <Card style={{ marginBottom: 16 }}>
-          <SectionLabel>AI Specification</SectionLabel>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <SectionLabel>AI Specification</SectionLabel>
+            {['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status) && <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '…' : '↺ Regen'}</button>}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>User Story</p>
@@ -814,6 +834,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               </div>
             ) : null}
           </div>
+          {specErr && <p style={{ color: '#F85149', fontSize: 12, marginTop: 12 }}>{specErr}</p>}
         </Card>
       ) : null}
 

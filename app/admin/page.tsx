@@ -2664,7 +2664,7 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                     AI Spec · {spec.complexity} · ~{spec.estimatedDays}d
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jade)', fontSize: 10 }}>{genSpec ? '…' : '↺ Regen'}</button>
+                    {['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(selected.status) && <button onClick={() => generateSpec(selected.id)} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jade)', fontSize: 10 }}>{genSpec ? '…' : '↺ Regen'}</button>}
                     <AdminCardToggleBtn collapsed={!!collapsedAdminCards['spec-'+selected.id]} onToggle={()=>toggleAdminCard('spec-'+selected.id)} />
                   </div>
                 </div>
