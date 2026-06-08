@@ -6,7 +6,6 @@ import { useState, useRef, useEffect, KeyboardEvent, Suspense } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { DisplayHint, StructuredData } from '@/app/api/query/route'
-import type { BrandingConfig } from '@/lib/branding'
 import { useBranding } from '@/app/branding-provider'
 import DataVisualizer from '@/components/DataVisualizer'
 import { UpgradePrompt } from '@/components/UpgradePrompt'
@@ -217,13 +216,6 @@ function DashboardInner() {
     setActiveNavState(v)
   }, [searchParams])
 
-  // When not connected and no explicit view chosen, default to customisations
-  // so new users aren't stranded on the CFO Assistant screen
-  useEffect(() => {
-    if (health.status === 'error' && !searchParams.get('view')) {
-      setActiveNav('customisations')
-    }
-  }, [health.status])
   const [question, setQuestion]   = useState('')
   const [history, setHistory]     = useState<QueryResult[]>([])
   const [showMeta, setShowMeta]   = useState<string | null>(null)
