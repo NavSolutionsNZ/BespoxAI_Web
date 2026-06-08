@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import SuperAdminDashboard from '@/components/SuperAdminDashboard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,11 +24,6 @@ interface User {
   tenantId: string; createdAt: string
   tenant: { name: string; active: boolean }
   _count: { queryLogs: number }
-}
-
-interface Stats {
-  totalQueries: number; todayQueries: number
-  tenants: any[]; topEntities: { entity: string; _count: { entity: number } }[]
 }
 
 type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'partners'
@@ -92,7 +87,6 @@ function AdminPageInner() {
   const [activating, setActivating] = useState<string | null>(null)
   const [tenants, setTenants]   = useState<Tenant[]>([])
   const [users, setUsers]       = useState<User[]>([])
-  const [stats, setStats]       = useState<Stats | null>(null)
   const [loading, setLoading]   = useState(true)
 
   // New tenant form
@@ -138,12 +132,10 @@ function AdminPageInner() {
     Promise.all([
       fetch('/api/admin/tenants').then(r => r.json()),
       fetch('/api/admin/users').then(r => r.json()),
-      fetch('/api/admin/stats').then(r => r.json()),
       fetch('/api/admin/partners').then(r => r.json()),
-    ]).then(([t, u, s, p]) => {
+    ]).then(([t, u, p]) => {
       setTenants(t.tenants ?? [])
       setUsers(u.users ?? [])
-      setStats(s)
       setPartners(Array.isArray(p) ? p : [])
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -157,17 +149,6 @@ function AdminPageInner() {
   function loadPartnerSignups() {
     // Partners already fetched on init and cached; only load pending signups
     fetch('/api/admin/partner-signups').then(r => r.json()).then(s => {
-      setPendingPartnerSignups(s.signups ?? [])
-      setPartnersLoaded(true)
-    }).catch(() => setPartnersLoaded(true))
-  }
-
-  function loadPartners() {
-    Promise.all([
-      fetch('/api/admin/partners').then(r => r.json()),
-      fetch('/api/admin/partner-signups').then(r => r.json()),
-    ]).then(([p, s]) => {
-      setPartners(Array.isArray(p) ? p : [])
       setPendingPartnerSignups(s.signups ?? [])
       setPartnersLoaded(true)
     }).catch(() => setPartnersLoaded(true))
@@ -1167,14 +1148,6 @@ function ConnectedPill({ connected }: { connected: boolean }) {
   )
 }
 
-function SectionHead({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 12, ...style }}>
-      {children}
-    </div>
-  )
-}
-
 function FormRow({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
@@ -1828,11 +1801,8 @@ function AdminCardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onTog
 }
 
 function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelectReqId?: string|null; onAutoSelectDone?: () => void }) {
-  const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const adminName  = (session?.user as any)?.name  ?? 'Admin'
-  const adminEmail = (session?.user as any)?.email ?? ''
   const [reqs, setReqs]           = useState<AdminReq[]>([])
   const [collapsedAdminCards, setCollapsedAdmin] = useState<Record<string,boolean>>({})
   function toggleAdminCard(id: string) { setCollapsedAdmin(prev => ({ ...prev, [id]: !isAdminCardCollapsed(id, prev) })) }
