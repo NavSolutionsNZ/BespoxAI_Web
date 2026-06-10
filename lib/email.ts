@@ -37,7 +37,7 @@ export async function sendVerificationEmail(to: string, companyName: string, tok
   })
 }
 
-export async function sendEmail({ to, subject, html, from }: { to: string; subject: string; html: string; from?: string }) {
+export async function sendEmail({ to, subject, html, from }: { to: string; subject: string; html: string; from?: string }): Promise<void> {
   try {
     const info = await transporter.sendMail({ from: from ?? FROM, to, subject, html })
     const accepted = (info.accepted ?? []) as string[]
@@ -47,7 +47,6 @@ export async function sendEmail({ to, subject, html, from }: { to: string; subje
     } else {
       console.log('[sendEmail] sent to=' + to + ' accepted=' + JSON.stringify(accepted) + ' id=' + (info.messageId ?? '') + ' response=' + (info.response ?? ''))
     }
-    return info
   } catch (e: any) {
     console.error('[sendEmail] THREW to=' + to + ' subject="' + subject + '" error=' + (e?.message ?? String(e)))
     throw e
