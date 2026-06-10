@@ -23,28 +23,33 @@ interface User {
   id: string; email: string; name: string; role: string; active: boolean
   tenantId: string; createdAt: string
   tenant: { name: string; active: boolean; partnerAccount?: { name: string } | null } | null
-  partnerUsers?: { role: string; partnerAccount: { name: string } | null }[]
+  partnerUsers?: { role: string; partnerAccount: { name: string; tenants?: { id: string; name: string }[] } | null }[]
   _count: { queryLogs: number }
 }
 
 type UserType = 'partner' | 'partner_customer' | 'direct' | 'internal'
 
 // Classify a user for the admin Users list.
-// - partner: member of a partner team (has a PartnerUser record)
+// - partner: member of a partner team (has a PartnerUser record); managedTenants lists the
+//   tenants that partner account manages (a partner can manage many)
 // - partner_customer: belongs to a tenant managed by a partner
 // - internal: superadmin/developer (BespoxAI staff)
 // - direct: a normal BespoxAI customer
-function classifyUser(u: User): { type: UserType; partnerName: string | null } {
+function classifyUser(u: User): { type: UserType; partnerName: string | null; managedTenants: string[] } {
   if (u.partnerUsers && u.partnerUsers.length > 0) {
-    return { type: 'partner', partnerName: u.partnerUsers[0].partnerAccount?.name ?? null }
+    const names = u.partnerUsers.map(pu => pu.partnerAccount?.name).filter(Boolean) as string[]
+    const managedTenants = u.partnerUsers
+      .flatMap(pu => pu.partnerAccount?.tenants ?? [])
+      .map(t => t.name)
+    return { type: 'partner', partnerName: names.length > 0 ? names.join(', ') : null, managedTenants }
   }
   if (u.tenant?.partnerAccount) {
-    return { type: 'partner_customer', partnerName: u.tenant.partnerAccount.name }
+    return { type: 'partner_customer', partnerName: u.tenant.partnerAccount.name, managedTenants: [] }
   }
   if (u.role === 'superadmin' || u.role === 'developer') {
-    return { type: 'internal', partnerName: null }
+    return { type: 'internal', partnerName: null, managedTenants: [] }
   }
-  return { type: 'direct', partnerName: null }
+  return { type: 'direct', partnerName: null, managedTenants: [] }
 }
 
 const USER_TYPE_LABEL: Record<UserType, string> = {
@@ -741,7 +746,27 @@ function AdminPageInner() {
                             )
                           })()}
                         </td>
-                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant?.name || '—'}</td>
+                        <td style={tdStyle}>
+                          {(() => {
+                            const c = classifyUser(u)
+                            if (c.type === 'partner') {
+                              if (c.managedTenants.length === 0) {
+                                return <span style={{ color: 'var(--slate)', fontStyle: 'italic', fontSize: 11 }}>no tenants yet</span>
+                              }
+                              const shown = c.managedTenants.slice(0, 3)
+                              const extra = c.managedTenants.length - shown.length
+                              return (
+                                <span title={c.managedTenants.join(', ')} style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, maxWidth: 260 }}>
+                                  {shown.map((name, i) => (
+                                    <span key={i} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: 'rgba(26,146,114,0.08)', color: 'var(--forest)', border: '1px solid rgba(26,146,114,0.2)', whiteSpace: 'nowrap' }}>{name}</span>
+                                  ))}
+                                  {extra > 0 ? <span style={{ fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }}>{'+' + extra + ' more'}</span> : null}
+                                </span>
+                              )
+                            }
+                            return <span style={{ whiteSpace: 'nowrap' }}>{u.tenant?.name || '—'}</span>
+                          })()}
+                        </td>
                         <td style={tdStyle}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : u.role === 'developer' ? 'rgba(59,82,163,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : u.role === 'developer' ? '#3B52A3' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : u.role === 'developer' ? 'rgba(59,82,163,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
                             {u.role === 'superadmin' ? 'Super Admin' : u.role === 'tenant_admin' ? 'Admin' : u.role === 'developer' ? 'Developer' : 'User'}

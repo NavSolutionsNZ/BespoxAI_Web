@@ -36,7 +36,12 @@ const getCachedUsers = unstable_cache(
         partnerUsers: {
           select: {
             role: true,
-            partnerAccount: { select: { name: true } },
+            partnerAccount: {
+              select: {
+                name: true,
+                tenants: { select: { id: true, name: true } },
+              },
+            },
           },
         },
         _count:    { select: { queryLogs: true } },
