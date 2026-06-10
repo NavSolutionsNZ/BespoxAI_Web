@@ -3797,6 +3797,8 @@ function PartnersTab({ partners, partnersLoaded, onReload, pendingSignups, onAct
   const [error, setError] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<any>({})
+  const [resendId, setResendId] = useState<string | null>(null)
+  const [resendMsg, setResendMsg] = useState<any>({})
   const [form, setForm] = useState({
     name: '', slug: '', billingEmail: '',
     monthlyAccessFee: 0, perDeveloperFee: 0, perTenantFee: 0, perUserFee: 0,
@@ -3860,6 +3862,21 @@ function PartnersTab({ partners, partnersLoaded, onReload, pendingSignups, onAct
       paymentMode: p.paymentMode,
       isActive: p.isActive,
     })
+  }
+
+  async function resendWelcome(id: string) {
+    setResendId(id)
+    setResendMsg((m: any) => ({ ...m, [id]: '' }))
+    try {
+      const res = await fetch('/api/admin/partners/' + id + '/resend-welcome', { method: 'POST' })
+      const d   = await res.json()
+      if (!res.ok) { setResendMsg((m: any) => ({ ...m, [id]: d.error ?? 'Failed' })); return }
+      setResendMsg((m: any) => ({ ...m, [id]: 'Sent' }))
+    } catch {
+      setResendMsg((m: any) => ({ ...m, [id]: 'Network error' }))
+    } finally {
+      setResendId(null)
+    }
   }
 
   return (
@@ -4026,7 +4043,11 @@ function PartnersTab({ partners, partnersLoaded, onReload, pendingSignups, onAct
                         <button onClick={() => setEditId(null)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--fog)', background: 'transparent', color: 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                       </>
                     ) : (
-                      <button onClick={() => startEdit(p)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--fog)', background: 'transparent', color: 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}>Edit</button>
+                      <>
+                        <button onClick={() => startEdit(p)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--fog)', background: 'transparent', color: 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer', marginRight: 6 }}>Edit</button>
+                        <button onClick={() => resendWelcome(p.id)} disabled={resendId === p.id} title="Generate a new temporary password and re-send the welcome email" style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--fog)', background: 'transparent', color: 'var(--slate)', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}>{resendId === p.id ? '...' : 'Resend welcome'}</button>
+                        {resendMsg[p.id] ? <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: 10, color: resendMsg[p.id] === 'Sent' ? 'var(--forest)' : '#A32D2D' }}>{resendMsg[p.id]}</span> : null}
+                      </>
                     )}
                   </td>
                 </tr>
