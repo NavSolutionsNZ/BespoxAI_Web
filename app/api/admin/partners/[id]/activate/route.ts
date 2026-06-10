@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { notifyPartnerWelcome } from '@/lib/notifications'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { revalidateTag } from 'next/cache'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -85,6 +86,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { id: params.id },
     data:  { activatedAt: new Date() },
   })
+
+  // Bust the admin-partners list cache so the new partner appears immediately
+  revalidateTag('admin-partners')
 
   // Send welcome email
   notifyPartnerWelcome({

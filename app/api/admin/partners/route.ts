@@ -28,7 +28,7 @@ const getCachedPartners = unstable_cache(
     }))
   },
   ['admin-partners'],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ['admin-partners'] }
 )
 
 // GET /api/admin/partners — list all partner accounts with stats

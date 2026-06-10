@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/settings?billing=success`,
-    cancel_url: `${origin}/settings`,
+    success_url: `${origin}/partner/settings?billing=success`,
+    cancel_url: `${origin}/partner/settings`,
   })
 
   return NextResponse.json({ sessionId: checkoutSession.id, url: checkoutSession.url })
