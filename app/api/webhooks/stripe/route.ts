@@ -104,6 +104,12 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
     const plan = getPartnerPlanByPriceId(priceId)
     const tier = plan?.id ?? 'unbranded'
 
+    console.log('[Stripe Webhook][partner] priceId=' + priceId + ' resolvedTier=' + tier + ' status=' + status
+      + ' env.BRANDED_MONTHLY=' + (process.env.STRIPE_PARTNER_PRICE_BRANDED_MONTHLY ?? 'UNSET')
+      + ' env.BRANDED_ANNUAL=' + (process.env.STRIPE_PARTNER_PRICE_BRANDED_ANNUAL ?? 'UNSET')
+      + ' env.UNBRANDED_MONTHLY=' + (process.env.STRIPE_PARTNER_PRICE_UNBRANDED_MONTHLY ?? 'UNSET')
+      + ' env.UNBRANDED_ANNUAL=' + (process.env.STRIPE_PARTNER_PRICE_UNBRANDED_ANNUAL ?? 'UNSET'))
+
     await (prisma as any).partnerAccount.update({
       where: { id: partner.id },
       data: {
