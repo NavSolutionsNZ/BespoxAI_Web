@@ -22,8 +22,36 @@ interface Tenant {
 interface User {
   id: string; email: string; name: string; role: string; active: boolean
   tenantId: string; createdAt: string
-  tenant: { name: string; active: boolean }
+  tenant: { name: string; active: boolean; partnerAccount?: { name: string } | null } | null
+  partnerUsers?: { role: string; partnerAccount: { name: string } | null }[]
   _count: { queryLogs: number }
+}
+
+type UserType = 'partner' | 'partner_customer' | 'direct' | 'internal'
+
+// Classify a user for the admin Users list.
+// - partner: member of a partner team (has a PartnerUser record)
+// - partner_customer: belongs to a tenant managed by a partner
+// - internal: superadmin/developer (BespoxAI staff)
+// - direct: a normal BespoxAI customer
+function classifyUser(u: User): { type: UserType; partnerName: string | null } {
+  if (u.partnerUsers && u.partnerUsers.length > 0) {
+    return { type: 'partner', partnerName: u.partnerUsers[0].partnerAccount?.name ?? null }
+  }
+  if (u.tenant?.partnerAccount) {
+    return { type: 'partner_customer', partnerName: u.tenant.partnerAccount.name }
+  }
+  if (u.role === 'superadmin' || u.role === 'developer') {
+    return { type: 'internal', partnerName: null }
+  }
+  return { type: 'direct', partnerName: null }
+}
+
+const USER_TYPE_LABEL: Record<UserType, string> = {
+  partner:          'Partner',
+  partner_customer: 'Partner Customer',
+  direct:           'Direct',
+  internal:         'Internal',
 }
 
 type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'partners'
@@ -87,6 +115,7 @@ function AdminPageInner() {
   const [activating, setActivating] = useState<string | null>(null)
   const [tenants, setTenants]   = useState<Tenant[]>([])
   const [users, setUsers]       = useState<User[]>([])
+  const [userTypeFilter, setUserTypeFilter] = useState('all')
   const [loading, setLoading]   = useState(true)
 
   // New tenant form
@@ -667,20 +696,51 @@ function AdminPageInner() {
                 </FormCard>
               )}
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)' }}>Filter by type</span>
+                <select value={userTypeFilter} onChange={e => setUserTypeFilter(e.target.value)} style={{ ...inputStyle, width: 'auto', fontSize: 12, padding: '5px 10px' }}>
+                  <option value="all">All users</option>
+                  <option value="partner">Partner</option>
+                  <option value="partner_customer">Partner Customer</option>
+                  <option value="direct">Direct</option>
+                  <option value="internal">Internal</option>
+                </select>
+              </div>
+
               <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--fog)' }}>
-                      {['User', 'Email', 'Tenant', 'Role', 'Joined', 'Status', 'Actions'].map(h => (
+                      {['User', 'Email', 'Type', 'Tenant', 'Role', 'Joined', 'Status', 'Actions'].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map(u => (
+                    {users.filter(u => userTypeFilter === 'all' || classifyUser(u).type === userTypeFilter).map(u => (
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--fog)' }}>
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ fontWeight: 500 }}>{u.name || '—'}</span></td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{u.email}</td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                          {(() => {
+                            const c = classifyUser(u)
+                            const palette = c.type === 'partner'
+                              ? { bg: 'rgba(59,82,163,0.08)', fg: '#3B52A3', bd: 'rgba(59,82,163,0.25)' }
+                              : c.type === 'partner_customer'
+                              ? { bg: 'rgba(26,146,114,0.08)', fg: 'var(--forest)', bd: 'rgba(26,146,114,0.25)' }
+                              : c.type === 'internal'
+                              ? { bg: 'rgba(200,149,42,0.10)', fg: 'var(--amber)', bd: 'rgba(200,149,42,0.3)' }
+                              : { bg: 'rgba(59,82,73,0.06)', fg: 'var(--slate)', bd: 'rgba(59,82,73,0.2)' }
+                            return (
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: palette.bg, color: palette.fg, border: '1px solid ' + palette.bd, width: 'fit-content' }}>
+                                  {USER_TYPE_LABEL[c.type]}
+                                </span>
+                                {c.partnerName ? <span style={{ fontSize: 10, color: 'var(--slate)' }}>{c.partnerName}</span> : null}
+                              </span>
+                            )
+                          })()}
+                        </td>
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{u.tenant?.name || '—'}</td>
                         <td style={tdStyle}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : u.role === 'developer' ? 'rgba(59,82,163,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : u.role === 'developer' ? '#3B52A3' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : u.role === 'developer' ? 'rgba(59,82,163,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
