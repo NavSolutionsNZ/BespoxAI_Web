@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db'
 import { getPlanByPriceId } from '@/lib/stripe-prices'
 import type Stripe from 'stripe'
 import { notifyAdminsDepositPaid } from '@/lib/notifications'
+import { revalidateTag } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,6 +115,8 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
         isWhiteLabel: status === 'active' && tier === 'branded' ? true : partner.isWhiteLabel,
       },
     })
+    // White-label / tier may have changed — bust the cached branding response
+    revalidateTag('branding')
     return
   }
 
@@ -152,6 +155,8 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
         isWhiteLabel: false, // Disable white-label on cancellation
       },
     })
+    // White-label disabled — bust the cached branding response
+    revalidateTag('branding')
     return
   }
 

@@ -36,7 +36,7 @@ const getCachedBranding = unstable_cache(
     return DEFAULT_BRANDING
   },
   ['branding'], // cache key prefix
-  { revalidate: 60 } // cache for 60 seconds
+  { revalidate: 60, tags: ['branding'] } // cache for 60 seconds, bustable via revalidateTag('branding')
 )
 
 // GET /api/branding

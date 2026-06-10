@@ -15,7 +15,7 @@ function BrandingLoader({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/branding')
+    fetch('/api/branding', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(b => {
         setBranding(b || DEFAULT_BRANDING)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePartnerSession } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
+import { revalidateTag } from 'next/cache'
 
 // GET /api/partner/account — return own PartnerAccount details + stats
 export async function GET(req: NextRequest) {
@@ -55,6 +56,9 @@ export async function PATCH(req: NextRequest) {
     where: { id: session.partnerAccountId },
     data,
   })
+
+  // Branding may have changed — bust the cached /api/branding response
+  revalidateTag('branding')
 
   return NextResponse.json({ ...partner, githubToken: partner.githubToken ? '••••••••' : null })
 }
