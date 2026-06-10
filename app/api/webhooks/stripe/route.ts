@@ -94,7 +94,7 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
   if (!priceId) return
 
   // ── Check if this is a partner subscription ──
-  const partner = await (prisma as any).partnerAccount.findUnique({
+  const partner = await (prisma as any).partnerAccount.findFirst({
     where: { stripeCustomerId: customerId },
   })
 
@@ -103,12 +103,6 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
     const { getPartnerPlanByPriceId } = await import('@/lib/partner-plans')
     const plan = getPartnerPlanByPriceId(priceId)
     const tier = plan?.id ?? 'unbranded'
-
-    console.log('[Stripe Webhook][partner] priceId=' + priceId + ' resolvedTier=' + tier + ' status=' + status
-      + ' env.BRANDED_MONTHLY=' + (process.env.STRIPE_PARTNER_PRICE_BRANDED_MONTHLY ?? 'UNSET')
-      + ' env.BRANDED_ANNUAL=' + (process.env.STRIPE_PARTNER_PRICE_BRANDED_ANNUAL ?? 'UNSET')
-      + ' env.UNBRANDED_MONTHLY=' + (process.env.STRIPE_PARTNER_PRICE_UNBRANDED_MONTHLY ?? 'UNSET')
-      + ' env.UNBRANDED_ANNUAL=' + (process.env.STRIPE_PARTNER_PRICE_UNBRANDED_ANNUAL ?? 'UNSET'))
 
     await (prisma as any).partnerAccount.update({
       where: { id: partner.id },
@@ -143,7 +137,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   const details = (sub as any).cancellation_details ?? {}
 
   // ── Check if this is a partner subscription ──
-  const partner = await (prisma as any).partnerAccount.findUnique({
+  const partner = await (prisma as any).partnerAccount.findFirst({
     where: { stripeCustomerId: customerId },
   })
 

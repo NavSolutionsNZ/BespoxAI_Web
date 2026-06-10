@@ -357,7 +357,7 @@ model PartnerAccount {
   name                 String
   slug                 String        @unique
   billingEmail         String
-  stripeCustomerId     String?
+  stripeCustomerId     String?       @unique
 
   // Stripe subscription (for white-label + other premium features)
   stripeSubscriptionId String?       // Stripe subscription ID for partner plan
