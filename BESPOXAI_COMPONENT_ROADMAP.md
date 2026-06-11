@@ -1,12 +1,25 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 7, 2026 (Session 20)
+**Last Updated:** June 11, 2026 (Session 21)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 21 — Partner Fixes, White-Label, User Labelling, Health**
+- [x] White-label persistence fixed — stripe webhook used findUnique on non-unique stripeCustomerId; switched to findFirst + added @unique (SQL index applied). Branded plan now persists tier='branded'+isWhiteLabel=true
+- [x] White-label logo render fixed — BrandingProvider client fetch cache:'no-store' + /api/branding server cache tagged ['branding'] + revalidateTag('branding') on partner save and webhook flip
+- [x] Partner post-payment redirect → /partner/settings (was landing in customer CFO area)
+- [x] Partner activation cache-bust (revalidateTag('admin-partners')) — partner appears immediately
+- [x] Resend partner welcome email — new superadmin route + per-row button (fresh temp password)
+- [x] sendEmail logs accepted/rejected/response, re-throws on hard fail (return type kept Promise<void>)
+- [x] Admin Users tab: Type column (Partner/Partner Customer/Direct/Internal badges) + partner name + managed-tenants pills for partners + "Filter by type" dropdown
+- [x] Customers (Direct + Partner Customer) blocked from developer role — UI skips Dev in cycle + API 403 on tenant-tied users. Partner staff still eligible. Partner portal needs no fix (roles read-only there)
+- [x] /api/health 500-every-minute fixed — null tenantId guard + getTenantById null-safe (findFirst). Verified clean in runtime logs
+- [x] (Infra, Rich) DKIM + DMARC published in Cloudflare DNS — fixes silent partner email drops
+- [x] Tested & confirmed live
 
 **Session 19 — Spec Lock After Customer Acceptance**
 - [x] Customer portal (RequirementsBuilder): Regen button ONLY shown in draft status

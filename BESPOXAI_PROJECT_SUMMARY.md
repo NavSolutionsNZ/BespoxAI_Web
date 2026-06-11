@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 7, 2026 (Session 20 — In Progress)
+**Last Updated:** June 11, 2026 (Session 21)
 
 ---
 
@@ -44,6 +44,51 @@ git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "B
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+
+---
+
+## Session 21 Key Changes (June 11, 2026)
+
+### Partner flow fixes
+- **Post-payment redirect:** `app/api/partner/billing/create-checkout/route.ts` success_url/cancel_url were pointing at `/settings` (customer portal) → partner landed in CFO Assistant area. Fixed to `/partner/settings?billing=success` and `/partner/settings`.
+- **Activation cache-bust:** newly-activated partner was invisible for up to 60s (neither pending nor in accounts list). `app/api/admin/partners/[id]/activate/route.ts` now calls `revalidateTag('admin-partners')`; `app/api/admin/partners/route.ts` cache tagged `['admin-partners']`.
+- **Email send logging:** `lib/email.ts` sendEmail now logs accepted/rejected/response and re-throws on hard failure. Return type kept `Promise<void>` (no caller uses a return value — returning the nodemailer `info` object broke the build in `partner/request/route.ts`).
+- **Resend partner welcome:** NEW route `app/api/admin/partners/[id]/resend-welcome/route.ts` (superadmin-only) — generates a fresh temp password (original is bcrypt-hashed/unrecoverable), re-hashes onto the partner_admin user with mustChangePassword:true, calls notifyPartnerWelcome, returns 502 if email throws. UI: "Resend welcome" button per partner row in admin Partners tab.
+
+### White-label persistence — THE BIG BUG (fixed)
+- **Symptom:** partner paid for branded plan but subscriptionTier stayed 'unbranded'/isWhiteLabel=false; settings kept demanding upgrade.
+- **Root cause:** `app/api/webhooks/stripe/route.ts` did `partnerAccount.findUnique({where:{stripeCustomerId}})` but stripeCustomerId was NOT @unique → Prisma threw "Argument where needs at least one of id or slug", webhook swallowed it and returned 200.
+- **Fix:** both partner lookups (handleSubscriptionChange + handleSubscriptionDeleted) switched to `findFirst`; added `@unique` to `PartnerAccount.stripeCustomerId` in schema. SQL run: `CREATE UNIQUE INDEX IF NOT EXISTS "PartnerAccount_stripeCustomerId_key" ON "PartnerAccount" ("stripeCustomerId");`
+- Webhook maps branded price → tier='branded'+isWhiteLabel=true via getPartnerPlanByPriceId. Confirmed persisting (Test Partner Ltd, cus_UeUI0MfIq09lUb, Stripe TEST mode).
+
+### White-label logo not rendering without hard refresh (fixed, separate bug)
+- **Root cause:** BrandingProvider (`app/branding-provider.tsx`) fetched `/api/branding` with no cache control → browser served stale default-branding on soft nav.
+- **Fix:** (1) client fetch `cache:'no-store'`; (2) `app/api/branding/route.ts` server `unstable_cache` tagged `['branding']`; (3) `revalidateTag('branding')` added in `app/api/partner/account/route.ts` PATCH and in the stripe webhook on white-label flip on/off.
+
+### Admin Users tab — type labelling + filter
+- `app/api/admin/users/route.ts` query extended to include `partnerUsers{role,partnerAccount{name,tenants{id,name}}}` and `tenant{partnerAccount{name}}`.
+- `app/admin/page.tsx`: `classifyUser(u)` helper (defined OUTSIDE component) returns {type, partnerName, managedTenants}. Types: **Partner** (blue), **Partner Customer** (green), **Direct** (grey), **Internal** (amber = superadmin/developer). New "Type" column with badge + partner name, plus a "Filter by type" dropdown.
+- Classification rule: PartnerUser record → partner; tenant.partnerAccount set → partner_customer; superadmin/developer → internal; else direct.
+- For **Partner** users the Tenant column lists the partner account's managed tenants as green pills (first 3 + "+N more" + full-list hover tooltip), "no tenants yet" if none.
+
+### Customers cannot be made developers (fixed)
+- Developers are internal BespoxAI staff; partner *staff* CAN still be devs; customers (Direct + Partner Customer, i.e. any tenant-tied user) cannot.
+- UI (`app/admin/page.tsx`): `canBeDeveloper(u)` helper; for customers the role cycle becomes user↔tenant_admin (button reads "→ User" not "→ Dev"). `toggleUserRole(u)` now takes the full user object.
+- API (`app/api/admin/users/[id]/route.ts`): rejects role:'developer' with 403 if target.tenantId is set.
+- Partner portal needs NO equivalent fix: partner client-tenant page shows client roles read-only, and the partner users API only handles partner_admin|partner_developer — it can never assign the platform developer role.
+
+### /api/health 500 every minute (fixed)
+- **Symptom:** partners.bespoxai.com logged a Prisma 500 every 60s (dashboard polls /api/health).
+- **Root cause:** partner/superadmin users have tenantId:null; route called getTenantById(null) → `findUnique({where:{id:null,active:true}})` → same "needs at least one of id" Prisma error.
+- **Fix:** (1) `app/api/health/route.ts` guards null tenantId → returns 200 {status:'no_tenant'}; (2) `lib/tenants.ts` getTenantById made null-safe (`if(!tenantId)return null`) and switched findUnique→findFirst (also protects bc-test, query, settings/discover callers). Confirmed: error stream clean post-deploy.
+
+### Email deliverability — DKIM/DMARC (infra, Rich did this)
+- Dean (deanh@endeavour.co.nz) was receiving ZERO partner emails. bespoxai.com had SPF only, no DKIM, no DMARC → nodemailer "succeeded" (SMTP accepted) but mail silently dropped.
+- DNS is in **Cloudflare** (nameservers jakub/val.ns.cloudflare.com); domain registered at Spaceship/Spacemail.
+- Added in Cloudflare DNS: DKIM TXT `spacemail._domainkey` (2048-bit RSA, value from Spaceship support), DMARC TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:postmaster@bespoxai.com`. Verified green on mxtoolbox. Can tighten p=none→quarantine later once rua reports look clean.
+
+### Recurring lesson this session
+- `findUnique` only accepts unique fields and throws on null — this bug class recurred 3× (stripe webhook, getTenantById, health). **Use `findFirst` for any non-unique or nullable filter.**
 
 ---
 

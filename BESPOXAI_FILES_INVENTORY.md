@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 7, 2026 (Session 20)
+**Last Updated: June 11, 2026 (Session 21)
 
 ---
 
@@ -91,7 +91,13 @@
 | `api/billing/create-checkout/route.ts` | Stripe subscription checkout |
 | `api/onboarding/route.ts` | GET/POST onboarding data. |
 | `api/signup/verify/route.ts` | Verifies token, fires notifyAdminsSignupVerified |
-| `api/webhooks/stripe/route.ts` | Stripe webhook |
+| `api/webhooks/stripe/route.ts` | Stripe webhook. Partner lookups use findFirst on stripeCustomerId (now @unique). Maps branded price → tier='branded'+isWhiteLabel=true; revalidateTag('branding') on white-label flip on/off. |
+| `api/health/route.ts` | GET — pings tenant BCAgent /health. Guards null tenantId (partner/superadmin) → 200 {status:'no_tenant'}. Polled every 60s by portal. |
+| `api/branding/route.ts` | GET branding for current user. Server unstable_cache tagged ['branding']. Client (branding-provider.tsx) fetches with cache:'no-store'. |
+| `api/admin/partners/[id]/activate/route.ts` | Activates partner. Calls revalidateTag('admin-partners') so partner appears immediately. |
+| `api/admin/partners/[id]/resend-welcome/route.ts` | POST superadmin-only — fresh temp password + re-hash onto partner_admin user + notifyPartnerWelcome. 502 if email throws. |
+| `api/partner/account/route.ts` | GET/PATCH partner account (branding etc). PATCH calls revalidateTag('branding'). |
+| `api/partner/billing/create-checkout/route.ts` | Partner Stripe checkout. success_url/cancel_url → /partner/settings (NOT /settings). |
 | `api/partner/tenants/[id]/requirements/[reqId]/ai-spec/route.ts` | Partner spec generation. Mirrors customer ai-spec logic with partner auth. |
 
 ### Components (`/components`)
@@ -236,6 +242,7 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't edit root `index.html` — edit `public/index.html`
 - ❌ Don't use `cmoqi33pu0000l3b0zusc5hgz` as the test tenant ID — that's GWM Dev
 - ❌ Don't run `prisma migrate` — use `db push` or raw SQL
+- ❌ Don't use `findUnique` with non-unique/nullable filters (e.g. `{id, active}` or a nullable tenantId/stripeCustomerId) — it throws "needs at least one of id". Use `findFirst`. (Bit us 3× in Session 21: stripe webhook, getTenantById, health.)
 - ❌ Don't use `git push origin main` — use `git push origin master:main`
 - ❌ Don't use old repo URL (BespokeAI_Web) — use BespoxAI_Web
 - ❌ Don't use `&&` shortcircuit JSX in large functions — use `cond ? <JSX/> : null`
