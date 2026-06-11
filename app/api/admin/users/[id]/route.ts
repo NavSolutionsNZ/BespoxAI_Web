@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if ((session!.user as any).id === params.id)
     return NextResponse.json({ error: 'Cannot modify your own account' }, { status: 400 })
 
-  const target = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true } })
+  const target = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true, tenantId: true } })
   if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (target.role === 'superadmin')
     return NextResponse.json({ error: 'Cannot modify a superadmin account' }, { status: 403 })
@@ -34,7 +34,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (active !== undefined) updateData.active = active
   if (role   !== undefined) {
     const allowed = ['user', 'tenant_admin', 'developer']
-    updateData.role = allowed.includes(role) ? role : 'user'
+    const requested = allowed.includes(role) ? role : 'user'
+    // Customers (any user tied to a tenant) must never become developers — developers are internal staff
+    if (requested === 'developer' && target.tenantId) {
+      return NextResponse.json({ error: 'Customer users cannot be assigned the developer role' }, { status: 403 })
+    }
+    updateData.role = requested
   }
 
   let tempPassword: string | null = null

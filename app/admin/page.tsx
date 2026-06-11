@@ -59,6 +59,13 @@ const USER_TYPE_LABEL: Record<UserType, string> = {
   internal:         'Internal',
 }
 
+// Developers are internal BespoxAI staff. Customer-tied users (direct customers and
+// partner customers) must never be promoted to the developer role.
+function canBeDeveloper(u: User): boolean {
+  const t = classifyUser(u).type
+  return t !== 'direct' && t !== 'partner_customer'
+}
+
 type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'partners'
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -296,15 +303,19 @@ function AdminPageInner() {
     setUserAction('')
   }
 
-  async function toggleUserRole(userId: string, currentRole: string) {
-    const cycle: Record<string, string> = { user: 'tenant_admin', tenant_admin: 'developer', developer: 'user' }
+  async function toggleUserRole(u: User) {
+    const currentRole = u.role
+    // Customers (direct + partner customer) cannot become developers — cycle user <-> tenant_admin
+    const cycle: Record<string, string> = canBeDeveloper(u)
+      ? { user: 'tenant_admin', tenant_admin: 'developer', developer: 'user' }
+      : { user: 'tenant_admin', tenant_admin: 'user' }
     const newRole = cycle[currentRole] ?? 'user'
-    setUserAction(userId)
-    const res = await fetch(`/api/admin/users/${userId}`, {
+    setUserAction(u.id)
+    const res = await fetch(`/api/admin/users/${u.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: newRole }),
     })
-    if (res.ok) setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+    if (res.ok) setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
     setUserAction('')
   }
 
@@ -784,11 +795,11 @@ function AdminPageInner() {
                               <>
                                 <button
                                   disabled={userAction === u.id}
-                                  onClick={() => toggleUserRole(u.id, u.role)}
+                                  onClick={() => toggleUserRole(u)}
                                   style={{ ...ghostBtn, color: u.role === 'tenant_admin' ? 'var(--slate)' : u.role === 'developer' ? 'var(--slate)' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
-                                  title={u.role === 'tenant_admin' ? 'Make Developer' : u.role === 'developer' ? 'Make User' : 'Make Admin'}
+                                  title={u.role === 'tenant_admin' ? (canBeDeveloper(u) ? 'Make Developer' : 'Make User') : u.role === 'developer' ? 'Make User' : 'Make Admin'}
                                 >
-                                  {userAction === u.id ? '…' : u.role === 'tenant_admin' ? '→ Dev' : u.role === 'developer' ? '→ User' : '↑ Admin'}
+                                  {userAction === u.id ? '…' : u.role === 'tenant_admin' ? (canBeDeveloper(u) ? '→ Dev' : '→ User') : u.role === 'developer' ? '→ User' : '↑ Admin'}
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
