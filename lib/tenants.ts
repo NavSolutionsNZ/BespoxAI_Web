@@ -18,7 +18,8 @@ export interface TenantConfig {
 }
 
 export async function getTenantById(tenantId: string): Promise<TenantConfig | null> {
-  const tenant = await prisma.tenant.findUnique({
+  if (!tenantId) return null
+  const tenant = await prisma.tenant.findFirst({
     where: { id: tenantId, active: true },
     select: {
       id: true, name: true, tunnelSubdomain: true,

@@ -24,7 +24,11 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const tenant = await getCachedTenant((session.user as any).tenantId)
+  const tenantId = (session.user as any).tenantId
+  // Partner and superadmin users have no tenant — nothing to health-check
+  if (!tenantId) return NextResponse.json({ ok: false, status: 'no_tenant' }, { status: 200 })
+
+  const tenant = await getCachedTenant(tenantId)
   if (!tenant) return NextResponse.json({ error: 'No tenant' }, { status: 404 })
 
   const url = `${tenant.agentBaseUrl}/health`
