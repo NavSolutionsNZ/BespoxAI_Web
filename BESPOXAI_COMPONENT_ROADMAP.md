@@ -114,6 +114,35 @@
 
 ---
 
+## 🐛 Known Bugs — To Fix Next Session (logged Session 22, partner-portal walkthrough)
+
+These were observed live during a partner-portal walkthrough (white-label "Endeavour" test account, `partner@testpartner.com`) while producing the partner user manual. Confirmed against code in `app/partner/tenants/[id]/page.tsx` and the partner API routes.
+
+#### BUG 1 — Partner cannot create a requirement (500/503) 🔴 HIGH
+- **Symptom:** On a brand-new tenant ("Demo Wholesale Ltd", `cmqd4nvlm0001l9mcrs7by193`), `POST /api/partner/tenants/[id]/requirements` returns **500/503**; UI shows "Failed to create requirement." Existing tenants (e.g. Acme) already have requirements, so this may be specific to **first requirement on a fresh tenant**.
+- **Field-name note found while debugging:** the route expects **`bcArea`** (not `area`). Sending `area` → 400 "Missing required fields"; sending `bcArea` → got past validation to a **500** (empty body), i.e. the failure is downstream of validation.
+- **Likely cause:** a downstream step in the create handler erroring for a new tenant — candidates: AI spec kickoff, or **GitHub per-customer repo provisioning** (new tenant has no repo yet → token/repo resolution may throw). Diagnose via Vercel runtime logs on the failing POST.
+- **Next step:** pull `Vercel:get_runtime_logs` for the POST, confirm which downstream call throws, guard/await it so requirement creation succeeds even if the optional step fails.
+
+#### BUG 2 — Partner has NO way to advance a requirement through UAT 🔴 HIGH
+- **Symptom:** When a requirement reaches **In UAT**, the partner requirement detail shows status + description only — **no Approve/Confirm/Reject UAT control**. The partner literally cannot advance `in_uat → uat_confirmed` (or reject).
+- **Confirmed in code:** `RequirementDetail` in `app/partner/tenants/[id]/page.tsx` has action panels for `draft`/`quote_rejected` (Submit/Resubmit), `needs_clarification` (answer questions), and `quoted` (Accept/Reject Quote) — but **nothing for `in_uat`**. There is **no `uat-approve`/`uat-reject` route** under `app/api/partner/tenants/[id]/requirements/[reqId]/` (only `route.ts` and `ai-spec` exist). The customer/admin side has these; the partner side does not.
+- **Next step:** add partner UAT approve/reject API routes (mirror the customer-side uat-approve/uat-reject, setting `uat_confirmed`/`uat_rejected`) + a UAT action panel in `RequirementDetail` shown when `req.status === 'in_uat'`.
+
+#### BUG 3 — Partner-side "intended read-only" stages may be too sparse 🟡 MEDIUM
+- **Observation (not strictly a bug):** at `submitted` and `in_review` the partner detail view shows only the pipeline + description with no actions. This is partly by design (ball is in BespoxAI's court), but combined with Bug 2 it makes the partner experience feel "view-only". Review which stages should expose partner actions once Bug 2 is fixed.
+
+#### BUG 4 — No edit of a requirement after creation 🟢 LOW
+- Partner can submit a draft but cannot edit title/description (even in `draft`). Consider an edit affordance in draft state.
+
+#### Other walkthrough notes (not bugs)
+- **Client-tenant Users tab is read-only** (no invite button) — by design; client users come via client onboarding/provisioning, not the partner portal. Documented in the manual.
+- **Partner Billing page is "Under Construction"** placeholder.
+- **Test data created on PRODUCTION during walkthrough — needs cleanup:** tenant **Demo Wholesale Ltd** (`cmqd4nvlm0001l9mcrs7by193`) and partner team member **Jordan Lee** (`jordan.lee@example-demo.test`). Also `partner@testpartner.com` password was set to `password` for the session (Rich to reset).
+- **"Last sign-in" column** (built Session 22) confirmed live and working on the partner Team page (showed "Never" for the newly-invited Jordan Lee, relative time for Deano).
+
+---
+
 ## Work Backlog (Prioritized)
 
 ### 🔴 HIGH PRIORITY
