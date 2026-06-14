@@ -66,6 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       bcArea,
       priority,
       status:      'draft',
+      assignedDeveloperId: session.userId, // auto-assign to creating partner user (deliverer)
     },
     include: {
       user:   { select: { name: true, email: true } },
