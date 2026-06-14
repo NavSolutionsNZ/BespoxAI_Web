@@ -138,6 +138,15 @@ These were observed live during a partner-portal walkthrough (white-label "Endea
 #### BUG 4 — No edit of a requirement after creation 🟢 LOW
 - Partner can submit a draft but cannot edit title/description (even in `draft`). Consider an edit affordance in draft state.
 
+#### BUG 5 — Tenant list shows ACTIVE (account flag) but no connection indicator 🟡 MEDIUM
+- **Symptom:** In the partner **Clients list**, every tenant shows a green "Active" badge even when no BCAgent is connected (Overview correctly says "Not Connected — installer not yet run"). Misleading: "Active" = account-enabled, NOT "connected".
+- **Decision (Rich, Session 22):** KEEP the Active/account badge, but ADD a **separate connection indicator** (Connected / Not Connected) alongside it. Same on the BespoxAI admin tenant list.
+- **Source of truth:** connection = `!!tenant.tunnelId` (tunnel is provisioned on first installer download). Account state = `tenant.active`.
+- **Where to fix:**
+  - **Partner dashboard** `app/partner/dashboard/page.tsx` — badge at ~line 224 is bound only to `tenant.active`. The dashboard `Tenant` type (~line 11) **does not fetch `tunnelId`**, so extend the partner tenants list API + type to include `tunnelId`, then render a second connection pill next to the Active badge.
+  - **Admin** `app/admin/page.tsx` — **already has `ConnectedPill` (`!!t.tunnelId`) at ~line 651**, so admin largely shows connection state already. Verify the admin list shows BOTH account-active and connection (add the account/Active badge if missing) so the two lists are consistent. Reusable `ConnectedPill` component already exists at ~line 1251.
+- **Note:** `!!tunnelId` means "tunnel provisioned", which is a proxy for connected. A truer "is the agent reachable right now" would use the `/api/health` ping result (or an `agentLastSeen` timestamp) — `tunnelId` only proves the installer was downloaded once, not that the agent is currently up. Decide with Rich whether "provisioned" is good enough or whether live health is wanted.
+
 #### Other walkthrough notes (not bugs)
 - **Client-tenant Users tab is read-only** (no invite button) — by design; client users come via client onboarding/provisioning, not the partner portal. Documented in the manual.
 - **Partner Billing page is "Under Construction"** placeholder.
