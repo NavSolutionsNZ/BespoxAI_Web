@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePartnerSession, assertTenantBelongsToPartner } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
-import { notifyAdminsNewRequirement } from '@/lib/notifications'
+import { notifyPartnerNewRequirement } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,12 +76,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   })
 
   try {
-    await notifyAdminsNewRequirement({
+    await notifyPartnerNewRequirement({
+      tenantId:      params.id,
       requirementId: requirement.id,
       title:         requirement.title,
       tenantName:    tenant?.name ?? 'Unknown',
       customerName:  'Partner',
-      customerEmail: '',
     })
   } catch { /* non-fatal */ }
 

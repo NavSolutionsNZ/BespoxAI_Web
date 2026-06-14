@@ -546,6 +546,122 @@ export async function getPartnerFromEmail(tenantId: string): Promise<string | nu
   }
 }
 
+// ── Partner pipeline notifications (partner = deliverer) ──────────────────────
+
+/**
+ * Resolves the partner-side deliverer recipients for a tenant: the
+ * partner_admin and partner_developer users of the tenant's partner account.
+ * Returns [] for direct (non-partner) tenants.
+ */
+async function getPartnerRecipients(tenantId: string): Promise<{ email: string; name: string | null }[]> {
+  if (!tenantId) return []
+  try {
+    const tenant = await (prisma as any).tenant.findUnique({
+      where:  { id: tenantId },
+      select: {
+        partnerAccount: {
+          select: {
+            users: {
+              where:  { role: { in: ['partner_admin', 'partner_developer'] } },
+              select: { user: { select: { email: true, firstName: true, preferredName: true, name: true } } },
+            },
+          },
+        },
+      },
+    })
+    const pus = tenant?.partnerAccount?.users ?? []
+    return pus
+      .map((pu: any) => ({ email: pu.user?.email, name: displayName(pu.user) }))
+      .filter((r: any) => !!r.email)
+  } catch (e) {
+    console.error('[getPartnerRecipients]', e)
+    return []
+  }
+}
+
+export async function notifyPartnerNewRequirement(params: {
+  tenantId:     string
+  requirementId: string
+  title:        string
+  tenantName:   string
+  customerName: string
+  isAddendum?:  boolean
+  parentTitle?: string
+}) {
+  const recipients = await getPartnerRecipients(params.tenantId)
+  if (recipients.length === 0) return
+  const label = params.isAddendum ? 'New Addendum' : 'New Requirement'
+  const addendumNote = params.isAddendum && params.parentTitle
+    ? `<p style="color:#666;font-size:13px">Addendum to: <em>${params.parentTitle}</em></p>`
+    : ''
+  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  await Promise.all(recipients.map(r =>
+    sendEmail({
+      to:      r.email,
+      subject: `${label} — ${params.title} (${params.tenantName})`,
+      html: wrap(`
+        <p>Hi ${r.name ?? 'there'},</p>
+        <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has submitted a ${params.isAddendum ? 'new addendum' : 'new requirement'}.</p>
+        ${reqBlock(params.title, params.tenantName, params.isAddendum)}
+        ${addendumNote}
+        ${cta('Review in partner portal', link)}
+      `),
+    }).catch(e => console.error('[notify] partner new req:', e))
+  ))
+}
+
+export async function notifyPartnerAnswered(params: {
+  tenantId:     string
+  requirementId: string
+  title:        string
+  tenantName:   string
+  customerName: string
+}) {
+  const recipients = await getPartnerRecipients(params.tenantId)
+  if (recipients.length === 0) return
+  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  await Promise.all(recipients.map(r =>
+    sendEmail({
+      to:      r.email,
+      subject: `Questions answered — ${params.title} (${params.tenantName})`,
+      html: wrap(`
+        <p>Hi ${r.name ?? 'there'},</p>
+        <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has answered the clarification questions for:</p>
+        ${reqBlock(params.title, params.tenantName)}
+        ${cta('Review answers', link)}
+      `),
+    }).catch(e => console.error('[notify] partner answered:', e))
+  ))
+}
+
+export async function notifyPartnerQuoteRejected(params: {
+  tenantId:     string
+  title:        string
+  tenantName:   string
+  customerName: string
+  rejectionReason?: string
+}) {
+  const recipients = await getPartnerRecipients(params.tenantId)
+  if (recipients.length === 0) return
+  const reasonBlock = params.rejectionReason
+    ? `<blockquote style="border-left:3px solid #C8952A;padding:8px 14px;margin:12px 0;color:#555;font-style:italic">"${params.rejectionReason}"</blockquote>`
+    : ''
+  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  await Promise.all(recipients.map(r =>
+    sendEmail({
+      to:      r.email,
+      subject: `Quote rejected — ${params.title} (${params.tenantName})`,
+      html: wrap(`
+        <p>Hi ${r.name ?? 'there'},</p>
+        <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has rejected the quote for:</p>
+        ${reqBlock(params.title, params.tenantName)}
+        ${reasonBlock}
+        ${cta('Review and revise', link)}
+      `),
+    }).catch(e => console.error('[notify] partner quote rejected:', e))
+  ))
+}
+
 // ── Partner team notifications ────────────────────────────────────────────────
 
 export async function notifyPartnerTeamWelcome(params: {

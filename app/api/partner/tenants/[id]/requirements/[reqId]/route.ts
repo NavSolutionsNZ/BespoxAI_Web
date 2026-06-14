@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePartnerSession, assertTenantBelongsToPartner } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
 import {
-  notifyAdminsNewRequirement,
-  notifyAdminsAnswered,
-  notifyAdminsQuoteRejected,
+  notifyPartnerNewRequirement,
+  notifyPartnerAnswered,
+  notifyPartnerQuoteRejected,
 } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
@@ -128,16 +128,15 @@ export async function PATCH(
   // Notifications
   const tenantName   = updated.tenant?.name ?? ''
   const reqTitle     = updated.title
-  const partnerEmail = '' // partner users don't have a tenant email — use admin notifications only
 
   if (updateData.status === 'submitted' && existing.status === 'needs_clarification') {
-    notifyAdminsAnswered({ requirementId: params.reqId, title: reqTitle, tenantName, customerName: 'Partner' }).catch(() => {})
+    notifyPartnerAnswered({ tenantId: params.id, requirementId: params.reqId, title: reqTitle, tenantName, customerName: 'Partner' }).catch(() => {})
   }
   if (updateData.status === 'submitted' && existing.status === 'draft') {
-    notifyAdminsNewRequirement({ requirementId: params.reqId, title: reqTitle, tenantName, customerName: 'Partner', customerEmail: partnerEmail, isAddendum: !!existing.parentId }).catch(() => {})
+    notifyPartnerNewRequirement({ tenantId: params.id, requirementId: params.reqId, title: reqTitle, tenantName, customerName: 'Partner', isAddendum: !!existing.parentId }).catch(() => {})
   }
   if (updateData.status === 'quote_rejected') {
-    notifyAdminsQuoteRejected({ title: reqTitle, tenantName, customerName: 'Partner', rejectionReason: updateData.quoteRejectionReason }).catch(() => {})
+    notifyPartnerQuoteRejected({ tenantId: params.id, title: reqTitle, tenantName, customerName: 'Partner', rejectionReason: updateData.quoteRejectionReason }).catch(() => {})
   }
 
   const { devPlan, ...rest } = updated
