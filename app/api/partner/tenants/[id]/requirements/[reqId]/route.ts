@@ -5,6 +5,11 @@ import {
   notifyPartnerNewRequirement,
   notifyPartnerAnswered,
   notifyPartnerQuoteRejected,
+  notifyCustomerNeedsClarif,
+  notifyCustomerQuoted,
+  notifyCustomerInDevelopment,
+  notifyCustomerBalanceDue,
+  notifyAdminsDepositPaid,
 } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
@@ -115,6 +120,63 @@ export async function PATCH(
     if (customerAnswers !== undefined) updateData.customerAnswers = customerAnswers
   }
 
+  // ── Deliverer transitions (partner acts as BespoxAI's delivery role) ────────
+  // Free-form deliverer fields
+  if (body.consultantNote !== undefined) updateData.consultantNote = body.consultantNote
+  if (body.quote !== undefined)          updateData.quote          = body.quote !== null ? parseFloat(body.quote) : null
+  if (body.bcObjects !== undefined && existing.aiSpec) {
+    try {
+      const spec = JSON.parse(existing.aiSpec)
+      spec.bcObjects = body.bcObjects
+      updateData.aiSpec = JSON.stringify(spec)
+    } catch { /* ignore */ }
+  }
+
+  // Move to in_review
+  if (status === 'in_review' && !existing.inReviewAt) {
+    updateData.status     = 'in_review'
+    updateData.inReviewAt = new Date()
+  }
+  // Send back with questions → needs_clarification (append QALog round)
+  if (status === 'needs_clarification' && body.adminQuestions) {
+    updateData.status         = 'needs_clarification'
+    updateData.adminQuestions = body.adminQuestions
+    const log = readQALog(existing.adminQALog)
+    log.push({
+      round:      log.length + 1,
+      questions:  body.adminQuestions,
+      answers:    null,
+      askedAt:    new Date().toISOString(),
+      answeredAt: null,
+    })
+    updateData.adminQALog = JSON.stringify(log)
+  }
+  // Issue quote → quoted
+  if (status === 'quoted' && body.quote !== undefined && !existing.quotedAt) {
+    updateData.status   = 'quoted'
+    updateData.quotedAt = new Date()
+  }
+  // Mark deposit paid (manual — no Stripe in partner pipeline)
+  if (status === 'deposit_paid' && existing.status === 'deposit_required') {
+    updateData.status        = 'deposit_paid'
+    updateData.depositPaidAt = new Date()
+  }
+  // Start development
+  if (status === 'in_development' && existing.status === 'deposit_paid') {
+    updateData.status          = 'in_development'
+    updateData.inDevelopmentAt = new Date()
+  }
+  // Mark work complete → complete_pending_payment
+  if (status === 'complete_pending_payment' && existing.status === 'in_development') {
+    updateData.status                   = 'complete_pending_payment'
+    updateData.completePendingPaymentAt = new Date()
+  }
+  // Mark balance paid → fully_paid (manual)
+  if (status === 'fully_paid' && existing.status === 'complete_pending_payment') {
+    updateData.status        = 'fully_paid'
+    updateData.balancePaidAt = new Date()
+  }
+
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: 'No valid updates' }, { status: 400 })
   }
@@ -126,9 +188,34 @@ export async function PATCH(
   })
 
   // Notifications
-  const tenantName   = updated.tenant?.name ?? ''
-  const reqTitle     = updated.title
+  const tenantName    = updated.tenant?.name ?? ''
+  const reqTitle      = updated.title
+  const customerEmail = updated.user?.email ?? ''
+  const customerName  = updated.user?.name ?? 'there'
 
+  // ── Deliverer → client-tenant customer (input-required stages) ──────────────
+  if (updateData.status === 'needs_clarification' && updateData.adminQuestions && customerEmail) {
+    notifyCustomerNeedsClarif({ tenantId: params.id, customerEmail, customerName, title: reqTitle, tenantName, questions: updateData.adminQuestions }).catch(() => {})
+  }
+  if (updateData.status === 'quoted' && customerEmail) {
+    const quoteAmt = updated.quote ? parseFloat(updated.quote.toString()) : 0
+    notifyCustomerQuoted({ tenantId: params.id, customerEmail, customerName, title: reqTitle, tenantName, quoteAmount: quoteAmt, consultantNote: updated.consultantNote ?? undefined }).catch(() => {})
+  }
+  if (updateData.status === 'complete_pending_payment' && customerEmail) {
+    const balance = updated.quote ? parseFloat(updated.quote.toString()) * 0.8 : 0
+    notifyCustomerBalanceDue({ tenantId: params.id, customerEmail, customerName, title: reqTitle, tenantName, balanceAmount: balance }).catch(() => {})
+  }
+  if (updateData.status === 'in_development' && customerEmail) {
+    notifyCustomerInDevelopment({ tenantId: params.id, customerEmail, customerName, title: reqTitle, tenantName }).catch(() => {})
+  }
+
+  // ── Deliverer → BespoxAI superadmins (billing visibility) ───────────────────
+  if (updateData.status === 'deposit_paid') {
+    const depositAmt = updated.depositAmount ? parseFloat(updated.depositAmount.toString()) : 0
+    notifyAdminsDepositPaid({ title: reqTitle, tenantName, customerName: tenantName, depositAmount: depositAmt }).catch(() => {})
+  }
+
+  // ── Partner-side (deliverer alerts for customer-driven events) ──────────────
   if (updateData.status === 'submitted' && existing.status === 'needs_clarification') {
     notifyPartnerAnswered({ tenantId: params.id, requirementId: params.reqId, title: reqTitle, tenantName, customerName: 'Partner' }).catch(() => {})
   }
