@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 11, 2026 (Session 21)
+**Last Updated: June 15, 2026 (Session 22)
 
 ---
 
@@ -99,6 +99,11 @@
 | `api/partner/account/route.ts` | GET/PATCH partner account (branding etc). PATCH calls revalidateTag('branding'). |
 | `api/partner/billing/create-checkout/route.ts` | Partner Stripe checkout. success_url/cancel_url → /partner/settings (NOT /settings). |
 | `api/partner/tenants/[id]/requirements/[reqId]/ai-spec/route.ts` | Partner spec generation. Mirrors customer ai-spec logic with partner auth. |
+| `api/partner/tenants/[id]/requirements/route.ts` | List/create partner-tenant requirements. POST sets `assignedDeveloperId: session.userId` (Bug 1 fix — required FK, no DB default). Notifies partner via notifyPartnerNewRequirement. |
+| `api/partner/tenants/[id]/requirements/[reqId]/route.ts` | Partner PATCH — BOTH customer + deliverer transitions (S22). Deliverer half: in_review, needs_clarification (+QALog), quoted, deposit_paid, in_development, complete_pending_payment, fully_paid + quote/consultantNote/bcObjects. Payments manual (no Stripe). Notifications route to partner/client/BespoxAI per stage. |
+| `api/partner/tenants/[id]/requirements/[reqId]/uat-approve/route.ts` | Partner UAT sign-off (S22) → uat_confirmed. notifyPartnerUatApproved. |
+| `api/partner/tenants/[id]/requirements/[reqId]/uat-reject/route.ts` | Partner UAT reject (S22) with AI scope-creep analysis (mirrors direct route). notifyPartnerUatRejected. |
+| `api/partner/tenants/route.ts` | List/create partner tenants. Select includes `tunnelId` (Bug 5 — connection pill). |
 
 ### Components (`/components`)
 
@@ -112,7 +117,7 @@
 
 | File | Purpose |
 |------|---------|
-| `notifications.ts` | All lifecycle emails. displayName() helper: preferredName ?? firstName. getCustomerEmail fetches both fields. |
+| `notifications.ts` | All lifecycle emails. displayName() helper: preferredName ?? firstName. getCustomerEmail fetches both fields. **Partner pipeline (S22):** getPartnerRecipients(tenantId) → partner_admin+partner_developer; notifyPartner{NewRequirement,Answered,QuoteRejected,UatApproved,UatRejected}. notifyAdmins* = BespoxAI superadmins (direct pipeline only). |
 | `cloudflare.ts` | createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken, addRdpIngress, createRdpDnsRecord |
 | `tenant-context.ts` | `buildTenantContext()` |
 | `tenants.ts` | `getTenantById()`, `buildODataUrl()`. agentPort fallback: 9099. |

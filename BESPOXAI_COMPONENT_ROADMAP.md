@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 11, 2026 (Session 21)
+**Last Updated:** June 15, 2026 (Session 22)
 
 ---
 
@@ -114,38 +114,41 @@
 
 ---
 
-## 🐛 Known Bugs — To Fix Next Session (logged Session 22, partner-portal walkthrough)
+## 🐛 Partner-Portal Bugs — ✅ ALL RESOLVED (Session 22)
 
-These were observed live during a partner-portal walkthrough (white-label "Endeavour" test account, `partner@testpartner.com`) while producing the partner user manual. Confirmed against code in `app/partner/tenants/[id]/page.tsx` and the partner API routes.
+Logged Session 22 (partner-portal walkthrough, white-label "Endeavour" test account). All five fixed and deployed green in Session 22. Commits: 1=`60d376a`, 4=`745154e`, 2=`54de318`/`4fafba9`/`17e0f0d`, notifications=`7900605`, 5=`5d684bb`.
 
-#### BUG 1 — Partner cannot create a requirement (500/503) 🔴 HIGH
-- **Symptom:** On a brand-new tenant ("Demo Wholesale Ltd", `cmqd4nvlm0001l9mcrs7by193`), `POST /api/partner/tenants/[id]/requirements` returns **500/503**; UI shows "Failed to create requirement." Existing tenants (e.g. Acme) already have requirements, so this may be specific to **first requirement on a fresh tenant**.
-- **Field-name note found while debugging:** the route expects **`bcArea`** (not `area`). Sending `area` → 400 "Missing required fields"; sending `bcArea` → got past validation to a **500** (empty body), i.e. the failure is downstream of validation.
-- **Likely cause:** a downstream step in the create handler erroring for a new tenant — candidates: AI spec kickoff, or **GitHub per-customer repo provisioning** (new tenant has no repo yet → token/repo resolution may throw). Diagnose via Vercel runtime logs on the failing POST.
-- **Next step:** pull `Vercel:get_runtime_logs` for the POST, confirm which downstream call throws, guard/await it so requirement creation succeeds even if the optional step fails.
+#### BUG 1 — Partner cannot create a requirement (500) ✅ FIXED (`60d376a`)
+- **Real root cause (the Session-22 theory below was WRONG):** `Requirement.assignedDeveloperId` is a required, non-nullable FK with **no DB default** (added by the Session 17 assignment system; the default-to-creating-user logic lives in app code). The partner create route never set it → Prisma rejected `create` → empty-body 500.
+- **The 500 was NOT GitHub provisioning or AI spec** — neither runs in that route. And it failed on **any** partner-route create, not just fresh tenants (Acme's reqs came in via the direct `/api/requirements` route, which does set `assignedDeveloperId: user.id`).
+- **Fix:** partner create route now sets `assignedDeveloperId: session.userId` (auto-assigns the partner user as deliverer), mirroring the direct route.
+- **Standing-rule reinforcement:** when mirroring a create across pipelines, check for required FKs with no DB default.
 
-#### BUG 2 — Partner RequirementDetail is missing the delivery-side action set 🔴 HIGH
-- **CORRECT MODEL (per Rich, Session 22):** There are TWO parallel pipeline relationships, and they are independent:
-  - **Direct:** BespoxAI ↔ Customer. BespoxAI is the deliverer; the customer raises/approves. No partner involved.
-  - **Partner:** Partner ↔ PartnerTenant. **The PARTNER takes BespoxAI's role** and delivers for their own tenants. There is **NO dependency on BespoxAI to advance a partner pipeline** — it lives entirely on Partner/PartnerTenant. The partner advances wherever the *deliverer* would, the client-tenant user advances wherever the *customer* would.
-- **Therefore my earlier "waiting on BespoxAI / dead-end at In UAT" framing was WRONG** — there is no BespoxAI in the loop to wait on. The real defect: the partner `RequirementDetail` (`app/partner/tenants/[id]/page.tsx`) was built with only the **customer-facing subset** of actions (Submit/Resubmit, answer clarification, Accept/Reject Quote) and is **missing the deliverer actions** that the BespoxAI side has.
-- **Reference for what to mirror:** `components/RequirementsBuilder.tsx` (the direct customer+admin component) holds the full deliverer action set — feasibility check, **quote entry** (set amount/note → `quoted`), move to `in_review`/`in_development`, **UAT sign-off + UAT reject with scope-creep analysis**, deposit handling, production deploy/approve. Roadmap line 27 already notes the partner RequirementDetail is meant to be the **"partner admin portal"** (Regen button was added there with the same pre-quote restriction), confirming intent = mirror admin/delivery actions.
-- **Next step:** bring the partner `RequirementDetail` up to parity with the deliverer side — add the partner-driven stage transitions (issue quote, move to in_review/in_development, UAT confirm/reject, etc.) and the matching partner API routes under `app/api/partner/tenants/[id]/requirements/[reqId]/` (currently only `route.ts` + `ai-spec` exist; the deliverer transitions are absent). Split: partner = deliverer actions; client-tenant user = customer actions (submit, accept quote, etc.). **Design the exact stage→actor mapping with Rich before building.**
+#### BUG 2 (+ BUG 3) — Partner deliverer action set ✅ FIXED (3 commits)
+- **Confirmed model:** partner = deliverer for their own tenants (takes BespoxAI's role); client-tenant user = customer. Partner detail is **BOTH** (partner can act as customer too, on behalf of the tenant). No BespoxAI in the partner loop.
+- **(1/3) API `54de318`:** partner PATCH gained the deliverer half — in_review, needs_clarification (+QALog round), quoted (+quotedAt), deposit_paid, in_development, complete_pending_payment, fully_paid, plus quote/consultantNote/bcObjects. Payments are **manual marks** (no Stripe in partner pipeline).
+- **(2/3) API `4fafba9`:** new partner `uat-approve` + `uat-reject` routes; reject mirrors the direct route's **AI scope-creep analysis** verbatim. Gated via `requirePartnerSession` + `assertTenantBelongsToPartner`, scoped to `tenantId`, `*ById` = `session.userId`.
+- **(3/3) UI `17e0f0d`:** status-gated **Delivery Actions** card in partner `RequirementDetail`, layered on the existing customer panels.
+- **Bug 3** (sparse read-only stages) was the same defect — resolved together.
 
-#### BUG 3 — (folded into BUG 2) 🟡
-- The "sparse read-only stages" I flagged (`submitted`/`in_review` show no actions) is the **same defect as Bug 2**: those stages have no partner action because the deliverer-side actions were never built on the partner side, NOT because they are intended waiting states. Fix together with Bug 2.
+#### BUG 4 — Edit requirement before submit/resubmit ✅ FIXED (`745154e`)
+- The partner PATCH route already accepted title/description/bcArea/priority in draft/needs_clarification/quote_rejected — it was a **UI-only gap**. The partner draft/quote_rejected panel now shows a seeded, field-editable form, mirroring the BespoxAI customer resubmit flow. (`needs_clarification` keeps its dedicated answer panel.)
 
-#### BUG 4 — No edit of a requirement after creation 🟢 LOW
-- Partner can submit a draft but cannot edit title/description (even in `draft`). Consider an edit affordance in draft state.
+#### BUG 5 — Connection indicator separate from account-active ✅ FIXED (`5d684bb`)
+- Connection = `!!tenant.tunnelId`, labelled **Connected / Not Connected** (matches Overview wording). Partner tenants API now selects `tunnelId`; partner dashboard renders a connection pill beside Active; admin list adds an account `StatusPill` beside the existing `ConnectedPill` so both lists show account + connection state.
+- **Deferred:** `!!tunnelId` = "provisioned", not live reachability. A true "agent reachable now" indicator (via `/api/health` ping or an `agentLastSeen` timestamp) is a future task.
 
-#### BUG 5 — Tenant list shows ACTIVE (account flag) but no connection indicator 🟡 MEDIUM
-- **Symptom:** In the partner **Clients list**, every tenant shows a green "Active" badge even when no BCAgent is connected (Overview correctly says "Not Connected — installer not yet run"). Misleading: "Active" = account-enabled, NOT "connected".
-- **Decision (Rich, Session 22):** KEEP the Active/account badge, but ADD a **separate connection indicator** (Connected / Not Connected) alongside it. Same on the BespoxAI admin tenant list.
-- **Source of truth:** connection = `!!tenant.tunnelId` (tunnel is provisioned on first installer download). Account state = `tenant.active`.
-- **Where to fix:**
-  - **Partner dashboard** `app/partner/dashboard/page.tsx` — badge at ~line 224 is bound only to `tenant.active`. The dashboard `Tenant` type (~line 11) **does not fetch `tunnelId`**, so extend the partner tenants list API + type to include `tunnelId`, then render a second connection pill next to the Active badge.
-  - **Admin** `app/admin/page.tsx` — **already has `ConnectedPill` (`!!t.tunnelId`) at ~line 651**, so admin largely shows connection state already. Verify the admin list shows BOTH account-active and connection (add the account/Active badge if missing) so the two lists are consistent. Reusable `ConnectedPill` component already exists at ~line 1251.
-- **Note:** `!!tunnelId` means "tunnel provisioned", which is a proxy for connected. A truer "is the agent reachable right now" would use the `/api/health` ping result (or an `agentLastSeen` timestamp) — `tunnelId` only proves the installer was downloaded once, not that the agent is currently up. Decide with Rich whether "provisioned" is good enough or whether live health is wanted.
+#### Partner pipeline notifications — ✅ FIXED (`7900605` + wired through Bug 2)
+- Partner-tenant events were emailing **BespoxAI superadmins** (`notifyAdmins*`, `/admin` CTAs) — wrong audience. Now:
+  - **Partner (deliverer)** — `partner_admin` + `partner_developer`, `/partner` CTAs: new req, answered, quote-rejected, UAT approved/rejected.
+  - **Client-tenant customer** (white-label from-address): needs_clarif, quoted, in_development, balance-due.
+  - **BespoxAI superadmins** (billing visibility): deposit_paid. *(quoted/accepted/completed BespoxAI copies not yet added — extend if fuller visibility wanted.)*
+- New helpers: `getPartnerRecipients()`, `notifyPartner{NewRequirement,Answered,QuoteRejected,UatApproved,UatRejected}`. Direct pipeline untouched.
+
+#### Still open / deferred from this work
+- **Partner Stripe payments:** `paymentMode` (partner_collected vs bespoxai_collected) is stored + surfaced in UI but **drives no payment logic**. Partner deposit/balance are manual marks. A real `paymentMode`-driven Stripe path is a separate task.
+- **BespoxAI billing-visibility copies** beyond deposit_paid (quoted, accepted, completed).
+- **Live agent health** indicator (see Bug 5 deferred).
 
 #### Other walkthrough notes (not bugs)
 - **Client-tenant Users tab is read-only** (no invite button) — by design; client users come via client onboarding/provisioning, not the partner portal. Documented in the manual.

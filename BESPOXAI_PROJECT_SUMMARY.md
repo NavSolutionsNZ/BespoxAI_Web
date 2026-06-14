@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 11, 2026 (Session 21)
+**Last Updated:** June 15, 2026 (Session 22)
 
 ---
 
@@ -44,6 +44,27 @@ git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "B
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+
+---
+
+## Session 22 Key Changes (June 15, 2026) — Partner pipeline: 5 bugs fixed
+
+All five partner-portal bugs from the Session-22 walkthrough log fixed and deployed green. Full detail in the roadmap's "Partner-Portal Bugs — ALL RESOLVED" section.
+
+- **Bug 1 (`60d376a`):** partner create-requirement 500. Real cause was the required non-nullable `assignedDeveloperId` FK (no DB default) never being set — NOT GitHub provisioning/AI spec as first theorised. Now sets `assignedDeveloperId: session.userId`.
+- **Bug 4 (`745154e`):** partner can now edit title/description/bcArea/priority before submit/resubmit (UI-only gap; API already accepted the fields). Mirrors the customer resubmit flow.
+- **Bug 2 + 3 (`54de318`, `4fafba9`, `17e0f0d`):** full partner **deliverer** action set. Partner detail is BOTH customer and deliverer. Added deliverer transitions to partner PATCH; new partner `uat-approve`/`uat-reject` routes (reject mirrors the AI scope-creep analysis); status-gated Delivery Actions UI card. **Payments are manual marks — no Stripe in the partner pipeline.**
+- **Bug 5 (`5d684bb`):** Connected/Not-Connected pill (`!!tunnelId`) separate from the account Active badge, on both partner dashboard and admin tenant lists.
+- **Notifications (`7900605` + wired through Bug 2):** partner pipeline emails now route to partner (deliverer) / client-tenant customer / BespoxAI-billing correctly — previously all went to BespoxAI superadmins. New `getPartnerRecipients()` + `notifyPartner*` helpers; direct pipeline untouched.
+
+### Key correction recorded
+The Bug 1 GitHub-provisioning theory in the original log was wrong. The actual class is the standing **required-FK-without-default** trap: when mirroring a `create` across pipelines, verify required FKs that have no DB default are set.
+
+### Deferred from Session 22
+- Partner Stripe payments (`paymentMode` stored/surfaced but drives no logic; deposit/balance are manual marks).
+- BespoxAI billing-visibility email copies beyond `deposit_paid` (quoted/accepted/completed).
+- Live agent-health connection indicator (current pill = tunnel provisioned, not reachable-now).
+- **Production test-data cleanup (Rich):** tenant Demo Wholesale Ltd (`cmqd4nvlm0001l9mcrs7by193`), partner user Jordan Lee (`jordan.lee@example-demo.test`), and reset `partner@testpartner.com` password.
 
 ---
 
