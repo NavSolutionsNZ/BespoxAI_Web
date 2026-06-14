@@ -13,9 +13,9 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 // ── DEBUG MODE ────────────────────────────────────────────────────────────────
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 const DEBUG_USERS = [
-  { id: 'debug-u1', name: 'Jane Smith',  email: 'jane@demo.com',  role: 'tenant_admin', active: true,  createdAt: '2026-01-15T00:00:00Z' },
-  { id: 'debug-u2', name: 'Bob Jones',   email: 'bob@demo.com',   role: 'user',         active: true,  createdAt: '2026-02-01T00:00:00Z' },
-  { id: 'debug-u3', name: 'Alice Brown', email: 'alice@demo.com', role: 'user',         active: false, createdAt: '2026-03-10T00:00:00Z' },
+  { id: 'debug-u1', name: 'Jane Smith',  email: 'jane@demo.com',  role: 'tenant_admin', active: true,  createdAt: '2026-01-15T00:00:00Z', lastSignInAt: '2026-06-14T02:00:00Z' },
+  { id: 'debug-u2', name: 'Bob Jones',   email: 'bob@demo.com',   role: 'user',         active: true,  createdAt: '2026-02-01T00:00:00Z', lastSignInAt: '2026-06-12T09:30:00Z' },
+  { id: 'debug-u3', name: 'Alice Brown', email: 'alice@demo.com', role: 'user',         active: false, createdAt: '2026-03-10T00:00:00Z', lastSignInAt: null },
 ]
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ export async function GET() {
   const tenantId = (session.user as any).tenantId
   const users = await prisma.user.findMany({
     where: { tenantId },
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true, lastSignInAt: true },
     orderBy: { createdAt: 'asc' },
   })
   return NextResponse.json({ users })

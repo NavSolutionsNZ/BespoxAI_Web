@@ -7,7 +7,22 @@ type TeamMember = {
   id: string
   role: string
   createdAt: string
-  user: { id: string; email: string; name: string; firstName: string | null; lastName: string | null }
+  user: { id: string; email: string; name: string; firstName: string | null; lastName: string | null; lastSignInAt?: string | null }
+}
+
+function lastSeen(iso: string | null | undefined) {
+  if (!iso) return { rel: 'Never', abs: '' }
+  const t = new Date(iso)
+  const s = Math.floor((Date.now() - t.getTime()) / 1000)
+  const abs = t.toLocaleString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  let rel: string
+  if (s < 60) rel = 'Just now'
+  else if (s < 3600) rel = Math.floor(s / 60) + 'm ago'
+  else if (s < 86400) rel = Math.floor(s / 3600) + 'h ago'
+  else if (s < 172800) rel = 'Yesterday'
+  else if (s < 2592000) rel = Math.floor(s / 86400) + 'd ago'
+  else rel = t.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+  return { rel, abs }
 }
 
 export default function PartnerTeam() {
@@ -162,7 +177,7 @@ export default function PartnerTeam() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #21262D' }}>
-                {(['Name', 'Email', 'Role', 'Joined'] as string[]).concat(isAdmin ? ['Actions'] : []).map(h => (
+                {(['Name', 'Email', 'Role', 'Joined', 'Last sign-in'] as string[]).concat(isAdmin ? ['Actions'] : []).map(h => (
                   <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
                 ))}
               </tr>
@@ -190,6 +205,9 @@ export default function PartnerTeam() {
                   </td>
                   <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E' }}>
                     {new Date(m.createdAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E' }} title={lastSeen(m.user.lastSignInAt).abs}>
+                    {lastSeen(m.user.lastSignInAt).rel}
                   </td>
                   {isAdmin ? (
                     <td style={{ padding: '12px 20px' }}>

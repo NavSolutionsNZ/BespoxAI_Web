@@ -22,7 +22,7 @@ interface Tenant {
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
-  id: string; name: string | null; email: string; role: string; active: boolean; createdAt: string
+  id: string; name: string | null; email: string; role: string; active: boolean; createdAt: string; lastSignInAt?: string | null
 }
 type Tab = 'overview' | 'users' | 'entities' | 'installer'
 
@@ -45,6 +45,21 @@ function relTime(iso: string) {
   if (d === 1) return 'Yesterday'
   if (d < 30) return `${d}d ago`
   return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function lastSeen(iso: string | null | undefined) {
+  if (!iso) return { rel: 'Never', abs: '' }
+  const t = new Date(iso)
+  const s = Math.floor((Date.now() - t.getTime()) / 1000)
+  const abs = t.toLocaleString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  let rel: string
+  if (s < 60) rel = 'Just now'
+  else if (s < 3600) rel = Math.floor(s / 60) + 'm ago'
+  else if (s < 86400) rel = Math.floor(s / 3600) + 'h ago'
+  else if (s < 172800) rel = 'Yesterday'
+  else if (s < 2592000) rel = Math.floor(s / 86400) + 'd ago'
+  else rel = t.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+  return { rel, abs }
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -623,7 +638,7 @@ function SettingsInner() {
             )}
             <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--fog)', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr style={{ background: 'var(--parchment)' }}>{['Name','Email','Role','Status','Joined','Actions'].map(h => <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', fontWeight: 500 }}>{h}</th>)}</tr></thead>
+                <thead><tr style={{ background: 'var(--parchment)' }}>{['Name','Email','Role','Status','Joined','Last sign-in','Actions'].map(h => <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', fontWeight: 500 }}>{h}</th>)}</tr></thead>
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id} style={{ borderTop: '1px solid var(--fog)' }}>
@@ -632,6 +647,7 @@ function SettingsInner() {
                       <td style={{ padding: '11px 16px' }}><RoleBadge role={u.role} /></td>
                       <td style={{ padding: '11px 16px' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.active ? 'rgba(26,146,114,0.1)' : 'rgba(163,45,45,0.1)', color: u.active ? 'var(--jade)' : '#A32D2D', border: `1px solid ${u.active ? 'rgba(26,146,114,0.25)' : 'rgba(163,45,45,0.2)'}` }}>{u.active ? 'Active' : 'Disabled'}</span></td>
                       <td style={{ padding: '11px 16px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)' }}>{relTime(u.createdAt)}</td>
+                      <td style={{ padding: '11px 16px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--slate)' }} title={lastSeen(u.lastSignInAt).abs}>{lastSeen(u.lastSignInAt).rel}</td>
                       <td style={{ padding: '11px 16px' }}>
                         {u.id !== selfId && <div style={{ display: 'flex', gap: 6 }}>
                           <button onClick={() => userAction(u.id, u.active ? 'disable' : 'enable')} style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: u.active ? '#A32D2D' : 'var(--jade)', background: 'none', border: `1px solid ${u.active ? 'rgba(163,45,45,0.3)' : 'rgba(26,146,114,0.3)'}`, borderRadius: 6, padding: '3px 9px', cursor: 'pointer' }}>{u.active ? 'Disable' : 'Enable'}</button>

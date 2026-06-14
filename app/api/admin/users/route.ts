@@ -26,6 +26,7 @@ const getCachedUsers = unstable_cache(
         active:    true,
         tenantId:  true,
         createdAt: true,
+        lastSignInAt: true,
         tenant:    {
           select: {
             name: true,

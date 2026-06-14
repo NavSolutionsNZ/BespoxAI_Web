@@ -20,6 +20,7 @@ export async function GET(_req: NextRequest) {
           lastName:  true,
           preferredName: true,
           createdAt: true,
+          lastSignInAt: true,
         },
       },
     },
@@ -36,6 +37,7 @@ export async function GET(_req: NextRequest) {
       name:      m.user.preferredName ?? m.user.firstName ?? m.user.email,
       firstName: m.user.firstName,
       lastName:  m.user.lastName,
+      lastSignInAt: m.user.lastSignInAt,
     },
   })))
 }

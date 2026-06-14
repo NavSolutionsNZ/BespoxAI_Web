@@ -21,7 +21,7 @@ interface Tenant {
 
 interface User {
   id: string; email: string; name: string; role: string; active: boolean
-  tenantId: string; createdAt: string
+  tenantId: string; createdAt: string; lastSignInAt?: string | null
   tenant: { name: string; active: boolean; partnerAccount?: { name: string } | null } | null
   partnerUsers?: { role: string; partnerAccount: { name: string; tenants?: { id: string; name: string }[] } | null }[]
   _count: { queryLogs: number }
@@ -64,6 +64,21 @@ const USER_TYPE_LABEL: Record<UserType, string> = {
 function canBeDeveloper(u: User): boolean {
   const t = classifyUser(u).type
   return t !== 'direct' && t !== 'partner_customer'
+}
+
+function lastSeen(iso: string | null | undefined): { rel: string; abs: string } {
+  if (!iso) return { rel: 'Never', abs: '' }
+  const t = new Date(iso)
+  const s = Math.floor((Date.now() - t.getTime()) / 1000)
+  const abs = t.toLocaleString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  let rel: string
+  if (s < 60) rel = 'Just now'
+  else if (s < 3600) rel = Math.floor(s / 60) + 'm ago'
+  else if (s < 86400) rel = Math.floor(s / 3600) + 'h ago'
+  else if (s < 172800) rel = 'Yesterday'
+  else if (s < 2592000) rel = Math.floor(s / 86400) + 'd ago'
+  else rel = t.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+  return { rel, abs }
 }
 
 type Tab = 'overview' | 'tenants' | 'users' | 'entities' | 'signups' | 'requirements' | 'settings' | 'business' | 'partners'
@@ -727,7 +742,7 @@ function AdminPageInner() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--fog)' }}>
-                      {['User', 'Email', 'Type', 'Tenant', 'Role', 'Joined', 'Status', 'Actions'].map(h => (
+                      {['User', 'Email', 'Type', 'Tenant', 'Role', 'Joined', 'Last sign-in', 'Status', 'Actions'].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -785,6 +800,9 @@ function AdminPageInner() {
                         </td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
                           {new Date(u.createdAt).toLocaleDateString([], { dateStyle: 'short' })}
+                        </td>
+                        <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }} title={lastSeen(u.lastSignInAt).abs}>
+                          {lastSeen(u.lastSignInAt).rel}
                         </td>
                         <td style={tdStyle}><StatusPill active={u.active} /></td>
                         <td style={tdStyle}>

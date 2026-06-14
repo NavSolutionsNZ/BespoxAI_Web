@@ -90,6 +90,7 @@ model User {
   tenant        Tenant?   @relation(fields: [tenantId], references: [id])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  lastSignInAt  DateTime?
   accounts      Account[]
   sessions      Session[]
   queryLogs     QueryLog[]

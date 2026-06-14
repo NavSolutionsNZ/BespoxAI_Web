@@ -65,6 +65,22 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
+  events: {
+    async signIn({ user }) {
+      // Stamp last sign-in timestamp; never block login on failure
+      try {
+        if (user?.id) {
+          await (prisma as any).user.update({
+            where: { id: user.id },
+            data:  { lastSignInAt: new Date() },
+          })
+        }
+      } catch (e) {
+        console.error('[auth] lastSignInAt update failed:', e)
+      }
+    },
+  },
+
   callbacks: {
     async redirect({ url }) {
       // Just return the URL that NextAuth wants to go to
