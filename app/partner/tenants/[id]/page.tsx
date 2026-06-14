@@ -685,6 +685,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const [answersText, setAnswersText] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
+  const [editForm, setEditForm] = useState({ title: req.title, description: req.description, bcArea: req.bcArea, priority: req.priority })
   const [genSpec, setGenSpec] = useState(false)
   const [specErr, setSpecErr] = useState('')
   const spec = parseSpec(req.aiSpec)
@@ -708,7 +709,16 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
     }
   }
 
-  function handleSubmit() { patch({ status: 'submitted' }) }
+  function handleSubmitWithEdits() {
+    if (!editForm.title.trim() || !editForm.description.trim()) return
+    patch({
+      status: 'submitted',
+      title: editForm.title,
+      description: editForm.description,
+      bcArea: editForm.bcArea,
+      priority: editForm.priority,
+    })
+  }
   function handleApproveQuote() { patch({ status: 'deposit_required' }) }
   function handleRejectQuote() {
     if (!rejectReason.trim()) return
@@ -748,6 +758,15 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const btnDanger: React.CSSProperties = {
     background: 'none', border: '1px solid rgba(163,45,45,0.5)', borderRadius: 6, color: '#F85149',
     fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer',
+  }
+  const editLabel: React.CSSProperties = {
+    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E',
+    letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6,
+  }
+  const editInput: React.CSSProperties = {
+    width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6,
+    color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 14, padding: '8px 12px',
+    boxSizing: 'border-box',
   }
 
   return (
@@ -921,14 +940,53 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         </Card>
       ) : null}
 
-      {/* Submit draft */}
+      {/* Submit draft / resubmit — field-editable, mirrors BespoxAI customer flow */}
       {(req.status === 'draft' || req.status === 'quote_rejected') ? (
         <Card style={{ marginBottom: 16 }}>
-          <SectionLabel>{req.status === 'draft' ? 'Ready to Submit?' : 'Resubmit Requirement'}</SectionLabel>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 12px' }}>
-            {req.status === 'draft' ? 'Submit this requirement for BespoxAI to review and provide a quote.' : 'You can revise and resubmit this requirement.'}
+          <SectionLabel>{req.status === 'draft' ? 'Review & Submit' : 'Revise & Resubmit'}</SectionLabel>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 16px' }}>
+            {req.status === 'draft' ? 'Review the details below, edit if needed, then submit for review and a quote.' : 'Revise the requirement below before resubmitting for a new quote.'}
           </p>
-          <button onClick={handleSubmit} disabled={saving} style={btnPrimary}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={editLabel}>Title</label>
+              <input
+                value={editForm.title}
+                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                style={editInput}
+                placeholder="Brief title for this requirement"
+              />
+            </div>
+            <div>
+              <label style={editLabel}>Description</label>
+              <textarea
+                value={editForm.description}
+                onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                rows={5}
+                style={{ ...editInput, resize: 'vertical' }}
+                placeholder="Describe the requirement in detail"
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={editLabel}>BC Area</label>
+                <select value={editForm.bcArea} onChange={e => setEditForm({ ...editForm, bcArea: e.target.value })} style={editInput}>
+                  {BC_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={editLabel}>Priority</label>
+                <select value={editForm.priority} onChange={e => setEditForm({ ...editForm, priority: e.target.value })} style={editInput}>
+                  {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleSubmitWithEdits}
+            disabled={saving || !editForm.title.trim() || !editForm.description.trim()}
+            style={{ ...btnPrimary, marginTop: 16, opacity: (saving || !editForm.title.trim() || !editForm.description.trim()) ? 0.5 : 1 }}
+          >
             {req.status === 'draft' ? 'Submit for Review' : 'Resubmit Requirement'}
           </button>
         </Card>
