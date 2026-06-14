@@ -662,6 +662,56 @@ export async function notifyPartnerQuoteRejected(params: {
   ))
 }
 
+export async function notifyPartnerUatApproved(params: {
+  tenantId:     string
+  title:        string
+  tenantName:   string
+  customerName: string
+}) {
+  const recipients = await getPartnerRecipients(params.tenantId)
+  if (recipients.length === 0) return
+  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  await Promise.all(recipients.map(r =>
+    sendEmail({
+      to:      r.email,
+      subject: `✓ UAT approved — ${params.title} (${params.tenantName})`,
+      html: wrap(`
+        <p>Hi ${r.name ?? 'there'},</p>
+        <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has signed off UAT for:</p>
+        ${reqBlock(params.title, params.tenantName)}
+        <p>Ready for production deployment when you are.</p>
+        ${cta('Open in partner portal', link)}
+      `),
+    }).catch(e => console.error('[notify] partner uat approved:', e))
+  ))
+}
+
+export async function notifyPartnerUatRejected(params: {
+  tenantId:     string
+  title:        string
+  tenantName:   string
+  customerName: string
+  reason:       string
+}) {
+  const recipients = await getPartnerRecipients(params.tenantId)
+  if (recipients.length === 0) return
+  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  await Promise.all(recipients.map(r =>
+    sendEmail({
+      to:      r.email,
+      subject: `✕ UAT rejected — ${params.title} (${params.tenantName})`,
+      html: wrap(`
+        <p>Hi ${r.name ?? 'there'},</p>
+        <p><strong>${params.customerName}</strong> at <strong>${params.tenantName}</strong> has rejected UAT for:</p>
+        ${reqBlock(params.title, params.tenantName)}
+        <blockquote style="border-left:3px solid #A32D2D;padding:8px 14px;margin:12px 0;color:#555;font-style:italic">"${params.reason}"</blockquote>
+        <p>A new deployment cycle is required — the test deployment has been cleared.</p>
+        ${cta('Open in partner portal', link)}
+      `),
+    }).catch(e => console.error('[notify] partner uat rejected:', e))
+  ))
+}
+
 // ── Partner team notifications ────────────────────────────────────────────────
 
 export async function notifyPartnerTeamWelcome(params: {
