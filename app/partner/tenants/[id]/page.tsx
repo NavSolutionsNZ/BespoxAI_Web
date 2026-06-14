@@ -686,6 +686,15 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [editForm, setEditForm] = useState({ title: req.title, description: req.description, bcArea: req.bcArea, priority: req.priority })
+  // Deliverer panel state
+  const [showQuoteForm, setShowQuoteForm]     = useState(false)
+  const [showQuestionForm, setShowQuestionForm] = useState(false)
+  const [delivQuote, setDelivQuote]           = useState('')
+  const [delivNote, setDelivNote]             = useState('')
+  const [delivQuestions, setDelivQuestions]   = useState('')
+  const [showUatReject, setShowUatReject]     = useState(false)
+  const [uatRejectReason, setUatRejectReason] = useState('')
+  const [uatScopeCreep, setUatScopeCreep]     = useState<{ explanation: string; suggestedAmendment?: string } | null>(null)
   const [genSpec, setGenSpec] = useState(false)
   const [specErr, setSpecErr] = useState('')
   const spec = parseSpec(req.aiSpec)
@@ -729,6 +738,52 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
     if (!answersText.trim()) return
     patch({ status: 'submitted', customerAnswers: answersText })
     setAnswersText('')
+  }
+
+  // ── Deliverer handlers (partner acting as delivery role) ──────────────────
+  function handleMoveToReview() { patch({ status: 'in_review' }) }
+  function handleSendQuestions() {
+    if (!delivQuestions.trim()) return
+    patch({ status: 'needs_clarification', adminQuestions: delivQuestions })
+    setDelivQuestions('')
+    setShowQuestionForm(false)
+  }
+  function handleIssueQuote() {
+    const amt = parseFloat(delivQuote)
+    if (!delivQuote.trim() || isNaN(amt) || amt <= 0) return
+    patch({ status: 'quoted', quote: amt, consultantNote: delivNote || undefined })
+    setShowQuoteForm(false)
+  }
+  function handleMarkDepositPaid()  { patch({ status: 'deposit_paid' }) }
+  function handleStartDevelopment() { patch({ status: 'in_development' }) }
+  function handleMarkComplete()     { patch({ status: 'complete_pending_payment' }) }
+  function handleMarkBalancePaid()  { patch({ status: 'fully_paid' }) }
+
+  async function handleUatApprove() {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/uat-approve', { method: 'POST' })
+      if (res.ok) { const d = await res.json(); onUpdated({ ...req, status: 'uat_confirmed', uatApprovedAt: d.approvedAt }) }
+    } finally { setSaving(false) }
+  }
+  async function handleUatReject(confirmReject: boolean) {
+    if (!uatRejectReason.trim()) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/uat-reject', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: uatRejectReason, confirm: confirmReject }),
+      })
+      const d = await res.json()
+      if (d.isScopeCreep && !confirmReject) {
+        setUatScopeCreep({ explanation: d.explanation, suggestedAmendment: d.suggestedAmendment })
+      } else if (d.rejected) {
+        setUatScopeCreep(null)
+        setShowUatReject(false)
+        setUatRejectReason('')
+        onUpdated({ ...req, status: 'uat_rejected' })
+      }
+    } finally { setSaving(false) }
   }
 
   async function generateSpec() {
@@ -862,6 +917,109 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         <Card style={{ marginBottom: 16, borderColor: 'rgba(10,92,70,0.4)', background: 'rgba(10,92,70,0.06)' }}>
           <SectionLabel>Note from BespoxAI</SectionLabel>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', lineHeight: 1.6, margin: 0 }}>{req.consultantNote}</p>
+        </Card>
+      ) : null}
+
+      {/* ── Deliverer action panel (partner acts as delivery role) ──────────── */}
+      {['submitted', 'in_review', 'deposit_required', 'deposit_paid', 'in_development', 'in_uat', 'complete_pending_payment'].includes(req.status) ? (
+        <Card style={{ marginBottom: 16, borderColor: 'rgba(56,139,253,0.35)', background: 'rgba(56,139,253,0.04)' }}>
+          <SectionLabel>Delivery Actions</SectionLabel>
+
+          {(req.status === 'submitted' || req.status === 'in_review') ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>
+                Review this requirement, ask the client for clarification, or issue a quote.
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {req.status === 'submitted' ? (
+                  <button onClick={handleMoveToReview} disabled={saving} style={btnSecondary}>Move to Review</button>
+                ) : null}
+                <button onClick={() => setShowQuestionForm(!showQuestionForm)} style={btnSecondary}>Send Back with Questions</button>
+                <button onClick={() => setShowQuoteForm(!showQuoteForm)} style={btnPrimary}>Issue Quote</button>
+              </div>
+              {showQuestionForm ? (
+                <div style={{ marginTop: 14 }}>
+                  <label style={editLabel}>Questions for the client</label>
+                  <textarea value={delivQuestions} onChange={e => setDelivQuestions(e.target.value)} rows={4} style={{ ...editInput, resize: 'vertical' }} placeholder="What do you need clarified before quoting?" />
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button onClick={handleSendQuestions} disabled={saving || !delivQuestions.trim()} style={{ ...btnPrimary, opacity: (saving || !delivQuestions.trim()) ? 0.5 : 1 }}>Send Questions</button>
+                    <button onClick={() => setShowQuestionForm(false)} style={btnSecondary}>Cancel</button>
+                  </div>
+                </div>
+              ) : null}
+              {showQuoteForm ? (
+                <div style={{ marginTop: 14 }}>
+                  <label style={editLabel}>Quote amount (NZD, excl. GST)</label>
+                  <input value={delivQuote} onChange={e => setDelivQuote(e.target.value)} type="number" min="0" step="0.01" style={editInput} placeholder="0.00" />
+                  <label style={{ ...editLabel, marginTop: 12 }}>Note to client (optional)</label>
+                  <textarea value={delivNote} onChange={e => setDelivNote(e.target.value)} rows={3} style={{ ...editInput, resize: 'vertical' }} placeholder="Anything the client should know about this quote" />
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button onClick={handleIssueQuote} disabled={saving || !delivQuote.trim()} style={{ ...btnPrimary, opacity: (saving || !delivQuote.trim()) ? 0.5 : 1 }}>Send Quote</button>
+                    <button onClick={() => setShowQuoteForm(false)} style={btnSecondary}>Cancel</button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {req.status === 'deposit_required' ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Client has accepted the quote. Mark the deposit as received to begin development.</p>
+              <button onClick={handleMarkDepositPaid} disabled={saving} style={btnPrimary}>Mark Deposit Paid</button>
+            </div>
+          ) : null}
+
+          {req.status === 'deposit_paid' ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Deposit received. Start development when you are ready.</p>
+              <button onClick={handleStartDevelopment} disabled={saving} style={btnPrimary}>Start Development</button>
+            </div>
+          ) : null}
+
+          {req.status === 'in_development' ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Mark the work complete once it has been deployed and is ready for the client to pay the balance.</p>
+              <button onClick={handleMarkComplete} disabled={saving} style={btnPrimary}>Mark Work Complete</button>
+            </div>
+          ) : null}
+
+          {req.status === 'in_uat' ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Sign off UAT on behalf of the client, or reject if the delivered work needs changes.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={handleUatApprove} disabled={saving} style={btnPrimary}>Approve UAT</button>
+                <button onClick={() => setShowUatReject(!showUatReject)} style={btnDanger}>Reject UAT</button>
+              </div>
+              {showUatReject ? (
+                <div style={{ marginTop: 14 }}>
+                  <label style={editLabel}>Reason for rejection</label>
+                  <textarea value={uatRejectReason} onChange={e => setUatRejectReason(e.target.value)} rows={3} style={{ ...editInput, resize: 'vertical' }} placeholder="What needs to change?" />
+                  {uatScopeCreep ? (
+                    <div style={{ marginTop: 12, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 6, padding: '12px 16px' }}>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C8952A', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>Possible scope change</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', margin: '0 0 8px' }}>{uatScopeCreep.explanation}</p>
+                      {uatScopeCreep.suggestedAmendment ? (
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>{uatScopeCreep.suggestedAmendment}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button onClick={() => handleUatReject(!!uatScopeCreep)} disabled={saving || !uatRejectReason.trim()} style={{ ...btnDanger, background: 'rgba(163,45,45,0.15)', opacity: (saving || !uatRejectReason.trim()) ? 0.5 : 1 }}>
+                      {uatScopeCreep ? 'Reject Anyway' : 'Confirm Rejection'}
+                    </button>
+                    <button onClick={() => { setShowUatReject(false); setUatScopeCreep(null) }} style={btnSecondary}>Cancel</button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {req.status === 'complete_pending_payment' ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Work complete. Mark the balance as paid once the client has settled the final invoice.</p>
+              <button onClick={handleMarkBalancePaid} disabled={saving} style={btnPrimary}>Mark Balance Paid</button>
+            </div>
+          ) : null}
         </Card>
       ) : null}
 
