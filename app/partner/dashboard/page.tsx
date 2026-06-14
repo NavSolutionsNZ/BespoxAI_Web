@@ -8,6 +8,7 @@ type Tenant = {
   id: string
   name: string
   tunnelSubdomain: string
+  tunnelId: string | null
   active: boolean
 }
 
@@ -209,20 +210,36 @@ export default function PartnerDashboard() {
                     {tenant.tunnelSubdomain}
                   </td>
                   <td style={{ padding: '12px 20px' }}>
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 10,
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      background: tenant.active ? 'rgba(35,134,54,0.2)' : 'rgba(139,148,158,0.15)',
-                      color: tenant.active ? '#3FB950' : '#8B949E',
-                      border: '1px solid ' + (tenant.active ? 'rgba(63,185,80,0.3)' : 'rgba(139,148,158,0.3)'),
-                    }}>
-                      {tenant.active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        background: tenant.active ? 'rgba(35,134,54,0.2)' : 'rgba(139,148,158,0.15)',
+                        color: tenant.active ? '#3FB950' : '#8B949E',
+                        border: '1px solid ' + (tenant.active ? 'rgba(63,185,80,0.3)' : 'rgba(139,148,158,0.3)'),
+                      }}>
+                        {tenant.active ? 'Active' : 'Inactive'}
+                      </span>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        background: tenant.tunnelId ? 'rgba(56,139,253,0.15)' : 'rgba(139,148,158,0.1)',
+                        color: tenant.tunnelId ? '#58A6FF' : '#8B949E',
+                        border: '1px solid ' + (tenant.tunnelId ? 'rgba(56,139,253,0.35)' : 'rgba(139,148,158,0.25)'),
+                      }}>
+                        {tenant.tunnelId ? 'Connected' : 'Not Connected'}
+                      </span>
+                    </div>
                   </td>
                   <td style={{ padding: '12px 20px' }}>
                     <div style={{ display: 'flex', gap: 8 }}>

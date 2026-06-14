@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
       id: true,
       name: true,
       tunnelSubdomain: true,
+      tunnelId: true,
       active: true,
       navProduct: true,
       navVersion: true,

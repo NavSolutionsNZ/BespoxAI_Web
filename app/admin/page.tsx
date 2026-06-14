@@ -648,7 +648,12 @@ function AdminPageInner() {
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{t.bcInstance}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t._count.users}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t._count.queryLogs}</td>
-                        <td style={tdStyle}><ConnectedPill connected={!!t.tunnelId} /></td>
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <StatusPill active={t.active} />
+                            <ConnectedPill connected={!!t.tunnelId} />
+                          </div>
+                        </td>
                         <td style={tdStyle}>
                           <select
                             value={(t as any).tier ?? 'trial'}
