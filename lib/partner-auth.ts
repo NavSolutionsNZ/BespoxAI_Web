@@ -43,3 +43,22 @@ export async function assertTenantBelongsToPartner(
   if (!tenant) throw new Error('Tenant not found or not owned by this partner')
   return tenant
 }
+
+/**
+ * Assert that the partner account is on the self_serve tier — i.e. entitled to
+ * the in-portal requirements development tooling (feasibility, dev-plan,
+ * dev-notes, coding-assistant). Referral-tier partners hand requirements off to
+ * BespoxAI to manage directly with the customer, so they get a 403 on these
+ * routes. Throws if not self_serve — caller should catch and return 403.
+ */
+export async function assertPartnerCanDevelop(partnerAccountId: string) {
+  const account = await (prisma as any).partnerAccount.findFirst({
+    where:  { id: partnerAccountId },
+    select: { partnerTier: true },
+  })
+  if (!account) throw new Error('Partner account not found')
+  if (account.partnerTier === 'referral') {
+    throw new Error('This requirement is managed directly by BespoxAI on the referral tier.')
+  }
+  return account
+}

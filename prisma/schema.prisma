@@ -364,6 +364,7 @@ model PartnerAccount {
   stripeSubscriptionId String?       // Stripe subscription ID for partner plan
   subscriptionStatus   String?       // active | trialing | past_due | canceled | incomplete
   subscriptionTier     String?       // unbranded | branded (matches PartnerPlanId)
+  partnerTier          String        @default("self_serve") // self_serve | referral — governs whether partner gets in-portal requirements tooling
 
   // Fees (all in smallest currency unit, e.g. cents/pence)
   monthlyAccessFee     Int           @default(0)
