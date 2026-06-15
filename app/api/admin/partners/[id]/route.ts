@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { encryptToken } from '@/lib/crypto'
+import { revalidateTag } from 'next/cache'
 
 function isSuperadmin(session: any) {
   return session?.user?.role === 'superadmin'
@@ -61,6 +62,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     where: { id: params.id },
     data,
   })
+
+  // Bust managed-customer + partner branding cache when branding-affecting fields change
+  const brandingKeys = ['isWhiteLabel', 'brandName', 'logoUrl', 'agentBrandName']
+  if (brandingKeys.some(k => k in body)) revalidateTag('branding')
 
   return NextResponse.json({ ...partner, githubToken: partner.githubToken ? '••••••••' : null })
 }

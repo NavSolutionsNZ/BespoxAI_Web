@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { encryptToken } from '@/lib/crypto'
-import { unstable_cache } from 'next/cache'
+import { unstable_cache, revalidateTag } from 'next/cache'
 
 function isSuperadmin(session: any) {
   return session?.user?.role === 'superadmin'
@@ -88,6 +88,9 @@ export async function POST(req: NextRequest) {
   if (githubToken)    data.githubToken    = encryptToken(githubToken)
 
   const partner = await (prisma as any).partnerAccount.create({ data })
+
+  // A partner created white-label from the start should propagate to branding immediately
+  if (data.isWhiteLabel) revalidateTag('branding')
 
   return NextResponse.json({ ...partner, githubToken: partner.githubToken ? '••••••••' : null }, { status: 201 })
 }

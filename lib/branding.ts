@@ -17,7 +17,9 @@ export const DEFAULT_BRANDING: BrandingConfig = {
  * Any null/undefined field falls back to the BespoxAI default.
  */
 export function resolveBranding(partial: Partial<BrandingConfig> | null | undefined): BrandingConfig {
-  if (!partial) return DEFAULT_BRANDING
+  // Only surface partner branding when the partner is white-label.
+  // Non-white-label partners' customers (and direct customers) get BespoxAI defaults.
+  if (!partial || !partial.isWhiteLabel) return DEFAULT_BRANDING
   return {
     brandName:      partial.brandName      || DEFAULT_BRANDING.brandName,
     logoUrl:        partial.logoUrl        ?? DEFAULT_BRANDING.logoUrl,
