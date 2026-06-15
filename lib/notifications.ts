@@ -22,6 +22,7 @@ import { prisma }     from '@/lib/db'
 import { sendEmail }  from '@/lib/email'
 
 const PORTAL = process.env.NEXTAUTH_URL ?? 'https://bespoxai.com'
+const PARTNER_PORTAL = process.env.PARTNER_PORTAL_URL ?? 'https://partners.bespoxai.com'
 
 // ── Shared template wrapper ───────────────────────────────────────────────────
 
@@ -506,13 +507,13 @@ export async function notifyPartnerWelcome(params: {
       html: wrap(`
         <p>Hi ${params.contactName},</p>
         <p>Your BespoxAI Partner account for <strong>${params.companyName}</strong> has been activated.</p>
-        <p>You can log in at <a href="${PORTAL}/login" style="color:#0A5C46">${PORTAL}/login</a> using the credentials below.</p>
+        <p>You can log in at <a href="${PARTNER_PORTAL}/login" style="color:#0A5C46">${PARTNER_PORTAL}/login</a> using the credentials below.</p>
         <div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:16px 0">
           <p style="margin:0 0 6px"><strong>Email:</strong> ${params.email}</p>
           <p style="margin:0"><strong>Temporary password:</strong> <code style="background:#f4f0e8;padding:2px 6px;border-radius:4px">${params.tempPassword}</code></p>
         </div>
         <p>You will be asked to set a new password on first login.</p>
-        ${cta('Log in to Partner Portal', PORTAL + '/login')}
+        ${cta('Log in to Partner Portal', PARTNER_PORTAL + '/login')}
       `),
     })
   } catch (e) {
@@ -594,7 +595,7 @@ export async function notifyPartnerNewRequirement(params: {
   const addendumNote = params.isAddendum && params.parentTitle
     ? `<p style="color:#666;font-size:13px">Addendum to: <em>${params.parentTitle}</em></p>`
     : ''
-  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  const link = `${PARTNER_PORTAL}/partner/tenants/${params.tenantId}`
   await Promise.all(recipients.map(r =>
     sendEmail({
       to:      r.email,
@@ -619,7 +620,7 @@ export async function notifyPartnerAnswered(params: {
 }) {
   const recipients = await getPartnerRecipients(params.tenantId)
   if (recipients.length === 0) return
-  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  const link = `${PARTNER_PORTAL}/partner/tenants/${params.tenantId}`
   await Promise.all(recipients.map(r =>
     sendEmail({
       to:      r.email,
@@ -646,7 +647,7 @@ export async function notifyPartnerQuoteRejected(params: {
   const reasonBlock = params.rejectionReason
     ? `<blockquote style="border-left:3px solid #C8952A;padding:8px 14px;margin:12px 0;color:#555;font-style:italic">"${params.rejectionReason}"</blockquote>`
     : ''
-  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  const link = `${PARTNER_PORTAL}/partner/tenants/${params.tenantId}`
   await Promise.all(recipients.map(r =>
     sendEmail({
       to:      r.email,
@@ -670,7 +671,7 @@ export async function notifyPartnerUatApproved(params: {
 }) {
   const recipients = await getPartnerRecipients(params.tenantId)
   if (recipients.length === 0) return
-  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  const link = `${PARTNER_PORTAL}/partner/tenants/${params.tenantId}`
   await Promise.all(recipients.map(r =>
     sendEmail({
       to:      r.email,
@@ -695,7 +696,7 @@ export async function notifyPartnerUatRejected(params: {
 }) {
   const recipients = await getPartnerRecipients(params.tenantId)
   if (recipients.length === 0) return
-  const link = `${PORTAL}/partner/tenants/${params.tenantId}`
+  const link = `${PARTNER_PORTAL}/partner/tenants/${params.tenantId}`
   await Promise.all(recipients.map(r =>
     sendEmail({
       to:      r.email,
@@ -745,7 +746,7 @@ export async function notifyPartnerTeamWelcome(params: {
           <strong>You will be asked to set a permanent password</strong> the first time you sign in.
         </p>
 
-        ${cta('Sign in to Partner Portal', PORTAL + '/login')}
+        ${cta('Sign in to Partner Portal', PARTNER_PORTAL + '/login')}
 
         <p style="font-size:12px;color:#8a9a8e;margin-top:24px">
           If you weren't expecting this email, you can safely ignore it.
@@ -774,17 +775,7 @@ export async function notifySendPartnerAgreement(params: {
         <p>${greeting}</p>
         <p>Thank you for applying to become a BespoxAI Partner. We've received your application for <strong>${companyName}</strong>.</p>
 
-        <p>As the next step, please review our <strong>Partner Agreement</strong> below. Your use of the Partner Portal after our approval constitutes your acceptance of these terms.</p>
-
-        <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0;text-align:center">
-          <p style="margin:0 0 12px;font-size:14px;font-weight:600">Partner Agreement (PDF)</p>
-          <p style="margin:0 0 12px;font-size:12px;color:#666">
-            Please download and review before we activate your account.
-          </p>
-          <a href="${PORTAL}/legal/BespoxAI_Partner_Agreement_Signable.pdf" style="display:inline-block;background:#0A5C46;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
-            Download Agreement (PDF)
-          </a>
-        </div>
+        <p>As the next step, you'll review and accept our <strong>Partner Agreement</strong> when you first sign in to the Partner Portal. Your use of the Partner Portal after our approval constitutes your acceptance of these terms.</p>
 
         <p style="font-size:13px;color:#2a3a2e;line-height:1.6">
           Our team is currently reviewing your application. Once approved, you'll receive your account credentials and can start inviting team members and managing your clients through the Partner Portal.
