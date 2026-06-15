@@ -1,6 +1,34 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 15, 2026 (Session 23)
+**Last Updated: June 16, 2026 (Session 24)
+
+---
+
+## 🧭 THE RELATIONSHIP MODEL (read this first — it drives every access/branding/pipeline decision)
+
+There are **three relationships**, two **delivery pipelines**, and a strict rule about who is the **deliverer** vs the **customer** in each. Getting this wrong has caused multiple bugs (branding, reassign leaks, missing partner tooling). Internalise it before changing anything in requirements/branding/auth.
+
+### The three relationships
+1. **BespoxAI → direct customer.** A tenant with **no** `partnerAccount`. BespoxAI is the deliverer.
+2. **BespoxAI → partner.** A consultancy with a `PartnerAccount` + `PartnerUser`s (`partner_admin` / `partner_developer`). They use the **partner portal** (`partners.bespoxai.com`).
+3. **Partner → partner's customer.** A tenant **with** `partnerAccount` set. **The partner is the deliverer.** BespoxAI is NOT in this loop.
+
+### Two delivery pipelines — who is DELIVERER, who is CUSTOMER
+| Tenant type (`tenant.partnerAccountId`) | Deliverer (drives quote/dev/deploy, assigns devs) | Customer (requests, approves quote/UAT) |
+|---|---|---|
+| **NULL** (direct) | **BespoxAI** — `superadmin` (+ `developer` for dev work) | tenant's `tenant_admin` / `user` |
+| **SET** (partner-managed) | **The partner** — `partner_admin` (+ `partner_developer`) | tenant's `tenant_admin` / `user` |
+
+**Every partner tenant is partner-managed today.** "Customers of a partner are partner-managed, NOT BespoxAI-managed." There is no exception yet.
+
+### Hard rules that fall out of this
+- **A customer NEVER assigns/reassigns developers or performs deliverer actions.** Not direct customers, not partner customers. (Reassign/quote/deploy/etc. are deliverer-only.)
+- **For a partner tenant, the PARTNER is the deliverer** — partner reassigns among **their own** `partner_admin`/`partner_developer` staff. BespoxAI superadmin is **read-only** on partner-tenant delivery (can view assignment/status, must NOT reassign or drive partner deliverer actions).
+- **Branding:** a partner tenant's customer sees the **partner's** brand **iff** the partner is white-label (`isWhiteLabel`/`subscriptionTier='branded'`); otherwise BespoxAI default is acceptable. Direct customers see BespoxAI. (Gate lives in `resolveBranding` — `lib/branding.ts`.)
+- **Feature parity is the standing goal:** the partner-as-deliverer must be able to run the **same full requirement lifecycle** BespoxAI can, and the partner's customer must get the **same customer experience** a direct customer gets (auto-feasibility on create, spec generation, quote approval, UAT, etc.). When mirroring BespoxAI functionality into the partner pipeline, mirror it **completely** — routes AND UI entry points AND notifications. See `PARTNER_PIPELINE_PARITY_AUDIT` (repo root) for the live gap list.
+
+### FUTURE (NOT built — do not implement as if live)
+- **Referral tier** (`partnerTier='referral'`): partner only refers the customer and earns a commission; **BespoxAI** manages delivery. The field exists and gates dev routes (403), but the commission/billing mechanics and the "route referral reqs to BespoxAI admin" behaviour are **NOT built**. Today **every** partner is `self_serve` (partner-managed). Do not treat anyone as referral-managed yet.
 
 ---
 

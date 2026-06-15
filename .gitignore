@@ -18,3 +18,8 @@ prisma/migrations/
 # OS
 .DS_Store
 Thumbs.db
+
+# E2E test secrets + artifacts
+.env.e2e
+/test-results/
+/playwright-report/

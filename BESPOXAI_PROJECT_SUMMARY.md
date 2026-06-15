@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 15, 2026 (Session 23)
+**Last Updated:** June 16, 2026 (Session 24)
 
 ---
 
@@ -44,6 +44,46 @@ git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "B
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+
+---
+
+## Session 24 Key Changes (June 16, 2026) — Branding cache fix, partner AI entry points, relationship model, E2E tests
+
+**Theme of session:** correcting the **partner/customer relationship model** and the bugs that flowed from misunderstanding it. See the new **"🧭 THE RELATIONSHIP MODEL"** section at the top of `BESPOXAI_FILES_INVENTORY.md` — it is now the authoritative reference for who is deliverer vs customer in each pipeline. Read it before any requirements/branding/auth work.
+
+### 1. Partner-customer branding fix (`d82af65`)
+- **Bug:** Acme (customer of white-label partner Test Partner Ltd / "Endeavour") saw **BespoxAI** branding in their portal instead of Endeavour's.
+- **Root cause:** the admin partner-edit route (`/api/admin/partners/[id]` PATCH) updated branding fields but never called `revalidateTag('branding')`, so managed customers kept serving a stale per-user branding cache from before the white-label flip. (`revalidateTag` previously only fired on the partner's own PATCH + the stripe webhook — not the admin path a superadmin actually uses.)
+- **Fixes:** (1) `app/api/admin/partners/[id]/route.ts` PATCH now `revalidateTag('branding')` when `isWhiteLabel`/`brandName`/`logoUrl`/`agentBrandName` change; (2) `app/api/admin/partners/route.ts` POST busts the tag when a partner is created white-label; (3) `lib/branding.ts` `resolveBranding` now **gates on `isWhiteLabel`** — returns `DEFAULT_BRANDING` unless the partner is white-label (defense-in-depth + honest API response). Data was already correct; this was cache + missing gate.
+- **STANDING RULE added:** any route that mutates partner branding fields MUST `revalidateTag('branding')`.
+
+### 2. Partner AI entry points — mirror BespoxAI auto-feasibility + spec generation (`0e6a6be`)
+- **Bug (Rich, testing):** creating a requirement as a partner gave "no AI assistant functionality" — just text. The partner detail had the feasibility/ai-spec **routes and handlers** (S23) but **no UI entry point**: the feasibility card only rendered after a check existed; the spec card only after a spec existed. A fresh requirement was inert.
+- **Fix (`app/partner/tenants/[id]/page.tsx`):** mirror the BespoxAI customer flow (`RequirementsBuilder`):
+  - **Auto-run feasibility** when a pre-quote requirement has no verdict yet (effect + ref guard; fires once on open, covers new + pre-existing reqs).
+  - **Verdict-driven CTAs** in the feasibility card: `development` → "Generate Full Specification →", `cfo_assistant` → "Scope as development anyway" (both call existing `generateSpec`); `infeasible` → constrained badge + notes.
+  - Loading state while feasibility runs.
+- Reuses existing partner routes/handlers; no backend/schema change. SWC-validated.
+- **Partner CUSTOMER side already worked:** partner customers use `RequirementsBuilder` (Customisations view), which already auto-runs feasibility on create, and the direct feasibility/ai-spec routes accept a partner-tenant customer (`tenantId === user.tenantId`). No change needed there.
+
+### 3. Partner pipeline parity audit (`PARTNER_PIPELINE_PARITY_AUDIT.md`, repo root — NEW)
+- Full map of every lifecycle capability, deliverer + customer, direct vs partner. Direct pipeline = 28 requirement routes; partner = 10. **Known remaining gaps on the partner-deliverer side (NOT yet built):**
+  - **Developer assignment/reassign** (partner has only auto-assign-to-creator; no reassign UI/API). Plus the **customer-leak bug** still live: `RequirementsBuilder` shows Reassign to `tenant_admin`/`partner_admin` (customer roles) and the direct `/api/requirements/[id]/assign` route permits `tenant_admin` — customers must NEVER assign. **Not yet fixed.**
+  - **Mark "unable to complete"** (partner_developer self-service) — missing.
+  - **Addendum** (post-acceptance scope change) — missing.
+  - **Objects + deploy** (fetch/sync/write/**deploy-test**/**deploy-prod**) — missing. BIGGEST gap: partner can AI-author + commit C/AL but cannot deploy to the customer's BC, so the lifecycle stalls at `in_development`. Needs its own design pass (partner deploys via the customer tenant's BCAgent/tunnel).
+  - **Prod go-live approval** (`prod-approval`/`prod-approve`) — missing.
+- Superadmin posture on partner tenants: **read-only** (see state, cannot reassign/drive delivery).
+
+### 4. E2E test suite (NEW — `e2e/` + `playwright.config.ts`)
+- Playwright lifecycle tests, run **locally** against production (no browser in Claude's env). `partner-lifecycle.spec.ts` (partner_admin: create → auto-feasibility → spec → advance pipeline) + `customer-lifecycle.spec.ts` (customer: create → auto-feasibility → spec). Text/role-based selectors off real labels. Touches real prod data — test reqs tagged `[E2E-TEST …]`; partner advance defaults `ADVANCE=safe` (stops after Issue Quote). Creds via `.env.e2e` (gitignored; example at `e2e/.env.e2e.example`). See `e2e/README.md`.
+- `.gitignore` updated: `.env.e2e`, `/test-results/`, `/playwright-report/`.
+
+### Next session priorities (post relationship-model correction)
+1. **Customer reassign leak** — remove deliverer/assignment UI from customers in `RequirementsBuilder`; lock `/api/requirements/[id]/assign` to deliverer-only (direct = superadmin). Add superadmin read-only gate on partner tenants in admin view.
+2. **Partner assignment system** — reassign UI (workload modal) + `assign`/`mark-unable` partner routes, gated `partner_admin`, candidates = that partner's `partner_admin`+`partner_developer`.
+3. **Partner objects + deploy** pipeline (largest; own design pass).
+4. **Addendum** + **prod go-live approval** partner parity.
 
 ---
 
