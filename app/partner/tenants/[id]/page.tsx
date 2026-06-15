@@ -762,6 +762,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   // ── Feasibility ───────────────────────────────────────────────────────────
   const [feasLoading, setFeasLoading] = useState(false)
   const [feasErr, setFeasErr] = useState('')
+  const feasAutoRun = useRef(false)
 
   // ── Dev plan ──────────────────────────────────────────────────────────────
   const [devPlanData, setDevPlanData] = useState<Record<string, any> | null>(parseDevPlan(req.devPlan))
@@ -820,6 +821,18 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       setFeasLoading(false)
     }
   }
+
+  // Mirror BespoxAI: feasibility runs automatically the moment a requirement
+  // exists. If a pre-quote requirement has no feasibility verdict yet, fire it
+  // once on open (covers both freshly-created and pre-existing requirements).
+  useEffect(() => {
+    const preQuote = ['draft', 'submitted', 'in_review', 'needs_clarification', 'quote_rejected'].includes(req.status)
+    if (preQuote && !req.feasibility && !feasAutoRun.current && !feasLoading) {
+      feasAutoRun.current = true
+      runFeasibility()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [req.id, req.status, req.feasibility])
 
   async function generateDevPlan() {
     setGenPlan(true)
@@ -1127,7 +1140,9 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           }
         >
           {feasLoading ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>Checking feasibility\u2026</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>Checking feasibility\u2026</span>
+            </div>
           ) : (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -1150,6 +1165,22 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               {req.feasibilityNotes ? (
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.65, margin: 0 }}>{req.feasibilityNotes}</p>
               ) : null}
+
+              {/* Verdict-driven CTAs — mirror BespoxAI */}
+              {req.feasibility === 'development' && !spec && ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status) ? (
+                <div style={{ paddingTop: 12, marginTop: 12, borderTop: '1px solid var(--rb-border)' }}>
+                  <button onClick={() => generateSpec()} disabled={genSpec} style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rb-bg)', background: 'var(--rb-primary)', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: genSpec ? 'not-allowed' : 'pointer', opacity: genSpec ? 0.7 : 1 }}>{genSpec ? 'Generating spec\u2026' : 'Generate Full Specification \u2192'}</button>
+                  {specErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 8 }}>{specErr}</p> : null}
+                </div>
+              ) : null}
+
+              {req.feasibility === 'cfo_assistant' && !spec && ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status) ? (
+                <div style={{ paddingTop: 12, marginTop: 12, borderTop: '1px solid var(--rb-border)' }}>
+                  <button onClick={() => generateSpec()} disabled={genSpec} style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rb-text)', background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, padding: '8px 16px', cursor: genSpec ? 'not-allowed' : 'pointer', opacity: genSpec ? 0.7 : 1 }}>{genSpec ? 'Generating\u2026' : 'Scope as development anyway'}</button>
+                  {specErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 8 }}>{specErr}</p> : null}
+                </div>
+              ) : null}
+
               {feasErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 10 }}>{feasErr}</p> : null}
             </div>
           )}
