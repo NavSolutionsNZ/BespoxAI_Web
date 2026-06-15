@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useBranding } from '@/app/branding-provider'
 import { DevPlanPanel } from '@/components/DevPlanPanel'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -750,6 +751,10 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const { data: _sess } = useSession()
   const partnerRole = (_sess?.user as any)?.partnerRole ?? ''
   const isPartnerAdmin = partnerRole === 'partner_admin'
+
+  // Brand label for client-facing content — white-label partners show their own brand
+  const branding = useBranding()
+  const brandLabel = branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'
   const [team, setTeam] = useState<any[]>([])
   const [assigning, setAssigning] = useState(false)
   useEffect(() => {
@@ -1185,7 +1190,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       {/* Feasibility */}
       {(feasLoading || req.feasibility) ? (
         <CollapsibleCard
-          label="BespoxAI Feasibility Check"
+          label={brandLabel + ' Feasibility Check'}
           collapsed={isCollapsed('feasibility')}
           onToggle={() => toggleCard('feasibility')}
           accessory={
@@ -1291,7 +1296,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       {/* Consultant note */}
       {req.consultantNote ? (
         <Card style={{ marginBottom: 16, borderColor: 'rgba(10,92,70,0.4)', background: 'rgba(10,92,70,0.06)' }}>
-          <SectionLabel>Note from BespoxAI</SectionLabel>
+          <SectionLabel>{'Note from ' + brandLabel}</SectionLabel>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0 }}>{req.consultantNote}</p>
         </Card>
       ) : null}
@@ -1529,7 +1534,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
             <div key={i} style={{ marginBottom: i < qaLog.length - 1 ? 20 : 0 }}>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, marginTop: 0 }}>Round {round.round}</p>
               <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 6, padding: '12px 16px', marginBottom: 10 }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-warning)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Questions from BespoxAI</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-warning)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>{'Questions from ' + brandLabel}</p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', whiteSpace: 'pre-wrap', margin: 0 }}>{round.questions}</p>
               </div>
               {round.answers ? (
