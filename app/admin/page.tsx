@@ -1432,7 +1432,7 @@ interface AdminReq {
   addenda:              { id: string; title: string; status: string; quote: string | null; createdAt: string; parentId: string }[]
   createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
-  tenant: { name: string }
+  tenant: { name: string; partnerAccountId: string | null }
 }
 
 // ─── Deploy to Test Panel ──────────────────────────────────────────────────────
@@ -2596,28 +2596,37 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
                   ) : null}
                 </div>
               </div>
-              {/* Assign developer — superadmin only */}
-              <select
-                style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--fog)', background: 'var(--white)', color: 'var(--slate)', cursor: 'pointer' }}
-                value={selected.assignedDeveloper?.id ?? ''}
-                onChange={async e => {
-                  const devId = e.target.value || null
-                  const res = await fetch(`/api/requirements/${selected.id}`, {
-                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ assignedDeveloperId: devId }),
-                  })
-                  if (res.ok) {
-                    const dev = devId ? developers.find(u => u.id === devId) : null
-                    setSelected((s: any) => s ? { ...s, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : s)
-                    setReqs(prev => prev.map(r => r.id === selected.id ? { ...r, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : r))
-                  }
-                }}
-              >
-                <option value="">Assign developer…</option>
-                {developers.map(u => (
-                  <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
-                ))}
-              </select>
+              {/* Assign developer — BespoxAI superadmin only on DIRECT tenants.
+                  Partner-managed tenants are assigned by the partner; superadmin sees the
+                  assigned dev read-only. Fail-safe: only show the dropdown when the tenant
+                  is explicitly direct (partnerAccountId === null), never when unknown. */}
+              {selected.tenant.partnerAccountId === null ? (
+                <select
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--fog)', background: 'var(--white)', color: 'var(--slate)', cursor: 'pointer' }}
+                  value={selected.assignedDeveloper?.id ?? ''}
+                  onChange={async e => {
+                    const devId = e.target.value || null
+                    const res = await fetch(`/api/requirements/${selected.id}`, {
+                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ assignedDeveloperId: devId }),
+                    })
+                    if (res.ok) {
+                      const dev = devId ? developers.find(u => u.id === devId) : null
+                      setSelected((s: any) => s ? { ...s, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : s)
+                      setReqs(prev => prev.map(r => r.id === selected.id ? { ...r, assignedDeveloper: dev ? { id: dev.id, name: dev.name, email: dev.email } : null } : r))
+                    }
+                  }}
+                >
+                  <option value="">Assign developer…</option>
+                  {developers.map(u => (
+                    <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', padding: '4px 8px', border: '1px solid var(--fog)', borderRadius: 6 }}>
+                  Partner-managed{selected.assignedDeveloper ? ' · ' + (selected.assignedDeveloper.name ?? selected.assignedDeveloper.email) : ' · unassigned'}
+                </span>
+              )}
             </div>
 
             {/* Pipeline progress with dates */}

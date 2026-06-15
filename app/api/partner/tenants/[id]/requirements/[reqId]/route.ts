@@ -22,6 +22,7 @@ function readQALog(raw: string | null): any[] {
 const REQ_INCLUDE = {
   user:   { select: { name: true, email: true } },
   tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+  assignedDeveloper: { select: { id: true, name: true, email: true, firstName: true, preferredName: true } },
   addenda: {
     orderBy: { createdAt: 'asc' as const },
     select:  { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
@@ -79,6 +80,22 @@ export async function PATCH(
   const body = await req.json()
   const { status, title, description, bcArea, priority, customerAnswers, quoteRejectionReason } = body
   const updateData: any = {}
+
+  // Developer assignment — partner_admin only; assignee must be a member of THIS partner account.
+  if (body.assignedDeveloperId !== undefined) {
+    if (session.partnerRole !== 'partner_admin')
+      return NextResponse.json({ error: 'Only a partner admin can assign developers.' }, { status: 403 })
+    if (body.assignedDeveloperId) {
+      const member = await (prisma as any).partnerUser.findFirst({
+        where: { partnerAccountId: session.partnerAccountId, userId: body.assignedDeveloperId },
+        select: { id: true },
+      })
+      if (!member)
+        return NextResponse.json({ error: 'Developer is not a member of this partner account.' }, { status: 400 })
+      updateData.assignedDeveloperId = body.assignedDeveloperId
+    }
+    // Note: assignedDeveloperId is a required FK — we never null it; only reassign to a valid member.
+  }
 
   // Submit
   if (status === 'submitted' && ['draft', 'needs_clarification', 'quote_rejected'].includes(existing.status)) {

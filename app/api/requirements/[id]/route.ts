@@ -28,10 +28,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const isSuperadmin = user.role === 'superadmin'
   const body = await req.json()
 
-  const existing = await (prisma as any).requirement.findUnique({ where: { id: params.id } })
+  const existing = await (prisma as any).requirement.findUnique({
+    where: { id: params.id },
+    include: { tenant: { select: { partnerAccountId: true } } },
+  })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (!isSuperadmin && existing.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Developer assignment on a PARTNER-managed tenant is the partner's responsibility
+  // (handled via the partner pipeline). BespoxAI superadmin must not assign here.
+  if (body.assignedDeveloperId !== undefined && existing.tenant?.partnerAccountId)
+    return NextResponse.json({ error: 'Partner-managed tenant: assignment is handled by the partner.' }, { status: 403 })
 
   const updateData: any = {}
 

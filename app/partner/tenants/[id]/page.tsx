@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { DevPlanPanel } from '@/components/DevPlanPanel'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ type Requirement = {
   prodDeployedAt: string | null; createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string; country: string | null; paymentTermsKey: string | null }
+  assignedDeveloper: { id: string; name: string | null; email: string; firstName: string | null; preferredName: string | null } | null
   parentId: string | null
   addenda: { id: string; title: string; status: string; quote: string | null; createdAt: string; parentId: string }[]
 }
@@ -743,6 +745,38 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [editForm, setEditForm] = useState({ title: req.title, description: req.description, bcArea: req.bcArea, priority: req.priority })
+
+  // Developer assignment (partner is the deliverer for its own tenants)
+  const { data: _sess } = useSession()
+  const partnerRole = (_sess?.user as any)?.partnerRole ?? ''
+  const isPartnerAdmin = partnerRole === 'partner_admin'
+  const [team, setTeam] = useState<any[]>([])
+  const [assigning, setAssigning] = useState(false)
+  useEffect(() => {
+    if (!isPartnerAdmin) return
+    fetch('/api/partner/users')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setTeam(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [isPartnerAdmin])
+
+  async function assignDeveloper(userId: string) {
+    if (!userId) return
+    setAssigning(true)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedDeveloperId: userId }),
+      })
+      const data = await res.json()
+      if (res.ok && data.requirement) onUpdated(data.requirement)
+    } catch {
+      // swallow — UI stays on previous assignment
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   // Deliverer panel state
   const [showQuoteForm, setShowQuoteForm]     = useState(false)
   const [showQuestionForm, setShowQuestionForm] = useState(false)
@@ -1093,6 +1127,27 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           </div>
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginTop: 4 }}>
             {req.bcArea} · {PRIORITIES.find(p => p.value === req.priority)?.label ?? req.priority} · Raised {fmtDate(req.createdAt)}
+          </div>
+          {/* Developer assignment — partner is the deliverer; partner_admin assigns own staff */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Assigned developer</span>
+            {isPartnerAdmin ? (
+              <select
+                value={req.assignedDeveloper?.id ?? ''}
+                disabled={assigning}
+                onChange={e => assignDeveloper(e.target.value)}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--rb-border-strong)', background: 'var(--rb-surface)', color: 'var(--rb-text)', cursor: assigning ? 'wait' : 'pointer' }}
+              >
+                <option value="">Assign developer…</option>
+                {team.map((m: any) => (
+                  <option key={m.user.id} value={m.user.id}>{m.user.name}{m.role === 'partner_admin' ? ' (admin)' : ''}</option>
+                ))}
+              </select>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text)' }}>
+                {req.assignedDeveloper ? (req.assignedDeveloper.preferredName ?? req.assignedDeveloper.firstName ?? req.assignedDeveloper.name ?? req.assignedDeveloper.email) : 'Unassigned'}
+              </span>
+            )}
           </div>
         </div>
       </div>

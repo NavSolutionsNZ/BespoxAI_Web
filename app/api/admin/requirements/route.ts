@@ -31,7 +31,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
       include: {
         user:              { select: { name: true, email: true } },
-        tenant:            { select: { name: true } },
+        tenant:            { select: { name: true, partnerAccountId: true } },
         assignedDeveloper: { select: { id: true, name: true, email: true } },
         addenda: {
           orderBy: { createdAt: 'asc' },

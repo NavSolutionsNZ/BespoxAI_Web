@@ -22,6 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     include: {
       user:   { select: { name: true, email: true } },
       tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+      assignedDeveloper: { select: { id: true, name: true, email: true, firstName: true, preferredName: true } },
       addenda: {
         orderBy: { createdAt: 'asc' },
         select:  { id: true, title: true, status: true, quote: true, createdAt: true, parentId: true },
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     include: {
       user:   { select: { name: true, email: true } },
       tenant: { select: { name: true, country: true, paymentTermsKey: true } },
+      assignedDeveloper: { select: { id: true, name: true, email: true, firstName: true, preferredName: true } },
       addenda: true,
     },
   })
