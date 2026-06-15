@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { DevPlanPanel } from '@/components/DevPlanPanel'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1209,100 +1210,17 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         </Card>
       ) : null}
 
-      {/* ── Dev Plan (development tooling) ──────────────────────────────────── */}
+      {/* ── Dev Plan (shared component) ─────────────────────────────────────── */}
       {['quoted','deposit_required','deposit_paid','in_development','in_uat','uat_confirmed','complete_pending_payment','fully_paid'].includes(req.status) ? (
-        <CollapsibleCard
-          label="Internal Dev Plan"
+        <DevPlanPanel
+          data={devPlanData}
+          generating={genPlan}
+          error={planErr}
+          onGenerate={generateDevPlan}
           collapsed={isCollapsed('devplan')}
           onToggle={() => toggleCard('devplan')}
-          accessory={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {devPlanData && devPlanData.totalEstimatedHours ? (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)' }}>{devPlanData.totalEstimatedHours}h \u00b7 {devPlanData.tasks?.length ?? 0} tasks</span>
-              ) : null}
-              <button onClick={generateDevPlan} disabled={genPlan} style={{ background: 'none', border: 'none', cursor: genPlan ? 'not-allowed' : 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
-                {genPlan ? '\u2726 Generating\u2026' : devPlanData ? '\u21ba Regenerate' : '\u2726 Generate Dev Plan'}
-              </button>
-            </div>
-          }
-        >
-          {planErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginBottom: 8 }}>{planErr}</p> : null}
-          {!devPlanData && !genPlan ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
-              Generate an internal development plan with AL/C-AL code snippets, task breakdown, hours, and risks. If the BC instance is connected, live field inspection is included.
-            </p>
-          ) : null}
-          {devPlanData ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {devPlanData._bcConnected ? (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', letterSpacing: '0.06em' }}>\ud83d\udd0c BC live \u00b7 {(devPlanData._introspectedTables ?? []).join(', ')}</span>
-              ) : (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', letterSpacing: '0.06em' }}>Plan based on standard BC schema (no live connection)</span>
-              )}
-              {devPlanData.summary ? (
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 5, marginTop: 0 }}>Summary</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.65, margin: 0 }}>{devPlanData.summary}</p>
-                </div>
-              ) : null}
-              {devPlanData.approach ? (
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 5, marginTop: 0 }}>Technical Approach</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.65, margin: 0 }}>{devPlanData.approach}</p>
-                </div>
-              ) : null}
-              {devPlanData.tasks?.length > 0 ? (
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 8, marginTop: 0 }}>Tasks</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {devPlanData.tasks.map((task: any, i: number) => (
-                      <div key={i} style={{ background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6, padding: '10px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: task.description ? 5 : 0 }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--rb-text-bright)', lineHeight: 1.3, flex: 1 }}>{task.title}</span>
-                          <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                            {task.phase ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 7, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-warning)', background: 'rgba(200,149,42,0.12)', border: '1px solid rgba(200,149,42,0.25)', padding: '2px 6px', borderRadius: 4 }}>{task.phase}</span> : null}
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', fontWeight: 600 }}>{task.estimatedHours}h</span>
-                          </div>
-                        </div>
-                        {task.description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', lineHeight: 1.55, margin: task.objects?.length ? '0 0 6px' : 0 }}>{task.description}</p> : null}
-                        {task.objects?.length > 0 ? (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: task.codeSnippet ? 8 : 0 }}>
-                            {task.objects.map((o: string, j: number) => (
-                              <span key={j} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', background: 'var(--rb-surface)', border: '1px solid var(--rb-border-strong)', borderRadius: 4, padding: '2px 6px' }}>{o}</span>
-                            ))}
-                          </div>
-                        ) : null}
-                        {task.codeSnippet ? (
-                          <div style={{ marginTop: 8 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-success)' }}>{task.codeSnippet.filename}</span>
-                            {task.codeSnippet.placement ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', margin: '4px 0 5px', fontStyle: 'italic' }}>\ud83d\udccd {task.codeSnippet.placement}</p> : null}
-                            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text)', background: 'var(--rb-code)', border: '1px solid var(--rb-border)', borderRadius: 5, padding: '10px 12px', overflowX: 'auto', margin: '4px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{task.codeSnippet.code}</pre>
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {devPlanData.risks?.length > 0 ? (
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 6, marginTop: 0 }}>Risks</p>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {devPlanData.risks.map((r: string, i: number) => (
-                      <li key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text)', lineHeight: 1.6 }}>{r}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {devPlanData.testingPlan ? (
-                <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 5, marginTop: 0 }}>Testing Plan</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0 }}>{devPlanData.testingPlan}</p>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </CollapsibleCard>
+          showPricing={false}
+        />
       ) : null}
 
       {/* ── AI Dev Assistant (streaming notes) ──────────────────────────────── */}
