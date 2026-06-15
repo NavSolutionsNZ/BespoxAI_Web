@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requirePartnerSession, assertTenantBelongsToPartner } from '@/lib/partner-auth'
+import { requirePartnerSession, assertTenantBelongsToPartner, getPartnerTier } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
 import {
   notifyPartnerNewRequirement,
@@ -48,8 +48,12 @@ export async function GET(
   })
   if (!req) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { devPlan, ...rest } = req
-  return NextResponse.json({ requirement: rest })
+  const tier = await getPartnerTier(session.partnerAccountId)
+  if (tier === 'referral') {
+    const { devPlan, ...rest } = req
+    return NextResponse.json({ requirement: rest })
+  }
+  return NextResponse.json({ requirement: req })
 }
 
 // PATCH /api/partner/tenants/[id]/requirements/[reqId]
@@ -226,6 +230,10 @@ export async function PATCH(
     notifyPartnerQuoteRejected({ tenantId: params.id, title: reqTitle, tenantName, customerName: 'Partner', rejectionReason: updateData.quoteRejectionReason }).catch(() => {})
   }
 
-  const { devPlan, ...rest } = updated
-  return NextResponse.json({ requirement: rest })
+  const tier = await getPartnerTier(session.partnerAccountId)
+  if (tier === 'referral') {
+    const { devPlan, ...rest } = updated
+    return NextResponse.json({ requirement: rest })
+  }
+  return NextResponse.json({ requirement: updated })
 }

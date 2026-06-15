@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requirePartnerSession, assertTenantBelongsToPartner } from '@/lib/partner-auth'
+import { requirePartnerSession, assertTenantBelongsToPartner, getPartnerTier } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
 import { notifyPartnerNewRequirement } from '@/lib/notifications'
 
@@ -29,9 +29,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     },
   })
 
-  // Strip devPlan (superadmin-only)
-  const sanitised = requirements.map(({ devPlan, ...rest }: any) => rest)
-  return NextResponse.json({ requirements: sanitised })
+  // devPlan: returned for self_serve partners (they develop); stripped for referral
+  const tier = await getPartnerTier(session.partnerAccountId)
+  const result = tier === 'referral'
+    ? requirements.map(({ devPlan, ...rest }: any) => rest)
+    : requirements
+  return NextResponse.json({ requirements: result })
 }
 
 // POST /api/partner/tenants/[id]/requirements — raise on behalf of tenant

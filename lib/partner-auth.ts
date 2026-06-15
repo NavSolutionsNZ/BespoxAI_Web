@@ -62,3 +62,20 @@ export async function assertPartnerCanDevelop(partnerAccountId: string) {
   }
   return account
 }
+
+/**
+ * Return the partner account's tier ('self_serve' | 'referral'). Defaults to
+ * 'self_serve' if the account or column can't be read, matching the schema
+ * default. Used to tier-gate which fields (e.g. devPlan) are returned.
+ */
+export async function getPartnerTier(partnerAccountId: string): Promise<string> {
+  try {
+    const account = await (prisma as any).partnerAccount.findFirst({
+      where:  { id: partnerAccountId },
+      select: { partnerTier: true },
+    })
+    return account?.partnerTier ?? 'self_serve'
+  } catch {
+    return 'self_serve'
+  }
+}

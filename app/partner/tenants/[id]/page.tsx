@@ -36,7 +36,8 @@ type Requirement = {
   customerAnswers: string | null; adminQALog: string | null
   quoteRejectedAt: string | null; quoteRejectionReason: string | null
   feasibility: string | null; feasibilityNotes: string | null
-  feasibilityCostRange: string | null
+  feasibilityCostRange: string | null; feasibilityCheckedAt: string | null
+  devPlan: string | null; githubBranch: string | null
   submittedAt: string | null; inReviewAt: string | null
   quotedAt: string | null; depositRequiredAt: string | null
   inDevelopmentAt: string | null; completePendingPaymentAt: string | null
@@ -673,6 +674,61 @@ function NewRequirementForm({ tenantId, onCreated, onCancel }: {
   )
 }
 
+// ── Collapsible card (partner detail) ────────────────────────────────────────
+function CollapsibleCard({ label, accessory, collapsed, onToggle, children, style }: {
+  label: React.ReactNode
+  accessory?: React.ReactNode
+  collapsed: boolean
+  onToggle: () => void
+  children: React.ReactNode
+  style?: React.CSSProperties
+}) {
+  return (
+    <Card style={{ marginBottom: 16, ...style }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsed ? 0 : 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {accessory ?? null}
+          <button onClick={onToggle} title={collapsed ? 'Expand' : 'Collapse'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: '#8B949E', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }}>
+            {collapsed ? '\u25be' : '\u25b4'}
+          </button>
+        </div>
+      </div>
+      <div style={{ overflow: 'hidden', maxHeight: collapsed ? 0 : '99999px', transition: 'max-height 0.25s ease' }}>
+        {children}
+      </div>
+    </Card>
+  )
+}
+
+function parseDevPlan(raw: string | null): Record<string, any> | null {
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
+// Extract C/AL OBJECT blocks from an AI coding-assistant response.
+function extractCalObjects(text: string): { filename: string; content: string }[] {
+  const results: { filename: string; content: string }[] = []
+  const fenceRe = /```(?:cal|txt|nav|c\/al)?\n(OBJECT [^\n]+[\s\S]*?)```/gi
+  let m
+  while ((m = fenceRe.exec(text)) !== null) {
+    const block  = m[1].trim()
+    const header = block.split('\n')[0]
+    const parts  = header.match(/^OBJECT\s+(\w+)\s+(\d+)\s+(.+)$/)
+    if (parts) {
+      const objType = parts[1]
+      const objId   = parts[2]
+      const objName = parts[3].trim().replace(/[^a-zA-Z0-9_\-. ]/g, '_')
+      results.push({ filename: objType + '_' + objId + '_' + objName + '.txt', content: block })
+    } else {
+      results.push({ filename: 'object.txt', content: block })
+    }
+  }
+  return results
+}
+
 // ── Requirement Detail ────────────────────────────────────────────────────────
 
 function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
@@ -701,6 +757,193 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const qaLog = readQALog(req.adminQALog)
   const sc = STATUS_COLOR[req.status] ?? STATUS_COLOR.draft
   const pipelineIndex = STATUS_PIPELINE.findIndex(s => s.key === req.status)
+
+  // ── Feasibility ───────────────────────────────────────────────────────────
+  const [feasLoading, setFeasLoading] = useState(false)
+  const [feasErr, setFeasErr] = useState('')
+
+  // ── Dev plan ──────────────────────────────────────────────────────────────
+  const [devPlanData, setDevPlanData] = useState<Record<string, any> | null>(parseDevPlan(req.devPlan))
+  const [genPlan, setGenPlan] = useState(false)
+  const [planErr, setPlanErr] = useState('')
+
+  // ── Dev notes (streaming AI dev assistant) ────────────────────────────────
+  const [devHistory, setDevHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [devQuestion, setDevQuestion] = useState('')
+  const [devStreaming, setDevStreaming] = useState(false)
+
+  // ── Coding assistant (streaming + commit) ─────────────────────────────────
+  const [codingHistory, setCodingHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [codingMessage, setCodingMessage] = useState('')
+  const [codingStreaming, setCodingStreaming] = useState(false)
+  const [codingCommitting, setCodingCommitting] = useState<number | null>(null)
+  const [codingCommitErr, setCodingCommitErr] = useState('')
+  const [codingCommitted, setCodingCommitted] = useState<Record<string, boolean>>({})
+
+  // ── Collapsible cards — status-based defaults (mirrors admin) ─────────────
+  // A card collapses by default once the requirement has moved past the stage
+  // where that card is the focus of attention.
+  const devStages = ['in_development', 'in_uat', 'uat_confirmed', 'complete_pending_payment', 'fully_paid']
+  const isDevStage = devStages.includes(req.status)
+  function defaultCollapsed(cardKey: string): boolean {
+    switch (cardKey) {
+      case 'description': return isDevStage
+      case 'feasibility': return isDevStage
+      case 'spec':        return req.status === 'fully_paid'
+      case 'devplan':     return false
+      case 'devnotes':    return true
+      case 'coding':      return false
+      case 'qa':          return isDevStage
+      default:            return false
+    }
+  }
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  function isCollapsed(cardKey: string): boolean {
+    return cardKey in collapsed ? collapsed[cardKey] : defaultCollapsed(cardKey)
+  }
+  function toggleCard(cardKey: string) {
+    setCollapsed(prev => ({ ...prev, [cardKey]: !isCollapsed(cardKey) }))
+  }
+
+  async function runFeasibility() {
+    setFeasLoading(true)
+    setFeasErr('')
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/feasibility', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setFeasErr(data.error || 'Feasibility check failed'); return }
+      onUpdated(data.requirement)
+    } catch {
+      setFeasErr('Feasibility check failed — please try again.')
+    } finally {
+      setFeasLoading(false)
+    }
+  }
+
+  async function generateDevPlan() {
+    setGenPlan(true)
+    setPlanErr('')
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/dev-plan', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setPlanErr(data.error || 'Dev plan generation failed'); return }
+      setDevPlanData(data.devPlan)
+      onUpdated({ ...req, devPlan: JSON.stringify(data.devPlan) })
+    } catch {
+      setPlanErr('Dev plan generation failed — please try again.')
+    } finally {
+      setGenPlan(false)
+    }
+  }
+
+  async function sendDevNote() {
+    const question = devQuestion.trim()
+    if (!question || devStreaming) return
+    setDevQuestion('')
+    setDevStreaming(true)
+    const historyToSend = devHistory.map(h => ({ role: h.role, content: h.content }))
+    setDevHistory(prev => [...prev, { role: 'user', content: question }, { role: 'assistant', content: '' }])
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/dev-notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, history: historyToSend }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({} as any))
+        setDevHistory(prev => { const u = [...prev]; u[u.length - 1] = { role: 'assistant', content: 'Error: ' + ((d as any).error ?? 'Request failed') }; return u })
+        return
+      }
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let answer = ''
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const raw = line.slice(6).trim()
+          if (!raw || raw === '[DONE]') continue
+          try {
+            const data = JSON.parse(raw)
+            if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
+              answer += data.delta.text ?? ''
+              setDevHistory(prev => { const u = [...prev]; u[u.length - 1] = { role: 'assistant', content: answer }; return u })
+            }
+          } catch { /* skip malformed chunk */ }
+        }
+      }
+    } catch {
+      setDevHistory(prev => { const u = [...prev]; u[u.length - 1] = { role: 'assistant', content: 'Error contacting AI — please try again.' }; return u })
+    } finally {
+      setDevStreaming(false)
+    }
+  }
+
+  async function sendCodingMessage() {
+    const msg = codingMessage.trim()
+    if (!msg || codingStreaming) return
+    setCodingMessage('')
+    setCodingStreaming(true)
+    const historyToSend = codingHistory.map(h => ({ role: h.role, content: h.content }))
+    setCodingHistory(prev => [...prev, { role: 'user', content: msg }, { role: 'assistant', content: '' }])
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/coding-assistant', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, history: historyToSend }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({} as any))
+        throw new Error((d as any).error ?? 'Request failed')
+      }
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      let answer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
+              answer += data.delta.text ?? ''
+              setCodingHistory(prev => { const u = [...prev]; u[u.length - 1] = { role: 'assistant', content: answer }; return u })
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (e: any) {
+      setCodingHistory(prev => { const u = [...prev]; u[u.length - 1] = { role: 'assistant', content: 'Error: ' + (e.message ?? 'Could not reach AI') }; return u })
+    } finally {
+      setCodingStreaming(false)
+    }
+  }
+
+  async function commitCalObject(key: string, filename: string, content: string, idx: number) {
+    setCodingCommitting(idx)
+    setCodingCommitErr('')
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/coding-assistant/commit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, content }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Commit failed')
+      setCodingCommitted(prev => ({ ...prev, [key]: true }))
+    } catch (e: any) {
+      setCodingCommitErr(e.message ?? 'Commit failed')
+    } finally {
+      setCodingCommitting(null)
+    }
+  }
 
   async function patch(body: object) {
     setSaving(true)
@@ -866,18 +1109,64 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       </Card>
 
       {/* Description */}
-      <Card style={{ marginBottom: 16 }}>
-        <SectionLabel>Description</SectionLabel>
+      <CollapsibleCard label="Description" collapsed={isCollapsed('description')} onToggle={() => toggleCard('description')}>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{req.description}</p>
-      </Card>
+      </CollapsibleCard>
+
+      {/* Feasibility */}
+      {(feasLoading || req.feasibility) ? (
+        <CollapsibleCard
+          label="BespoxAI Feasibility Check"
+          collapsed={isCollapsed('feasibility')}
+          onToggle={() => toggleCard('feasibility')}
+          accessory={
+            ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status)
+              ? <button onClick={runFeasibility} disabled={feasLoading} style={{ background: 'none', border: 'none', cursor: feasLoading ? 'not-allowed' : 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{feasLoading ? '\u2026' : '\u21ba Recheck'}</button>
+              : null
+          }
+        >
+          {feasLoading ? (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>Checking feasibility\u2026</p>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                {req.feasibility === 'cfo_assistant' ? (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#C8952A', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\ud83d\udca1 No development needed</span>
+                ) : null}
+                {req.feasibility === 'development' ? (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950', background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Development required</span>
+                ) : null}
+                {req.feasibility === 'infeasible' ? (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#F85149', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\u26a0 Constrained</span>
+                ) : null}
+                {req.feasibility === 'development' && req.feasibilityCostRange ? (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', background: 'rgba(10,92,70,0.1)', border: '1px solid rgba(10,92,70,0.3)', borderRadius: 20, padding: '3px 12px' }}>Indicative: {req.feasibilityCostRange}</span>
+                ) : null}
+                {req.feasibilityCheckedAt ? (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E' }}>{fmtDate(req.feasibilityCheckedAt)}</span>
+                ) : null}
+              </div>
+              {req.feasibilityNotes ? (
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.65, margin: 0 }}>{req.feasibilityNotes}</p>
+              ) : null}
+              {feasErr ? <p style={{ color: '#F85149', fontSize: 12, marginTop: 10 }}>{feasErr}</p> : null}
+            </div>
+          )}
+        </CollapsibleCard>
+      ) : null}
 
       {/* AI Spec */}
       {spec ? (
-        <Card style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <SectionLabel>AI Specification</SectionLabel>
-            {['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status) && <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '…' : '↺ Regen'}</button>}
-          </div>
+        <CollapsibleCard
+          label="AI Specification"
+          collapsed={isCollapsed('spec')}
+          onToggle={() => toggleCard('spec')}
+          accessory={
+            ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status)
+              ? <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '\u2026' : '\u21ba Regen'}</button>
+              : null
+          }
+        >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>User Story</p>
@@ -909,7 +1198,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
             ) : null}
           </div>
           {specErr && <p style={{ color: '#F85149', fontSize: 12, marginTop: 12 }}>{specErr}</p>}
-        </Card>
+        </CollapsibleCard>
       ) : null}
 
       {/* Consultant note */}
@@ -918,6 +1207,178 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           <SectionLabel>Note from BespoxAI</SectionLabel>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', lineHeight: 1.6, margin: 0 }}>{req.consultantNote}</p>
         </Card>
+      ) : null}
+
+      {/* ── Dev Plan (development tooling) ──────────────────────────────────── */}
+      {['quoted','deposit_required','deposit_paid','in_development','in_uat','uat_confirmed','complete_pending_payment','fully_paid'].includes(req.status) ? (
+        <CollapsibleCard
+          label="Internal Dev Plan"
+          collapsed={isCollapsed('devplan')}
+          onToggle={() => toggleCard('devplan')}
+          accessory={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {devPlanData && devPlanData.totalEstimatedHours ? (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950' }}>{devPlanData.totalEstimatedHours}h \u00b7 {devPlanData.tasks?.length ?? 0} tasks</span>
+              ) : null}
+              <button onClick={generateDevPlan} disabled={genPlan} style={{ background: 'none', border: 'none', cursor: genPlan ? 'not-allowed' : 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+                {genPlan ? '\u2726 Generating\u2026' : devPlanData ? '\u21ba Regenerate' : '\u2726 Generate Dev Plan'}
+              </button>
+            </div>
+          }
+        >
+          {planErr ? <p style={{ color: '#F85149', fontSize: 12, marginBottom: 8 }}>{planErr}</p> : null}
+          {!devPlanData && !genPlan ? (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+              Generate an internal development plan with AL/C-AL code snippets, task breakdown, hours, and risks. If the BC instance is connected, live field inspection is included.
+            </p>
+          ) : null}
+          {devPlanData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {devPlanData._bcConnected ? (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950', letterSpacing: '0.06em' }}>\ud83d\udd0c BC live \u00b7 {(devPlanData._introspectedTables ?? []).join(', ')}</span>
+              ) : (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E', letterSpacing: '0.06em' }}>Plan based on standard BC schema (no live connection)</span>
+              )}
+              {devPlanData.summary ? (
+                <div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 5, marginTop: 0 }}>Summary</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.65, margin: 0 }}>{devPlanData.summary}</p>
+                </div>
+              ) : null}
+              {devPlanData.approach ? (
+                <div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 5, marginTop: 0 }}>Technical Approach</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.65, margin: 0 }}>{devPlanData.approach}</p>
+                </div>
+              ) : null}
+              {devPlanData.tasks?.length > 0 ? (
+                <div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 8, marginTop: 0 }}>Tasks</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {devPlanData.tasks.map((task: any, i: number) => (
+                      <div key={i} style={{ background: '#0D1117', border: '1px solid #21262D', borderRadius: 6, padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: task.description ? 5 : 0 }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: '#F0F6FC', lineHeight: 1.3, flex: 1 }}>{task.title}</span>
+                          <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                            {task.phase ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 7, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8952A', background: 'rgba(200,149,42,0.12)', border: '1px solid rgba(200,149,42,0.25)', padding: '2px 6px', borderRadius: 4 }}>{task.phase}</span> : null}
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950', fontWeight: 600 }}>{task.estimatedHours}h</span>
+                          </div>
+                        </div>
+                        {task.description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', lineHeight: 1.55, margin: task.objects?.length ? '0 0 6px' : 0 }}>{task.description}</p> : null}
+                        {task.objects?.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: task.codeSnippet ? 8 : 0 }}>
+                            {task.objects.map((o: string, j: number) => (
+                              <span key={j} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E', background: '#161B22', border: '1px solid #30363D', borderRadius: 4, padding: '2px 6px' }}>{o}</span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {task.codeSnippet ? (
+                          <div style={{ marginTop: 8 }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#3FB950' }}>{task.codeSnippet.filename}</span>
+                            {task.codeSnippet.placement ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E', margin: '4px 0 5px', fontStyle: 'italic' }}>\ud83d\udccd {task.codeSnippet.placement}</p> : null}
+                            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C9D1D9', background: '#010409', border: '1px solid #21262D', borderRadius: 5, padding: '10px 12px', overflowX: 'auto', margin: '4px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{task.codeSnippet.code}</pre>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {devPlanData.risks?.length > 0 ? (
+                <div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 6, marginTop: 0 }}>Risks</p>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {devPlanData.risks.map((r: string, i: number) => (
+                      <li key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#C9D1D9', lineHeight: 1.6 }}>{r}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {devPlanData.testingPlan ? (
+                <div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 5, marginTop: 0 }}>Testing Plan</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#C9D1D9', lineHeight: 1.6, margin: 0 }}>{devPlanData.testingPlan}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </CollapsibleCard>
+      ) : null}
+
+      {/* ── AI Dev Assistant (streaming notes) ──────────────────────────────── */}
+      {['quoted','deposit_required','deposit_paid','in_development','in_uat','uat_confirmed','complete_pending_payment','fully_paid'].includes(req.status) ? (
+        <CollapsibleCard label="AI Dev Assistant" collapsed={isCollapsed('devnotes')} onToggle={() => toggleCard('devnotes')}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {devHistory.length === 0 ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+                Ask the assistant to draft client-facing notes, explain an approach, or help with quoting and review. Responses are written as your consultancy.
+              </p>
+            ) : null}
+            {devHistory.map((m, i) => (
+              <div key={i} style={{ background: m.role === 'user' ? '#0D1117' : 'rgba(56,139,253,0.06)', border: '1px solid ' + (m.role === 'user' ? '#21262D' : 'rgba(56,139,253,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? '#8B949E' : '#58A6FF', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (devStreaming && i === devHistory.length - 1 ? '\u2026' : '')}</p>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <textarea value={devQuestion} onChange={e => setDevQuestion(e.target.value)} rows={2} placeholder="Ask the dev assistant\u2026" style={{ flex: 1, background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              <button onClick={sendDevNote} disabled={devStreaming || !devQuestion.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (devStreaming || !devQuestion.trim()) ? 0.5 : 1 }}>{devStreaming ? '\u2026' : 'Send'}</button>
+            </div>
+          </div>
+        </CollapsibleCard>
+      ) : null}
+
+      {/* ── Coding Assistant (C/AL + commit) ────────────────────────────────── */}
+      {['quoted','deposit_required','deposit_paid','in_development','in_uat','uat_confirmed','complete_pending_payment','fully_paid'].includes(req.status) ? (
+        <CollapsibleCard
+          label="Coding Assistant"
+          collapsed={isCollapsed('coding')}
+          onToggle={() => toggleCard('coding')}
+          accessory={req.githubBranch ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E' }}>{req.githubBranch}</span> : null}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {!req.githubBranch ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#C8952A', margin: 0 }}>
+                No GitHub branch is linked to this requirement yet. Fetch and save objects first so the assistant can read the C/AL source.
+              </p>
+            ) : null}
+            {codingHistory.length === 0 ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+                The assistant reads the C/AL on this branch. Ask it to write or modify objects; commit accepted objects back to GitHub.
+              </p>
+            ) : null}
+            {codingHistory.map((m, i) => {
+              const calObjects = m.role === 'assistant' ? extractCalObjects(m.content) : []
+              return (
+                <div key={i} style={{ background: m.role === 'user' ? '#0D1117' : 'rgba(10,92,70,0.06)', border: '1px solid ' + (m.role === 'user' ? '#21262D' : 'rgba(10,92,70,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? '#8B949E' : '#3FB950', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (codingStreaming && i === codingHistory.length - 1 ? '\u2026' : '')}</p>
+                  {calObjects.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                      {calObjects.map((obj, j) => {
+                        const key = i + '-' + j
+                        const committed = !!codingCommitted[key]
+                        return (
+                          <div key={j} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#0D1117', border: '1px solid #21262D', borderRadius: 5, padding: '6px 10px' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#58A6FF' }}>{obj.filename}</span>
+                            <button onClick={() => commitCalObject(key, obj.filename, obj.content, i)} disabled={!req.githubBranch || codingCommitting === i || committed} style={{ ...btnSecondary, padding: '4px 10px', fontSize: 11, opacity: (!req.githubBranch || committed) ? 0.5 : 1, color: committed ? '#3FB950' : '#8B949E' }}>
+                              {committed ? '\u2713 Committed' : (codingCommitting === i ? 'Committing\u2026' : 'Commit to GitHub')}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+            {codingCommitErr ? <p style={{ color: '#F85149', fontSize: 12, margin: 0 }}>{codingCommitErr}</p> : null}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <textarea value={codingMessage} onChange={e => setCodingMessage(e.target.value)} rows={2} placeholder="Ask the coding assistant\u2026" style={{ flex: 1, background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              <button onClick={sendCodingMessage} disabled={codingStreaming || !codingMessage.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (codingStreaming || !codingMessage.trim()) ? 0.5 : 1 }}>{codingStreaming ? '\u2026' : 'Send'}</button>
+            </div>
+          </div>
+        </CollapsibleCard>
       ) : null}
 
       {/* ── Deliverer action panel (partner acts as delivery role) ──────────── */}
@@ -1059,8 +1520,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
 
       {/* Q&A Log */}
       {qaLog.length > 0 ? (
-        <Card style={{ marginBottom: 16 }}>
-          <SectionLabel>Clarification Q&A</SectionLabel>
+        <CollapsibleCard label="Clarification Q&A" collapsed={isCollapsed('qa')} onToggle={() => toggleCard('qa')}>
           {qaLog.map((round: any, i: number) => (
             <div key={i} style={{ marginBottom: i < qaLog.length - 1 ? 20 : 0 }}>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, marginTop: 0 }}>Round {round.round}</p>
@@ -1076,7 +1536,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               ) : null}
             </div>
           ))}
-        </Card>
+        </CollapsibleCard>
       ) : null}
 
       {/* Answer panel — shown when needs_clarification */}
