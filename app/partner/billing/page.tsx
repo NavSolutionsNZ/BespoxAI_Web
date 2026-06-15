@@ -20,12 +20,12 @@ export default function PartnerBillingPage() {
 
   return (
     <div style={{ maxWidth: 600 }}>
-      <div style={{ background: '#161B22', border: '1px solid #21262D', borderRadius: 12, padding: '48px 32px', textAlign: 'center' }}>
+      <div style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-border)', borderRadius: 12, padding: '48px 32px', textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 20 }}>🔨</div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: '#F0F6FC', margin: '0 0 12px', fontWeight: 400 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--rb-text-bright)', margin: '0 0 12px', fontWeight: 400 }}>
           Billing — Under Construction
         </h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#8B949E', margin: 0, lineHeight: 1.6 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text-muted)', margin: 0, lineHeight: 1.6 }}>
           Partner billing features are coming soon. For billing inquiries, please contact the BespoxAI team.
         </p>
       </div>

@@ -88,57 +88,57 @@ export default function PartnerTeam() {
   return (
     <div style={{ maxWidth: 860 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: '#F0F6FC', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
           Team
         </h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
           Manage who has access to this partner portal.
         </p>
       </div>
 
       {/* Invite form — admin only */}
       {isAdmin ? (
-        <div style={{ background: '#161B22', border: '1px solid #21262D', borderRadius: 8, padding: '20px 24px', marginBottom: 24 }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 16 }}>
+        <div style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-border)', borderRadius: 8, padding: '20px 24px', marginBottom: 24 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 16 }}>
             Invite Team Member
           </div>
           <form onSubmit={handleInvite}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: 10, alignItems: 'end' }}>
               <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginBottom: 4 }}>First name</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginBottom: 4 }}>First name</div>
                 <input
                   value={inviteFirst}
                   onChange={e => setInviteFirst(e.target.value)}
                   placeholder="First"
-                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginBottom: 4 }}>Last name</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginBottom: 4 }}>Last name</div>
                 <input
                   value={inviteLast}
                   onChange={e => setInviteLast(e.target.value)}
                   placeholder="Last"
-                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginBottom: 4 }}>Email</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginBottom: 4 }}>Email</div>
                 <input
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   placeholder="email@company.com"
                   type="email"
                   required
-                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginBottom: 4 }}>Role</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginBottom: 4 }}>Role</div>
                 <select
                   value={inviteRole}
                   onChange={e => setInviteRole(e.target.value as any)}
-                  style={{ background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', cursor: 'pointer' }}
+                  style={{ background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '7px 10px', cursor: 'pointer' }}
                 >
                   <option value="partner_developer">Developer</option>
                   <option value="partner_admin">Admin</option>
@@ -147,73 +147,73 @@ export default function PartnerTeam() {
               <button
                 type="submit"
                 disabled={inviting || !inviteEmail.trim()}
-                style={{ background: inviting ? '#21262D' : '#238636', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '7px 16px', cursor: inviting ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+                style={{ background: inviting ? 'var(--rb-border)' : 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '7px 16px', cursor: inviting ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
               >
                 {inviting ? 'Sending...' : 'Send invite'}
               </button>
             </div>
             {inviteError ? (
-              <div style={{ marginTop: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: '#F85149' }}>{inviteError}</div>
+              <div style={{ marginTop: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-danger)' }}>{inviteError}</div>
             ) : null}
             {inviteSuccess ? (
-              <div style={{ marginTop: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: '#3FB950' }}>{inviteSuccess}</div>
+              <div style={{ marginTop: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-success)' }}>{inviteSuccess}</div>
             ) : null}
           </form>
         </div>
       ) : null}
 
       {/* Team member table */}
-      <div style={{ background: '#161B22', border: '1px solid #21262D', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #21262D' }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#C9D1D9' }}>
+      <div style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-border)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--rb-border)' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--rb-text)' }}>
             Team Members
           </span>
         </div>
         {loading ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8B949E', fontFamily: 'var(--font-mono)', fontSize: 12 }}>Loading...</div>
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--rb-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>Loading...</div>
         ) : team.length === 0 ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 14, color: '#8B949E' }}>No team members yet.</div>
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text-muted)' }}>No team members yet.</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #21262D' }}>
+              <tr style={{ borderBottom: '1px solid var(--rb-border)' }}>
                 {(['Name', 'Email', 'Role', 'Joined', 'Last sign-in'] as string[]).concat(isAdmin ? ['Actions'] : []).map(h => (
-                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {team.map((m, i) => (
-                <tr key={m.id} style={{ borderBottom: i < team.length - 1 ? '1px solid #21262D' : 'none' }}>
-                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', fontWeight: 500 }}>{m.user.name}</td>
-                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: '#8B949E' }}>{m.user.email}</td>
+                <tr key={m.id} style={{ borderBottom: i < team.length - 1 ? '1px solid var(--rb-border)' : 'none' }}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text)', fontWeight: 500 }}>{m.user.name}</td>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{m.user.email}</td>
                   <td style={{ padding: '12px 20px' }}>
                     {isAdmin ? (
                       <select
                         value={m.role}
                         onChange={e => handleRoleChange(m.id, e.target.value)}
-                        style={{ background: '#0D1117', border: '1px solid #30363D', borderRadius: 4, color: '#C9D1D9', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}
+                        style={{ background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 4, color: 'var(--rb-text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}
                       >
                         <option value="partner_developer">Developer</option>
                         <option value="partner_admin">Admin</option>
                       </select>
                     ) : (
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)' }}>
                         {m.role === 'partner_admin' ? 'Admin' : 'Developer'}
                       </span>
                     )}
                   </td>
-                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E' }}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)' }}>
                     {new Date(m.createdAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
-                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E' }} title={lastSeen(m.user.lastSignInAt).abs}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)' }} title={lastSeen(m.user.lastSignInAt).abs}>
                     {lastSeen(m.user.lastSignInAt).rel}
                   </td>
                   {isAdmin ? (
                     <td style={{ padding: '12px 20px' }}>
                       <button
                         onClick={() => handleRemoveMember(m.id)}
-                        style={{ background: 'none', border: '1px solid #30363D', borderRadius: 4, color: '#F85149', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '4px 10px', cursor: 'pointer' }}
+                        style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 4, color: 'var(--rb-danger)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '4px 10px', cursor: 'pointer' }}
                       >
                         Remove
                       </button>

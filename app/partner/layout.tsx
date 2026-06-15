@@ -5,6 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useBranding } from '@/app/branding-provider'
+import { PartnerThemeProvider, usePartnerTheme } from './partner-theme-provider'
 
 const NAV_ITEMS = [
   { href: '/partner/dashboard', label: 'Clients',     icon: '◈' },
@@ -14,6 +15,15 @@ const NAV_ITEMS = [
 ]
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <PartnerThemeProvider>
+      <PartnerLayoutInner>{children}</PartnerLayoutInner>
+    </PartnerThemeProvider>
+  )
+}
+
+function PartnerLayoutInner({ children }: { children: React.ReactNode }) {
+  const { theme } = usePartnerTheme()
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -46,8 +56,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
 
   if (status === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: '#0D1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: '#8B949E', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em' }}>LOADING</span>
+      <div data-rb-theme={theme} style={{ minHeight: '100vh', background: 'var(--rb-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: 'var(--rb-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em' }}>LOADING</span>
       </div>
     )
   }
@@ -78,7 +88,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0D1117' }}>
+    <div data-rb-theme={theme} style={{ display: 'flex', minHeight: '100vh', background: 'var(--rb-bg)' }}>
 
       {/* ── Mobile overlay ── */}
       {sidebarOpen ? (
@@ -96,8 +106,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       <aside style={{
         width: 220,
         flexShrink: 0,
-        background: '#161B22',
-        borderRight: '1px solid #21262D',
+        background: 'var(--rb-surface)',
+        borderRight: '1px solid var(--rb-border)',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
@@ -112,7 +122,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         {/* Logo / Brand */}
         <div style={{
           padding: '20px 20px 16px',
-          borderBottom: '1px solid #21262D',
+          borderBottom: '1px solid var(--rb-border)',
         }}>
           {branding.isWhiteLabel && branding.logoUrl ? (
             <img src={branding.logoUrl} alt={branding.brandName} style={{ height: 28, objectFit: 'contain', marginBottom: 4 }} />
@@ -122,7 +132,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
               fontSize: 11,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: '#58A6FF',
+              color: 'var(--rb-accent)',
               marginBottom: 2,
             }}>
               {branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI'}
@@ -131,7 +141,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           <div style={{
             fontFamily: 'var(--font-body)',
             fontSize: 13,
-            color: '#8B949E',
+            color: 'var(--rb-text-muted)',
             fontWeight: 500,
           }}>
             Partner Portal
@@ -159,25 +169,25 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                   padding: '8px 12px',
                   borderRadius: 6,
                   marginBottom: 2,
-                  background: active && !isExternal ? '#1F2937' : 'transparent',
-                  color: active && !isExternal ? '#F0F6FC' : '#8B949E',
+                  background: active && !isExternal ? 'var(--rb-active)' : 'transparent',
+                  color: active && !isExternal ? 'var(--rb-text-bright)' : 'var(--rb-text-muted)',
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,
                   fontWeight: active && !isExternal ? 600 : 400,
                   textDecoration: 'none',
                   transition: 'background 0.15s, color 0.15s',
-                  border: active && !isExternal ? '1px solid #30363D' : '1px solid transparent',
+                  border: active && !isExternal ? '1px solid var(--rb-border-strong)' : '1px solid transparent',
                 }}
                 onMouseEnter={e => {
                   if (!active || isExternal) {
-                    e.currentTarget.style.background = '#1C2128'
-                    e.currentTarget.style.color = '#C9D1D9'
+                    e.currentTarget.style.background = 'var(--rb-surface-2)'
+                    e.currentTarget.style.color = 'var(--rb-text)'
                   }
                 }}
                 onMouseLeave={e => {
                   if (!active || isExternal) {
-                    e.currentTarget.style.background = active && !isExternal ? '#1F2937' : 'transparent'
-                    e.currentTarget.style.color = active && !isExternal ? '#F0F6FC' : '#8B949E'
+                    e.currentTarget.style.background = active && !isExternal ? 'var(--rb-active)' : 'transparent'
+                    e.currentTarget.style.color = active && !isExternal ? 'var(--rb-text-bright)' : 'var(--rb-text-muted)'
                   }
                 }}
               >
@@ -192,13 +202,13 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
         {/* User / sign out */}
         <div style={{
           padding: '12px 16px',
-          borderTop: '1px solid #21262D',
+          borderTop: '1px solid var(--rb-border)',
         }}>
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', fontWeight: 500 }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', fontWeight: 500 }}>
               {displayName}
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
               {isAdmin ? 'Admin' : 'Developer'}
             </div>
           </div>
@@ -206,9 +216,9 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
             onClick={() => signOut({ callbackUrl: '/login' })}
             style={{
               background: 'none',
-              border: '1px solid #30363D',
+              border: '1px solid var(--rb-border-strong)',
               borderRadius: 4,
-              color: '#8B949E',
+              color: 'var(--rb-text-muted)',
               fontFamily: 'var(--font-mono)',
               fontSize: 10,
               letterSpacing: '0.1em',
@@ -219,12 +229,12 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
               transition: 'border-color 0.15s, color 0.15s',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#58A6FF'
-              e.currentTarget.style.color = '#58A6FF'
+              e.currentTarget.style.borderColor = 'var(--rb-accent)'
+              e.currentTarget.style.color = 'var(--rb-accent)'
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.borderColor = '#30363D'
-              e.currentTarget.style.color = '#8B949E'
+              e.currentTarget.style.borderColor = 'var(--rb-border-strong)'
+              e.currentTarget.style.color = 'var(--rb-text-muted)'
             }}
           >
             Sign out
@@ -241,19 +251,19 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 16px',
-          background: '#161B22',
-          borderBottom: '1px solid #21262D',
+          background: 'var(--rb-surface)',
+          borderBottom: '1px solid var(--rb-border)',
           position: 'sticky',
           top: 0,
           zIndex: 30,
         }} className="partner-topbar">
           <button
             onClick={() => setSidebarOpen(true)}
-            style={{ background: 'none', border: 'none', color: '#8B949E', fontSize: 20, cursor: 'pointer', padding: 4 }}
+            style={{ background: 'none', border: 'none', color: 'var(--rb-text-muted)', fontSize: 20, cursor: 'pointer', padding: 4 }}
           >
             ☰
           </button>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#58A6FF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-accent)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             {(branding.isWhiteLabel && branding.brandName ? branding.brandName : 'BespoxAI') + ' Partner'}
           </span>
           <div style={{ width: 28 }} />
@@ -267,44 +277,44 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
       {/* ── Password change modal ── */}
       {showPwModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: 8, padding: '32px 40px', maxWidth: 400, width: '90%' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#F0F6FC', margin: '0 0 8px', fontWeight: 400 }}>Set your password</h2>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 24px', lineHeight: 1.5 }}>
+          <div style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-border-strong)', borderRadius: 8, padding: '32px 40px', maxWidth: 400, width: '90%' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--rb-text-bright)', margin: '0 0 8px', fontWeight: 400 }}>Set your password</h2>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 24px', lineHeight: 1.5 }}>
               You signed in with a temporary password. Please set a permanent one to continue.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div>
-                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E', display: 'block', marginBottom: 6 }}>New Password</label>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', display: 'block', marginBottom: 6 }}>New Password</label>
                 <input
                   type="password"
                   value={newPw}
                   onChange={e => setNewPw(e.target.value)}
                   placeholder="At least 8 characters"
-                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={e => e.target.style.borderColor = '#58A6FF'}
-                  onBlur={e => e.target.style.borderColor = '#30363D'}
+                  style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--rb-accent)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--rb-border-strong)'}
                   onKeyDown={e => { if (e.key === 'Enter') handleSetPassword() }}
                 />
               </div>
               <div>
-                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8B949E', display: 'block', marginBottom: 6 }}>Confirm Password</label>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', display: 'block', marginBottom: 6 }}>Confirm Password</label>
                 <input
                   type="password"
                   value={confirmPw}
                   onChange={e => setConfirmPw(e.target.value)}
                   placeholder="Repeat your new password"
-                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={e => e.target.style.borderColor = '#58A6FF'}
-                  onBlur={e => e.target.style.borderColor = '#30363D'}
+                  style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--rb-accent)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--rb-border-strong)'}
                   onKeyDown={e => { if (e.key === 'Enter') handleSetPassword() }}
                 />
               </div>
             </div>
-            {pwError && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#F85149', margin: '0 0 16px' }}>{pwError}</p>}
+            {pwError && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-danger)', margin: '0 0 16px' }}>{pwError}</p>}
             <button
               onClick={handleSetPassword}
               disabled={pwSaving}
-              style={{ width: '100%', background: '#238636', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '10px', cursor: pwSaving ? 'not-allowed' : 'pointer', opacity: pwSaving ? 0.6 : 1 }}
+              style={{ width: '100%', background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '10px', cursor: pwSaving ? 'not-allowed' : 'pointer', opacity: pwSaving ? 0.6 : 1 }}
             >
               {pwSaving ? 'Saving…' : 'Set Password & Continue →'}
             </button>

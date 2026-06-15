@@ -31,21 +31,21 @@ const NAV_VERSIONS = [
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6,
-  color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13,
+  width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+  color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13,
   padding: '8px 12px', outline: 'none', boxSizing: 'border-box',
 }
 const labelStyle: React.CSSProperties = {
-  display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E',
+  display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)',
   letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5,
 }
 const sectionHeadStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)', fontSize: 10, color: '#58A6FF',
+  fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-accent)',
   letterSpacing: '0.14em', textTransform: 'uppercase',
-  borderBottom: '1px solid #21262D', paddingBottom: 10, marginBottom: 20, marginTop: 0,
+  borderBottom: '1px solid var(--rb-border)', paddingBottom: 10, marginBottom: 20, marginTop: 0,
 }
 const hintStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginTop: 4,
+  fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginTop: 4,
 }
 
 // ── Field component ───────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ export default function AddClientPage() {
   }
 
   const cardStyle: React.CSSProperties = {
-    background: '#161B22', border: '1px solid #21262D', borderRadius: 8, padding: '24px 28px', marginBottom: 16,
+    background: 'var(--rb-surface)', border: '1px solid var(--rb-border)', borderRadius: 8, padding: '24px 28px', marginBottom: 16,
   }
   const gridTwo: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }
   const gridThree: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }
@@ -171,14 +171,14 @@ export default function AddClientPage() {
       <div style={{ marginBottom: 28 }}>
         <button
           onClick={() => router.push('/partner/dashboard')}
-          style={{ background: 'none', border: 'none', color: '#8B949E', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 12 }}
+          style={{ background: 'none', border: 'none', color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 12 }}
         >
           ← All Clients
         </button>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: '#F0F6FC', fontWeight: 400, margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>
           Add Client
         </h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '6px 0 0' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '6px 0 0' }}>
           Create a new client tenant. The BCAgent tunnel is provisioned automatically on the first installer download.
         </p>
       </div>
@@ -199,7 +199,7 @@ export default function AddClientPage() {
                   placeholder="acmedist"
                   onChange={e => { if (subdomainRef.current) subdomainRef.current.value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }}
                 />
-                <span style={{ background: '#161B22', border: '1px solid #30363D', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '8px 10px', fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E', whiteSpace: 'nowrap' }}>
+                <span style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-border-strong)', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '8px 10px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', whiteSpace: 'nowrap' }}>
                   -agent.bespoxai.com
                 </span>
               </div>
@@ -215,9 +215,9 @@ export default function AddClientPage() {
                   key={p}
                   onClick={() => setProduct(p)}
                   style={{
-                    background: product === p ? 'rgba(88,166,255,0.15)' : '#0D1117',
-                    border: '1px solid ' + (product === p ? '#58A6FF' : '#30363D'),
-                    borderRadius: 6, color: product === p ? '#58A6FF' : '#8B949E',
+                    background: product === p ? 'rgba(88,166,255,0.15)' : 'var(--rb-bg)',
+                    border: '1px solid ' + (product === p ? 'var(--rb-accent)' : 'var(--rb-border-strong)'),
+                    borderRadius: 6, color: product === p ? 'var(--rb-accent)' : 'var(--rb-text-muted)',
                     fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em',
                     padding: '7px 20px', cursor: 'pointer', transition: 'all 0.15s',
                   }}
@@ -299,8 +299,8 @@ export default function AddClientPage() {
             onClick={() => setShowTest(!showTest)}
             style={{
               background: showTest ? 'rgba(88,166,255,0.1)' : 'none',
-              border: '1px solid ' + (showTest ? '#58A6FF' : '#30363D'),
-              borderRadius: 6, color: showTest ? '#58A6FF' : '#8B949E',
+              border: '1px solid ' + (showTest ? 'var(--rb-accent)' : 'var(--rb-border-strong)'),
+              borderRadius: 6, color: showTest ? 'var(--rb-accent)' : 'var(--rb-text-muted)',
               fontFamily: 'var(--font-body)', fontSize: 12,
               padding: '5px 14px', cursor: 'pointer', transition: 'all 0.15s',
             }}
@@ -340,7 +340,7 @@ export default function AddClientPage() {
             </div>
           </div>
         ) : (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#4A5568', margin: '12px 0 0' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '12px 0 0' }}>
             Add test environment details if this client has a separate test BC/NAV instance.
           </p>
         )}
@@ -348,19 +348,19 @@ export default function AddClientPage() {
 
       {/* ── Actions ── */}
       {error ? (
-        <p style={{ color: '#F85149', fontFamily: 'var(--font-body)', fontSize: 13, margin: '0 0 16px' }}>{error}</p>
+        <p style={{ color: 'var(--rb-danger)', fontFamily: 'var(--font-body)', fontSize: 13, margin: '0 0 16px' }}>{error}</p>
       ) : null}
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
         <button
           onClick={() => router.push('/partner/dashboard')}
-          style={{ background: 'none', border: '1px solid #30363D', borderRadius: 6, color: '#8B949E', fontFamily: 'var(--font-body)', fontSize: 14, padding: '10px 20px', cursor: 'pointer' }}
+          style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 14, padding: '10px 20px', cursor: 'pointer' }}
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={saving}
-          style={{ background: '#238636', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, padding: '10px 28px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+          style={{ background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, padding: '10px 28px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
         >
           {saving ? 'Creating client…' : 'Create Client'}
         </button>

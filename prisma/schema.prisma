@@ -365,6 +365,7 @@ model PartnerAccount {
   subscriptionStatus   String?       // active | trialing | past_due | canceled | incomplete
   subscriptionTier     String?       // unbranded | branded (matches PartnerPlanId)
   partnerTier          String        @default("self_serve") // self_serve | referral — governs whether partner gets in-portal requirements tooling
+  partnerTheme         String        @default("dark") // dark | light — partner portal colour theme
 
   // Fees (all in smallest currency unit, e.g. cents/pence)
   monthlyAccessFee     Int           @default(0)

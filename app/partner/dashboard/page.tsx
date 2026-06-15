@@ -25,19 +25,19 @@ type PartnerAccount = {
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div style={{
-      background: '#161B22',
-      border: '1px solid #21262D',
+      background: 'var(--rb-surface)',
+      border: '1px solid var(--rb-border)',
       borderRadius: 8,
       padding: '20px 24px',
     }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, color: '#F0F6FC', lineHeight: 1 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, color: 'var(--rb-text-bright)', lineHeight: 1 }}>
         {value}
       </div>
       {sub ? (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginTop: 4 }}>{sub}</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginTop: 4 }}>{sub}</div>
       ) : null}
     </div>
   )
@@ -79,14 +79,14 @@ export default function PartnerDashboard() {
         <h1 style={{
           fontFamily: 'var(--font-display)',
           fontSize: 28,
-          color: '#F0F6FC',
+          color: 'var(--rb-text-bright)',
           fontWeight: 400,
           margin: 0,
           marginBottom: 4,
         }}>
           {'Welcome back' + (displayName ? ', ' + displayName : '')}
         </h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#8B949E', margin: 0 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text-muted)', margin: 0 }}>
           {account ? account.name + ' Partner Portal' : 'Partner Portal'}
         </p>
       </div>
@@ -106,8 +106,8 @@ export default function PartnerDashboard() {
 
       {/* Tenant table */}
       <div style={{
-        background: '#161B22',
-        border: '1px solid #21262D',
+        background: 'var(--rb-surface)',
+        border: '1px solid var(--rb-border)',
         borderRadius: 8,
         overflow: 'hidden',
       }}>
@@ -117,16 +117,16 @@ export default function PartnerDashboard() {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '16px 20px',
-          borderBottom: '1px solid #21262D',
+          borderBottom: '1px solid var(--rb-border)',
         }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#C9D1D9' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--rb-text)' }}>
             Client Tenants
           </span>
           {isAdmin ? (
             <button
               onClick={() => router.push('/partner/tenants/new')}
               style={{
-                background: '#238636',
+                background: 'var(--rb-primary)',
                 border: 'none',
                 borderRadius: 6,
                 color: '#ffffff',
@@ -137,8 +137,8 @@ export default function PartnerDashboard() {
                 cursor: 'pointer',
                 transition: 'background 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#2EA043' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#238636' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--rb-primary-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--rb-primary)' }}
             >
               + Add Client
             </button>
@@ -146,12 +146,12 @@ export default function PartnerDashboard() {
         </div>
 
         {loading ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8B949E', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--rb-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
             Loading...
           </div>
         ) : tenants.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#8B949E', marginBottom: 8 }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text-muted)', marginBottom: 8 }}>
               No client tenants yet
             </div>
             {isAdmin ? (
@@ -159,9 +159,9 @@ export default function PartnerDashboard() {
                 onClick={() => router.push('/partner/tenants/new')}
                 style={{
                   background: 'none',
-                  border: '1px solid #30363D',
+                  border: '1px solid var(--rb-border-strong)',
                   borderRadius: 6,
-                  color: '#58A6FF',
+                  color: 'var(--rb-accent)',
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,
                   padding: '8px 16px',
@@ -175,14 +175,14 @@ export default function PartnerDashboard() {
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #21262D' }}>
+              <tr style={{ borderBottom: '1px solid var(--rb-border)' }}>
                 {['Client', 'Subdomain', 'Status', 'Actions'].map(h => (
                   <th key={h} style={{
                     padding: '10px 20px',
                     textAlign: 'left',
                     fontFamily: 'var(--font-mono)',
                     fontSize: 10,
-                    color: '#8B949E',
+                    color: 'var(--rb-text-muted)',
                     letterSpacing: '0.1em',
                     textTransform: 'uppercase',
                     fontWeight: 500,
@@ -197,16 +197,16 @@ export default function PartnerDashboard() {
                 <tr
                   key={tenant.id}
                   style={{
-                    borderBottom: i < tenants.length - 1 ? '1px solid #21262D' : 'none',
+                    borderBottom: i < tenants.length - 1 ? '1px solid var(--rb-border)' : 'none',
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#1C2128' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--rb-surface-2)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                 >
-                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', fontWeight: 500 }}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text)', fontWeight: 500 }}>
                     {tenant.name}
                   </td>
-                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: '#8B949E' }}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)' }}>
                     {tenant.tunnelSubdomain}
                   </td>
                   <td style={{ padding: '12px 20px' }}>
@@ -220,7 +220,7 @@ export default function PartnerDashboard() {
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
                         background: tenant.active ? 'rgba(35,134,54,0.2)' : 'rgba(139,148,158,0.15)',
-                        color: tenant.active ? '#3FB950' : '#8B949E',
+                        color: tenant.active ? 'var(--rb-success)' : 'var(--rb-text-muted)',
                         border: '1px solid ' + (tenant.active ? 'rgba(63,185,80,0.3)' : 'rgba(139,148,158,0.3)'),
                       }}>
                         {tenant.active ? 'Active' : 'Inactive'}
@@ -234,7 +234,7 @@ export default function PartnerDashboard() {
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
                         background: tenant.tunnelId ? 'rgba(56,139,253,0.15)' : 'rgba(139,148,158,0.1)',
-                        color: tenant.tunnelId ? '#58A6FF' : '#8B949E',
+                        color: tenant.tunnelId ? 'var(--rb-accent)' : 'var(--rb-text-muted)',
                         border: '1px solid ' + (tenant.tunnelId ? 'rgba(56,139,253,0.35)' : 'rgba(139,148,158,0.25)'),
                       }}>
                         {tenant.tunnelId ? 'Connected' : 'Not Connected'}
@@ -247,9 +247,9 @@ export default function PartnerDashboard() {
                         onClick={() => router.push('/partner/tenants/' + tenant.id)}
                         style={{
                           background: 'none',
-                          border: '1px solid #30363D',
+                          border: '1px solid var(--rb-border-strong)',
                           borderRadius: 4,
-                          color: '#58A6FF',
+                          color: 'var(--rb-accent)',
                           fontFamily: 'var(--font-mono)',
                           fontSize: 10,
                           letterSpacing: '0.08em',
@@ -258,8 +258,8 @@ export default function PartnerDashboard() {
                           cursor: 'pointer',
                           transition: 'border-color 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#58A6FF' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363D' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--rb-accent)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--rb-border-strong)' }}
                       >
                         View
                       </button>

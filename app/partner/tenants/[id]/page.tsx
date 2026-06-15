@@ -54,9 +54,9 @@ type Requirement = {
 
 const BC_AREAS = ['Sales','Purchase','Finance','Inventory','Manufacturing','Project','HR','Fixed Assets','Warehouse','Service','Other']
 const PRIORITIES = [
-  { value: 'nice_to_have', label: 'Nice to have', color: '#3B5249' },
-  { value: 'important',    label: 'Important',    color: '#9A6A00' },
-  { value: 'critical',     label: 'Critical',     color: '#A32D2D' },
+  { value: 'nice_to_have', label: 'Nice to have', color: 'var(--rb-text-muted)' },
+  { value: 'important',    label: 'Important',    color: 'var(--rb-warning)' },
+  { value: 'critical',     label: 'Critical',     color: 'var(--rb-danger)' },
 ]
 
 const STATUS_PIPELINE = [
@@ -69,21 +69,21 @@ const STATUS_PIPELINE = [
 ]
 
 const STATUS_COLOR: Record<string,{bg:string;border:string;text:string}> = {
-  draft:                    {bg:'rgba(59,82,73,0.06)',   border:'rgba(59,82,73,0.15)',   text:'#3B5249'},
-  submitted:                {bg:'rgba(200,149,42,0.08)', border:'rgba(200,149,42,0.25)', text:'#C8952A'},
-  needs_clarification:      {bg:'rgba(200,60,60,0.1)',   border:'rgba(200,60,60,0.35)',  text:'#A32D2D'},
-  in_review:                {bg:'rgba(200,149,42,0.12)', border:'rgba(200,149,42,0.35)', text:'#9A6A00'},
-  quoted:                   {bg:'rgba(10,92,70,0.08)',   border:'rgba(10,92,70,0.2)',    text:'#0A5C46'},
-  quote_rejected:           {bg:'rgba(163,45,45,0.14)', border:'rgba(163,45,45,0.45)',  text:'#8B1A1A'},
-  deposit_required:         {bg:'rgba(200,149,42,0.12)',border:'rgba(200,149,42,0.4)',   text:'#7A5200'},
-  deposit_paid:             {bg:'rgba(26,146,114,0.1)',  border:'rgba(26,146,114,0.3)', text:'#0F6E56'},
-  in_development:           {bg:'rgba(14,110,86,0.1)',   border:'rgba(14,110,86,0.25)', text:'#0A5C46'},
-  in_uat:                   {bg:'rgba(200,149,42,0.12)', border:'rgba(200,149,42,0.4)', text:'#7A5200'},
-  uat_confirmed:            {bg:'rgba(26,146,114,0.12)', border:'rgba(26,146,114,0.35)',text:'#0A5240'},
-  uat_rejected:             {bg:'rgba(163,45,45,0.14)',  border:'rgba(163,45,45,0.45)', text:'#8B1A1A'},
-  complete_pending_payment: {bg:'rgba(200,149,42,0.1)',  border:'rgba(200,149,42,0.3)', text:'#7A5200'},
-  fully_paid:               {bg:'rgba(26,146,114,0.12)', border:'rgba(26,146,114,0.35)',text:'#0A5240'},
-  rejected:                 {bg:'rgba(163,45,45,0.14)', border:'rgba(163,45,45,0.45)',  text:'#8B1A1A'},
+  draft:                    {bg:'rgba(59,82,73,0.06)',   border:'rgba(59,82,73,0.15)',   text:'var(--rb-text-muted)'},
+  submitted:                {bg:'rgba(200,149,42,0.08)', border:'rgba(200,149,42,0.25)', text:'var(--rb-warning)'},
+  needs_clarification:      {bg:'rgba(200,60,60,0.1)',   border:'rgba(200,60,60,0.35)',  text:'var(--rb-danger)'},
+  in_review:                {bg:'rgba(200,149,42,0.12)', border:'rgba(200,149,42,0.35)', text:'var(--rb-warning)'},
+  quoted:                   {bg:'rgba(10,92,70,0.08)',   border:'rgba(10,92,70,0.2)',    text:'var(--rb-success)'},
+  quote_rejected:           {bg:'rgba(163,45,45,0.14)', border:'rgba(163,45,45,0.45)',  text:'var(--rb-danger)'},
+  deposit_required:         {bg:'rgba(200,149,42,0.12)',border:'rgba(200,149,42,0.4)',   text:'var(--rb-warning)'},
+  deposit_paid:             {bg:'rgba(26,146,114,0.1)',  border:'rgba(26,146,114,0.3)', text:'var(--rb-primary-hover)'},
+  in_development:           {bg:'rgba(14,110,86,0.1)',   border:'rgba(14,110,86,0.25)', text:'var(--rb-success)'},
+  in_uat:                   {bg:'rgba(200,149,42,0.12)', border:'rgba(200,149,42,0.4)', text:'var(--rb-warning)'},
+  uat_confirmed:            {bg:'rgba(26,146,114,0.12)', border:'rgba(26,146,114,0.35)',text:'var(--rb-success)'},
+  uat_rejected:             {bg:'rgba(163,45,45,0.14)',  border:'rgba(163,45,45,0.45)', text:'var(--rb-danger)'},
+  complete_pending_payment: {bg:'rgba(200,149,42,0.1)',  border:'rgba(200,149,42,0.3)', text:'var(--rb-warning)'},
+  fully_paid:               {bg:'rgba(26,146,114,0.12)', border:'rgba(26,146,114,0.35)',text:'var(--rb-success)'},
+  rejected:                 {bg:'rgba(163,45,45,0.14)', border:'rgba(163,45,45,0.45)',  text:'var(--rb-danger)'},
 }
 
 function statusLabel(s: string) {
@@ -119,8 +119,8 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
     <button
       onClick={onClick}
       style={{
-        background: 'none', border: 'none', borderBottom: active ? '2px solid #58A6FF' : '2px solid transparent',
-        color: active ? '#F0F6FC' : '#8B949E', fontFamily: 'var(--font-body)', fontSize: 13,
+        background: 'none', border: 'none', borderBottom: active ? '2px solid var(--rb-accent)' : '2px solid transparent',
+        color: active ? 'var(--rb-text-bright)' : 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 13,
         fontWeight: active ? 600 : 400, padding: '10px 16px', cursor: 'pointer',
         transition: 'color 0.15s, border-color 0.15s',
       }}
@@ -145,9 +145,9 @@ function StatusBadge({ status }: { status: string }) {
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid #21262D' }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E', letterSpacing: '0.06em', minWidth: 160 }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: value ? '#C9D1D9' : '#4A5568' }}>{value ?? '—'}</span>
+    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--rb-border)' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', minWidth: 160 }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: value ? 'var(--rb-text)' : 'var(--rb-text-muted)' }}>{value ?? '—'}</span>
     </div>
   )
 }
@@ -155,7 +155,7 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: '#161B22', border: '1px solid #21262D', borderRadius: 8,
+      background: 'var(--rb-surface)', border: '1px solid var(--rb-border)', borderRadius: 8,
       padding: '20px 24px', ...style,
     }}>
       {children}
@@ -165,7 +165,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
+    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
       {children}
     </div>
   )
@@ -292,18 +292,18 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
   }
 
   const inp: React.CSSProperties = {
-    width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6,
-    color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13,
+    width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+    color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13,
     padding: '8px 12px', outline: 'none', boxSizing: 'border-box',
   }
   const lbl = (t: string) => (
-    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>{t}</div>
+    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>{t}</div>
   )
   const hint = (t: string) => (
-    <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', marginTop: 4 }}>{t}</p>
+    <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginTop: 4 }}>{t}</p>
   )
   const sectionHead = (t: string) => (
-    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#58A6FF', letterSpacing: '0.14em', textTransform: 'uppercase', borderBottom: '1px solid #21262D', paddingBottom: 10, marginBottom: 20 }}>{t}</div>
+    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-accent)', letterSpacing: '0.14em', textTransform: 'uppercase', borderBottom: '1px solid var(--rb-border)', paddingBottom: 10, marginBottom: 20 }}>{t}</div>
   )
 
   return (
@@ -312,7 +312,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
       {/* Production environment */}
       <Card style={{ background: 'rgba(200,149,42,0.04)', border: '1px solid rgba(200,149,42,0.2)' }}>
         {sectionHead('Production Environment')}
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginBottom: 18, lineHeight: 1.6 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginBottom: 18, lineHeight: 1.6 }}>
           {erpLabel + ' connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -385,7 +385,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
       {/* Test environment */}
       <Card style={{ background: 'rgba(14,110,86,0.04)', border: '1px solid rgba(14,110,86,0.2)' }}>
         {sectionHead('Test Environment')}
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginBottom: 16, lineHeight: 1.55 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginBottom: 16, lineHeight: 1.55 }}>
           Used for pre-production deployment and UAT. Shares credentials with production — only configure what differs.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -423,17 +423,17 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
       {/* Separate test server */}
       <Card>
         {sectionHead('Separate Test Server')}
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginBottom: 16, lineHeight: 1.55 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginBottom: 16, lineHeight: 1.55 }}>
           If the test environment is on a separate server, enable this to note that a dedicated BCAgent is needed.
         </p>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input type="checkbox" checked={testSeparate} onChange={e => setTestSeparate(e.target.checked)}
-            style={{ accentColor: '#58A6FF', width: 14, height: 14 }} />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E' }}>Test environment is on a separate server</span>
+            style={{ accentColor: 'var(--rb-accent)', width: 14, height: 14 }} />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)' }}>Test environment is on a separate server</span>
         </label>
         {testSeparate ? (
           <div style={{ marginTop: 16, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 8, padding: '12px 16px' }}>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C8952A', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-warning)', margin: 0 }}>
               Separate test server installer generation coming soon. Contact BespoxAI once details are confirmed.
             </p>
           </div>
@@ -446,9 +446,9 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         {/* Sync config — only if tunnel exists */}
         {hasTunnel ? (
           <button onClick={syncConfig} disabled={syncLoading} style={{
-            width: '100%', background: syncLoading ? '#21262D' : '#161B22',
-            color: syncLoading ? '#8B949E' : '#C9D1D9',
-            border: '1px solid #30363D', borderRadius: 8, padding: '11px',
+            width: '100%', background: syncLoading ? 'var(--rb-border)' : 'var(--rb-surface)',
+            color: syncLoading ? 'var(--rb-text-muted)' : 'var(--rb-text)',
+            border: '1px solid var(--rb-border-strong)', borderRadius: 8, padding: '11px',
             cursor: syncLoading ? 'default' : 'pointer',
             fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
           }}>
@@ -456,7 +456,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
           </button>
         ) : null}
         {hasTunnel ? (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
             Pushes current settings to the running agent immediately — no reinstall needed. Credentials stay unchanged on the server.
           </p>
         ) : null}
@@ -464,9 +464,9 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         {/* Provision RDP — only if tunnel exists */}
         {hasTunnel ? (
           <button onClick={provisionRdp} disabled={rdpLoading} style={{
-            width: '100%', background: rdpLoading ? '#21262D' : '#161B22',
-            color: rdpLoading ? '#8B949E' : '#C9D1D9',
-            border: '1px solid #30363D', borderRadius: 8, padding: '11px',
+            width: '100%', background: rdpLoading ? 'var(--rb-border)' : 'var(--rb-surface)',
+            color: rdpLoading ? 'var(--rb-text-muted)' : 'var(--rb-text)',
+            border: '1px solid var(--rb-border-strong)', borderRadius: 8, padding: '11px',
             cursor: rdpLoading ? 'default' : 'pointer',
             fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
           }}>
@@ -474,14 +474,14 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
           </button>
         ) : null}
         {hasTunnel ? (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
             {'Adds remote desktop access via ' + (tenant.tunnelSubdomain || '') + '-rdp.bespoxai.com — run once after installer.'}
           </p>
         ) : null}
 
         {/* Download installer */}
         <button onClick={downloadInstaller} disabled={instLoading} style={{
-          width: '100%', background: instLoading ? '#1A4731' : '#238636',
+          width: '100%', background: instLoading ? 'var(--rb-active)' : 'var(--rb-primary)',
           color: '#fff', border: 'none', borderRadius: 8, padding: '12px',
           cursor: instLoading ? 'default' : 'pointer',
           fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
@@ -489,7 +489,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         }}>
           {instLoading ? 'Generating…' : ('⬇ Download Installer' + (agentVersion ? ' v' + agentVersion : '') + ' (.zip)')}
         </button>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', textAlign: 'center', marginTop: -4 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4 }}>
           {erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}
         </p>
 
@@ -499,7 +499,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
             padding: '10px 16px', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 13,
             background: feedback.type === 'ok' ? 'rgba(35,134,54,0.15)' : 'rgba(163,45,45,0.15)',
             border: '1px solid ' + (feedback.type === 'ok' ? 'rgba(63,185,80,0.3)' : 'rgba(163,45,45,0.4)'),
-            color: feedback.type === 'ok' ? '#3FB950' : '#F85149',
+            color: feedback.type === 'ok' ? 'var(--rb-success)' : 'var(--rb-danger)',
           }}>
             {feedback.msg}
           </div>
@@ -521,10 +521,10 @@ function OverviewTab({ tenant }: { tenant: Tenant }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
             width: 10, height: 10, borderRadius: '50%',
-            background: connected ? '#3FB950' : '#8B949E',
+            background: connected ? 'var(--rb-success)' : 'var(--rb-text-muted)',
             display: 'inline-block', flexShrink: 0,
           }} />
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: connected ? '#3FB950' : '#8B949E' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: connected ? 'var(--rb-success)' : 'var(--rb-text-muted)' }}>
             {connected ? 'BCAgent Connected' : 'Not Connected — installer not yet run'}
           </span>
         </div>
@@ -548,23 +548,23 @@ function OverviewTab({ tenant }: { tenant: Tenant }) {
       <Card style={{ gridColumn: '1 / -1' }}>
         <SectionLabel>Users ({''+tenant.users.length})</SectionLabel>
         {tenant.users.length === 0 ? (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>No users yet.</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>No users yet.</p>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 {['Name','Email','Role','Joined'].map(h => (
-                  <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
+                  <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {tenant.users.map(u => (
-                <tr key={u.id} style={{ borderTop: '1px solid #21262D' }}>
-                  <td style={{ padding: '8px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9' }}>{u.name ?? u.firstName ?? '—'}</td>
-                  <td style={{ padding: '8px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E' }}>{u.email}</td>
-                  <td style={{ padding: '8px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
-                  <td style={{ padding: '8px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E' }}>{fmtDate(u.createdAt)}</td>
+                <tr key={u.id} style={{ borderTop: '1px solid var(--rb-border)' }}>
+                  <td style={{ padding: '8px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)' }}>{u.name ?? u.firstName ?? '—'}</td>
+                  <td style={{ padding: '8px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{u.email}</td>
+                  <td style={{ padding: '8px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
+                  <td style={{ padding: '8px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(u.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -614,18 +614,18 @@ function NewRequirementForm({ tenantId, onCreated, onCancel }: {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6,
-    color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13,
+    width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+    color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13,
     padding: '8px 12px', outline: 'none', boxSizing: 'border-box',
   }
   const labelStyle: React.CSSProperties = {
-    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E',
+    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)',
     letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6,
   }
 
   return (
     <Card>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: '#F0F6FC', marginBottom: 20 }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--rb-text-bright)', marginBottom: 20 }}>
         New Requirement
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -653,18 +653,18 @@ function NewRequirementForm({ tenantId, onCreated, onCancel }: {
             </select>
           </div>
         </div>
-        {error ? <p style={{ color: '#F85149', fontFamily: 'var(--font-body)', fontSize: 13, margin: 0 }}>{error}</p> : null}
+        {error ? <p style={{ color: 'var(--rb-danger)', fontFamily: 'var(--font-body)', fontSize: 13, margin: 0 }}>{error}</p> : null}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button
             onClick={onCancel}
-            style={{ background: 'none', border: '1px solid #30363D', borderRadius: 6, color: '#8B949E', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer' }}
+            style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer' }}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving}
-            style={{ background: '#238636', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '8px 20px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+            style={{ background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '8px 20px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
           >
             {saving ? 'Creating…' : 'Create Requirement'}
           </button>
@@ -687,11 +687,11 @@ function CollapsibleCard({ label, accessory, collapsed, onToggle, children, styl
     <Card style={{ marginBottom: 16, ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsed ? 0 : 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {accessory ?? null}
-          <button onClick={onToggle} title={collapsed ? 'Expand' : 'Collapse'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: '#8B949E', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }}>
+          <button onClick={onToggle} title={collapsed ? 'Expand' : 'Collapse'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--rb-text-muted)', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center' }}>
             {collapsed ? '\u25be' : '\u25b4'}
           </button>
         </div>
@@ -1045,25 +1045,25 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   }
 
   const btnPrimary: React.CSSProperties = {
-    background: '#238636', border: 'none', borderRadius: 6, color: '#fff',
+    background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff',
     fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
     padding: '8px 20px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
   }
   const btnSecondary: React.CSSProperties = {
-    background: 'none', border: '1px solid #30363D', borderRadius: 6, color: '#8B949E',
+    background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)',
     fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer',
   }
   const btnDanger: React.CSSProperties = {
-    background: 'none', border: '1px solid rgba(163,45,45,0.5)', borderRadius: 6, color: '#F85149',
+    background: 'none', border: '1px solid rgba(163,45,45,0.5)', borderRadius: 6, color: 'var(--rb-danger)',
     fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer',
   }
   const editLabel: React.CSSProperties = {
-    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E',
+    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)',
     letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6,
   }
   const editInput: React.CSSProperties = {
-    width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6,
-    color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 14, padding: '8px 12px',
+    width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+    color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 14, padding: '8px 12px',
     boxSizing: 'border-box',
   }
 
@@ -1074,10 +1074,10 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         <button onClick={onBack} style={{ ...btnSecondary, padding: '6px 12px', flexShrink: 0 }}>← Back</button>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: '#F0F6FC', fontWeight: 400, margin: 0 }}>{req.title}</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>{req.title}</h2>
             <StatusBadge status={req.status} />
           </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', marginTop: 4 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginTop: 4 }}>
             {req.bcArea} · {PRIORITIES.find(p => p.value === req.priority)?.label ?? req.priority} · Raised {fmtDate(req.createdAt)}
           </div>
         </div>
@@ -1094,13 +1094,13 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{
                     width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                    background: current ? sc.text : (done ? '#3FB950' : '#30363D'),
-                    border: current ? '2px solid ' + sc.text : (done ? '2px solid #3FB950' : '2px solid #30363D'),
+                    background: current ? sc.text : (done ? 'var(--rb-success)' : 'var(--rb-border-strong)'),
+                    border: current ? '2px solid ' + sc.text : (done ? '2px solid var(--rb-success)' : '2px solid var(--rb-border-strong)'),
                   }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: done ? '#C9D1D9' : '#8B949E', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4, whiteSpace: 'nowrap' }}>{s.label}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: done ? 'var(--rb-text)' : 'var(--rb-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4, whiteSpace: 'nowrap' }}>{s.label}</span>
                 </div>
                 {i < STATUS_PIPELINE.length - 1 ? (
-                  <div style={{ flex: 1, height: 2, background: done ? '#3FB950' : '#30363D', margin: '0 2px', marginBottom: 18 }} />
+                  <div style={{ flex: 1, height: 2, background: done ? 'var(--rb-success)' : 'var(--rb-border-strong)', margin: '0 2px', marginBottom: 18 }} />
                 ) : null}
               </div>
             )
@@ -1110,7 +1110,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
 
       {/* Description */}
       <CollapsibleCard label="Description" collapsed={isCollapsed('description')} onToggle={() => toggleCard('description')}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{req.description}</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{req.description}</p>
       </CollapsibleCard>
 
       {/* Feasibility */}
@@ -1121,35 +1121,35 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           onToggle={() => toggleCard('feasibility')}
           accessory={
             ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status)
-              ? <button onClick={runFeasibility} disabled={feasLoading} style={{ background: 'none', border: 'none', cursor: feasLoading ? 'not-allowed' : 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{feasLoading ? '\u2026' : '\u21ba Recheck'}</button>
+              ? <button onClick={runFeasibility} disabled={feasLoading} style={{ background: 'none', border: 'none', cursor: feasLoading ? 'not-allowed' : 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{feasLoading ? '\u2026' : '\u21ba Recheck'}</button>
               : null
           }
         >
           {feasLoading ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>Checking feasibility\u2026</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>Checking feasibility\u2026</p>
           ) : (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                 {req.feasibility === 'cfo_assistant' ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#C8952A', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\ud83d\udca1 No development needed</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-warning)', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\ud83d\udca1 No development needed</span>
                 ) : null}
                 {req.feasibility === 'development' ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950', background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Development required</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Development required</span>
                 ) : null}
                 {req.feasibility === 'infeasible' ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#F85149', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\u26a0 Constrained</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-danger)', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\u26a0 Constrained</span>
                 ) : null}
                 {req.feasibility === 'development' && req.feasibilityCostRange ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#0A5C46', background: 'rgba(10,92,70,0.1)', border: '1px solid rgba(10,92,70,0.3)', borderRadius: 20, padding: '3px 12px' }}>Indicative: {req.feasibilityCostRange}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', background: 'rgba(10,92,70,0.1)', border: '1px solid rgba(10,92,70,0.3)', borderRadius: 20, padding: '3px 12px' }}>Indicative: {req.feasibilityCostRange}</span>
                 ) : null}
                 {req.feasibilityCheckedAt ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E' }}>{fmtDate(req.feasibilityCheckedAt)}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)' }}>{fmtDate(req.feasibilityCheckedAt)}</span>
                 ) : null}
               </div>
               {req.feasibilityNotes ? (
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.65, margin: 0 }}>{req.feasibilityNotes}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.65, margin: 0 }}>{req.feasibilityNotes}</p>
               ) : null}
-              {feasErr ? <p style={{ color: '#F85149', fontSize: 12, marginTop: 10 }}>{feasErr}</p> : null}
+              {feasErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 10 }}>{feasErr}</p> : null}
             </div>
           )}
         </CollapsibleCard>
@@ -1163,41 +1163,41 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           onToggle={() => toggleCard('spec')}
           accessory={
             ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status)
-              ? <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '\u2026' : '\u21ba Regen'}</button>
+              ? <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '\u2026' : '\u21ba Regen'}</button>
               : null
           }
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>User Story</p>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.6, margin: 0 }}>{spec.userStory}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>User Story</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0 }}>{spec.userStory}</p>
             </div>
             <div>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Complexity</p>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', margin: 0 }}>{spec.complexity} · Est. {spec.estimatedDays} day{spec.estimatedDays !== 1 ? 's' : ''}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Complexity</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', margin: 0 }}>{spec.complexity} · Est. {spec.estimatedDays} day{spec.estimatedDays !== 1 ? 's' : ''}</p>
             </div>
             {spec.acceptanceCriteria?.length > 0 ? (
               <div style={{ gridColumn: '1 / -1' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Acceptance Criteria</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Acceptance Criteria</p>
                 <ul style={{ margin: 0, paddingLeft: 20 }}>
                   {spec.acceptanceCriteria.map((c: string, i: number) => (
-                    <li key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.6 }}>{c}</li>
+                    <li key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6 }}>{c}</li>
                   ))}
                 </ul>
               </div>
             ) : null}
             {spec.bcObjects?.length > 0 ? (
               <div style={{ gridColumn: '1 / -1' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>BC Objects Affected</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>BC Objects Affected</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {spec.bcObjects.map((o: string, i: number) => (
-                    <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#58A6FF', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 4, padding: '2px 8px' }}>{o}</span>
+                    <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-accent)', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 4, padding: '2px 8px' }}>{o}</span>
                   ))}
                 </div>
               </div>
             ) : null}
           </div>
-          {specErr && <p style={{ color: '#F85149', fontSize: 12, marginTop: 12 }}>{specErr}</p>}
+          {specErr && <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 12 }}>{specErr}</p>}
         </CollapsibleCard>
       ) : null}
 
@@ -1205,7 +1205,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       {req.consultantNote ? (
         <Card style={{ marginBottom: 16, borderColor: 'rgba(10,92,70,0.4)', background: 'rgba(10,92,70,0.06)' }}>
           <SectionLabel>Note from BespoxAI</SectionLabel>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', lineHeight: 1.6, margin: 0 }}>{req.consultantNote}</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0 }}>{req.consultantNote}</p>
         </Card>
       ) : null}
 
@@ -1218,65 +1218,65 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           accessory={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {devPlanData && devPlanData.totalEstimatedHours ? (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950' }}>{devPlanData.totalEstimatedHours}h \u00b7 {devPlanData.tasks?.length ?? 0} tasks</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)' }}>{devPlanData.totalEstimatedHours}h \u00b7 {devPlanData.tasks?.length ?? 0} tasks</span>
               ) : null}
-              <button onClick={generateDevPlan} disabled={genPlan} style={{ background: 'none', border: 'none', cursor: genPlan ? 'not-allowed' : 'pointer', color: '#58A6FF', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+              <button onClick={generateDevPlan} disabled={genPlan} style={{ background: 'none', border: 'none', cursor: genPlan ? 'not-allowed' : 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
                 {genPlan ? '\u2726 Generating\u2026' : devPlanData ? '\u21ba Regenerate' : '\u2726 Generate Dev Plan'}
               </button>
             </div>
           }
         >
-          {planErr ? <p style={{ color: '#F85149', fontSize: 12, marginBottom: 8 }}>{planErr}</p> : null}
+          {planErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginBottom: 8 }}>{planErr}</p> : null}
           {!devPlanData && !genPlan ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
               Generate an internal development plan with AL/C-AL code snippets, task breakdown, hours, and risks. If the BC instance is connected, live field inspection is included.
             </p>
           ) : null}
           {devPlanData ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {devPlanData._bcConnected ? (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950', letterSpacing: '0.06em' }}>\ud83d\udd0c BC live \u00b7 {(devPlanData._introspectedTables ?? []).join(', ')}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', letterSpacing: '0.06em' }}>\ud83d\udd0c BC live \u00b7 {(devPlanData._introspectedTables ?? []).join(', ')}</span>
               ) : (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E', letterSpacing: '0.06em' }}>Plan based on standard BC schema (no live connection)</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', letterSpacing: '0.06em' }}>Plan based on standard BC schema (no live connection)</span>
               )}
               {devPlanData.summary ? (
                 <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 5, marginTop: 0 }}>Summary</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.65, margin: 0 }}>{devPlanData.summary}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 5, marginTop: 0 }}>Summary</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.65, margin: 0 }}>{devPlanData.summary}</p>
                 </div>
               ) : null}
               {devPlanData.approach ? (
                 <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 5, marginTop: 0 }}>Technical Approach</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.65, margin: 0 }}>{devPlanData.approach}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 5, marginTop: 0 }}>Technical Approach</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.65, margin: 0 }}>{devPlanData.approach}</p>
                 </div>
               ) : null}
               {devPlanData.tasks?.length > 0 ? (
                 <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 8, marginTop: 0 }}>Tasks</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 8, marginTop: 0 }}>Tasks</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {devPlanData.tasks.map((task: any, i: number) => (
-                      <div key={i} style={{ background: '#0D1117', border: '1px solid #21262D', borderRadius: 6, padding: '10px 12px' }}>
+                      <div key={i} style={{ background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6, padding: '10px 12px' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: task.description ? 5 : 0 }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: '#F0F6FC', lineHeight: 1.3, flex: 1 }}>{task.title}</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--rb-text-bright)', lineHeight: 1.3, flex: 1 }}>{task.title}</span>
                           <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                            {task.phase ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 7, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8952A', background: 'rgba(200,149,42,0.12)', border: '1px solid rgba(200,149,42,0.25)', padding: '2px 6px', borderRadius: 4 }}>{task.phase}</span> : null}
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#3FB950', fontWeight: 600 }}>{task.estimatedHours}h</span>
+                            {task.phase ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 7, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-warning)', background: 'rgba(200,149,42,0.12)', border: '1px solid rgba(200,149,42,0.25)', padding: '2px 6px', borderRadius: 4 }}>{task.phase}</span> : null}
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', fontWeight: 600 }}>{task.estimatedHours}h</span>
                           </div>
                         </div>
-                        {task.description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#8B949E', lineHeight: 1.55, margin: task.objects?.length ? '0 0 6px' : 0 }}>{task.description}</p> : null}
+                        {task.description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', lineHeight: 1.55, margin: task.objects?.length ? '0 0 6px' : 0 }}>{task.description}</p> : null}
                         {task.objects?.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: task.codeSnippet ? 8 : 0 }}>
                             {task.objects.map((o: string, j: number) => (
-                              <span key={j} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E', background: '#161B22', border: '1px solid #30363D', borderRadius: 4, padding: '2px 6px' }}>{o}</span>
+                              <span key={j} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', background: 'var(--rb-surface)', border: '1px solid var(--rb-border-strong)', borderRadius: 4, padding: '2px 6px' }}>{o}</span>
                             ))}
                           </div>
                         ) : null}
                         {task.codeSnippet ? (
                           <div style={{ marginTop: 8 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#3FB950' }}>{task.codeSnippet.filename}</span>
-                            {task.codeSnippet.placement ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E', margin: '4px 0 5px', fontStyle: 'italic' }}>\ud83d\udccd {task.codeSnippet.placement}</p> : null}
-                            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C9D1D9', background: '#010409', border: '1px solid #21262D', borderRadius: 5, padding: '10px 12px', overflowX: 'auto', margin: '4px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{task.codeSnippet.code}</pre>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-success)' }}>{task.codeSnippet.filename}</span>
+                            {task.codeSnippet.placement ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)', margin: '4px 0 5px', fontStyle: 'italic' }}>\ud83d\udccd {task.codeSnippet.placement}</p> : null}
+                            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text)', background: 'var(--rb-code)', border: '1px solid var(--rb-border)', borderRadius: 5, padding: '10px 12px', overflowX: 'auto', margin: '4px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{task.codeSnippet.code}</pre>
                           </div>
                         ) : null}
                       </div>
@@ -1286,18 +1286,18 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               ) : null}
               {devPlanData.risks?.length > 0 ? (
                 <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 6, marginTop: 0 }}>Risks</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 6, marginTop: 0 }}>Risks</p>
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {devPlanData.risks.map((r: string, i: number) => (
-                      <li key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#C9D1D9', lineHeight: 1.6 }}>{r}</li>
+                      <li key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text)', lineHeight: 1.6 }}>{r}</li>
                     ))}
                   </ul>
                 </div>
               ) : null}
               {devPlanData.testingPlan ? (
                 <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B949E', marginBottom: 5, marginTop: 0 }}>Testing Plan</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#C9D1D9', lineHeight: 1.6, margin: 0 }}>{devPlanData.testingPlan}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--rb-text-muted)', marginBottom: 5, marginTop: 0 }}>Testing Plan</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0 }}>{devPlanData.testingPlan}</p>
                 </div>
               ) : null}
             </div>
@@ -1310,18 +1310,18 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         <CollapsibleCard label="AI Dev Assistant" collapsed={isCollapsed('devnotes')} onToggle={() => toggleCard('devnotes')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {devHistory.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
                 Ask the assistant to draft client-facing notes, explain an approach, or help with quoting and review. Responses are written as your consultancy.
               </p>
             ) : null}
             {devHistory.map((m, i) => (
-              <div key={i} style={{ background: m.role === 'user' ? '#0D1117' : 'rgba(56,139,253,0.06)', border: '1px solid ' + (m.role === 'user' ? '#21262D' : 'rgba(56,139,253,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? '#8B949E' : '#58A6FF', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (devStreaming && i === devHistory.length - 1 ? '\u2026' : '')}</p>
+              <div key={i} style={{ background: m.role === 'user' ? 'var(--rb-bg)' : 'rgba(56,139,253,0.06)', border: '1px solid ' + (m.role === 'user' ? 'var(--rb-border)' : 'rgba(56,139,253,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? 'var(--rb-text-muted)' : 'var(--rb-accent)', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (devStreaming && i === devHistory.length - 1 ? '\u2026' : '')}</p>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8 }}>
-              <textarea value={devQuestion} onChange={e => setDevQuestion(e.target.value)} rows={2} placeholder="Ask the dev assistant\u2026" style={{ flex: 1, background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              <textarea value={devQuestion} onChange={e => setDevQuestion(e.target.value)} rows={2} placeholder="Ask the dev assistant\u2026" style={{ flex: 1, background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
               <button onClick={sendDevNote} disabled={devStreaming || !devQuestion.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (devStreaming || !devQuestion.trim()) ? 0.5 : 1 }}>{devStreaming ? '\u2026' : 'Send'}</button>
             </div>
           </div>
@@ -1334,34 +1334,34 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           label="Coding Assistant"
           collapsed={isCollapsed('coding')}
           onToggle={() => toggleCard('coding')}
-          accessory={req.githubBranch ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#8B949E' }}>{req.githubBranch}</span> : null}
+          accessory={req.githubBranch ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-text-muted)' }}>{req.githubBranch}</span> : null}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {!req.githubBranch ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#C8952A', margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-warning)', margin: 0 }}>
                 No GitHub branch is linked to this requirement yet. Fetch and save objects first so the assistant can read the C/AL source.
               </p>
             ) : null}
             {codingHistory.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
                 The assistant reads the C/AL on this branch. Ask it to write or modify objects; commit accepted objects back to GitHub.
               </p>
             ) : null}
             {codingHistory.map((m, i) => {
               const calObjects = m.role === 'assistant' ? extractCalObjects(m.content) : []
               return (
-                <div key={i} style={{ background: m.role === 'user' ? '#0D1117' : 'rgba(10,92,70,0.06)', border: '1px solid ' + (m.role === 'user' ? '#21262D' : 'rgba(10,92,70,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? '#8B949E' : '#3FB950', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (codingStreaming && i === codingHistory.length - 1 ? '\u2026' : '')}</p>
+                <div key={i} style={{ background: m.role === 'user' ? 'var(--rb-bg)' : 'rgba(10,92,70,0.06)', border: '1px solid ' + (m.role === 'user' ? 'var(--rb-border)' : 'rgba(10,92,70,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? 'var(--rb-text-muted)' : 'var(--rb-success)', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (codingStreaming && i === codingHistory.length - 1 ? '\u2026' : '')}</p>
                   {calObjects.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
                       {calObjects.map((obj, j) => {
                         const key = i + '-' + j
                         const committed = !!codingCommitted[key]
                         return (
-                          <div key={j} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#0D1117', border: '1px solid #21262D', borderRadius: 5, padding: '6px 10px' }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#58A6FF' }}>{obj.filename}</span>
-                            <button onClick={() => commitCalObject(key, obj.filename, obj.content, i)} disabled={!req.githubBranch || codingCommitting === i || committed} style={{ ...btnSecondary, padding: '4px 10px', fontSize: 11, opacity: (!req.githubBranch || committed) ? 0.5 : 1, color: committed ? '#3FB950' : '#8B949E' }}>
+                          <div key={j} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 5, padding: '6px 10px' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-accent)' }}>{obj.filename}</span>
+                            <button onClick={() => commitCalObject(key, obj.filename, obj.content, i)} disabled={!req.githubBranch || codingCommitting === i || committed} style={{ ...btnSecondary, padding: '4px 10px', fontSize: 11, opacity: (!req.githubBranch || committed) ? 0.5 : 1, color: committed ? 'var(--rb-success)' : 'var(--rb-text-muted)' }}>
                               {committed ? '\u2713 Committed' : (codingCommitting === i ? 'Committing\u2026' : 'Commit to GitHub')}
                             </button>
                           </div>
@@ -1372,9 +1372,9 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                 </div>
               )
             })}
-            {codingCommitErr ? <p style={{ color: '#F85149', fontSize: 12, margin: 0 }}>{codingCommitErr}</p> : null}
+            {codingCommitErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, margin: 0 }}>{codingCommitErr}</p> : null}
             <div style={{ display: 'flex', gap: 8 }}>
-              <textarea value={codingMessage} onChange={e => setCodingMessage(e.target.value)} rows={2} placeholder="Ask the coding assistant\u2026" style={{ flex: 1, background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              <textarea value={codingMessage} onChange={e => setCodingMessage(e.target.value)} rows={2} placeholder="Ask the coding assistant\u2026" style={{ flex: 1, background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
               <button onClick={sendCodingMessage} disabled={codingStreaming || !codingMessage.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (codingStreaming || !codingMessage.trim()) ? 0.5 : 1 }}>{codingStreaming ? '\u2026' : 'Send'}</button>
             </div>
           </div>
@@ -1388,7 +1388,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
 
           {(req.status === 'submitted' || req.status === 'in_review') ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>
                 Review this requirement, ask the client for clarification, or issue a quote.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1425,28 +1425,28 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
 
           {req.status === 'deposit_required' ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Client has accepted the quote. Mark the deposit as received to begin development.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Client has accepted the quote. Mark the deposit as received to begin development.</p>
               <button onClick={handleMarkDepositPaid} disabled={saving} style={btnPrimary}>Mark Deposit Paid</button>
             </div>
           ) : null}
 
           {req.status === 'deposit_paid' ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Deposit received. Start development when you are ready.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Deposit received. Start development when you are ready.</p>
               <button onClick={handleStartDevelopment} disabled={saving} style={btnPrimary}>Start Development</button>
             </div>
           ) : null}
 
           {req.status === 'in_development' ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Mark the work complete once it has been deployed and is ready for the client to pay the balance.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Mark the work complete once it has been deployed and is ready for the client to pay the balance.</p>
               <button onClick={handleMarkComplete} disabled={saving} style={btnPrimary}>Mark Work Complete</button>
             </div>
           ) : null}
 
           {req.status === 'in_uat' ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Sign off UAT on behalf of the client, or reject if the delivered work needs changes.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Sign off UAT on behalf of the client, or reject if the delivered work needs changes.</p>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={handleUatApprove} disabled={saving} style={btnPrimary}>Approve UAT</button>
                 <button onClick={() => setShowUatReject(!showUatReject)} style={btnDanger}>Reject UAT</button>
@@ -1457,10 +1457,10 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                   <textarea value={uatRejectReason} onChange={e => setUatRejectReason(e.target.value)} rows={3} style={{ ...editInput, resize: 'vertical' }} placeholder="What needs to change?" />
                   {uatScopeCreep ? (
                     <div style={{ marginTop: 12, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 6, padding: '12px 16px' }}>
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C8952A', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>Possible scope change</p>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', margin: '0 0 8px' }}>{uatScopeCreep.explanation}</p>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-warning)', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>Possible scope change</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', margin: '0 0 8px' }}>{uatScopeCreep.explanation}</p>
                       {uatScopeCreep.suggestedAmendment ? (
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>{uatScopeCreep.suggestedAmendment}</p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>{uatScopeCreep.suggestedAmendment}</p>
                       ) : null}
                     </div>
                   ) : null}
@@ -1477,7 +1477,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
 
           {req.status === 'complete_pending_payment' ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 14px' }}>Work complete. Mark the balance as paid once the client has settled the final invoice.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Work complete. Mark the balance as paid once the client has settled the final invoice.</p>
               <button onClick={handleMarkBalancePaid} disabled={saving} style={btnPrimary}>Mark Balance Paid</button>
             </div>
           ) : null}
@@ -1489,10 +1489,10 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         req.quote ? (
           <Card style={{ marginBottom: 16 }}>
             <SectionLabel>Quote</SectionLabel>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: '#F0F6FC', marginBottom: 4 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--rb-text-bright)', marginBottom: 4 }}>
               {'$' + parseFloat(req.quote).toLocaleString('en-NZ', { minimumFractionDigits: 2 }) + ' NZD'}
             </div>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E', margin: 0 }}>plus GST · 20% deposit on acceptance</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>plus GST · 20% deposit on acceptance</p>
             {req.status === 'quoted' ? (
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <button onClick={handleApproveQuote} disabled={saving} style={btnPrimary}>Accept Quote</button>
@@ -1506,7 +1506,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                   onChange={e => setRejectReason(e.target.value)}
                   rows={3}
                   placeholder="Reason for rejecting this quote…"
-                  style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                  style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
                 />
                 <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                   <button onClick={handleRejectQuote} disabled={saving} style={{ ...btnDanger, background: 'rgba(163,45,45,0.15)' }}>Confirm Rejection</button>
@@ -1523,15 +1523,15 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         <CollapsibleCard label="Clarification Q&A" collapsed={isCollapsed('qa')} onToggle={() => toggleCard('qa')}>
           {qaLog.map((round: any, i: number) => (
             <div key={i} style={{ marginBottom: i < qaLog.length - 1 ? 20 : 0 }}>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, marginTop: 0 }}>Round {round.round}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, marginTop: 0 }}>Round {round.round}</p>
               <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 6, padding: '12px 16px', marginBottom: 10 }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#C8952A', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Questions from BespoxAI</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', whiteSpace: 'pre-wrap', margin: 0 }}>{round.questions}</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-warning)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Questions from BespoxAI</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', whiteSpace: 'pre-wrap', margin: 0 }}>{round.questions}</p>
               </div>
               {round.answers ? (
                 <div style={{ background: 'rgba(26,146,114,0.06)', border: '1px solid rgba(26,146,114,0.2)', borderRadius: 6, padding: '12px 16px' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#3FB950', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Your Answers</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9', whiteSpace: 'pre-wrap', margin: 0 }}>{round.answers}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-success)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>Your Answers</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', whiteSpace: 'pre-wrap', margin: 0 }}>{round.answers}</p>
                 </div>
               ) : null}
             </div>
@@ -1548,7 +1548,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
             onChange={e => setAnswersText(e.target.value)}
             rows={5}
             placeholder="Type your answers to the questions above…"
-            style={{ width: '100%', background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#C9D1D9', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+            style={{ width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
           />
           <div style={{ marginTop: 12 }}>
             <button onClick={handleAnswerSubmit} disabled={saving || !answersText.trim()} style={{ ...btnPrimary, opacity: (saving || !answersText.trim()) ? 0.5 : 1 }}>
@@ -1562,7 +1562,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
       {(req.status === 'draft' || req.status === 'quote_rejected') ? (
         <Card style={{ marginBottom: 16 }}>
           <SectionLabel>{req.status === 'draft' ? 'Review & Submit' : 'Revise & Resubmit'}</SectionLabel>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '0 0 16px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 16px' }}>
             {req.status === 'draft' ? 'Review the details below, edit if needed, then submit for review and a quote.' : 'Revise the requirement below before resubmitting for a new quote.'}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1667,30 +1667,30 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button
           onClick={() => setShowNew(true)}
-          style={{ background: '#238636', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '8px 16px', cursor: 'pointer' }}
+          style={{ background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '8px 16px', cursor: 'pointer' }}
         >
           + New Requirement
         </button>
       </div>
 
       {loading ? (
-        <Card><p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#8B949E', margin: 0, textAlign: 'center' }}>Loading…</p></Card>
+        <Card><p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0, textAlign: 'center' }}>Loading…</p></Card>
       ) : topLevel.length === 0 ? (
         <Card>
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#8B949E', margin: '0 0 12px' }}>No requirements yet for this client.</p>
-            <button onClick={() => setShowNew(true)} style={{ background: 'none', border: '1px solid #30363D', borderRadius: 6, color: '#58A6FF', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text-muted)', margin: '0 0 12px' }}>No requirements yet for this client.</p>
+            <button onClick={() => setShowNew(true)} style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-accent)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer' }}>
               Raise first requirement
             </button>
           </div>
         </Card>
       ) : (
-        <div style={{ background: '#161B22', border: '1px solid #21262D', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-border)', borderRadius: 8, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #21262D' }}>
+              <tr style={{ borderBottom: '1px solid var(--rb-border)' }}>
                 {['Title','Area','Priority','Status','Raised'].map(h => (
-                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1701,24 +1701,24 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
                   <tr
                     key={req.id}
                     onClick={() => setSelected(req)}
-                    style={{ borderBottom: i < topLevel.length - 1 ? '1px solid #21262D' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1C2128' }}
+                    style={{ borderBottom: i < topLevel.length - 1 ? '1px solid var(--rb-border)' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--rb-surface-2)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
-                    <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 14, color: '#C9D1D9', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--rb-text)', fontWeight: 500 }}>
                       {req.title}
                       {req.addenda.length > 0 ? (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#C8952A', background: 'rgba(200,149,42,0.12)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 10, padding: '1px 6px', marginLeft: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-warning)', background: 'rgba(200,149,42,0.12)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 10, padding: '1px 6px', marginLeft: 8 }}>
                           {'+' + req.addenda.length + ' addend' + (req.addenda.length === 1 ? 'um' : 'a')}
                         </span>
                       ) : null}
                     </td>
-                    <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E' }}>{req.bcArea}</td>
+                    <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{req.bcArea}</td>
                     <td style={{ padding: '12px 20px' }}>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: pm?.color ?? '#8B949E' }}>{pm?.label ?? req.priority}</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: pm?.color ?? 'var(--rb-text-muted)' }}>{pm?.label ?? req.priority}</span>
                     </td>
                     <td style={{ padding: '12px 20px' }}><StatusBadge status={req.status} /></td>
-                    <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E' }}>{fmtDate(req.createdAt)}</td>
+                    <td style={{ padding: '12px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(req.createdAt)}</td>
                   </tr>
                 )
               })}
@@ -1754,7 +1754,7 @@ export default function PartnerTenantPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#8B949E', letterSpacing: '0.1em' }}>LOADING</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)', letterSpacing: '0.1em' }}>LOADING</span>
       </div>
     )
   }
@@ -1767,34 +1767,34 @@ export default function PartnerTenantPage() {
       <div style={{ marginBottom: 24 }}>
         <button
           onClick={() => router.push('/partner/dashboard')}
-          style={{ background: 'none', border: 'none', color: '#8B949E', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+          style={{ background: 'none', border: 'none', color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}
         >
           ← All Clients
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: '#F0F6FC', fontWeight: 400, margin: 0 }}>{tenant.name}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>{tenant.name}</h1>
           <span style={{
             fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
             padding: '3px 10px', borderRadius: 12,
             background: tenant.active ? 'rgba(35,134,54,0.2)' : 'rgba(139,148,158,0.15)',
-            color: tenant.active ? '#3FB950' : '#8B949E',
+            color: tenant.active ? 'var(--rb-success)' : 'var(--rb-text-muted)',
             border: '1px solid ' + (tenant.active ? 'rgba(63,185,80,0.3)' : 'rgba(139,148,158,0.3)'),
           }}>
             {tenant.active ? 'Active' : 'Inactive'}
           </span>
           {tenant.navProduct ? (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#58A6FF', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 4, padding: '2px 8px', letterSpacing: '0.06em' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-accent)', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 4, padding: '2px 8px', letterSpacing: '0.06em' }}>
               {tenant.navProduct}
             </span>
           ) : null}
         </div>
         {tenant.navVersion ? (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: '4px 0 0' }}>{tenant.navVersion}</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '4px 0 0' }}>{tenant.navVersion}</p>
         ) : null}
       </div>
 
       {/* Tabs */}
-      <div style={{ borderBottom: '1px solid #21262D', marginBottom: 24, display: 'flex' }}>
+      <div style={{ borderBottom: '1px solid var(--rb-border)', marginBottom: 24, display: 'flex' }}>
         <TabBtn label="Overview"     active={tab === 'overview'}     onClick={() => setTab('overview')} />
         <TabBtn label="Requirements" active={tab === 'requirements'} onClick={() => setTab('requirements')} />
         <TabBtn label="Users"        active={tab === 'users'}        onClick={() => setTab('users')} />
@@ -1809,23 +1809,23 @@ export default function PartnerTenantPage() {
         <Card>
           <SectionLabel>Tenant Users</SectionLabel>
           {tenant.users.length === 0 ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>No users on this tenant yet.</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>No users on this tenant yet.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {['Name','Email','Role','Joined'].map(h => (
-                    <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#8B949E', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
+                    <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {tenant.users.map(u => (
-                  <tr key={u.id} style={{ borderTop: '1px solid #21262D' }}>
-                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: '#C9D1D9' }}>{u.name ?? u.firstName ?? '—'}</td>
-                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E' }}>{u.email}</td>
-                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: '#8B949E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
-                    <td style={{ padding: '10px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: '#8B949E' }}>{fmtDate(u.createdAt)}</td>
+                  <tr key={u.id} style={{ borderTop: '1px solid var(--rb-border)' }}>
+                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)' }}>{u.name ?? u.firstName ?? '—'}</td>
+                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{u.email}</td>
+                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
+                    <td style={{ padding: '10px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(u.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1845,7 +1845,7 @@ export default function PartnerTenantPage() {
             <InfoRow label="Agent Port"           value={tenant.agentPort ? String(tenant.agentPort) : null} />
           </Card>
           <div style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)', borderRadius: 8, padding: '12px 16px' }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#8B949E', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
               To update connection settings or download the installer, use the BCAgent tab.
             </p>
           </div>

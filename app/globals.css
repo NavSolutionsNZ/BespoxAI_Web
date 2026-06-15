@@ -46,3 +46,55 @@ textarea::placeholder {
   color: #8a9a8e;
   opacity: 1;
 }
+
+/* ── Requirements-builder / partner-portal semantic theme variables ──────────
+   Surfaces set data-rb-theme="dark" | "light" on a wrapping element.
+   Dark = original partner palette. Light = BespoxAI parchment palette.
+   Shared components reference only --rb-* so they adapt to either theme. */
+[data-rb-theme="dark"] {
+  --rb-bg:            #0D1117;
+  --rb-surface:       #161B22;
+  --rb-surface-2:     #1C2128;
+  --rb-inset:         #0D1117;
+  --rb-code:          #010409;
+  --rb-border:        #21262D;
+  --rb-border-strong: #30363D;
+  --rb-text:          #C9D1D9;
+  --rb-text-bright:   #F0F6FC;
+  --rb-text-muted:    #8B949E;
+  --rb-accent:        #58A6FF;
+  --rb-accent-soft:   rgba(88,166,255,0.1);
+  --rb-success:       #3FB950;
+  --rb-primary:       #238636;
+  --rb-primary-hover: #2EA043;
+  --rb-danger:        #F85149;
+  --rb-danger-soft:   rgba(248,81,73,0.1);
+  --rb-warning:       #C8952A;
+  --rb-warning-soft:  rgba(200,149,42,0.1);
+  --rb-hover:         #1C2128;
+  --rb-active:        #1F2937;
+}
+
+[data-rb-theme="light"] {
+  --rb-bg:            #F4EFE4;
+  --rb-surface:       #FFFFFF;
+  --rb-surface-2:     #EDE8DC;
+  --rb-inset:         #EDE8DC;
+  --rb-code:          #F4EFE4;
+  --rb-border:        rgba(4,14,9,0.12);
+  --rb-border-strong: rgba(4,14,9,0.22);
+  --rb-text:          #1A2C22;
+  --rb-text-bright:   #040E09;
+  --rb-text-muted:    #3B5249;
+  --rb-accent:        #1A9272;
+  --rb-accent-soft:   rgba(26,146,114,0.1);
+  --rb-success:       #0A5C46;
+  --rb-primary:       #0A5C46;
+  --rb-primary-hover: #0F6E56;
+  --rb-danger:        #A32D2D;
+  --rb-danger-soft:   rgba(163,45,45,0.1);
+  --rb-warning:       #9A6A00;
+  --rb-warning-soft:  rgba(200,149,42,0.12);
+  --rb-hover:         #EDE8DC;
+  --rb-active:        #E0D9C8;
+}

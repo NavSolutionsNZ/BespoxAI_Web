@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       gstNumber: true, billingEmail: true, brandName: true, logoUrl: true,
       agentBrandName: true, isWhiteLabel: true, fromEmail: true, githubOrg: true,
       githubToken: true, stripeCustomerId: true, stripeSubscriptionId: true,
-      subscriptionStatus: true, subscriptionTier: true, createdAt: true, updatedAt: true,
+      subscriptionStatus: true, subscriptionTier: true, partnerTheme: true, createdAt: true, updatedAt: true,
       _count: { select: { tenants: true, users: true } },
     },
   })
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest) {
   const scalarFields = [
     'contactName', 'phone', 'address', 'gstNumber', 'billingEmail',
     'brandName', 'logoUrl', 'isWhiteLabel', 'agentBrandName',
-    'fromEmail', 'githubOrg',
+    'fromEmail', 'githubOrg', 'partnerTheme',
   ]
 
   const data: any = { updatedAt: new Date() }
