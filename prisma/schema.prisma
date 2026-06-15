@@ -71,6 +71,7 @@ model Tenant {
   aiUsageLogs         AiUsageLog[]
 
   @@index([createdAt])
+  @@index([partnerAccountId])
 }
 
 model User {
@@ -254,6 +255,10 @@ model Requirement {
   user    User               @relation(fields: [userId], references: [id])
   objects TenantObjectFile[]
   aiUsageLogs AiUsageLog[]
+
+  @@index([tenantId, createdAt])
+  @@index([parentId])
+  @@index([assignedDeveloperId])
 }
 
 model MigrationEnquiry {
