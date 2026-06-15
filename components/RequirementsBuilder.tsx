@@ -1181,7 +1181,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                   <span style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.07em',textTransform:'uppercase',color:sc.text,background:sc.bg,border:'1px solid '+sc.border,padding:'2px 7px',borderRadius:6}}>{statusLabel(req.status)}</span>
                   <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--slate)'}}>{req.bcArea}</span>
                   {isSuperadmin&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--jade)',marginLeft:'auto'}}>{req.tenant.name}</span>}
-                  {(isSuperadmin||userRole==='tenant_admin'||userRole==='partner_admin')&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',marginLeft:isSuperadmin?0:'auto'}}>→ {req.assignedDeveloper?.preferredName??req.assignedDeveloper?.firstName??'Unknown'}</span>}
+                  {(isSuperadmin||isDeveloper)&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--forest)',marginLeft:isSuperadmin?0:'auto'}}>→ {req.assignedDeveloper?.preferredName??req.assignedDeveloper?.firstName??'Unknown'}</span>}
                   {req.unableToCompleteAt&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',background:'rgba(163,45,45,0.1)',border:'1px solid rgba(163,45,45,0.3)',padding:'1px 6px',borderRadius:4}}>⚠ dev unable</span>}
                   {req.feasibility==='cfo_assistant'&&!req.aiSpec&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#C8952A',background:'rgba(200,149,42,0.08)',padding:'1px 5px',borderRadius:4}}>💡 no dev needed</span>}
                   {req.feasibility==='infeasible'&&<span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'#A32D2D',background:'rgba(163,45,45,0.07)',padding:'1px 5px',borderRadius:4}}>⚠ constrained</span>}
@@ -1343,15 +1343,16 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                 <button onClick={()=>clearReq()} style={xBTN}>✕</button>
               </div>
 
-              {/* Assignment section - for admins and developers */}
-              {(isSuperadmin||userRole==='tenant_admin'||userRole==='partner_admin'||isDeveloper)&&(
+              {/* Assignment section — internal BespoxAI staff only (direct-tenant delivery).
+                  Customers (tenant_admin/user) never see this; partner delivery lives in the partner portal. */}
+              {(isSuperadmin||isDeveloper)&&(
                 <div style={{background:'rgba(10,92,70,0.04)',border:'1px solid rgba(10,92,70,0.15)',borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
                   <div>
                     <p style={{fontFamily:'var(--font-mono)',fontSize:8,letterSpacing:'0.1em',textTransform:'uppercase',color:'var(--slate)',marginBottom:4,marginTop:0}}>Assigned to</p>
                     <p style={{fontFamily:'var(--font-body)',fontSize:14,fontWeight:600,color:'var(--forest)',margin:0}}>{req.assignedDeveloper?.preferredName??req.assignedDeveloper?.firstName??req.assignedDeveloper?.email??'Unknown'}</p>
                   </div>
                   <div style={{display:'flex',gap:8}}>
-                    {(isSuperadmin||userRole==='tenant_admin'||userRole==='partner_admin')&&(
+                    {isSuperadmin&&(
                       <button onClick={()=>{setShowAssignModal(true); setAssignModalReqId(req.id)}} style={{fontFamily:'var(--font-body)',fontSize:12,fontWeight:600,color:'var(--forest)',background:'rgba(10,92,70,0.1)',border:'1px solid rgba(10,92,70,0.2)',borderRadius:6,padding:'6px 12px',cursor:'pointer',transition:'all 0.2s'}} onMouseEnter={(e)=>{e.currentTarget.style.background='rgba(10,92,70,0.15)'}} onMouseLeave={(e)=>{e.currentTarget.style.background='rgba(10,92,70,0.1)'}}>Reassign</button>
                     )}
                     {isDeveloper&&req.assignedDeveloperId===userId&&!req.unableToCompleteAt&&(

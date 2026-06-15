@@ -24,7 +24,7 @@ export async function POST(
     const requirement = await prisma.requirement.findUnique({
       where: { id: params.id },
       include: {
-        tenant: { select: { id: true, name: true } },
+        tenant: { select: { id: true, name: true, partnerAccountId: true } },
         assignedDeveloper: { select: { id: true, firstName: true, preferredName: true, email: true } },
       },
     })
@@ -33,14 +33,21 @@ export async function POST(
       return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
     }
 
-    // Only assigned dev or admin can mark as unable
-    const isAssignedDev = requirement.assignedDeveloperId === user.id
-    const isAdmin = user.role === 'superadmin' || (user.role === 'tenant_admin' && user.tenantId === requirement.tenantId)
-    const isPartnerAdmin = user.role === 'partner_admin'
-
-    if (!isAssignedDev && !isAdmin && !isPartnerAdmin) {
+    // Direct pipeline only: the assigned internal developer (self-service) or a
+    // BespoxAI superadmin can mark unable. Partner-managed tenants are handled by
+    // the partner. Customers (tenant_admin/user) never mark unable.
+    if (requirement.tenant?.partnerAccountId) {
       return NextResponse.json(
-        { error: 'Only assigned developer or admin can mark as unable' },
+        { error: 'Partner-managed tenant: handled by the partner.' },
+        { status: 403 }
+      )
+    }
+    const isAssignedDev = requirement.assignedDeveloperId === user.id
+    const isSuperadmin = user.role === 'superadmin'
+
+    if (!isAssignedDev && !isSuperadmin) {
+      return NextResponse.json(
+        { error: 'Only the assigned developer or a superadmin can mark as unable' },
         { status: 403 }
       )
     }
@@ -67,14 +74,11 @@ export async function POST(
       select: { email: true },
     })
 
-    // Also notify superadmins if this is a direct tenant (not partner-managed)
-    let superadmins: any[] = []
-    if (!requirement.tenant) {
-      superadmins = await prisma.user.findMany({
-        where: { role: 'superadmin' },
-        select: { email: true },
-      })
-    }
+    // Direct tenant (partner-managed already rejected above) — notify superadmins
+    const superadmins = await prisma.user.findMany({
+      where: { role: 'superadmin' },
+      select: { email: true },
+    })
 
     const allAdmins = [...admins, ...superadmins]
 

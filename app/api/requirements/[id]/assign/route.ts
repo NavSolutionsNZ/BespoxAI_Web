@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { notifyRequirementAssigned, getPartnerFromEmail } from '@/lib/notifications'
+import { notifyRequirementAssigned } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,12 +39,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
     }
 
-    // Access check: user must be tenant admin OR superadmin
-    const isAdmin = user.role === 'superadmin' || (user.role === 'tenant_admin' && user.tenantId === requirement.tenantId)
-    const isPartnerAdmin = user.role === 'partner_admin' && requirement.tenant?.partnerAccountId
-
-    if (!isAdmin && !isPartnerAdmin) {
-      return NextResponse.json({ error: 'Only admins can assign requirements' }, { status: 403 })
+    // Direct pipeline only: BespoxAI superadmin assigns on direct tenants.
+    // Partner-managed tenants are assigned by the partner via the partner route.
+    if (user.role !== 'superadmin') {
+      return NextResponse.json({ error: 'Only a superadmin can assign on the direct pipeline' }, { status: 403 })
+    }
+    if (requirement.tenant?.partnerAccountId) {
+      return NextResponse.json({ error: 'Partner-managed tenant: assignment is handled by the partner.' }, { status: 403 })
     }
 
     // Get the developer to assign to (must be same tenant context)
@@ -57,8 +58,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Developer not found' }, { status: 404 })
     }
 
-    // Access check: developer must be in same tenant (or be superadmin for partner context)
-    if (assignTo.tenantId !== requirement.tenantId && assignTo.role !== 'superadmin') {
+    // Developer must be internal (superadmin/developer) or in the same tenant
+    if (assignTo.tenantId !== requirement.tenantId && assignTo.role !== 'superadmin' && assignTo.role !== 'developer') {
       return NextResponse.json({ error: 'Developer not in this tenant' }, { status: 403 })
     }
 
@@ -71,18 +72,12 @@ export async function PATCH(
         unableToCompleteAt: null, // clear unable status when reassigned
       },
       include: {
-        tenant: { select: { name: true, partnerAccountId: true } },
+        tenant: { select: { name: true } },
         assignedDeveloper: { select: { firstName: true, preferredName: true, email: true } },
       },
     })
 
-    // Get partner branding if applicable
-    let fromEmail: string | null = null
-    if (updated.tenant?.partnerAccountId) {
-      fromEmail = await getPartnerFromEmail(requirement.tenantId)
-    }
-
-    // Notify developer
+    // Notify developer (direct pipeline — no partner branding)
     const devName = assignTo.preferredName ?? assignTo.firstName
     await notifyRequirementAssigned({
       to: assignTo.email,
@@ -90,7 +85,7 @@ export async function PATCH(
       requirementTitle: requirement.title,
       tenantName: updated.tenant?.name ?? '',
       requirementId: requirement.id,
-      fromEmail,
+      fromEmail: null,
     })
 
     return NextResponse.json({ requirement: updated }, { status: 200 })
