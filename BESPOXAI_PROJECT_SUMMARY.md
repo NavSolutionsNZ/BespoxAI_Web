@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 15, 2026 (Session 22)
+**Last Updated:** June 15, 2026 (Session 23)
 
 ---
 
@@ -47,7 +47,83 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
-## Session 22 Key Changes (June 15, 2026) — Partner pipeline: 5 bugs fixed
+## Session 23 Key Changes (June 15, 2026) — Partner AI requirements parity, theme system, shared components
+
+**Goal:** mirror the BespoxAI AI requirements experience into the partner portal (AI spec refinement + dev tooling), add a dark/light theme toggle, and begin collapsing partner↔admin duplication into shared components.
+
+**⚠️ ALL OF SESSION 23 IS PENDING RICH'S TEST SIGN-OFF.** Deployed green on Vercel but not yet functionally verified end-to-end. See "Session 23 — Test checklist" below.
+
+### Six commits (all deployed green)
+1. `1bfcfad` — **Partner notification portal-link fix**
+2. `1384ca0` — **Slice 1: partner AI parity routes + referral tier**
+3. `085a603` — **Slice 2: partner AI panels + collapsible cards**
+4. `3168858` — **Slice 3 Stage A: dark/light theme system + toggle**
+5. `d50a04b` — **Slice 3 Stage B: shared DevPlanPanel (partner + admin)**
+6. (context update commit — this session close-out)
+
+### 1. Notification portal-link fix (`1bfcfad`)
+- **Bug:** partner emails (welcome, team-welcome, new requirement, answered, quote-rejected, UAT) built links from `PORTAL` (= `NEXTAUTH_URL ?? bespoxai.com`), sending partners to the **main** portal → login detected partner-on-wrong-domain → "wrong portal" redirect loop.
+- **Canonical partner domain = `partners.bespoxai.com`** (plural; confirmed on Vercel project domains). Singular `partner.bespoxai.com` does NOT exist anywhere — partner had mistyped.
+- **Fix:** added `PARTNER_PORTAL = process.env.PARTNER_PORTAL_URL ?? 'https://partners.bespoxai.com'` in `lib/notifications.ts`; repointed all partner links to it. Admin (`/admin`) + direct-customer (`notifyCustomer*` → `/dashboard`, "your portal") links stay on `PORTAL`.
+- Also removed the legacy Partner Agreement **PDF** link from `notifySendPartnerAgreement` (replaced by the scrollable accept-in-portal version; PDF still referenced at `app/partners/resources/agreement/page.tsx:38` — left untouched).
+- Login page (`app/login/page.tsx`) was already correct (plural) — unchanged.
+
+### 2. Slice 1 — Partner AI parity routes + referral tier (`1384ca0`)
+- **Schema:** `PartnerAccount.partnerTier` (`'self_serve' | 'referral'`, default `self_serve`). SQL applied: `ALTER TABLE "PartnerAccount" ADD COLUMN IF NOT EXISTS "partnerTier" TEXT NOT NULL DEFAULT 'self_serve';`
+  - **referral** = partner only creates/sets up the tenant; BespoxAI manages requirements directly with the customer (minimal tier). Gets a 403 on the dev routes.
+  - **self_serve** = partner runs the full in-portal requirements pipeline themselves. Gets full AI tooling.
+  - Referral % / billing mechanics deliberately **deferred** to a later session.
+- **`lib/partner-auth.ts`:** added `assertPartnerCanDevelop(partnerAccountId)` (throws for referral → caller 403s) and `getPartnerTier(partnerAccountId)` (returns tier, defaults self_serve).
+- **5 new partner routes** under `app/api/partner/tenants/[id]/requirements/[reqId]/`, each mirroring its direct `/api/requirements/[id]/...` counterpart with: `requirePartnerSession` + `assertTenantBelongsToPartner` + `assertPartnerCanDevelop`, `findFirst({ id: reqId, tenantId: id })` scoping, provider-agnostic AI via `getAiConfig()` (global AI Setup governs partner AI too):
+  - `feasibility/route.ts`
+  - `dev-plan/route.ts` (OpenAI branch converted off the SDK to `fetch` — no top-level `new OpenAI()`)
+  - `dev-notes/route.ts` (ghostwrites as the **partner consultant + partner brand**, not BespoxAI — fetches `brandName`/`name` from the account; consultant name from the session user)
+  - `coding-assistant/route.ts` + `coding-assistant/commit/route.ts` (reuses existing `resolvePartnerToken` for partner-org GitHub with BespoxAI fallback)
+
+### 3. Slice 2 — Partner AI panels + collapsible cards (`085a603`)
+- All UI in `app/partner/tenants/[id]/page.tsx` (`RequirementDetail` component). Partner detail is a **self-contained implementation** — does NOT use `components/RequirementsBuilder.tsx`.
+- **`CollapsibleCard`** component (defined outside the main component, SWC rule) with **status-based default collapse** mirroring admin: panels fold once past their focus stage (`defaultCollapsed(cardKey)` + `isCollapsed`/`toggleCard`).
+- **Seven cards** made collapsible: Description, Feasibility, AI Spec, Dev Plan, AI Dev Assistant, Coding Assistant, Q&A.
+- **Feasibility panel** — renders `feasibility`/`feasibilityNotes`/`feasibilityCostRange` (previously stored but never shown) with classification badges + manual recheck.
+- **Dev Plan panel** — generate/regenerate, full rendering (later extracted to shared component in Stage B).
+- **AI Dev Assistant** — SSE streaming chat (Anthropic `content_block_delta`/`text_delta`, line-buffered).
+- **Coding Assistant** — SSE streaming + `extractCalObjects` (C/AL OBJECT block regex) + per-object commit-to-GitHub with committed state. Shows "no branch linked" if `req.githubBranch` is null.
+- Dev panels show in `quoted`→`fully_paid` stages.
+- **`Requirement` type extended:** `devPlan`, `feasibilityCheckedAt`, `githubBranch`.
+- **Tier-gated `devPlan` return:** partner GET (list) + `[reqId]` GET/PATCH previously stripped `devPlan` ("superadmin-only"). Now returns it for **self_serve**, strips for **referral** (via `getPartnerTier`). Needed so the Dev Plan panel populates on load.
+
+### 4. Slice 3 Stage A — Dark/light theme system + toggle (`3168858`)
+- **Semantic CSS-variable layer** in `app/globals.css`: `[data-rb-theme="dark"]` (original partner palette) and `[data-rb-theme="light"]` (BespoxAI parchment palette), ~22 `--rb-*` vars (bg, surface, surface-2, inset, code, border, border-strong, text, text-bright, text-muted, accent, accent-soft, success, primary, primary-hover, danger, danger-soft, warning, warning-soft, hover, active).
+- **Schema:** `PartnerAccount.partnerTheme` (`'dark' | 'light'`, default `dark` to preserve existing look). SQL applied: `ALTER TABLE "PartnerAccount" ADD COLUMN IF NOT EXISTS "partnerTheme" TEXT NOT NULL DEFAULT 'dark';`
+- **`app/partner/partner-theme-provider.tsx`** (new) — fetches `/api/partner/account` → `partnerTheme`, exposes `usePartnerTheme()` context, defaults dark until loaded.
+- **`app/partner/layout.tsx`** — wraps portal in `PartnerThemeProvider`; inner `PartnerLayoutInner` consumes theme + sets `data-rb-theme` on root div (and the loading-state div).
+- **`app/partner/settings/page.tsx`** — new **Appearance** section: Dark/Light toggle, persists via `saveSection('theme', { partnerTheme })` + applies live via `setTheme`. **Admin-only** (account-wide setting; non-admins see disabled toggle + note).
+- **`app/api/partner/account/route.ts`** — `partnerTheme` added to GET select + PATCH scalar fields (PATCH is `partner_admin` only).
+- **Full re-theme:** 431 hardcoded hex → `var(--rb-*)` across all 7 partner files; 20 input/inset surfaces mapped to `--rb-inset` (distinct sunken surface) for correct light-mode contrast. Dark output unchanged (same hex via vars). Light mode **visually confirmed by Rich**.
+- No React portals in partner files → everything inherits `data-rb-theme` scope.
+
+### 5. Slice 3 Stage B — Shared DevPlanPanel (`d50a04b`)
+- **`components/DevPlanPanel.tsx`** (new) — theme-agnostic (references only `--rb-*`), consumed by BOTH partner detail + admin. Renders the full superset (summary, field audit, approach, tasks+code snippets, effort summary, risks, testing, deployment). `showPricing` prop gates BespoxAI-internal commercial guidance (day rate, suggested quote, quoting notes).
+- **Partner:** `<DevPlanPanel showPricing={false} />` — partners are the quoter for their own clients but see **hours/days only, NEVER BespoxAI's suggested pricing** (Rich's explicit call). Replaced 96-line inline block.
+- **Admin:** `<DevPlanPanel showPricing={true} />` wrapped in `data-rb-theme="dark"` (the admin dev-plan card was always dark-themed via `var(--ink)`; renders via dark `--rb-*` now). Replaced 174-line inline block.
+- Net: 261 lines of duplication removed.
+- **Remaining Slice 3 work (future):** the other 3 AI panels (feasibility, dev-notes, coding-assistant) still have parallel partner/admin implementations — extend the same shared-component pattern in future sessions.
+
+### Session 23 — Test checklist (Rich to verify before sign-off)
+1. **Notification links:** trigger a partner email (e.g. invite a team member) → link goes to `partners.bespoxai.com`, login works without wrong-portal error.
+2. **Theme toggle:** Settings → Appearance → switch Light/Dark → whole portal re-themes instantly; flip back to Dark = identical to before. Check status badges/pipeline dots (still use `STATUS_COLOR` hex, not `--rb-*`) read OK on light.
+3. **Admin Dev Plan:** open a requirement in admin (status in_review/quoted/in_development) → generate Dev Plan → renders correctly (effort boxes, field-audit, pricing block still present since `showPricing={true}`). Should look ~identical to pre-Session-23.
+4. **Partner Dev Plan:** open a self_serve partner tenant requirement (quoted→fully_paid) → generate → renders with hours + **Est. Days**, **no pricing**.
+5. **Partner AI panels:** Feasibility (badges + recheck), AI Spec (collapsible), Dev Assistant (streams), Coding Assistant (streams; commits a C/AL object — requires `githubBranch` linked on the requirement, else shows "no branch" message).
+6. **Referral tier:** if any partner is set to `partnerTier='referral'` (none are by default), the 5 dev routes should 403 and devPlan is stripped. All current partners default `self_serve`.
+
+**Known non-blocking notes for testing:**
+- Admin Dev Plan colors moved from `var(--ink)`/`var(--jade)`/`var(--amber)` to dark `--rb-*` equivalents — close but not pixel-identical. If anything reads off, adjust the dark `--rb-*` values in `globals.css`.
+- Coding Assistant commit needs a linked GitHub branch; if a test requirement has none, that's expected behaviour, not a bug.
+
+---
+
+
 
 All five partner-portal bugs from the Session-22 walkthrough log fixed and deployed green. Full detail in the roadmap's "Partner-Portal Bugs — ALL RESOLVED" section.
 
@@ -328,6 +404,15 @@ RDP setting and firewall rule can be left — do not disable RDP as it locks out
 - **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev — NOT the test tenant)
 - **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
 - **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
+
+### Schema Changes — Session 23
+```sql
+ALTER TABLE "PartnerAccount" ADD COLUMN IF NOT EXISTS "partnerTier" TEXT NOT NULL DEFAULT 'self_serve';
+ALTER TABLE "PartnerAccount" ADD COLUMN IF NOT EXISTS "partnerTheme" TEXT NOT NULL DEFAULT 'dark';
+```
+Applied ✅. prisma/schema.prisma updated ✅.
+- `partnerTier`: `self_serve` (full in-portal AI tooling) | `referral` (BespoxAI manages requirements; dev routes 403)
+- `partnerTheme`: `dark` (original partner palette) | `light` (BespoxAI parchment)
 
 ### Schema Changes — Session 7
 ```sql

@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 15, 2026 (Session 22)
+**Last Updated: June 15, 2026 (Session 23)
 
 ---
 
@@ -21,6 +21,10 @@
 - GitHub per-customer repos — `lib/github.ts`, classic PAT stored as `GITHUB_CUSTOMER_REPOS_TOKEN`
 - Default agent port is **9099**
 - **Version bumped on every push** — two places: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts
+- **(S23) Canonical partner domain = `partners.bespoxai.com`** (PLURAL — confirmed on Vercel project domains). Singular `partner.bespoxai.com` does NOT exist. Partner links use `PARTNER_PORTAL` env/const, NOT main `PORTAL`/bespoxai.com.
+- **(S23) Partner portal theme system:** semantic `--rb-*` CSS vars in `globals.css`, two scopes `[data-rb-theme="dark|light"]`. Surfaces set `data-rb-theme` on an ancestor; components ref only `--rb-*`. Partner default `dark` (= original look). Admin Dev Plan card forces `data-rb-theme="dark"`. To re-theme any new partner UI: use `var(--rb-*)`, never hardcode hex.
+- **(S23) Shared component pattern:** `components/DevPlanPanel.tsx` is theme-agnostic + role-flagged (`showPricing`). The template for future shared partner↔admin panels (feasibility/dev-notes/coding still duplicated).
+- **(S23) partnerTier gates partner dev tooling:** self_serve = full; referral = 403 on dev routes + devPlan stripped from GET. Use `assertPartnerCanDevelop`/`getPartnerTier` from `lib/partner-auth.ts`.
 
 ---
 
@@ -42,15 +46,25 @@
 |------|---------|
 | `app/page.tsx` | Root/home page |
 | `app/layout.tsx` | Root layout, fonts, session provider |
-| `app/globals.css` | Global CSS. Body background: `#ffffff`. --white: `#ffffff`. Placeholder: `#8a9a8e`. |
+| `app/globals.css` | Global CSS. Body background: `#ffffff`. --white: `#ffffff`. Placeholder: `#8a9a8e`. **(S23)** `--rb-*` semantic theme vars in two scopes: `[data-rb-theme="dark"]` (partner palette) + `[data-rb-theme="light"]` (BespoxAI parchment). ~22 vars consumed by partner portal + shared DevPlanPanel. |
 | `app/dashboard/page.tsx` | Main portal. Mobile: slide-over sidebar. Unconnected → `customisations` tab. Nav uses router.push. |
 | `app/billing/page.tsx` | Subscription management. Back → `router.push('/dashboard')`. Mobile responsive. |
-| `app/admin/page.tsx` | Superadmin portal — 8 tabs. Mobile: slide-over sidebar. ConnectedPill for tenant status. RDP button + copy per tenant. |
+| `app/admin/page.tsx` | Superadmin portal — 8 tabs. Mobile: slide-over sidebar. ConnectedPill for tenant status. RDP button + copy per tenant. **(S23)** Dev Plan render now via shared `<DevPlanPanel showPricing={true}/>` wrapped in `data-rb-theme="dark"` (was 174-line inline block). |
 | `app/login/page.tsx` | Login. White background. Corner links at 20px for mobile. |
 | `app/signup/page.tsx` | Signup. BC + NAV version dropdown with optgroups. Card padding uses clamp(). |
 | `app/signup/verify/page.tsx` | Email verification. useEffect calls API on load. Sends notifyAdminsSignupVerified. |
 | `app/onboarding/page.tsx` | Post-signup onboarding. Step 0: force password change. Sidebar hidden on mobile. |
 | `app/settings/page.tsx` | Customer settings. ProdEnvForm + TestEnvForm sub-components. Mobile: sticky top nav. ChangePasswordCard. Tab changes use router.push (history). Always has ?tab= in URL. Overview shows Production/Test Environment Details cards. |
+
+### Partner Portal Pages (`/app/partner`) — theme-aware (S23)
+
+| File | Purpose |
+|------|---------|
+| `app/partner/layout.tsx` | **(S23)** Wraps portal in `PartnerThemeProvider`; `PartnerLayoutInner` consumes `usePartnerTheme()` + sets `data-rb-theme` on root + loading divs. All hex → `var(--rb-*)`. |
+| `app/partner/partner-theme-provider.tsx` | **(S23, new)** Fetches `/api/partner/account` → `partnerTheme`; `usePartnerTheme()` context {theme,setTheme,loaded}; defaults `dark` until loaded. |
+| `app/partner/settings/page.tsx` | Partner settings. **(S23)** New Appearance section: Dark/Light toggle, persists via `saveSection('theme',{partnerTheme})` + `setTheme` live. Admin-only (account-wide). All hex → vars. |
+| `app/partner/tenants/[id]/page.tsx` | Partner tenant detail + self-contained `RequirementDetail` (does NOT use RequirementsBuilder.tsx). **(S23)** 5 AI panels (feasibility/spec/dev-plan/dev-notes/coding), `CollapsibleCard` w/ status-based defaults, SSE streaming for dev-notes+coding, `extractCalObjects` + commit. Dev Plan via shared `<DevPlanPanel showPricing={false}/>`. All hex → vars. Requirement type +devPlan/feasibilityCheckedAt/githubBranch. |
+| `app/partner/dashboard|team|billing/page.tsx`, `tenants/new/page.tsx` | **(S23)** All hex → `var(--rb-*)` for theme support. |
 
 ### API Routes (`/app/api`)
 
@@ -99,7 +113,12 @@
 | `api/partner/account/route.ts` | GET/PATCH partner account (branding etc). PATCH calls revalidateTag('branding'). |
 | `api/partner/billing/create-checkout/route.ts` | Partner Stripe checkout. success_url/cancel_url → /partner/settings (NOT /settings). |
 | `api/partner/tenants/[id]/requirements/[reqId]/ai-spec/route.ts` | Partner spec generation. Mirrors customer ai-spec logic with partner auth. |
-| `api/partner/tenants/[id]/requirements/route.ts` | List/create partner-tenant requirements. POST sets `assignedDeveloperId: session.userId` (Bug 1 fix — required FK, no DB default). Notifies partner via notifyPartnerNewRequirement. |
+| `api/partner/tenants/[id]/requirements/[reqId]/feasibility/route.ts` | **(S23)** Partner feasibility check. Mirrors direct route. requirePartnerSession + assertTenantBelongsToPartner + assertPartnerCanDevelop. |
+| `api/partner/tenants/[id]/requirements/[reqId]/dev-plan/route.ts` | **(S23)** Partner dev-plan gen. OpenAI branch uses fetch (no SDK). Live BC field introspection. |
+| `api/partner/tenants/[id]/requirements/[reqId]/dev-notes/route.ts` | **(S23)** Partner streaming dev assistant. Ghostwrites as **partner consultant + partner brand** (brandName/name from account; consultant from session user), NOT BespoxAI. Respects cfg.features.devAssistant. |
+| `api/partner/tenants/[id]/requirements/[reqId]/coding-assistant/route.ts` | **(S23)** Partner streaming C/AL coding assistant. Loads C/AL from partner GitHub branch via resolvePartnerToken (partner org → BespoxAI fallback). |
+| `api/partner/tenants/[id]/requirements/[reqId]/coding-assistant/commit/route.ts` | **(S23)** Commits accepted C/AL object back to the partner GitHub branch. |
+| `api/partner/tenants/[id]/requirements/route.ts` | List/create partner-tenant requirements. POST sets `assignedDeveloperId: session.userId` (Bug 1 fix — required FK, no DB default). Notifies partner via notifyPartnerNewRequirement. **(S23)** GET returns `devPlan` for self_serve partners, strips for referral (getPartnerTier). |
 | `api/partner/tenants/[id]/requirements/[reqId]/route.ts` | Partner PATCH — BOTH customer + deliverer transitions (S22). Deliverer half: in_review, needs_clarification (+QALog), quoted, deposit_paid, in_development, complete_pending_payment, fully_paid + quote/consultantNote/bcObjects. Payments manual (no Stripe). Notifications route to partner/client/BespoxAI per stage. |
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-approve/route.ts` | Partner UAT sign-off (S22) → uat_confirmed. notifyPartnerUatApproved. |
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-reject/route.ts` | Partner UAT reject (S22) with AI scope-creep analysis (mirrors direct route). notifyPartnerUatRejected. |
@@ -112,12 +131,14 @@
 | `RequirementsBuilder.tsx` | Full customer flow. STATUS_PIPELINE includes in_uat, uat_confirmed, uat_rejected. UAT panel driven by status. Assignment system: auto-assign to creator, admin reassign modal with workload indicators, dev mark unable. Developers see only their assigned requirements. Regen button shown ONLY in draft status; spec read-only thereafter. |
 | `SuperAdminDashboard.tsx` | Admin overview KPIs. |
 | `BillingCharts` (inside SuperAdminDashboard.tsx) | Extracted sub-component — do NOT merge back. |
+| `DevPlanPanel.tsx` | **(S23)** Shared, theme-agnostic Dev Plan render. Used by partner detail + admin page. Refs only `--rb-*` vars (surface sets `data-rb-theme`). `showPricing` prop gates BespoxAI day-rate/suggested-quote/quoting-notes (true=admin, false=partner). Slice 3 Stage B. Other 3 AI panels (feasibility/dev-notes/coding) NOT yet shared — future work. |
 
 ### Lib Files (`/lib`)
 
 | File | Purpose |
 |------|---------|
-| `notifications.ts` | All lifecycle emails. displayName() helper: preferredName ?? firstName. getCustomerEmail fetches both fields. **Partner pipeline (S22):** getPartnerRecipients(tenantId) → partner_admin+partner_developer; notifyPartner{NewRequirement,Answered,QuoteRejected,UatApproved,UatRejected}. notifyAdmins* = BespoxAI superadmins (direct pipeline only). |
+| `notifications.ts` | All lifecycle emails. displayName() helper: preferredName ?? firstName. getCustomerEmail fetches both fields. **Partner pipeline (S22):** getPartnerRecipients(tenantId) → partner_admin+partner_developer; notifyPartner{NewRequirement,Answered,QuoteRejected,UatApproved,UatRejected}. notifyAdmins* = BespoxAI superadmins (direct pipeline only). **(S23)** `PARTNER_PORTAL = process.env.PARTNER_PORTAL_URL ?? 'https://partners.bespoxai.com'`; ALL partner links use it (not PORTAL/main domain). Agreement PDF link removed (scrollable-accept now). |
+| `partner-auth.ts` | requirePartnerSession, assertTenantBelongsToPartner. **(S23)** assertPartnerCanDevelop (throws→403 for referral tier), getPartnerTier (returns tier, defaults self_serve). |
 | `cloudflare.ts` | createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken, addRdpIngress, createRdpDnsRecord |
 | `tenant-context.ts` | `buildTenantContext()` |
 | `tenants.ts` | `getTenantById()`, `buildODataUrl()`. agentPort fallback: 9099. |
@@ -169,6 +190,17 @@ testBcCompany         String?
 testBcPort            Int?
 rdpPassword           String?  -- BespoxAI-Support account password (generated on installer download)
 ```
+
+### PartnerAccount (key fields) — S23 additions
+```
+brandName            String?   -- white-label brand (used by partner dev-notes ghostwriter)
+subscriptionTier     String?   -- unbranded | branded (white-label)
+partnerTier          String    @default("self_serve")  -- self_serve | referral (S23)
+                                -- self_serve: full in-portal AI requirements tooling
+                                -- referral: partner sets up tenant only; BespoxAI manages reqs; dev routes 403
+partnerTheme         String    @default("dark")  -- dark | light (S23) — portal colour theme
+```
+Note: partnerTier/partnerTheme via raw SQL (ALTER TABLE ... ADD COLUMN IF NOT EXISTS). Both applied + in schema.prisma.
 
 ### Requirement — Status Values
 ```

@@ -1,12 +1,21 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 15, 2026 (Session 22)
+**Last Updated:** June 15, 2026 (Session 23)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 23 — Partner AI requirements parity + theme system + shared components** ⚠️ PENDING RICH TEST SIGN-OFF
+- [x] Notification portal-link fix — partner emails now link to `partners.bespoxai.com` (was main domain → wrong-portal loop). `PARTNER_PORTAL` const in `lib/notifications.ts`. (`1bfcfad`)
+- [x] **Slice 1** — 5 partner AI parity routes (feasibility, dev-plan, dev-notes, coding-assistant + commit) under `app/api/partner/tenants/[id]/requirements/[reqId]/`, mirroring direct routes; provider-agnostic; partner-scoped. `partnerTier` schema field + `assertPartnerCanDevelop`/`getPartnerTier` helpers. Referral tier → 403. (`1384ca0`)
+- [x] **Slice 2** — partner detail view AI panels (feasibility/spec/dev-plan/dev-notes/coding) + `CollapsibleCard` system w/ status-based defaults. Requirement type +devPlan/feasibilityCheckedAt/githubBranch. devPlan tier-gated (returned self_serve, stripped referral). (`085a603`)
+- [x] **Slice 3 Stage A** — dark/light theme system: `--rb-*` semantic CSS vars (2 scopes), `partnerTheme` field, Settings→Appearance toggle (admin-only), full re-theme of all 7 partner files (431 hex→vars). Light mode visually confirmed. (`3168858`)
+- [x] **Slice 3 Stage B** — shared `components/DevPlanPanel.tsx` consumed by partner + admin (theme-agnostic via `--rb-*`, `showPricing` gates BespoxAI pricing). 261 lines duplication removed. (`d50a04b`)
+- [ ] **NOT yet functionally tested** — deployed green, awaiting Rich's end-to-end verification. See "Session 23 — Test checklist" in PROJECT_SUMMARY.
+
 
 **Session 21 — Partner Fixes, White-Label, User Labelling, Health**
 - [x] White-label persistence fixed — stripe webhook used findUnique on non-unique stripeCustomerId; switched to findFirst + added @unique (SQL index applied). Branded plan now persists tier='branded'+isWhiteLabel=true
@@ -161,6 +170,12 @@ Logged Session 22 (partner-portal walkthrough, white-label "Endeavour" test acco
 ## Work Backlog (Prioritized)
 
 ### 🔴 HIGH PRIORITY
+
+#### 0. Session 23 follow-ups (after Rich's test sign-off)
+- **Slice 3 remainder:** extract the other 3 partner AI panels into shared, theme-agnostic components (same pattern as `DevPlanPanel`): **FeasibilityPanel**, **DevNotesPanel** (streaming), **CodingAssistantPanel** (streaming + commit). Each is its own session-sized chunk. Partner + admin both consume; theme via `data-rb-theme`, role via flags.
+- **Referral-tier billing/revenue-%:** `partnerTier='referral'` exists and gates tooling, but the commission/percentage-split + billing mechanics are NOT built (deferred). When built: referral tenants' requirements route to BespoxAI admin (not partner portal); partner earns a referral %.
+- **If tests surface issues:** PAT will be revoked after Session 23 — a new PAT is needed next session. All Session-23 code is deployed; fixes would be incremental on top.
+
 
 #### 1. ~~AI-Generated Functional Spec — Make Collapsible~~ ✅ DONE (Session 18)
 **Status:** Complete. Spec panel is independently collapsible. 
