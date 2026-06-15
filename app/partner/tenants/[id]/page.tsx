@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useParams, useSearchParams, usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useBranding } from '@/app/branding-provider'
 import { DevPlanPanel } from '@/components/DevPlanPanel'
@@ -1625,10 +1625,23 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
 // ── Requirements Tab ─────────────────────────────────────────────────────────
 
 function RequirementsTab({ tenantId }: { tenantId: string }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
-  const [selected, setSelected] = useState<Requirement | null>(null)
+
+  // Open requirement lives in the URL (?req=) so Back returns to the list, not out of the page.
+  const reqId = searchParams.get('req')
+  const selected = reqId ? requirements.find(r => r.id === reqId) ?? null : null
+
+  function openReq(id: string | null) {
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.set('tab', 'requirements')
+    if (id) sp.set('req', id); else sp.delete('req')
+    router.push(pathname + '?' + sp.toString(), { scroll: false })
+  }
 
   useEffect(() => {
     fetch('/api/partner/tenants/' + tenantId + '/requirements')
@@ -1640,12 +1653,11 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
   function handleCreated(req: Requirement) {
     setRequirements(prev => [req, ...prev])
     setShowNew(false)
-    setSelected(req)
+    openReq(req.id)
   }
 
   function handleUpdated(updated: Requirement) {
     setRequirements(prev => prev.map(r => r.id === updated.id ? updated : r))
-    setSelected(updated)
   }
 
   if (selected) {
@@ -1653,7 +1665,7 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
       <RequirementDetail
         req={selected}
         tenantId={tenantId}
-        onBack={() => setSelected(null)}
+        onBack={() => openReq(null)}
         onUpdated={handleUpdated}
       />
     )
@@ -1666,6 +1678,14 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
         onCreated={handleCreated}
         onCancel={() => setShowNew(false)}
       />
+    )
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)', letterSpacing: '0.1em' }}>LOADING</span>
+      </div>
     )
   }
 
@@ -1709,7 +1729,7 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
                 return (
                   <tr
                     key={req.id}
-                    onClick={() => setSelected(req)}
+                    onClick={() => openReq(req.id)}
                     style={{ borderBottom: i < topLevel.length - 1 ? '1px solid var(--rb-border)' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--rb-surface-2)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -1742,13 +1762,43 @@ function RequirementsTab({ tenantId }: { tenantId: string }) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PartnerTenantPage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)', letterSpacing: '0.1em' }}>LOADING</span></div>}>
+      <PartnerTenantPageInner />
+    </Suspense>
+  )
+}
+
+function PartnerTenantPageInner() {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const tenantId = params.id as string
 
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'overview' | 'requirements' | 'users' | 'settings' | 'bcagent'>('overview')
+
+  // Tab state lives in the URL (?tab=) so the browser Back button steps through tabs.
+  const TABS = ['overview', 'requirements', 'users', 'settings', 'bcagent'] as const
+  type TabKey = typeof TABS[number]
+  const tabParam = searchParams.get('tab')
+  const tab: TabKey = (TABS as readonly string[]).includes(tabParam ?? '') ? (tabParam as TabKey) : 'overview'
+
+  // Seed a default ?tab=overview when none present (no spurious history entry)
+  useEffect(() => {
+    if (!searchParams.get('tab')) {
+      router.replace(pathname + '?tab=overview', { scroll: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, pathname])
+
+  function goTab(next: TabKey) {
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.set('tab', next)
+    sp.delete('req') // leaving a tab clears any open requirement
+    router.push(pathname + '?' + sp.toString(), { scroll: false })
+  }
 
   useEffect(() => {
     fetch('/api/partner/tenants/' + tenantId)
@@ -1804,11 +1854,11 @@ export default function PartnerTenantPage() {
 
       {/* Tabs */}
       <div style={{ borderBottom: '1px solid var(--rb-border)', marginBottom: 24, display: 'flex' }}>
-        <TabBtn label="Overview"     active={tab === 'overview'}     onClick={() => setTab('overview')} />
-        <TabBtn label="Requirements" active={tab === 'requirements'} onClick={() => setTab('requirements')} />
-        <TabBtn label="Users"        active={tab === 'users'}        onClick={() => setTab('users')} />
-        <TabBtn label="Settings"     active={tab === 'settings'}     onClick={() => setTab('settings')} />
-        <TabBtn label="BCAgent"      active={tab === 'bcagent'}      onClick={() => setTab('bcagent')} />
+        <TabBtn label="Overview"     active={tab === 'overview'}     onClick={() => goTab('overview')} />
+        <TabBtn label="Requirements" active={tab === 'requirements'} onClick={() => goTab('requirements')} />
+        <TabBtn label="Users"        active={tab === 'users'}        onClick={() => goTab('users')} />
+        <TabBtn label="Settings"     active={tab === 'settings'}     onClick={() => goTab('settings')} />
+        <TabBtn label="BCAgent"      active={tab === 'bcagent'}      onClick={() => goTab('bcagent')} />
       </div>
 
       {/* Tab content */}
