@@ -73,6 +73,18 @@ textarea::placeholder {
   --rb-warning-soft:  rgba(200,149,42,0.1);
   --rb-hover:         #1C2128;
   --rb-active:        #1F2937;
+
+  /* Legacy admin-portal palette aliased onto the --rb-* system (see light scope). */
+  --ink:       var(--rb-text-bright);
+  --slate:     var(--rb-text-muted);
+  --fog:       var(--rb-border);
+  --white:     var(--rb-surface);
+  --cream:     var(--rb-bg);
+  --parchment: var(--rb-surface-2);
+  --forest:    var(--rb-primary);
+  --jade:      var(--rb-success);
+  --amber:     var(--rb-warning);
+  --gold:      var(--rb-warning);
 }
 
 [data-rb-theme="light"] {
@@ -97,4 +109,18 @@ textarea::placeholder {
   --rb-warning-soft:  rgba(200,149,42,0.12);
   --rb-hover:         #EDE8DC;
   --rb-active:        #E0D9C8;
+
+  /* Legacy admin-portal palette aliased onto the --rb-* system so the admin
+     portal (4k-line page using --ink/--slate/--fog/etc.) adopts the partner
+     theme and flips with the toggle without rewriting every call site. */
+  --ink:       var(--rb-text-bright);
+  --slate:     var(--rb-text-muted);
+  --fog:       var(--rb-border);
+  --white:     var(--rb-surface);
+  --cream:     var(--rb-bg);
+  --parchment: var(--rb-surface-2);
+  --forest:    var(--rb-primary);
+  --jade:      var(--rb-success);
+  --amber:     var(--rb-warning);
+  --gold:      var(--rb-warning);
 }

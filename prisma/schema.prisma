@@ -92,6 +92,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastSignInAt  DateTime?
+  uiTheme       String    @default("light")       // "light" | "dark" — admin portal theme preference
   accounts      Account[]
   sessions      Session[]
   queryLogs     QueryLog[]

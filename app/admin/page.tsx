@@ -100,6 +100,27 @@ function AdminPageInner() {
   const searchParams = useSearchParams()
   const user = session?.user as any
 
+  // Admin portal theme (dark | light) — mirrors the partner theme system.
+  // Sourced from the user's saved uiTheme; persisted via /api/admin/ui-theme.
+  const [uiTheme, setUiTheme] = useState<'light' | 'dark'>('light')
+  useEffect(() => {
+    let active = true
+    fetch('/api/admin/ui-theme', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (active && d?.uiTheme) setUiTheme(d.uiTheme === 'dark' ? 'dark' : 'light') })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+  async function changeTheme(t: 'light' | 'dark') {
+    setUiTheme(t) // optimistic
+    try {
+      await fetch('/api/admin/ui-theme', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uiTheme: t }),
+      })
+    } catch { /* keep optimistic state */ }
+  }
+
   // Tab is tracked in the URL (?tab=xxx) so the browser back button works
   const tabParam = (searchParams.get('tab') as Tab | null) ?? 'overview'
   const [tab, setTabState] = useState<Tab>(tabParam)
@@ -440,13 +461,13 @@ function AdminPageInner() {
   const initials = (user?.name ?? 'A').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
 
   if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)', letterSpacing: '0.1em' }}>
+    <div data-rb-theme={uiTheme} style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--rb-bg)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)', letterSpacing: '0.1em' }}>
       LOADING…
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)' }}>
+    <div data-rb-theme={uiTheme} style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-body)', background: 'var(--rb-bg)' }}>
 
       {/* Mobile backdrop */}
       {isMobile && sidebarOpen && (
@@ -454,11 +475,11 @@ function AdminPageInner() {
       )}
 
       {/* Sidebar */}
-      <aside style={{ width: sidebarOpen ? 220 : 0, flexShrink: 0, background: 'var(--ink)', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden', transition: 'width 0.2s ease', position: isMobile ? 'fixed' : 'relative', top: 0, left: 0, height: '100vh', zIndex: isMobile ? 200 : 'auto' as any }}>
+      <aside style={{ width: sidebarOpen ? 220 : 0, flexShrink: 0, background: '#0D1117', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden', transition: 'width 0.2s ease', position: isMobile ? 'fixed' : 'relative', top: 0, left: 0, height: '100vh', zIndex: isMobile ? 200 : 'auto' as any }}>
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: 'var(--cream)', letterSpacing: '-0.3px' }}>Bespox</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17, color: 'var(--amber)', letterSpacing: '0.04em', marginLeft: 3 }}>AI</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, color: '#F4EFE4', letterSpacing: '-0.3px' }}>Bespox</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 17, color: '#C8952A', letterSpacing: '0.04em', marginLeft: 3 }}>AI</span>
           </div>
           <div style={{ marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(200,149,42,0.7)' }}>
             Admin Portal
@@ -488,19 +509,19 @@ function AdminPageInner() {
         </nav>
 
         <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--amber), #8B6914)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: 'var(--ink)', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--amber), #8B6914)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: '#040E09', flexShrink: 0 }}>
             {initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(user as any)?.preferredName || (user as any)?.firstName || user?.name}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--amber)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{user?.role === 'superadmin' ? 'Super Admin' : user?.role === 'tenant_admin' ? 'Admin' : 'User'}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: '#F4EFE4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(user as any)?.preferredName || (user as any)?.firstName || user?.name}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#C8952A', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{user?.role === 'superadmin' ? 'Super Admin' : user?.role === 'tenant_admin' ? 'Admin' : 'User'}</div>
           </div>
           <button onClick={() => signOut({ callbackUrl: '/login' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(214,217,212,0.3)', fontSize: 14, padding: 4 }}>⎋</button>
         </div>
       </aside>
 
       {/* Main */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#ffffff' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--rb-bg)' }}>
         <header style={{ padding: isMobile ? '0 14px' : '0 32px', height: 60, flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--fog)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', fontSize: 16, padding: 4 }}>☰</button>
@@ -983,7 +1004,24 @@ function AdminPageInner() {
 
         {/* ── AI Setup tab ──────────────────────────────────────────────────── */}
         {tab === 'settings' && (
-          <AISettingsTab />
+          <>
+            <div style={{ background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--slate)', marginBottom: 4 }}>Appearance</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 14 }}>Theme for the admin portal. Your choice is saved to your account.</div>
+              <div style={{ display: 'inline-flex', border: '1px solid var(--fog)', borderRadius: 8, overflow: 'hidden' }}>
+                {(['light', 'dark'] as const).map(t => (
+                  <button key={t} onClick={() => changeTheme(t)} style={{
+                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: uiTheme === t ? 600 : 400,
+                    padding: '8px 20px', border: 'none', cursor: 'pointer',
+                    background: uiTheme === t ? 'var(--forest)' : 'transparent',
+                    color: uiTheme === t ? '#fff' : 'var(--slate)',
+                    textTransform: 'capitalize',
+                  }}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <AISettingsTab />
+          </>
         )}
 
         {/* ── Business Settings tab ─────────────────────────────────────────── */}

@@ -531,8 +531,16 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
 - **Signup tagline:** "CFO Intelligence for Business Central & Microsoft NAV"
 - **Homepage hero:** "Your Business Central. One portal. Complete control."
 - **Primary brand line:** "Bespoke AI. Built for the ERP Microsoft left behind."
-- **Backgrounds:** White (`#ffffff`) throughout portal — `--white: #ffffff` in globals.css
-- **Placeholder color:** `#8a9a8e` (global CSS)
+
+**Portal theming (source of truth):** The admin + partner portals use the shared
+`--rb-*` semantic CSS-variable theme system in `app/globals.css` (two scopes:
+`[data-rb-theme="dark"]` and `[data-rb-theme="light"]`), with a per-user/per-partner
+dark↔light toggle. The legacy admin palette vars (`--ink`, `--slate`, `--fog`,
+`--forest`, `--amber`, etc.) are aliased onto `--rb-*` inside those scopes, so they
+flip with the theme. Do NOT reintroduce hardcoded portal background/text colours
+(e.g. `#ffffff`) — use `--rb-*` (or the aliased legacy vars). The homepage
+(`public/index.html`), logo, and favicon are intentionally NOT themed and keep the
+original BespoxAI styling.
 
 ---
 
