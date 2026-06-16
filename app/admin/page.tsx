@@ -778,18 +778,13 @@ function AdminPageInner() {
                         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                           {(() => {
                             const c = classifyUser(u)
-                            const palette = c.type === 'partner'
-                              ? { bg: 'rgba(59,82,163,0.08)', fg: '#3B52A3', bd: 'rgba(59,82,163,0.25)' }
-                              : c.type === 'partner_customer'
-                              ? { bg: 'rgba(26,146,114,0.08)', fg: 'var(--forest)', bd: 'rgba(26,146,114,0.25)' }
-                              : c.type === 'internal'
-                              ? { bg: 'rgba(200,149,42,0.10)', fg: 'var(--amber)', bd: 'rgba(200,149,42,0.3)' }
-                              : { bg: 'rgba(59,82,73,0.06)', fg: 'var(--slate)', bd: 'rgba(59,82,73,0.2)' }
+                            const tone: PillTone = c.type === 'partner' ? 'info'
+                              : c.type === 'partner_customer' ? 'success'
+                              : c.type === 'internal' ? 'warning'
+                              : 'neutral'
                             return (
-                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: palette.bg, color: palette.fg, border: '1px solid ' + palette.bd, width: 'fit-content' }}>
-                                  {USER_TYPE_LABEL[c.type]}
-                                </span>
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                                <Pill tone={tone}>{USER_TYPE_LABEL[c.type]}</Pill>
                                 {c.partnerName ? <span style={{ fontSize: 10, color: 'var(--slate)' }}>{c.partnerName}</span> : null}
                               </span>
                             )
@@ -807,9 +802,9 @@ function AdminPageInner() {
                           })()}
                         </td>
                         <td style={tdStyle}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: u.role === 'superadmin' ? 'rgba(200,149,42,0.12)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.08)' : u.role === 'developer' ? 'rgba(59,82,163,0.08)' : 'rgba(59,82,73,0.08)', color: u.role === 'superadmin' ? 'var(--amber)' : u.role === 'tenant_admin' ? 'var(--forest)' : u.role === 'developer' ? '#3B52A3' : 'var(--slate)', border: `1px solid ${u.role === 'superadmin' ? 'rgba(200,149,42,0.3)' : u.role === 'tenant_admin' ? 'rgba(26,146,114,0.2)' : u.role === 'developer' ? 'rgba(59,82,163,0.2)' : 'rgba(59,82,73,0.2)'}` }}>
+                          <Pill tone={u.role === 'superadmin' ? 'warning' : u.role === 'tenant_admin' ? 'success' : u.role === 'developer' ? 'info' : 'neutral'}>
                             {u.role === 'superadmin' ? 'Super Admin' : u.role === 'tenant_admin' ? 'Admin' : u.role === 'developer' ? 'Developer' : 'User'}
-                          </span>
+                          </Pill>
                         </td>
                         <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
                           {new Date(u.createdAt).toLocaleDateString([], { dateStyle: 'short' })}
@@ -1264,32 +1259,35 @@ const inputStyle: React.CSSProperties = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusPill({ active }: { active: boolean }) {
+// Shared pill — one consistent badge style across all admin tables.
+// Variants map onto the --rb-* semantic palette so they theme + stay uniform.
+type PillTone = 'success' | 'danger' | 'warning' | 'info' | 'neutral'
+const PILL_TONE: Record<PillTone, { bg: string; fg: string; bd: string }> = {
+  success: { bg: 'var(--rb-success-soft, rgba(63,185,80,0.12))', fg: 'var(--rb-success)', bd: 'var(--rb-success)' },
+  danger:  { bg: 'var(--rb-danger-soft)',  fg: 'var(--rb-danger)',  bd: 'var(--rb-danger)' },
+  warning: { bg: 'var(--rb-warning-soft)', fg: 'var(--rb-warning)', bd: 'var(--rb-warning)' },
+  info:    { bg: 'var(--rb-accent-soft)',  fg: 'var(--rb-accent)',  bd: 'var(--rb-accent)' },
+  neutral: { bg: 'var(--rb-hover)',        fg: 'var(--rb-text-muted)', bd: 'var(--rb-border-strong)' },
+}
+function Pill({ tone, children }: { tone: PillTone; children: React.ReactNode }) {
+  const c = PILL_TONE[tone]
   return (
     <span style={{
-      fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em',
-      textTransform: 'uppercase', padding: '2px 8px', borderRadius: 8,
-      background: active ? 'rgba(26,146,114,0.08)' : 'rgba(163,45,45,0.06)',
-      color: active ? 'var(--forest)' : '#A32D2D',
-      border: '1px solid ' + (active ? 'rgba(26,146,114,0.2)' : 'rgba(163,45,45,0.2)'),
+      display: 'inline-block', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em',
+      textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, whiteSpace: 'nowrap',
+      background: c.bg, color: c.fg, border: '1px solid ' + c.bd,
     }}>
-      {active ? 'Active' : 'Inactive'}
+      {children}
     </span>
   )
 }
 
+function StatusPill({ active }: { active: boolean }) {
+  return <Pill tone={active ? 'success' : 'danger'}>{active ? 'Active' : 'Inactive'}</Pill>
+}
+
 function ConnectedPill({ connected }: { connected: boolean }) {
-  return (
-    <span style={{
-      fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em',
-      textTransform: 'uppercase', padding: '2px 8px', borderRadius: 8,
-      background: connected ? 'rgba(26,146,114,0.08)' : 'rgba(163,45,45,0.06)',
-      color: connected ? 'var(--forest)' : '#A32D2D',
-      border: '1px solid ' + (connected ? 'rgba(26,146,114,0.2)' : 'rgba(163,45,45,0.2)'),
-    }}>
-      {connected ? 'Connected' : 'Not Connected'}
-    </span>
-  )
+  return <Pill tone={connected ? 'success' : 'danger'}>{connected ? 'Connected' : 'Not Connected'}</Pill>
 }
 
 function FormRow({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {

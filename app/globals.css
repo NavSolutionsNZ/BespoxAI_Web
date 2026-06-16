@@ -65,6 +65,7 @@ textarea::placeholder {
   --rb-accent:        #58A6FF;
   --rb-accent-soft:   rgba(88,166,255,0.1);
   --rb-success:       #3FB950;
+  --rb-success-soft:  rgba(63,185,80,0.12);
   --rb-primary:       #238636;
   --rb-primary-hover: #2EA043;
   --rb-danger:        #F85149;
@@ -101,6 +102,7 @@ textarea::placeholder {
   --rb-accent:        #1A9272;
   --rb-accent-soft:   rgba(26,146,114,0.1);
   --rb-success:       #0A5C46;
+  --rb-success-soft:  rgba(10,92,70,0.10);
   --rb-primary:       #0A5C46;
   --rb-primary-hover: #0F6E56;
   --rb-danger:        #A32D2D;
