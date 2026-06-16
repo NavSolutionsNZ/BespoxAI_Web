@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 16, 2026 (Session 24)
+**Last Updated:** June 17, 2026 (Session 25)
 
 ---
 
@@ -44,6 +44,42 @@ git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "B
 git pull origin main
 git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
+
+---
+
+---
+
+## Session 25 Key Changes (June 17, 2026) — Partner is deliverer (full enforcement), client-user lifecycle, admin theme + table restyle
+
+**All deployed green. No pending sign-off — Rich verified each step live via screenshots as we went.**
+
+### 1. Assignment / deliverer model — FULLY enforced (the big one, 3 passes)
+The "partner is deliverer, superadmin read-only on partner tenants" rule was only half-wired. Screenshots showed superadmin had the Assign-developer dropdown on a partner customer (Acme/Endeavour) while the partner (Deano) had none — backwards. Root cause was NOT one button: a full audit found stale `tenant_admin`/`partner_admin` deliverer permissions across multiple surfaces. Fixed everywhere (see FILES_INVENTORY "Enforcement status" for the exact list): `408876c` (admin dropdown gate + partner assign route + direct PATCH guard), `7415e45` (RequirementsBuilder customer-dashboard leak — the original screenshot bug — + `/assign` + `/mark-unable` locked to internal/superadmin, removed redundant partner code). `683878a` branded the client-facing requirement labels via `useBranding()`.
+- **Lesson reinforced:** symptom-patching one screenshot at a time failed twice; a systematic grep-every-surface audit caught it. When a model rule is wrong in one place, audit ALL enforcement points before declaring done.
+
+### 2. Partner client-user lifecycle (was missing — users had been added directly in the DB)
+Partners could create a client *tenant* but had no flow to create the client's *login user*.
+- `405c78c` — **Invite client user** on the tenant Users tab (`ClientUsersTab`): partner_admin invites `tenant_admin`/`user`, temp password, branded welcome email, client logs in at main portal. New `getPartnerBrandName` + fully white-label `notifyUserWelcome`.
+- `4edbc60` — **Manage:** Deactivate/Reactivate, Resend invite (new pw + branded email), Remove. Self-action guards.
+- `a12e6fe` — **Reset password** (new pw, NO email, shown to partner) — distinct from Resend.
+- Full client-user action set now mirrors the direct portal: Invite / Resend / Reset pw / Deactivate / Remove.
+
+### 3. Partner portal polish (earlier in session)
+- `0975bc9` — URL-driven tabs (`?tab=`) + requirement selection (`?req=`) on the partner tenant detail → browser Back works (mirrors BespoxAI portal). Wrapped in Suspense (useSearchParams).
+- `10bfb29` — DB indexes for partner query paths (Requirement had ZERO): `Requirement(tenantId,createdAt)`, `(parentId)`, `(assignedDeveloperId)`, `Tenant(partnerAccountId)`. SQL applied. Indexes-only, no caching (avoid staleness).
+
+### 4. Admin portal re-theme + table restyle (staged)
+Rich: the original admin portal looked "bolted on"; the partner portal (built later) is cleaner — make admin match.
+- `dc156ce` — **Stage 1:** admin adopts the shared `--rb-*` theme + **per-user dark/light toggle** (DB-backed `User.uiTheme`, toggle in AI Setup). Legacy palette aliased onto `--rb-*` in `globals.css` (no 4k-line rewrite). Homepage/login/logo/favicon kept original. Sidebar = pinned dark island.
+- `73f7aca` — **Stage 2:** Users tab tidied — dropped the noisy managed-tenant pill clusters (partner staff aren't tenant members) for a clean partner-name label; removed a wasteful nested `tenants` query.
+- `d0a95a2` — **Stage 3:** swept remaining hardcoded colours so all tabs flip cleanly to dark.
+- `9e92ca3` — action buttons → clean partner bordered style (shared `ghostBtn`).
+- `5b215ea` — unified Status/Connected/Type/Role badges into one shared `Pill` (semantic tones).
+- `ed25a3c` — transparent table headers (dropped the `--parchment` bar) via shared `thStyle`.
+- **Doc:** removed the stale "Brand & Messaging" white-portal styling claims; pointer to `--rb-*` as source of truth.
+
+### Test data still to clean (Rich) — now removable via the new partner UI
+Demo Wholesale Ltd + Jordan Lee (partner team member) + `partner@testpartner.com` pw — from the S22 walkthrough, still on production. Jordan Lee showing on multiple tenants in the admin Users list is CORRECT (partner staff manage all the account's tenants; the column shows the partner account, not membership — clarified + de-pilled this session).
 
 ---
 
@@ -91,7 +127,7 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 **Goal:** mirror the BespoxAI AI requirements experience into the partner portal (AI spec refinement + dev tooling), add a dark/light theme toggle, and begin collapsing partner↔admin duplication into shared components.
 
-**⚠️ ALL OF SESSION 23 IS PENDING RICH'S TEST SIGN-OFF.** Deployed green on Vercel but not yet functionally verified end-to-end. See "Session 23 — Test checklist" below.
+**✅ SESSION 23 CONFIRMED LIVE** (verified across S24/S25 — partner AI parity, theme system, shared components all in production use). The "test checklist" below is historical.
 
 ### Six commits (all deployed green)
 1. `1bfcfad` — **Partner notification portal-link fix**
@@ -444,6 +480,19 @@ RDP setting and firewall rule can be left — do not disable RDP as it locks out
 - **GWM Dev Tenant ID:** `cmoqi33pu0000l3b0zusc5hgz` (tunnelSubdomain: gwmdev — NOT the test tenant)
 - **GWM Dev active requirement:** `cmpi4tisk00011422fazu1pxx` (req/cmpi4tis-add-release-date branch)
 - **Test Requirement ID:** `cmpdstipk0001tzkg2oq6zlrs`
+
+### Schema Changes — Session 25
+```sql
+-- Admin portal theme preference (per-user)
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "uiTheme" TEXT NOT NULL DEFAULT 'light';
+
+-- Partner-portal query-path indexes (Requirement had NONE)
+CREATE INDEX IF NOT EXISTS "Requirement_tenantId_createdAt_idx" ON "Requirement" ("tenantId", "createdAt");
+CREATE INDEX IF NOT EXISTS "Requirement_parentId_idx" ON "Requirement" ("parentId");
+CREATE INDEX IF NOT EXISTS "Requirement_assignedDeveloperId_idx" ON "Requirement" ("assignedDeveloperId");
+CREATE INDEX IF NOT EXISTS "Tenant_partnerAccountId_idx" ON "Tenant" ("partnerAccountId");
+```
+Applied ✅. prisma/schema.prisma updated ✅. (`uiTheme`: light|dark, default light.)
 
 ### Schema Changes — Session 23
 ```sql

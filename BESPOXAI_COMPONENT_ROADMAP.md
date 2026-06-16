@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 15, 2026 (Session 23)
+**Last Updated:** June 17, 2026 (Session 25)
 
 ---
 
@@ -8,7 +8,15 @@
 
 ### ✅ Production & Working
 
-**Session 23 — Partner AI requirements parity + theme system + shared components** ⚠️ PENDING RICH TEST SIGN-OFF
+**Session 25 — Deliverer model enforced, partner client-user lifecycle, admin re-theme** (all live; Rich verified live)
+- [x] **Assignment/deliverer model fully enforced** across all surfaces — partner is deliverer on partner tenants (assigns own staff), superadmin read-only; customers never assign. Fixed the customer-dashboard Reassign leak + stale `tenant_admin` perms on `/assign` + `/mark-unable`. (`408876c`, `7415e45`) See FILES_INVENTORY "Enforcement status".
+- [x] Client-facing requirement labels white-label via `useBranding()` (`683878a`)
+- [x] **Partner client-user lifecycle:** Invite (`405c78c`), Deactivate/Reactivate + Resend + Remove (`4edbc60`), Reset password (`a12e6fe`). `getPartnerBrandName` + white-label `notifyUserWelcome`. Was previously DB-only.
+- [x] Partner tenant detail: URL-driven tabs + requirement selection for Back-button correctness (`0975bc9`)
+- [x] Partner-portal query indexes (Requirement had none) (`10bfb29`)
+- [x] **Admin portal on shared `--rb-*` theme + per-user dark/light toggle** (`dc156ce`); Users tab de-pilled (`73f7aca`); dark-mode sweep (`d0a95a2`); uniform action buttons (`9e92ca3`); shared `Pill` (`5b215ea`); transparent table headers (`ed25a3c`). Reusable primitives: `ghostBtn`, `Pill`/`PILL_TONE`, `thStyle`.
+
+**Session 23 — Partner AI requirements parity + theme system + shared components** ✅ (S24/S25 confirmed live)
 - [x] Notification portal-link fix — partner emails now link to `partners.bespoxai.com` (was main domain → wrong-portal loop). `PARTNER_PORTAL` const in `lib/notifications.ts`. (`1bfcfad`)
 - [x] **Slice 1** — 5 partner AI parity routes (feasibility, dev-plan, dev-notes, coding-assistant + commit) under `app/api/partner/tenants/[id]/requirements/[reqId]/`, mirroring direct routes; provider-agnostic; partner-scoped. `partnerTier` schema field + `assertPartnerCanDevelop`/`getPartnerTier` helpers. Referral tier → 403. (`1384ca0`)
 - [x] **Slice 2** — partner detail view AI panels (feasibility/spec/dev-plan/dev-notes/coding) + `CollapsibleCard` system w/ status-based defaults. Requirement type +devPlan/feasibilityCheckedAt/githubBranch. devPlan tier-gated (returned self_serve, stripped referral). (`085a603`)
@@ -160,7 +168,7 @@ Logged Session 22 (partner-portal walkthrough, white-label "Endeavour" test acco
 - **Live agent health** indicator (see Bug 5 deferred).
 
 #### Other walkthrough notes (not bugs)
-- **Client-tenant Users tab is read-only** (no invite button) — by design; client users come via client onboarding/provisioning, not the partner portal. Documented in the manual.
+- **Client-tenant Users tab — (S25 UPDATE) now has full management:** Invite client user + Resend/Reset pw/Deactivate/Remove (partner_admin only). The earlier "read-only by design" note is SUPERSEDED — partners now own client-user onboarding from the portal.
 - **Partner Billing page is "Under Construction"** placeholder.
 - **Test data created on PRODUCTION during walkthrough — needs cleanup:** tenant **Demo Wholesale Ltd** (`cmqd4nvlm0001l9mcrs7by193`) and partner team member **Jordan Lee** (`jordan.lee@example-demo.test`). Also `partner@testpartner.com` password was set to `password` for the session (Rich to reset).
 - **"Last sign-in" column** (built Session 22) confirmed live and working on the partner Team page (showed "Never" for the newly-invited Jordan Lee, relative time for Deano).

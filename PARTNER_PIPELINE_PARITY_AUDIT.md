@@ -21,10 +21,10 @@ Legend: ✅ present · ❌ missing · ➖ N/A by design
 | UAT approve | ✅ | ✅ | S22 |
 | UAT reject (scope-creep AI) | ✅ | ✅ | S22 |
 | Pay balance | ✅ Stripe (`pay-balance`) | ➖ manual mark by partner | by design |
-| **See dev assignment / reassign** | ❌ should NOT (bug — currently leaks) | ❌ should NOT (bug — currently leaks) | **Bug in screenshots** |
+| **See dev assignment / reassign** | ✅ FIXED (S25) — internal staff only; customers never | ✅ FIXED (S25) — partner_admin assigns own staff; customer never | **RESOLVED `408876c`/`7415e45`** |
 | Prod go-live approval (`prod-approve`) | ✅ customer approves go-live | ❓ **UNVERIFIED** | see C5 |
 
-**Customer leak to fix:** `RequirementsBuilder.tsx` shows "Assigned to"/Reassign to `tenant_admin`/`partner_admin` (customer roles). Must be removed for ALL customers.
+**Customer leak — RESOLVED (S25):** `RequirementsBuilder.tsx` "Assigned to"/Reassign now gated `superadmin||developer` only; `/assign` superadmin-only + rejects partner tenants; `/mark-unable` assigned-dev-or-superadmin + rejects partner tenants. Partner assignment lives in the partner requirement PATCH (partner_admin, own staff).
 
 ---
 
@@ -40,8 +40,8 @@ Legend: ✅ present · ❌ missing · ➖ N/A by design
 | Mark work complete | ✅ | ✅ | |
 | Mark balance paid → fully_paid | ✅ | ✅ (manual) | |
 | AI: feasibility / spec / dev-plan / dev-notes / coding | ✅ | ✅ | S23 |
-| **Assign / reassign developer** | ✅ (`assign` + modal + workload) | ❌ **MISSING** | **C1** |
-| **Developer "mark unable to complete"** | ✅ (`mark-unable`) | ❌ **MISSING** | **C2** |
+| **Assign / reassign developer** | ✅ (`assign` + modal + workload) | ✅ DONE (S25) — partner PATCH, partner_admin, own staff | **C1 RESOLVED** |
+| **Developer "mark unable to complete"** | ✅ (`mark-unable`) | ❌ **MISSING** for partner_developer | **C2** (direct route now rejects partner tenants; partner equivalent not built) |
 | **Addendum (post-acceptance spec change)** | ✅ (`addendum`) | ❌ **MISSING** | **C3** |
 | **Submit-for-review (senior dev gate)** | ✅ (`submit-for-review`) | ❌ likely N/A — partner is the senior | verify, prob ➖ |
 | **Objects: fetch from BC / GitHub** (`fetch-objects`, `objects/*`, `sync-from-github`, `write`) | ✅ | ❌ **MISSING** | **C4** — but partner uses coding-assistant+commit; need to confirm the deploy path |
@@ -53,12 +53,12 @@ Legend: ✅ present · ❌ missing · ➖ N/A by design
 
 ## C. The real gaps, prioritized
 
-### C1 — Partner developer assignment/reassign (the trigger for this audit)
-- Partner has NO assign UI or API. Only auto-assign-to-creator at create time.
-- Build: partner assign route + reassign modal (workload indicators) gated to **partner_admin**; candidates = that partner's `partner_admin` + `partner_developer` users.
+### C1 — Partner developer assignment/reassign (the trigger for this audit) ✅ RESOLVED (S25)
+- DONE: partner requirement PATCH (`app/api/partner/tenants/[id]/requirements/[reqId]`) accepts `assignedDeveloperId`, gated `partner_admin`, validates assignee is a `PartnerUser` of that account. UI dropdown in partner requirement detail (candidates from `/api/partner/users`). Admin side made read-only on partner tenants. (`408876c`)
+- NOT built: the workload-indicator modal (direct portal has one); partner uses a simple dropdown. Add the modal later if wanted — not required for parity.
 
-### C2 — Partner developer "mark unable to complete"
-- Mirror `mark-unable` for `partner_developer` self-service.
+### C2 — Partner developer "mark unable to complete" (still open)
+- Mirror `mark-unable` for `partner_developer` self-service. NOTE: the direct `/mark-unable` now REJECTS partner tenants (S25), so a partner-side route is required for this to work at all on partner tenants.
 
 ### C3 — Addendum (post-acceptance scope change)
 - Direct flow lets the deliverer add an addendum after a spec is accepted (quoted+). No partner equivalent. Partner deliverer needs this to handle change requests without a fresh requirement.

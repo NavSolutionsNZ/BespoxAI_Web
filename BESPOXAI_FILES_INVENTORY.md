@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 16, 2026 (Session 24)
+**Last Updated: June 17, 2026 (Session 25)
 
 ---
 
@@ -27,6 +27,14 @@ There are **three relationships**, two **delivery pipelines**, and a strict rule
 - **Branding:** a partner tenant's customer sees the **partner's** brand **iff** the partner is white-label (`isWhiteLabel`/`subscriptionTier='branded'`); otherwise BespoxAI default is acceptable. Direct customers see BespoxAI. (Gate lives in `resolveBranding` — `lib/branding.ts`.)
 - **Feature parity is the standing goal:** the partner-as-deliverer must be able to run the **same full requirement lifecycle** BespoxAI can, and the partner's customer must get the **same customer experience** a direct customer gets (auto-feasibility on create, spec generation, quote approval, UAT, etc.). When mirroring BespoxAI functionality into the partner pipeline, mirror it **completely** — routes AND UI entry points AND notifications. See `PARTNER_PIPELINE_PARITY_AUDIT` (repo root) for the live gap list.
 
+### Enforcement status (where the rules live in code — verified S24/S25)
+The assignment rule took 3 passes before a full audit caught every surface. It is now enforced in **all** of these places — when touching any, keep them consistent:
+- **Assignment (admin/direct side):** `app/admin/page.tsx` assign dropdown shows ONLY when `selected.tenant.partnerAccountId === null` (fail-safe: unknown → treated partner-managed, no dropdown); partner-managed shows read-only badge. `app/api/requirements/[id]` PATCH **rejects** `assignedDeveloperId` on partner tenants (403). `app/api/requirements/[id]/assign` is superadmin-only + rejects partner tenants. `app/api/requirements/[id]/mark-unable` is assigned-dev-or-superadmin only + rejects partner tenants.
+- **Assignment (partner/deliverer side):** `app/api/partner/tenants/[id]/requirements/[reqId]` PATCH accepts `assignedDeveloperId` gated to `partner_admin`, validates the assignee is a `PartnerUser` of that account. UI dropdown in the partner requirement detail (partner_admin only), candidates from `/api/partner/users`.
+- **Customer dashboard (`components/RequirementsBuilder.tsx`):** the "Assigned to" block + Reassign are `superadmin||developer` ONLY (was leaking to `tenant_admin`/`partner_admin` — the original screenshot bug). Customers never see assignment.
+- **Legitimately-customer actions that KEEP `tenant_admin`:** `uat-approve`, `uat-reject`, `prod-approve` — these are customer approvals, NOT deliverer actions. Correct as-is.
+- **Client-facing brand labels:** partner requirement detail (`app/partner/tenants/[id]/page.tsx`) resolves a `brandLabel` via `useBranding()` for client-facing headers (Feasibility Check / Note from / Questions from) — shows partner brand when white-label, else "BespoxAI".
+
 ### FUTURE (NOT built — do not implement as if live)
 - **Referral tier** (`partnerTier='referral'`): partner only refers the customer and earns a commission; **BespoxAI** manages delivery. The field exists and gates dev routes (403), but the commission/billing mechanics and the "route referral reqs to BespoxAI admin" behaviour are **NOT built**. Today **every** partner is `self_serve` (partner-managed). Do not treat anyone as referral-managed yet.
 
@@ -34,6 +42,9 @@ There are **three relationships**, two **delivery pipelines**, and a strict rule
 
 ## ⚠️ Architecture Notes
 
+- **(S25) Admin portal now uses the shared `--rb-*` theme system + a per-user dark/light toggle** (mirrors the partner portal). `User.uiTheme` (`'light'|'dark'`, default `light`) stores the choice; `GET/PATCH /api/admin/ui-theme` (superadmin-only) reads/writes it. `app/admin/page.tsx` wraps its shell in `data-rb-theme={uiTheme}`; toggle is an Appearance section in the **AI Setup** tab. The legacy admin palette vars (`--ink/--slate/--fog/--white/--cream/--parchment/--forest/--jade/--amber/--gold`) are **aliased onto `--rb-*` inside both `[data-rb-theme]` scopes in `globals.css`** — so the 4k-line admin page's existing `var(--ink)`-style call sites theme + flip WITHOUT a rewrite. The `:root` originals are untouched, so **homepage (`public/index.html`), login, logo, favicon keep original styling** (intentionally NOT themed). The admin **sidebar is a pinned dark island** (explicit colours, does not flip). DO NOT reintroduce hardcoded portal bg/text hex (e.g. `#ffffff`) in admin/partner — use `--rb-*` or the aliased legacy vars.
+- **(S25) Shared admin table primitives** (in `app/admin/page.tsx`): `ghostBtn` (clean bordered action button, partner style), `Pill` + `PILL_TONE` (one badge with semantic tones success|danger|warning|info|neutral on `--rb-*` — StatusPill/ConnectedPill/Type badge/Role badge all route through it), `thStyle` (transparent header, bottom border only — no filled bar). Change these once to restyle every admin table. Interactive chips (suggested-questions, entity tags) are NOT pills — leave as buttons.
+- **(S25) `notifyUserWelcome` is fully white-label:** resolves both from-address (`getPartnerFromEmail`) and brand label (`getPartnerBrandName(tenantId)`, new) from the tenant. Subject/body/button use the partner brand for white-label partner clients; direct + non-white-label fall back to "BespoxAI" automatically. All existing callers pass `tenantId`, so no signature change.
 - Live product at bespoxai.com is a full **Next.js application**
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
@@ -151,6 +162,9 @@ There are **three relationships**, two **delivery pipelines**, and a strict rule
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-approve/route.ts` | Partner UAT sign-off (S22) → uat_confirmed. notifyPartnerUatApproved. |
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-reject/route.ts` | Partner UAT reject (S22) with AI scope-creep analysis (mirrors direct route). notifyPartnerUatRejected. |
 | `api/partner/tenants/route.ts` | List/create partner tenants. Select includes `tunnelId` (Bug 5 — connection pill). |
+| `api/partner/tenants/[id]/users/route.ts` | **(S25)** GET/POST client-tenant users. POST = partner_admin invites a CLIENT login user (`tenant_admin`\|`user` only, never developer/partner), temp password, mustChangePassword, branded `notifyUserWelcome`. requirePartnerSession('partner_admin') + assertTenantBelongsToPartner. Client logs in at MAIN portal. |
+| `api/partner/tenants/[id]/users/[userId]/route.ts` | **(S25)** PATCH `enable`\|`disable`\|`resend`\|`reset` + DELETE. resend = new temp pw + branded email; reset = new temp pw, NO email, returns pw. Every action scoped to `{id, tenantId}` (can't touch other tenants' users); self-guard on disable/delete. |
+| `api/admin/ui-theme/route.ts` | **(S25)** GET/PATCH superadmin's `User.uiTheme` (`light`\|`dark`) for the admin portal theme toggle. |
 
 ### Components (`/components`)
 
@@ -193,6 +207,7 @@ firstName          String?
 lastName           String?
 preferredName      String?   -- address by this if set, else firstName (never full name)
 mustChangePassword Boolean   @default(false)
+uiTheme            String    @default("light")  -- (S25) admin portal theme: light|dark
 role: "superadmin" | "tenant_admin" | "user" | "developer"
 ```
 
