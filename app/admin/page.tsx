@@ -24,33 +24,29 @@ interface User {
   id: string; email: string; name: string; role: string; active: boolean
   tenantId: string; createdAt: string; lastSignInAt?: string | null
   tenant: { name: string; active: boolean; partnerAccount?: { name: string } | null } | null
-  partnerUsers?: { role: string; partnerAccount: { name: string; tenants?: { id: string; name: string }[] } | null }[]
+  partnerUsers?: { role: string; partnerAccount: { name: string } | null }[]
   _count: { queryLogs: number }
 }
 
 type UserType = 'partner' | 'partner_customer' | 'direct' | 'internal'
 
 // Classify a user for the admin Users list.
-// - partner: member of a partner team (has a PartnerUser record); managedTenants lists the
-//   tenants that partner account manages (a partner can manage many)
+// - partner: member of a partner team (has a PartnerUser record); partnerName = account(s)
 // - partner_customer: belongs to a tenant managed by a partner
 // - internal: superadmin/developer (BespoxAI staff)
 // - direct: a normal BespoxAI customer
-function classifyUser(u: User): { type: UserType; partnerName: string | null; managedTenants: string[] } {
+function classifyUser(u: User): { type: UserType; partnerName: string | null } {
   if (u.partnerUsers && u.partnerUsers.length > 0) {
     const names = u.partnerUsers.map(pu => pu.partnerAccount?.name).filter(Boolean) as string[]
-    const managedTenants = u.partnerUsers
-      .flatMap(pu => pu.partnerAccount?.tenants ?? [])
-      .map(t => t.name)
-    return { type: 'partner', partnerName: names.length > 0 ? names.join(', ') : null, managedTenants }
+    return { type: 'partner', partnerName: names.length > 0 ? names.join(', ') : null }
   }
   if (u.tenant?.partnerAccount) {
-    return { type: 'partner_customer', partnerName: u.tenant.partnerAccount.name, managedTenants: [] }
+    return { type: 'partner_customer', partnerName: u.tenant.partnerAccount.name }
   }
   if (u.role === 'superadmin' || u.role === 'developer') {
-    return { type: 'internal', partnerName: null, managedTenants: [] }
+    return { type: 'internal', partnerName: null }
   }
-  return { type: 'direct', partnerName: null, managedTenants: [] }
+  return { type: 'direct', partnerName: null }
 }
 
 const USER_TYPE_LABEL: Record<UserType, string> = {
@@ -803,19 +799,9 @@ function AdminPageInner() {
                           {(() => {
                             const c = classifyUser(u)
                             if (c.type === 'partner') {
-                              if (c.managedTenants.length === 0) {
-                                return <span style={{ color: 'var(--slate)', fontStyle: 'italic', fontSize: 11 }}>no tenants yet</span>
-                              }
-                              const shown = c.managedTenants.slice(0, 3)
-                              const extra = c.managedTenants.length - shown.length
-                              return (
-                                <span title={c.managedTenants.join(', ')} style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, maxWidth: 260 }}>
-                                  {shown.map((name, i) => (
-                                    <span key={i} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: 'rgba(26,146,114,0.08)', color: 'var(--forest)', border: '1px solid rgba(26,146,114,0.2)', whiteSpace: 'nowrap' }}>{name}</span>
-                                  ))}
-                                  {extra > 0 ? <span style={{ fontSize: 10, color: 'var(--slate)', whiteSpace: 'nowrap' }}>{'+' + extra + ' more'}</span> : null}
-                                </span>
-                              )
+                              // Partner staff aren't members of client tenants — they manage the
+                              // partner account. Show the account, not a pill-cluster of every tenant.
+                              return <span style={{ whiteSpace: 'nowrap', color: 'var(--slate)' }}>{c.partnerName || 'Partner account'}</span>
                             }
                             return <span style={{ whiteSpace: 'nowrap' }}>{u.tenant?.name || '—'}</span>
                           })()}
