@@ -877,9 +877,9 @@ function AdminPageInner() {
               </button>
             </div>
             {signupsError ? (
-              <div style={{ background: '#fff0f0', border: '1px solid #fcc', borderRadius: 8, padding: 16, color: '#A32D2D', fontSize: 13 }}>
+              <div style={{ background: 'var(--rb-danger-soft)', border: '1px solid var(--rb-danger)', borderRadius: 8, padding: 16, color: 'var(--rb-danger)', fontSize: 13 }}>
                 ⚠ Failed to load signups: <strong>{signupsError}</strong>
-                <button onClick={() => setSignupsLoaded(false)} style={{ marginLeft: 12, background: 'none', border: 'none', color: '#A32D2D', cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>Retry</button>
+                <button onClick={() => setSignupsLoaded(false)} style={{ marginLeft: 12, background: 'none', border: 'none', color: 'var(--rb-danger)', cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>Retry</button>
               </div>
             ) : signups.length === 0 ? (
               <p style={{ color: 'var(--slate)', fontSize: 14 }}>No signup requests yet.</p>
@@ -3560,7 +3560,7 @@ function AISettingsTab() {
               {config.provider === 'anthropic' && !config.anthropicKeySet && <span style={{ color: '#A32D2D' }}> · ⚠ ANTHROPIC_API_KEY missing</span>}
               {config.provider === 'openai'    && !config.openaiKeySet    && <span style={{ color: '#A32D2D' }}> · ⚠ OPENAI_API_KEY missing</span>}
             </p>
-            {config.updatedBy && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(0,0,0,0.3)', margin: '3px 0 0' }}>Last saved by {config.updatedBy}</p>}
+            {config.updatedBy && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--slate)', margin: '3px 0 0' }}>Last saved by {config.updatedBy}</p>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
