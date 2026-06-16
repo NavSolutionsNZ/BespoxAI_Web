@@ -695,7 +695,7 @@ function AdminPageInner() {
                           </select>
                         </td>
                         <td style={tdStyle}>
-                          <button onClick={() => toggleTenant(t.id, t.active)} style={{ ...ghostBtn, color: t.active ? '#A32D2D' : 'var(--forest)' }}>
+                          <button onClick={() => toggleTenant(t.id, t.active)} style={{ ...ghostBtn, color: t.active ? 'var(--rb-warning)' : 'var(--rb-success)' }}>
                             {t.active ? 'Deactivate' : 'Activate'}
                           </button>
                           <button
@@ -819,7 +819,7 @@ function AdminPageInner() {
                         </td>
                         <td style={tdStyle}><StatusPill active={u.active} /></td>
                         <td style={tdStyle}>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
                             {u.role === 'superadmin' ? (
                               <span style={{ fontSize: 10, color: 'var(--slate)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>🔒 protected</span>
                             ) : (
@@ -827,7 +827,7 @@ function AdminPageInner() {
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => toggleUserRole(u)}
-                                  style={{ ...ghostBtn, color: u.role === 'tenant_admin' ? 'var(--slate)' : u.role === 'developer' ? 'var(--slate)' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
+                                  style={{ ...ghostBtn, color: u.role === 'user' ? 'var(--rb-success)' : 'var(--rb-text-muted)', whiteSpace: 'nowrap' }}
                                   title={u.role === 'tenant_admin' ? (canBeDeveloper(u) ? 'Make Developer' : 'Make User') : u.role === 'developer' ? 'Make User' : 'Make Admin'}
                                 >
                                   {userAction === u.id ? '…' : u.role === 'tenant_admin' ? (canBeDeveloper(u) ? '→ Dev' : '→ User') : u.role === 'developer' ? '→ User' : '↑ Admin'}
@@ -835,21 +835,21 @@ function AdminPageInner() {
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => toggleUserActive(u.id, u.active)}
-                                  style={{ ...ghostBtn, color: u.active ? '#A32D2D' : 'var(--forest)', fontSize: 10, whiteSpace: 'nowrap' }}
+                                  style={{ ...ghostBtn, color: u.active ? 'var(--rb-warning)' : 'var(--rb-success)', whiteSpace: 'nowrap' }}
                                 >
                                   {userAction === u.id ? '…' : u.active ? 'Disable' : 'Enable'}
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => resetUserPassword(u.id, u.email)}
-                                  style={{ ...ghostBtn, color: 'var(--slate)', fontSize: 10, whiteSpace: 'nowrap' }}
+                                  style={{ ...ghostBtn, color: 'var(--rb-text-muted)', whiteSpace: 'nowrap' }}
                                 >
                                   Reset pw
                                 </button>
                                 <button
                                   disabled={userAction === u.id}
                                   onClick={() => { setError(''); setConfirmDelete(u.id) }}
-                                  style={{ ...ghostBtn, color: '#A32D2D', fontSize: 10, whiteSpace: 'nowrap' }}
+                                  style={{ ...ghostBtn, color: 'var(--rb-danger)', border: '1px solid var(--rb-danger-soft)', fontSize: 12, whiteSpace: 'nowrap' }}
                                 >
                                   Delete
                                 </button>
@@ -1239,9 +1239,9 @@ const btnStyle = {
 }
 
 const ghostBtn: React.CSSProperties = {
-  background: 'none', border: 'none', cursor: 'pointer',
-  fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em',
-  padding: '4px 8px',
+  background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+  cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12,
+  color: 'var(--rb-text-muted)', padding: '4px 10px',
 }
 
 const thStyle: React.CSSProperties = {
