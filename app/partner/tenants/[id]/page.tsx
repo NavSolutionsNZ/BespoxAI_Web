@@ -1769,8 +1769,134 @@ export default function PartnerTenantPage() {
   )
 }
 
+// ── Client Users Tab ─────────────────────────────────────────────────────────
+
+function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin }: {
+  tenantId: string
+  initialUsers: { id: string; name?: string | null; firstName?: string | null; email: string; role: string; createdAt: string }[]
+  isPartnerAdmin: boolean
+}) {
+  const [users, setUsers] = useState<any[]>(initialUsers ?? [])
+  const [showInvite, setShowInvite] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const roleRef = useRef<HTMLSelectElement>(null)
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+    color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)',
+    letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6,
+  }
+
+  async function submit() {
+    setErr('')
+    const email = emailRef.current?.value?.trim() ?? ''
+    if (!email) { setErr('Email is required.'); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/users', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name: nameRef.current?.value?.trim() || null, userRole: roleRef.current?.value || 'tenant_admin' }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setErr(data.error || 'Failed to invite user'); setSaving(false); return }
+      setUsers(prev => [...prev, data.user])
+      setTempPassword(data.tempPassword)
+      setShowInvite(false)
+    } catch {
+      setErr('Failed to invite user — please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <SectionLabel>Tenant Users</SectionLabel>
+        {isPartnerAdmin && !showInvite ? (
+          <button onClick={() => { setShowInvite(true); setTempPassword(null); setErr('') }}
+            style={{ background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, padding: '7px 14px', cursor: 'pointer' }}>
+            + Invite client user
+          </button>
+        ) : null}
+      </div>
+
+      {tempPassword ? (
+        <div style={{ background: 'rgba(63,185,80,0.08)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', margin: '0 0 8px' }}>
+            Client user created. A welcome email with these credentials has been sent.
+          </p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>
+            Temporary password: <code style={{ background: 'var(--rb-code)', padding: '2px 6px', borderRadius: 4, color: 'var(--rb-text-bright)' }}>{tempPassword}</code>
+          </p>
+        </div>
+      ) : null}
+
+      {showInvite ? (
+        <div style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>Name</label>
+              <input ref={nameRef} style={inputStyle} placeholder="Client contact name" />
+            </div>
+            <div>
+              <label style={labelStyle}>Role</label>
+              <select ref={roleRef} defaultValue="tenant_admin" style={inputStyle}>
+                <option value="tenant_admin">Administrator</option>
+                <option value="user">User</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Email</label>
+            <input ref={emailRef} type="email" style={inputStyle} placeholder="client@company.com" />
+          </div>
+          {err ? <p style={{ color: 'var(--rb-danger)', fontFamily: 'var(--font-body)', fontSize: 12, margin: '0 0 10px' }}>{err}</p> : null}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setShowInvite(false); setErr('') }} style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={submit} disabled={saving} style={{ background: 'var(--rb-primary)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '8px 20px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Inviting…' : 'Send invite'}</button>
+          </div>
+        </div>
+      ) : null}
+
+      {users.length === 0 ? (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>No users on this tenant yet.</p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {['Name','Email','Role','Joined'].map(h => (
+                <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id} style={{ borderTop: '1px solid var(--rb-border)' }}>
+                <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)' }}>{u.name ?? u.firstName ?? '—'}</td>
+                <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{u.email}</td>
+                <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
+                <td style={{ padding: '10px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(u.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  )
+}
+
 function PartnerTenantPageInner() {
   const params = useParams()
+  const { data: _session } = useSession()
+  const tenantIsPartnerAdmin = (_session?.user as any)?.partnerRole === 'partner_admin'
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1865,32 +1991,7 @@ function PartnerTenantPageInner() {
       {tab === 'overview' ? <OverviewTab tenant={tenant} /> : null}
       {tab === 'requirements' ? <RequirementsTab tenantId={tenantId} /> : null}
       {tab === 'users' ? (
-        <Card>
-          <SectionLabel>Tenant Users</SectionLabel>
-          {tenant.users.length === 0 ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>No users on this tenant yet.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Name','Email','Role','Joined'].map(h => (
-                    <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tenant.users.map(u => (
-                  <tr key={u.id} style={{ borderTop: '1px solid var(--rb-border)' }}>
-                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)' }}>{u.name ?? u.firstName ?? '—'}</td>
-                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{u.email}</td>
-                    <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
-                    <td style={{ padding: '10px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(u.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
+        <ClientUsersTab tenantId={tenantId} initialUsers={tenant.users} isPartnerAdmin={tenantIsPartnerAdmin} />
       ) : null}
       {tab === 'settings' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

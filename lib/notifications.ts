@@ -103,16 +103,17 @@ export async function notifyUserWelcome(params: {
 }) {
   const { to, name, tempPassword, tenantName, role, tenantId } = params
   const partnerFrom = tenantId ? await getPartnerFromEmail(tenantId) : null
+  const brand = await getPartnerBrandName(tenantId)
   const greeting = name ? 'Hi ' + name + ',' : 'Hi,'
   const roleLabel = role === 'tenant_admin' ? 'Administrator' : role === 'developer' ? 'Developer' : 'User'
   try {
     await sendEmail({
       to,
       from:    partnerFrom ?? undefined,
-      subject: 'Your BespoxAI account is ready',
+      subject: `Your ${brand} account is ready`,
       html: wrap(`
         <p>${greeting}</p>
-        <p>Your BespoxAI account for <strong>${tenantName}</strong> has been set up.
+        <p>Your ${brand} account for <strong>${tenantName}</strong> has been set up.
         You've been added as a <strong>${roleLabel}</strong>.</p>
 
         <div style="background:#f5f5f0;border-radius:8px;padding:18px 20px;margin:20px 0">
@@ -127,7 +128,7 @@ export async function notifyUserWelcome(params: {
         </p>
 
         <a href="${PORTAL}/login" style="display:inline-block;background:#0A5C46;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:600;margin:8px 0">
-          Sign in to BespoxAI →
+          Sign in to ${brand} →
         </a>
 
         <p style="font-size:12px;color:#8a9a8e;margin-top:24px">
@@ -544,6 +545,27 @@ export async function getPartnerFromEmail(tenantId: string): Promise<string | nu
     return null
   } catch {
     return null
+  }
+}
+
+// Brand label for a tenant's emails: the white-label partner's brandName, else 'BespoxAI'.
+// Direct tenants (no partner) and non-white-label partners fall back to 'BespoxAI'.
+export async function getPartnerBrandName(tenantId?: string | null): Promise<string> {
+  if (!tenantId) return 'BespoxAI'
+  try {
+    const tenant = await (prisma as any).tenant.findUnique({
+      where:  { id: tenantId },
+      select: {
+        partnerAccount: {
+          select: { isWhiteLabel: true, brandName: true },
+        },
+      },
+    })
+    const p = tenant?.partnerAccount
+    if (p?.isWhiteLabel && p?.brandName) return p.brandName as string
+    return 'BespoxAI'
+  } catch {
+    return 'BespoxAI'
   }
 }
 
