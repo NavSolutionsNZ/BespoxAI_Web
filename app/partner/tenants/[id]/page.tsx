@@ -1771,12 +1771,15 @@ export default function PartnerTenantPage() {
 
 // ── Client Users Tab ─────────────────────────────────────────────────────────
 
-function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin }: {
+function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin, currentUserId }: {
   tenantId: string
-  initialUsers: { id: string; name?: string | null; firstName?: string | null; email: string; role: string; createdAt: string }[]
+  initialUsers: { id: string; name?: string | null; firstName?: string | null; email: string; role: string; createdAt: string; active?: boolean }[]
   isPartnerAdmin: boolean
+  currentUserId: string
 }) {
   const [users, setUsers] = useState<any[]>(initialUsers ?? [])
+  const [rowErr, setRowErr] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [showInvite, setShowInvite] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -1813,6 +1816,60 @@ function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin }: {
       setErr('Failed to invite user — please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function setActive(u: any, active: boolean) {
+    setRowErr('')
+    setBusyId(u.id)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/users/' + u.id, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: active ? 'enable' : 'disable' }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRowErr(data.error || 'Action failed'); return }
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, active } : x))
+    } catch {
+      setRowErr('Action failed — please try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function resend(u: any) {
+    if (!window.confirm('Resend the invite to ' + u.email + '?\n\nThis will RESET their password — any existing temporary or chosen password will stop working, and a new welcome email will be sent.')) return
+    setRowErr('')
+    setBusyId(u.id)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/users/' + u.id, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resend' }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRowErr(data.error || 'Resend failed'); return }
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, active: true } : x))
+      setTempPassword(data.tempPassword)
+    } catch {
+      setRowErr('Resend failed — please try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function remove(u: any) {
+    if (!window.confirm('Remove ' + u.email + '?\n\nThis permanently deletes their login. This cannot be undone.')) return
+    setRowErr('')
+    setBusyId(u.id)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/users/' + u.id, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) { setRowErr(data.error || 'Remove failed'); return }
+      setUsers(prev => prev.filter(x => x.id !== u.id))
+    } catch {
+      setRowErr('Remove failed — please try again.')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -1866,26 +1923,47 @@ function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin }: {
         </div>
       ) : null}
 
+      {rowErr ? <p style={{ color: 'var(--rb-danger)', fontFamily: 'var(--font-body)', fontSize: 12, margin: '0 0 10px' }}>{rowErr}</p> : null}
+
       {users.length === 0 ? (
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>No users on this tenant yet.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Name','Email','Role','Joined'].map(h => (
+              {['Name','Email','Role','Status','Joined'].map(h => (
                 <th key={h} style={{ padding: '6px 0', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingRight: 24 }}>{h}</th>
               ))}
+              {isPartnerAdmin ? <th style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Actions</th> : null}
             </tr>
           </thead>
           <tbody>
-            {users.map(u => (
-              <tr key={u.id} style={{ borderTop: '1px solid var(--rb-border)' }}>
-                <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)' }}>{u.name ?? u.firstName ?? '—'}</td>
-                <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{u.email}</td>
-                <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
-                <td style={{ padding: '10px 0', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(u.createdAt)}</td>
-              </tr>
-            ))}
+            {users.map(u => {
+              const isActive = u.active !== false
+              const isSelf = u.id === currentUserId
+              const busy = busyId === u.id
+              return (
+                <tr key={u.id} style={{ borderTop: '1px solid var(--rb-border)', opacity: isActive ? 1 : 0.55 }}>
+                  <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)' }}>{u.name ?? u.firstName ?? '—'}</td>
+                  <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>{u.email}</td>
+                  <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u.role.replace('tenant_','')}</td>
+                  <td style={{ padding: '10px 0', paddingRight: 24, fontFamily: 'var(--font-mono)', fontSize: 11, color: isActive ? 'var(--rb-success)' : 'var(--rb-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{isActive ? 'Active' : 'Inactive'}</td>
+                  <td style={{ padding: '10px 0', paddingRight: isPartnerAdmin ? 24 : 0, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>{fmtDate(u.createdAt)}</td>
+                  {isPartnerAdmin ? (
+                    <td style={{ padding: '10px 0', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button onClick={() => resend(u)} disabled={busy}
+                        style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 10px', marginLeft: 6, cursor: busy ? 'wait' : 'pointer' }}>Resend</button>
+                      <button onClick={() => setActive(u, !isActive)} disabled={busy || isSelf}
+                        title={isSelf ? 'You cannot deactivate your own account' : ''}
+                        style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: isSelf ? 'var(--rb-text-muted)' : (isActive ? 'var(--rb-warning)' : 'var(--rb-success)'), fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 10px', marginLeft: 6, cursor: (busy || isSelf) ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}>{isActive ? 'Deactivate' : 'Reactivate'}</button>
+                      <button onClick={() => remove(u)} disabled={busy || isSelf}
+                        title={isSelf ? 'You cannot remove your own account' : ''}
+                        style={{ background: 'none', border: '1px solid var(--rb-danger-soft)', borderRadius: 6, color: 'var(--rb-danger)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 10px', marginLeft: 6, cursor: (busy || isSelf) ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}>Remove</button>
+                    </td>
+                  ) : null}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       )}
@@ -1991,7 +2069,7 @@ function PartnerTenantPageInner() {
       {tab === 'overview' ? <OverviewTab tenant={tenant} /> : null}
       {tab === 'requirements' ? <RequirementsTab tenantId={tenantId} /> : null}
       {tab === 'users' ? (
-        <ClientUsersTab tenantId={tenantId} initialUsers={tenant.users} isPartnerAdmin={tenantIsPartnerAdmin} />
+        <ClientUsersTab tenantId={tenantId} initialUsers={tenant.users} isPartnerAdmin={tenantIsPartnerAdmin} currentUserId={(_session?.user as any)?.id ?? ''} />
       ) : null}
       {tab === 'settings' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
