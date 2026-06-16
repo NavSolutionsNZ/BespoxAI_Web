@@ -21,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json().catch(() => ({}))
   const action = body.action as string
-  if (!['enable', 'disable', 'resend'].includes(action))
+  if (!['enable', 'disable', 'resend', 'reset'].includes(action))
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
   // Target must be a user of THIS tenant (prevents touching users on other tenants)
@@ -40,6 +40,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (action === 'disable') {
     await (prisma as any).user.update({ where: { id: target.id }, data: { active: false } })
     return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'reset') {
+    // Reset password ONLY — no email. Returns the temp password for the partner to relay.
+    const tempPassword = crypto.randomBytes(5).toString('hex')
+    const hashed = await bcrypt.hash(tempPassword, 12)
+    await (prisma as any).user.update({
+      where: { id: target.id },
+      data:  { password: hashed, mustChangePassword: true },
+    })
+    return NextResponse.json({ ok: true, tempPassword })
   }
 
   // resend: new temp password + force change + branded welcome email

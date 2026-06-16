@@ -1857,6 +1857,25 @@ function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin, currentUserId 
     }
   }
 
+  async function resetPw(u: any) {
+    if (!window.confirm('Reset the password for ' + u.email + '?\n\nA new temporary password will be generated and shown to you (no email is sent). Their current password will stop working.')) return
+    setRowErr('')
+    setBusyId(u.id)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/users/' + u.id, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRowErr(data.error || 'Reset failed'); return }
+      setTempPassword(data.tempPassword)
+    } catch {
+      setRowErr('Reset failed — please try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function remove(u: any) {
     if (!window.confirm('Remove ' + u.email + '?\n\nThis permanently deletes their login. This cannot be undone.')) return
     setRowErr('')
@@ -1888,7 +1907,7 @@ function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin, currentUserId 
       {tempPassword ? (
         <div style={{ background: 'rgba(63,185,80,0.08)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', margin: '0 0 8px' }}>
-            Client user created. A welcome email with these credentials has been sent.
+            Temporary password generated. Share it with the client — they'll be asked to set a new password on first sign-in.
           </p>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>
             Temporary password: <code style={{ background: 'var(--rb-code)', padding: '2px 6px', borderRadius: 4, color: 'var(--rb-text-bright)' }}>{tempPassword}</code>
@@ -1953,6 +1972,8 @@ function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin, currentUserId 
                     <td style={{ padding: '10px 0', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button onClick={() => resend(u)} disabled={busy}
                         style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 10px', marginLeft: 6, cursor: busy ? 'wait' : 'pointer' }}>Resend</button>
+                      <button onClick={() => resetPw(u)} disabled={busy}
+                        style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text-muted)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 10px', marginLeft: 6, cursor: busy ? 'wait' : 'pointer' }}>Reset pw</button>
                       <button onClick={() => setActive(u, !isActive)} disabled={busy || isSelf}
                         title={isSelf ? 'You cannot deactivate your own account' : ''}
                         style={{ background: 'none', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: isSelf ? 'var(--rb-text-muted)' : (isActive ? 'var(--rb-warning)' : 'var(--rb-success)'), fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 10px', marginLeft: 6, cursor: (busy || isSelf) ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}>{isActive ? 'Deactivate' : 'Reactivate'}</button>
