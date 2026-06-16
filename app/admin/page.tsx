@@ -883,7 +883,7 @@ function AdminPageInner() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--fog)' }}>
                     {['Company', 'Email', 'Country', 'BC Version', 'Submitted', 'Verified', 'Status', ''].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--slate)', fontWeight: 600, fontSize: 11, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{h}</th>
+                      <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1243,7 +1243,8 @@ const thStyle: React.CSSProperties = {
   padding: '10px 16px', textAlign: 'left',
   fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em',
   textTransform: 'uppercase', color: 'var(--slate)',
-  background: 'var(--parchment)', fontWeight: 400,
+  background: 'transparent', fontWeight: 400,
+  borderBottom: '1px solid var(--fog)',
 }
 
 const tdStyle: React.CSSProperties = {
