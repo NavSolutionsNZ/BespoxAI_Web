@@ -151,7 +151,7 @@ function StatusBadge({ status }: { status: string }) {
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--rb-border)' }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', minWidth: 160 }}>{label}</span>
+      <span className="rb-info-label" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', minWidth: 160 }}>{label}</span>
       <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: value ? 'var(--rb-text)' : 'var(--rb-text-muted)' }}>{value ?? '—'}</span>
     </div>
   )
@@ -520,7 +520,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
 function OverviewTab({ tenant }: { tenant: Tenant }) {
   const connected = !!tenant.tunnelId
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+    <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
       <Card style={{ gridColumn: '1 / -1' }}>
         <SectionLabel>Connection Status</SectionLabel>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -642,7 +642,7 @@ function NewRequirementForm({ tenantId, onCreated, onCancel }: {
           <label style={labelStyle}>Description</label>
           <textarea ref={descRef} rows={5} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Describe the requirement in detail — what the customer needs and why" />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
             <label style={labelStyle}>BC / NAV Area</label>
             <select ref={bcAreaRef} style={inputStyle}>
@@ -1143,7 +1143,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         <button onClick={onBack} style={{ ...btnSecondary, padding: '6px 12px', flexShrink: 0 }}>← Back</button>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>{req.title}</h2>
+            <h2 className="rb-h2" style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>{req.title}</h2>
             <StatusBadge status={req.status} />
           </div>
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', marginTop: 4 }}>
@@ -1283,7 +1283,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               : null
           }
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, marginTop: 0 }}>User Story</p>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0 }}>{spec.userStory}</p>
@@ -1522,7 +1522,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
         req.quote ? (
           <Card style={{ marginBottom: 16 }}>
             <SectionLabel>Quote</SectionLabel>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--rb-text-bright)', marginBottom: 4 }}>
+            <div className="rb-stat" style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--rb-text-bright)', marginBottom: 4 }}>
               {'$' + parseFloat(req.quote).toLocaleString('en-NZ', { minimumFractionDigits: 2 }) + ' NZD'}
             </div>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>plus GST · 20% deposit on acceptance</p>
@@ -1618,7 +1618,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                 placeholder="Describe the requirement in detail"
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={editLabel}>BC Area</label>
                 <select value={editForm.bcArea} onChange={e => setEditForm({ ...editForm, bcArea: e.target.value })} style={editInput}>
@@ -1941,7 +1941,7 @@ function ClientUsersTab({ tenantId, initialUsers, isPartnerAdmin, currentUserId 
 
       {showInvite ? (
         <div style={{ background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Name</label>
               <input ref={nameRef} style={inputStyle} placeholder="Client contact name" />
@@ -2080,7 +2080,7 @@ function PartnerTenantPageInner() {
           ← All Clients
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>{tenant.name}</h1>
+          <h1 className="rb-h1" style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--rb-text-bright)', fontWeight: 400, margin: 0 }}>{tenant.name}</h1>
           <span style={{
             fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
             padding: '3px 10px', borderRadius: 12,

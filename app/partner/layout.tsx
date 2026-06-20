@@ -323,13 +323,26 @@ function PartnerLayoutInner({ children }: { children: React.ReactNode }) {
       )}
 
       <style>{`
+        .partner-content { max-width: 100%; }
         @media (max-width: 768px) {
           .partner-sidebar { transform: translateX(-100%); transition: transform 0.2s; }
           .partner-sidebar.open { transform: translateX(0); }
           .partner-overlay { display: block !important; }
           .partner-topbar { display: flex !important; }
-          .partner-main { margin-left: 0 !important; }
-          .partner-content { padding: 20px 16px !important; }
+          .partner-main { margin-left: 0 !important; min-width: 0 !important; }
+          .partner-content { padding: 20px 16px !important; overflow-x: hidden; }
+          /* Collapse fixed two-column grids to a single column */
+          .rb-grid-2 { grid-template-columns: 1fr !important; }
+          .rb-grid-3 { grid-template-columns: 1fr !important; }
+          /* Let wide tables scroll horizontally instead of bleeding off-screen */
+          .rb-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .partner-content table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; min-width: 0; }
+          /* Shrink oversized display headings on small screens */
+          .rb-h1 { font-size: 20px !important; }
+          .rb-h2 { font-size: 18px !important; }
+          .rb-stat { font-size: 22px !important; }
+          /* Narrow the fixed label column in info rows */
+          .rb-info-label { min-width: 96px !important; }
         }
       `}</style>
     </div>

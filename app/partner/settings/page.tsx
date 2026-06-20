@@ -376,7 +376,7 @@ export default function PartnerSettings() {
             </div>
           </form>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Company name" value={account.name} />
             <Field label="Contact name" value={account.contactName} />
             <Field label="Phone" value={account.phone} />
@@ -458,7 +458,7 @@ export default function PartnerSettings() {
             </div>
           </form>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Brand name" value={account.brandName} />
             <Field label="Agent brand name" value={account.agentBrandName} />
             <Field label="Logo URL" value={account.logoUrl} />
@@ -512,7 +512,7 @@ export default function PartnerSettings() {
             </div>
           </form>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="rb-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="GitHub organisation" value={account.githubOrg} />
             <Field label="GitHub token" value={account.githubToken ? '••••••••' : null} hint="Stored encrypted." />
           </div>

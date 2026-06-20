@@ -187,7 +187,7 @@ export default function AddClientPage() {
       <div style={cardStyle}>
         <p style={sectionHeadStyle}>Client Details</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={gridTwo}>
+          <div className="rb-grid-2" style={gridTwo}>
             <Field label="Company Name">
               <input ref={nameRef} style={inputStyle} placeholder="Acme Distribution Ltd" onBlur={handleNameBlur} />
             </Field>
@@ -228,7 +228,7 @@ export default function AddClientPage() {
             </div>
           </div>
 
-          <div style={gridTwo}>
+          <div className="rb-grid-2" style={gridTwo}>
             <Field label="Version">
               <select ref={versionRef} style={inputStyle}>
                 <option value="">Select version</option>
@@ -250,7 +250,7 @@ export default function AddClientPage() {
       <div style={cardStyle}>
         <p style={sectionHeadStyle}>Production Environment</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={gridTwo}>
+          <div className="rb-grid-2" style={gridTwo}>
             <Field label="BC Instance Name" hint="e.g. BC_Prod or DynamicsNAV">
               <input ref={bcInstanceRef} style={inputStyle} placeholder="BC_Prod" />
             </Field>
@@ -258,7 +258,7 @@ export default function AddClientPage() {
               <input ref={bcCompanyRef} style={inputStyle} placeholder="ACME" />
             </Field>
           </div>
-          <div style={gridTwo}>
+          <div className="rb-grid-2" style={gridTwo}>
             <Field label="BC Service Account Username" hint="DOMAIN\username or .\localuser — stored, used in installer">
               <input ref={bcUsernameRef} style={inputStyle} placeholder="DOMAIN\BCServiceAccount" autoComplete="off" />
             </Field>
@@ -266,7 +266,7 @@ export default function AddClientPage() {
               <input ref={bcPasswordRef} style={{ ...inputStyle }} type="password" placeholder="••••••••" autoComplete="new-password" />
             </Field>
           </div>
-          <div style={gridThree}>
+          <div className="rb-grid-3" style={gridThree}>
             <Field label="SQL Server / Host" hint="e.g. localhost or 10.0.0.5">
               <input ref={navDbServerRef} style={inputStyle} placeholder="localhost" />
             </Field>
@@ -277,7 +277,7 @@ export default function AddClientPage() {
               <input ref={navServerInstanceRef} style={inputStyle} placeholder="DynamicsNAV" />
             </Field>
           </div>
-          <div style={gridThree}>
+          <div className="rb-grid-3" style={gridThree}>
             <Field label="OData Port" hint="Default: 8048">
               <input ref={bcPortRef} style={inputStyle} placeholder="8048" defaultValue="8048" />
             </Field>
@@ -311,7 +311,7 @@ export default function AddClientPage() {
 
         {showTest ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={gridTwo}>
+            <div className="rb-grid-2" style={gridTwo}>
               <Field label="Test BC Instance">
                 <input ref={testBcInstanceRef} style={inputStyle} placeholder="BC_Test" />
               </Field>
@@ -319,7 +319,7 @@ export default function AddClientPage() {
                 <input ref={testBcCompanyRef} style={inputStyle} placeholder="ACME_TEST" />
               </Field>
             </div>
-            <div style={gridThree}>
+            <div className="rb-grid-3" style={gridThree}>
               <Field label="Test SQL Server / Host">
                 <input ref={testNavDbServerRef} style={inputStyle} placeholder="localhost" />
               </Field>
@@ -330,7 +330,7 @@ export default function AddClientPage() {
                 <input ref={testNavServerInstanceRef} style={inputStyle} placeholder="DynamicsNAV_Test" />
               </Field>
             </div>
-            <div style={gridThree}>
+            <div className="rb-grid-3" style={gridThree}>
               <Field label="Test OData Port" hint="Default: 8048">
                 <input ref={testBcPortRef} style={inputStyle} placeholder="8048" />
               </Field>
