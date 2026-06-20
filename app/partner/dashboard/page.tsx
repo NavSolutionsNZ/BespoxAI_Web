@@ -16,8 +16,6 @@ type PartnerAccount = {
   id: string
   name: string
   slug: string
-  paymentMode: string
-  isWhiteLabel: boolean
   brandName: string | null
   _count: { tenants: number; users: number }
 }
@@ -94,14 +92,12 @@ export default function PartnerDashboard() {
       {/* Summary cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+        gridTemplateColumns: '1fr 1fr',
         gap: 16,
         marginBottom: 40,
       }}>
         <StatCard label="Client Tenants" value={loading ? '—' : tenants.length} sub={activeCount + ' active'} />
         <StatCard label="Team Members" value={loading ? '—' : (account?._count.users ?? '—')} />
-        <StatCard label="Payment Mode" value={loading ? '—' : (account?.paymentMode === 'partner_collected' ? 'Self-managed' : 'BespoxAI')} sub="billing" />
-        <StatCard label="Portal" value={account?.isWhiteLabel ? 'White Label' : 'BespoxAI Branded'} />
       </div>
 
       {/* Tenant table */}
