@@ -523,7 +523,7 @@ export default function PartnerSettings() {
       <Card>
         <SectionHeader title="Change Password" />
         <form onSubmit={handleChangePassword}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="rb-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20, alignItems: 'end' }}>
             <div>
               <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginBottom: 4 }}>Current password</label>
               <input
