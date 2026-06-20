@@ -602,6 +602,56 @@ async function getPartnerRecipients(tenantId: string): Promise<{ email: string; 
   }
 }
 
+async function getPartnerAdminRecipients(tenantId: string): Promise<{ email: string; name: string | null }[]> {
+  if (!tenantId) return []
+  try {
+    const tenant = await (prisma as any).tenant.findUnique({
+      where:  { id: tenantId },
+      select: {
+        partnerAccount: {
+          select: {
+            users: {
+              where:  { role: 'partner_admin' },
+              select: { user: { select: { email: true, firstName: true, preferredName: true, name: true } } },
+            },
+          },
+        },
+      },
+    })
+    const pus = tenant?.partnerAccount?.users ?? []
+    return pus
+      .map((pu: any) => ({ email: pu.user?.email, name: displayName(pu.user) }))
+      .filter((r: any) => !!r.email)
+  } catch (e) {
+    console.error('[getPartnerAdminRecipients]', e)
+    return []
+  }
+}
+
+export async function notifyPartnerRequirementUnableToComplete(params: {
+  tenantId:         string
+  requirementId:    string
+  requirementTitle: string
+  tenantName:       string
+  devName:          string
+}) {
+  const recipients = await getPartnerAdminRecipients(params.tenantId)
+  if (recipients.length === 0) return
+  const link = `${PARTNER_PORTAL}/partner/tenants/${params.tenantId}?tab=requirements&req=${params.requirementId}`
+  await Promise.all(recipients.map(r =>
+    sendEmail({
+      to:      r.email,
+      subject: `Requirement flagged: unable to complete — ${params.requirementTitle} (${params.tenantName})`,
+      html: wrap(`
+        <p>Hi ${r.name ?? 'there'},</p>
+        <p><strong>${params.devName}</strong> has marked a requirement as <strong>unable to complete</strong> and it needs reassignment or review.</p>
+        ${reqBlock(params.requirementTitle, params.tenantName)}
+        ${cta('Review in partner portal', link)}
+      `),
+    }).catch(e => console.error('[notify] partner unable-to-complete:', e))
+  ))
+}
+
 export async function notifyPartnerNewRequirement(params: {
   tenantId:     string
   requirementId: string

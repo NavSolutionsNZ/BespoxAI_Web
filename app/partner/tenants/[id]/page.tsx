@@ -33,6 +33,7 @@ type Requirement = {
   id: string; tenantId: string; userId: string; title: string
   description: string; bcArea: string; priority: string
   aiSpec: string | null; status: string; quote: string | null
+  unableToCompleteAt: string | null
   quoteApprovedAt: string | null; consultantNote: string | null
   depositAmount: string | null; depositPaidAt: string | null
   balancePaidAt: string | null; adminQuestions: string | null
@@ -782,6 +783,21 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
     }
   }
 
+  const [markingUnable, setMarkingUnable] = useState(false)
+  async function markUnable() {
+    if (!window.confirm('Mark this requirement as unable to complete?\n\nYour partner admins will be notified so it can be reassigned or reviewed.')) return
+    setMarkingUnable(true)
+    try {
+      const res = await fetch('/api/partner/tenants/' + tenantId + '/requirements/' + req.id + '/mark-unable', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.requirement) onUpdated(data.requirement)
+    } catch {
+      // swallow — leave prior state
+    } finally {
+      setMarkingUnable(false)
+    }
+  }
+
   // Deliverer panel state
   const [showQuoteForm, setShowQuoteForm]     = useState(false)
   const [showQuestionForm, setShowQuestionForm] = useState(false)
@@ -1153,6 +1169,14 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                 {req.assignedDeveloper ? (req.assignedDeveloper.preferredName ?? req.assignedDeveloper.firstName ?? req.assignedDeveloper.name ?? req.assignedDeveloper.email) : 'Unassigned'}
               </span>
             )}
+            {req.unableToCompleteAt ? (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-danger)', background: 'var(--rb-danger-soft)', border: '1px solid var(--rb-danger)', padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠ Unable to complete</span>
+            ) : ['in_development', 'in_uat'].includes(req.status) ? (
+              <button onClick={markUnable} disabled={markingUnable}
+                style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-danger)', background: 'none', border: '1px solid var(--rb-danger-soft)', borderRadius: 6, padding: '4px 10px', cursor: markingUnable ? 'wait' : 'pointer' }}>
+                {markingUnable ? 'Marking…' : 'Mark unable to complete'}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
