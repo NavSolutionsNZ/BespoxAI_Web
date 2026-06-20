@@ -79,3 +79,21 @@ export async function getPartnerTier(partnerAccountId: string): Promise<string> 
     return 'self_serve'
   }
 }
+
+/**
+ * Assert that the current partner session is allowed to trigger a deployment
+ * (write to BCAgent, deploy-test, deploy-prod) for a given requirement.
+ *
+ * Rule (Rich's ruling, C4): only the partner_admin OR the developer the
+ * requirement is assigned to may deploy. Other partner_developer team members
+ * can author/commit C/AL but not push to the client's BC.
+ *
+ * Returns true if allowed, false otherwise — caller returns 403 on false.
+ */
+export function partnerCanDeploy(
+  session: PartnerSession,
+  assignedDeveloperId: string | null | undefined
+): boolean {
+  if (session.partnerRole === 'partner_admin') return true
+  return !!assignedDeveloperId && session.userId === assignedDeveloperId
+}
