@@ -47,6 +47,8 @@ type Requirement = {
   inDevelopmentAt: string | null; completePendingPaymentAt: string | null
   testDeployedAt: string | null; uatApprovedAt: string | null
   uatRejectedAt: string | null; uatRejectionReason: string | null
+  testDeploySnapshotId: string | null; prodDeploySnapshotId: string | null
+  prodApprovedAt: string | null; assignedDeveloperId: string | null
   prodDeployedAt: string | null; createdAt: string; updatedAt: string
   user: { name: string | null; email: string }
   tenant: { name: string; country: string | null; paymentTermsKey: string | null }
@@ -837,6 +839,18 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
   const [codingCommitErr, setCodingCommitErr] = useState('')
   const [codingCommitted, setCodingCommitted] = useState<Record<string, boolean>>({})
 
+  // ── Deploy pipeline state (C4) ────────────────────────────────────────────
+  const [syncDeployLoading, setSyncDeployLoading] = useState(false)
+  const [syncDeployMsg,     setSyncDeployMsg]     = useState('')
+  const [writeLoading,      setWriteLoading]      = useState(false)
+  const [writeSnapshotId,   setWriteSnapshotId]   = useState<string | null>(req.testDeploySnapshotId)
+  const [deployLoading,     setDeployLoading]     = useState(false)
+  const [deployResults,     setDeployResults]     = useState<Array<{ filename: string; imported: boolean; compiled: boolean; error: string }> | null>(null)
+  const [deployDebug,       setDeployDebug]       = useState(false)
+  const [prodDeployLoading, setProdDeployLoading] = useState(false)
+  const [prodDeployResults, setProdDeployResults] = useState<Array<{ filename: string; imported: boolean; compiled: boolean; error: string }> | null>(null)
+  const [deployErr,         setDeployErr]         = useState('')
+
   // ── Collapsible cards — status-based defaults (mirrors admin) ─────────────
   // A card collapses by default once the requirement has moved past the stage
   // where that card is the focus of attention.
@@ -1030,6 +1044,101 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
     }
   }
 
+  // ── Deploy pipeline handlers (C4) ─────────────────────────────────────────
+  const deployApiBase = '/api/partner/tenants/' + tenantId + '/requirements/' + req.id
+
+  async function handleSyncFromGitHub() {
+    if (syncDeployLoading) return
+    setSyncDeployLoading(true); setSyncDeployMsg(''); setDeployErr('')
+    try {
+      const res = await fetch(deployApiBase + '/objects/sync-from-github', { method: 'POST' })
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Sync returned an invalid response') }
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed (' + res.status + ')')
+      setSyncDeployMsg('Synced ' + data.synced + ' file' + (data.synced !== 1 ? 's' : '') + ' from ' + data.branch)
+    } catch (e: any) {
+      setDeployErr(e.message ?? 'Sync failed')
+    } finally {
+      setSyncDeployLoading(false)
+    }
+  }
+
+  async function handleWriteToServer() {
+    if (writeLoading) return
+    setWriteLoading(true); setDeployErr(''); setWriteSnapshotId(null); setDeployResults(null); setDeployDebug(false)
+    try {
+      const filesRes = await fetch(deployApiBase + '/objects')
+      let filesData: any
+      try { filesData = await filesRes.json() } catch { throw new Error('Could not load object files — check the test DB name is set in the client tenant settings') }
+      if (!filesRes.ok) throw new Error(filesData.error ?? 'Could not load object files (' + filesRes.status + ')')
+      const fileIds = (filesData.objects ?? []).filter((f: any) => f.hasContent).map((f: any) => f.id)
+      if (!fileIds.length) throw new Error('No object files with content found. Sync from GitHub first.')
+
+      const res = await fetch(deployApiBase + '/objects/write', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileIds }),
+      })
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Write returned an invalid response') }
+      if (!res.ok) throw new Error(data.error ?? 'Write failed (' + res.status + ')')
+      setWriteSnapshotId(data.snapshotId)
+    } catch (e: any) {
+      setDeployErr(e.message ?? 'Write failed')
+    } finally {
+      setWriteLoading(false)
+    }
+  }
+
+  async function handleDeployToTest() {
+    if (!writeSnapshotId || deployLoading) return
+    setDeployLoading(true); setDeployErr(''); setDeployResults(null)
+    try {
+      const res = await fetch(deployApiBase + '/objects/deploy-test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshotId: writeSnapshotId }),
+      })
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Deploy returned an invalid response — it may have timed out (60s). Check BCAgent logs.') }
+      if (!res.ok) throw new Error(data.error ?? 'Deploy failed (' + res.status + ')')
+      setDeployResults(data.results ?? [])
+      setDeployDebug(!!data._debug)
+      if (data.success) {
+        onUpdated({ ...req, status: 'in_uat', testDeployedAt: data.deployedAt ?? new Date().toISOString(), testDeploySnapshotId: writeSnapshotId, uatApprovedAt: null, uatRejectedAt: null })
+      } else {
+        setDeployErr('Some objects failed — check the results below')
+      }
+    } catch (e: any) {
+      setDeployErr(e.message ?? 'Deploy failed')
+    } finally {
+      setDeployLoading(false)
+    }
+  }
+
+  async function handleDeployToProd() {
+    const snap = req.testDeploySnapshotId ?? writeSnapshotId
+    if (!snap || prodDeployLoading) return
+    setProdDeployLoading(true); setDeployErr(''); setProdDeployResults(null)
+    try {
+      const res = await fetch(deployApiBase + '/objects/deploy-prod', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshotId: snap }),
+      })
+      let data: any
+      try { data = await res.json() } catch { throw new Error('Production deploy returned an invalid response — it may have timed out. Check BCAgent logs.') }
+      if (!res.ok) throw new Error(data.error ?? 'Production deploy failed (' + res.status + ')')
+      setProdDeployResults(data.results ?? [])
+      if (data.success) {
+        onUpdated({ ...req, prodDeployedAt: data.deployedAt ?? new Date().toISOString(), prodDeploySnapshotId: snap })
+      } else {
+        setDeployErr('Some objects failed — check the results below')
+      }
+    } catch (e: any) {
+      setDeployErr(e.message ?? 'Production deploy failed')
+    } finally {
+      setProdDeployLoading(false)
+    }
+  }
+
   function handleSubmitWithEdits() {
     if (!editForm.title.trim() || !editForm.description.trim()) return
     patch({
@@ -1219,13 +1328,13 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           onToggle={() => toggleCard('feasibility')}
           accessory={
             ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status)
-              ? <button onClick={runFeasibility} disabled={feasLoading} style={{ background: 'none', border: 'none', cursor: feasLoading ? 'not-allowed' : 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{feasLoading ? '\u2026' : '\u21ba Recheck'}</button>
+              ? <button onClick={runFeasibility} disabled={feasLoading} style={{ background: 'none', border: 'none', cursor: feasLoading ? 'not-allowed' : 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{feasLoading ? '…' : '\u21ba Recheck'}</button>
               : null
           }
         >
           {feasLoading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>Checking feasibility\u2026</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)' }}>Checking feasibility…</span>
             </div>
           ) : (
             <div>
@@ -1253,14 +1362,14 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               {/* Verdict-driven CTAs — mirror BespoxAI */}
               {req.feasibility === 'development' && !spec && ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status) ? (
                 <div style={{ paddingTop: 12, marginTop: 12, borderTop: '1px solid var(--rb-border)' }}>
-                  <button onClick={() => generateSpec()} disabled={genSpec} style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rb-bg)', background: 'var(--rb-primary)', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: genSpec ? 'not-allowed' : 'pointer', opacity: genSpec ? 0.7 : 1 }}>{genSpec ? 'Generating spec\u2026' : 'Generate Full Specification \u2192'}</button>
+                  <button onClick={() => generateSpec()} disabled={genSpec} style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rb-bg)', background: 'var(--rb-primary)', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: genSpec ? 'not-allowed' : 'pointer', opacity: genSpec ? 0.7 : 1 }}>{genSpec ? 'Generating spec…' : 'Generate Full Specification \u2192'}</button>
                   {specErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 8 }}>{specErr}</p> : null}
                 </div>
               ) : null}
 
               {req.feasibility === 'cfo_assistant' && !spec && ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status) ? (
                 <div style={{ paddingTop: 12, marginTop: 12, borderTop: '1px solid var(--rb-border)' }}>
-                  <button onClick={() => generateSpec()} disabled={genSpec} style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rb-text)', background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, padding: '8px 16px', cursor: genSpec ? 'not-allowed' : 'pointer', opacity: genSpec ? 0.7 : 1 }}>{genSpec ? 'Generating\u2026' : 'Scope as development anyway'}</button>
+                  <button onClick={() => generateSpec()} disabled={genSpec} style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rb-text)', background: 'var(--rb-surface-2)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, padding: '8px 16px', cursor: genSpec ? 'not-allowed' : 'pointer', opacity: genSpec ? 0.7 : 1 }}>{genSpec ? 'Generating…' : 'Scope as development anyway'}</button>
                   {specErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, marginTop: 8 }}>{specErr}</p> : null}
                 </div>
               ) : null}
@@ -1279,7 +1388,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           onToggle={() => toggleCard('spec')}
           accessory={
             ['draft','submitted','in_review','needs_clarification','quote_rejected'].includes(req.status)
-              ? <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '\u2026' : '\u21ba Regen'}</button>
+              ? <button onClick={() => generateSpec()} disabled={genSpec} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--rb-accent)', fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>{genSpec ? '…' : '\u21ba Regen'}</button>
               : null
           }
         >
@@ -1350,12 +1459,12 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
             {devHistory.map((m, i) => (
               <div key={i} style={{ background: m.role === 'user' ? 'var(--rb-bg)' : 'rgba(56,139,253,0.06)', border: '1px solid ' + (m.role === 'user' ? 'var(--rb-border)' : 'rgba(56,139,253,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? 'var(--rb-text-muted)' : 'var(--rb-accent)', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (devStreaming && i === devHistory.length - 1 ? '\u2026' : '')}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (devStreaming && i === devHistory.length - 1 ? '…' : '')}</p>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8 }}>
-              <textarea value={devQuestion} onChange={e => setDevQuestion(e.target.value)} rows={2} placeholder="Ask the dev assistant\u2026" style={{ flex: 1, background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
-              <button onClick={sendDevNote} disabled={devStreaming || !devQuestion.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (devStreaming || !devQuestion.trim()) ? 0.5 : 1 }}>{devStreaming ? '\u2026' : 'Send'}</button>
+              <textarea value={devQuestion} onChange={e => setDevQuestion(e.target.value)} rows={2} placeholder="Ask the dev assistant…" style={{ flex: 1, background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              <button onClick={sendDevNote} disabled={devStreaming || !devQuestion.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (devStreaming || !devQuestion.trim()) ? 0.5 : 1 }}>{devStreaming ? '…' : 'Send'}</button>
             </div>
           </div>
         </CollapsibleCard>
@@ -1385,7 +1494,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               return (
                 <div key={i} style={{ background: m.role === 'user' ? 'var(--rb-bg)' : 'rgba(10,92,70,0.06)', border: '1px solid ' + (m.role === 'user' ? 'var(--rb-border)' : 'rgba(10,92,70,0.25)'), borderRadius: 6, padding: '10px 14px' }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: m.role === 'user' ? 'var(--rb-text-muted)' : 'var(--rb-success)', margin: '0 0 6px' }}>{m.role === 'user' ? 'You' : 'Assistant'}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (codingStreaming && i === codingHistory.length - 1 ? '\u2026' : '')}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{m.content || (codingStreaming && i === codingHistory.length - 1 ? '…' : '')}</p>
                   {calObjects.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
                       {calObjects.map((obj, j) => {
@@ -1395,7 +1504,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                           <div key={j} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 5, padding: '6px 10px' }}>
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-accent)' }}>{obj.filename}</span>
                             <button onClick={() => commitCalObject(key, obj.filename, obj.content, i)} disabled={!req.githubBranch || codingCommitting === i || committed} style={{ ...btnSecondary, padding: '4px 10px', fontSize: 11, opacity: (!req.githubBranch || committed) ? 0.5 : 1, color: committed ? 'var(--rb-success)' : 'var(--rb-text-muted)' }}>
-                              {committed ? '\u2713 Committed' : (codingCommitting === i ? 'Committing\u2026' : 'Commit to GitHub')}
+                              {committed ? '\u2713 Committed' : (codingCommitting === i ? 'Committing…' : 'Commit to GitHub')}
                             </button>
                           </div>
                         )
@@ -1407,8 +1516,8 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
             })}
             {codingCommitErr ? <p style={{ color: 'var(--rb-danger)', fontSize: 12, margin: 0 }}>{codingCommitErr}</p> : null}
             <div style={{ display: 'flex', gap: 8 }}>
-              <textarea value={codingMessage} onChange={e => setCodingMessage(e.target.value)} rows={2} placeholder="Ask the coding assistant\u2026" style={{ flex: 1, background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
-              <button onClick={sendCodingMessage} disabled={codingStreaming || !codingMessage.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (codingStreaming || !codingMessage.trim()) ? 0.5 : 1 }}>{codingStreaming ? '\u2026' : 'Send'}</button>
+              <textarea value={codingMessage} onChange={e => setCodingMessage(e.target.value)} rows={2} placeholder="Ask the coding assistant…" style={{ flex: 1, background: 'var(--rb-inset)', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 12px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+              <button onClick={sendCodingMessage} disabled={codingStreaming || !codingMessage.trim()} style={{ ...btnPrimary, alignSelf: 'flex-end', opacity: (codingStreaming || !codingMessage.trim()) ? 0.5 : 1 }}>{codingStreaming ? '…' : 'Send'}</button>
             </div>
           </div>
         </CollapsibleCard>
@@ -1514,6 +1623,115 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               <button onClick={handleMarkBalancePaid} disabled={saving} style={btnPrimary}>Mark Balance Paid</button>
             </div>
           ) : null}
+        </Card>
+      ) : null}
+
+      {/* ── Deploy pipeline (C4) ── */}
+      {['in_development', 'in_uat', 'uat_confirmed', 'complete_pending_payment'].includes(req.status) ? (
+        <Card style={{ marginBottom: 16, borderColor: 'rgba(26,146,114,0.35)', background: 'rgba(26,146,114,0.04)' }}>
+          <SectionLabel>Deploy to Client BC</SectionLabel>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 16px' }}>
+            Push the committed C/AL objects to the client tenant's Business Central. Sync the latest from GitHub, write them to the agent, then compile to the test environment for UAT.
+          </p>
+
+          {!req.githubBranch ? (
+            <div style={{ background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6, padding: '12px 16px' }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: 0 }}>
+                No GitHub branch linked yet. Commit at least one object via the Coding Assistant above before deploying.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {/* Step 1 — Sync from GitHub */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Step 1</span>
+                  <button onClick={handleSyncFromGitHub} disabled={syncDeployLoading} style={{ ...btnSecondary, opacity: syncDeployLoading ? 0.6 : 1 }}>
+                    {syncDeployLoading ? 'Syncing…' : 'Sync from GitHub'}
+                  </button>
+                  {syncDeployMsg ? (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-success)' }}>{syncDeployMsg}</span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Step 2 — Write to server */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Step 2</span>
+                  <button onClick={handleWriteToServer} disabled={writeLoading} style={{ ...btnSecondary, opacity: writeLoading ? 0.6 : 1 }}>
+                    {writeLoading ? 'Writing…' : 'Write Files to Server'}
+                  </button>
+                  {writeSnapshotId ? (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text-muted)' }}>snapshot {writeSnapshotId}</span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Step 3 — Deploy to test */}
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Step 3</span>
+                  <button onClick={handleDeployToTest} disabled={deployLoading || !writeSnapshotId} style={{ ...btnPrimary, opacity: (deployLoading || !writeSnapshotId) ? 0.5 : 1 }}>
+                    {deployLoading ? 'Deploying…' : 'Deploy + Compile to Test'}
+                  </button>
+                  {req.testDeployedAt ? (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-success)' }}>Last deployed {new Date(req.testDeployedAt).toLocaleString()}</span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Test deploy results */}
+              {deployResults ? (
+                <div style={{ marginTop: 14, background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6, padding: '12px 16px' }}>
+                  {deployDebug ? (
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-warning)', letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 8px' }}>Debug mode — simulated</p>
+                  ) : null}
+                  {deployResults.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text)', padding: '2px 0' }}>
+                      <span style={{ color: r.compiled ? 'var(--rb-success)' : 'var(--rb-danger)' }}>{r.compiled ? '\u2713' : '\u2717'}</span>
+                      <span>{r.filename}</span>
+                      {r.error ? <span style={{ color: 'var(--rb-text-muted)' }}>— {r.error}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {/* Step 4 — Deploy to production */}
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--rb-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-danger)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Production</span>
+                  {req.prodApprovedAt ? (
+                    <button onClick={handleDeployToProd} disabled={prodDeployLoading || (!req.testDeploySnapshotId && !writeSnapshotId)} style={{ ...btnDanger, background: 'rgba(163,45,45,0.12)', opacity: (prodDeployLoading || (!req.testDeploySnapshotId && !writeSnapshotId)) ? 0.5 : 1 }}>
+                      {prodDeployLoading ? 'Deploying…' : 'Deploy to Production'}
+                    </button>
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)' }}>
+                      Awaiting client go-live approval before production deployment.
+                    </span>
+                  )}
+                  {req.prodDeployedAt ? (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-success)' }}>Live since {new Date(req.prodDeployedAt).toLocaleString()}</span>
+                  ) : null}
+                </div>
+                {prodDeployResults ? (
+                  <div style={{ marginTop: 12, background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6, padding: '12px 16px' }}>
+                    {prodDeployResults.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--rb-text)', padding: '2px 0' }}>
+                        <span style={{ color: r.compiled ? 'var(--rb-success)' : 'var(--rb-danger)' }}>{r.compiled ? '\u2713' : '\u2717'}</span>
+                        <span>{r.filename}</span>
+                        {r.error ? <span style={{ color: 'var(--rb-text-muted)' }}>— {r.error}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {deployErr ? (
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-danger)', margin: '14px 0 0' }}>{deployErr}</p>
+              ) : null}
+            </div>
+          )}
         </Card>
       ) : null}
 
