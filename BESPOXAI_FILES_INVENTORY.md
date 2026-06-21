@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 17, 2026 (Session 25)
+**Last Updated: June 21, 2026 (Session 26)
 
 ---
 
@@ -157,6 +157,11 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | `api/partner/tenants/[id]/requirements/[reqId]/dev-notes/route.ts` | **(S23)** Partner streaming dev assistant. Ghostwrites as **partner consultant + partner brand** (brandName/name from account; consultant from session user), NOT BespoxAI. Respects cfg.features.devAssistant. |
 | `api/partner/tenants/[id]/requirements/[reqId]/coding-assistant/route.ts` | **(S23)** Partner streaming C/AL coding assistant. Loads C/AL from partner GitHub branch via resolvePartnerToken (partner org → BespoxAI fallback). |
 | `api/partner/tenants/[id]/requirements/[reqId]/coding-assistant/commit/route.ts` | **(S23)** Commits accepted C/AL object back to the partner GitHub branch. |
+| `api/partner/tenants/[id]/requirements/[reqId]/objects/route.ts` | **(S26 C4)** GET — lists deployable object files (metadata + hasContent) for the partner deploy panel. Partner-gated (session + ownership + can-develop). |
+| `api/partner/tenants/[id]/requirements/[reqId]/objects/sync-from-github/route.ts` | **(S26 C4)** Pulls C/AL from the requirement branch via `resolvePartnerToken`, upserts TenantObjectFile. |
+| `api/partner/tenants/[id]/requirements/[reqId]/objects/write/route.ts` | **(S26 C4)** Writes selected files to the client BCAgent Deployments folder; persists `testDeploySnapshotId`. Deploy-gated (partner_admin OR assigned dev via `partnerCanDeploy`). |
+| `api/partner/tenants/[id]/requirements/[reqId]/objects/deploy-test/route.ts` | **(S26 C4)** Agent import+compile to test → status `in_uat` + testDeployedAt, clears UAT cycle, reuses `notifyCustomerReadyForUAT` (white-labels via getPartnerFromEmail). Deploy-gated. |
+| `api/partner/tenants/[id]/requirements/[reqId]/objects/deploy-prod/route.ts` | **(S26 C4)** Agent import+compile to prod, **keeps `prodApprovedAt` gate** (blocked until C5), sets prodDeployedAt, reuses `notifyCustomerProdDeployed`. Deploy-gated. |
 | `api/partner/tenants/[id]/requirements/route.ts` | List/create partner-tenant requirements. POST sets `assignedDeveloperId: session.userId` (Bug 1 fix — required FK, no DB default). Notifies partner via notifyPartnerNewRequirement. **(S23)** GET returns `devPlan` for self_serve partners, strips for referral (getPartnerTier). |
 | `api/partner/tenants/[id]/requirements/[reqId]/route.ts` | Partner PATCH — BOTH customer + deliverer transitions (S22). Deliverer half: in_review, needs_clarification (+QALog), quoted, deposit_paid, in_development, complete_pending_payment, fully_paid + quote/consultantNote/bcObjects. Payments manual (no Stripe). Notifications route to partner/client/BespoxAI per stage. |
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-approve/route.ts` | Partner UAT sign-off (S22) → uat_confirmed. notifyPartnerUatApproved. |
@@ -180,7 +185,7 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | File | Purpose |
 |------|---------|
 | `notifications.ts` | All lifecycle emails. displayName() helper: preferredName ?? firstName. getCustomerEmail fetches both fields. **Partner pipeline (S22):** getPartnerRecipients(tenantId) → partner_admin+partner_developer; notifyPartner{NewRequirement,Answered,QuoteRejected,UatApproved,UatRejected}. notifyAdmins* = BespoxAI superadmins (direct pipeline only). **(S23)** `PARTNER_PORTAL = process.env.PARTNER_PORTAL_URL ?? 'https://partners.bespoxai.com'`; ALL partner links use it (not PORTAL/main domain). Agreement PDF link removed (scrollable-accept now). |
-| `partner-auth.ts` | requirePartnerSession, assertTenantBelongsToPartner. **(S23)** assertPartnerCanDevelop (throws→403 for referral tier), getPartnerTier (returns tier, defaults self_serve). |
+| `partner-auth.ts` | requirePartnerSession, assertTenantBelongsToPartner. **(S23)** assertPartnerCanDevelop (throws→403 for referral tier), getPartnerTier (returns tier, defaults self_serve). **(S26)** `partnerCanDeploy(session, assignedDeveloperId)` → true if partner_admin OR session.userId === assignedDeveloperId; gates write/deploy-test/deploy-prod (caller 403s on false). |
 | `cloudflare.ts` | createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken, addRdpIngress, createRdpDnsRecord |
 | `tenant-context.ts` | `buildTenantContext()` |
 | `tenants.ts` | `getTenantById()`, `buildODataUrl()`. agentPort fallback: 9099. |

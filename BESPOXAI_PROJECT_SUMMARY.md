@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 17, 2026 (Session 25)
+**Last Updated:** June 21, 2026 (Session 26)
 
 ---
 
@@ -49,7 +49,44 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 
 ---
 
-## Session 25 Key Changes (June 17, 2026) — Partner is deliverer (full enforcement), client-user lifecycle, admin theme + table restyle
+## Session 26 Key Changes (June 21, 2026) — C4: Partner deploy pipeline (objects → test → prod)
+
+**Goal:** close the biggest partner-parity gap — a partner deliverer could author + commit C/AL but had no way to deploy it to the client's BC, so jobs stalled at `in_development`. Built the full partner deploy pipeline in two slices, both deployed green.
+
+**Design (agreed up front):** objects always target the **client tenant's** BCAgent (same tunnel + `apiKey`) regardless of deliverer, so the partner routes do byte-identical agent calls — only the auth gate + notification routing differ. Partner authors via coding-assistant + commit, then syncs from GitHub (no fetch-from-BC step on the partner side). Mirror job, like the S23 AI routes.
+
+### Slice 1 — Partner deploy API routes (`2b388fd`)
+Four routes under `app/api/partner/tenants/[id]/requirements/[reqId]/objects/`:
+- `sync-from-github/route.ts` — pulls C/AL from the requirement branch via `resolvePartnerToken` (partner org → BespoxAI fallback), upserts `TenantObjectFile` with content.
+- `write/route.ts` — writes selected files to the client BCAgent Deployments folder, returns + persists `testDeploySnapshotId`.
+- `deploy-test/route.ts` — agent import+compile to test, sets `status:'in_uat'` + `testDeployedAt`, clears prior UAT cycle, reuses `notifyCustomerReadyForUAT` (already white-labels via `getPartnerFromEmail`).
+- `deploy-prod/route.ts` — agent import+compile to prod, **keeps the `prodApprovedAt` gate**, sets `prodDeployedAt`, reuses `notifyCustomerProdDeployed`.
+- **Auth on all four:** `requirePartnerSession` + `assertTenantBelongsToPartner` + `assertPartnerCanDevelop`. The three write/deploy steps additionally gated to **partner_admin OR the requirement's assigned developer** via new `partnerCanDeploy(session, assignedDeveloperId)` in `lib/partner-auth.ts` (server-enforced → 403; button not hidden).
+- Both deploy routes keep the SETTINGS_DEBUG simulation block for parity with the direct routes.
+
+### Slice 2 — Partner deploy UI + objects list route (`62d694c`)
+- `objects/route.ts` (GET) — lists this requirement's object files (metadata + `hasContent`, no content body) so the write step can collect `fileIds`.
+- **"Deploy to Client BC" card** in partner `RequirementDetail` (`app/partner/tenants/[id]/page.tsx`), gated to dev stages (`in_development`..`complete_pending_payment`). Linear flow: **Sync from GitHub → Write Files to Server → Deploy + Compile to Test** (flips status to `in_uat` via `onUpdated`); plus a **Production** step gated on `prodApprovedAt` that shows "awaiting client go-live approval" until C5 exists. Per-object compile results rendered for test + prod. Theme-aware via `--rb-*`, SWC-safe JSX.
+- `Requirement` type extended: `testDeploySnapshotId`, `prodDeploySnapshotId`, `prodApprovedAt`, `assignedDeveloperId` (all already in the GET payload via `REQ_INCLUDE` — type-only change).
+- Also normalised a handful of pre-existing `\u2026` escapes to literal `…` (cosmetically neutral — they were string literals inside `{...}`/attributes).
+
+### No schema changes
+All fields (`testDeploySnapshotId`, `testDeployedAt`, `prodApprovedAt`, `prodDeployedAt`, `prodDeploySnapshotId`, UAT fields) already existed on `Requirement`.
+
+### Audit correction recorded
+**C2 (partner mark-unable) was already built** — the partner `mark-unable` route exists and is complete; the parity audit's "still open" line was stale. Corrected in `PARTNER_PIPELINE_PARITY_AUDIT.md`.
+
+### Testing prerequisites (Rich)
+- Requirement needs a linked `githubBranch` (≥1 object committed via Coding Assistant) AND the client tenant's **test NAV database** configured, else Write returns a clear config error.
+- Partner `deploy-prod` stays blocked (clean "awaiting go-live approval" message, not an error) until **C5** sets `prodApprovedAt`. To test prod before C5, set `prodApprovedAt` via SQL on a test requirement.
+- Deploy-permission gate is server-enforced: a partner_developer who isn't the assigned dev gets a 403 ("Only the assigned developer or a partner admin can deploy"), not a hidden button.
+
+### Remaining partner-parity gaps
+- **C3** — addendum (post-acceptance scope change) parity. OPEN.
+- **C5** — prod go-live approval parity. OPEN — **next**; it sets `prodApprovedAt`, unblocking C4's partner prod deploy.
+
+---
+
 
 **All deployed green. No pending sign-off — Rich verified each step live via screenshots as we went.**
 

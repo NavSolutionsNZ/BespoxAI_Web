@@ -1,12 +1,19 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 17, 2026 (Session 25)
+**Last Updated:** June 21, 2026 (Session 26)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 26 — C4: Partner deploy pipeline (objects → test → prod)** (deployed green; pending Rich test sign-off)
+- [x] **Slice 1 — 4 partner deploy API routes** under `app/api/partner/tenants/[id]/requirements/[reqId]/objects/`: `sync-from-github`, `write`, `deploy-test` (→ in_uat), `deploy-prod` (gated on `prodApprovedAt`). Mirror the direct chain; objects target the client BCAgent (same tunnel + apiKey). Auth: partner session + tenant ownership + can-develop; write/deploy steps gated to partner_admin OR assigned developer via new `partnerCanDeploy()`. (`2b388fd`)
+- [x] **Slice 2 — Partner deploy UI + objects GET route.** "Deploy to Client BC" card in partner `RequirementDetail` (dev stages), linear Sync → Write → Deploy-to-Test flow + prod step (awaiting-approval note until C5). `objects/route.ts` GET lists deployable files. `Requirement` type extended (testDeploySnapshotId/prodDeploySnapshotId/prodApprovedAt/assignedDeveloperId). Theme-aware, SWC-safe. (`62d694c`)
+- [x] **C2 correction:** partner `mark-unable` was already built — audit line was stale, now corrected.
+- [ ] **NOT yet functionally tested** — needs a requirement with linked `githubBranch` + client test NAV DB configured. Partner prod deploy blocked until C5 sets `prodApprovedAt` (by design).
+- **Remaining partner-parity:** C3 (addendum), C5 (prod go-live approval — next; unblocks partner prod deploy).
 
 **Session 25 — Deliverer model enforced, partner client-user lifecycle, admin re-theme** (all live; Rich verified live)
 - [x] **Assignment/deliverer model fully enforced** across all surfaces — partner is deliverer on partner tenants (assigns own staff), superadmin read-only; customers never assign. Fixed the customer-dashboard Reassign leak + stale `tenant_admin` perms on `/assign` + `/mark-unable`. (`408876c`, `7415e45`) See FILES_INVENTORY "Enforcement status".

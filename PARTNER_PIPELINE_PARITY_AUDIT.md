@@ -3,6 +3,8 @@
 
 **Short answer:** No — the *status-transition* spine is mirrored (Session 22), and the *AI panels* are mirrored (Session 23), but several **capabilities attached to the lifecycle are missing on the partner side**. Below is the full map.
 
+**Update (S26):** C1 (S25), **C2 (partner mark-unable — already built; audit line was stale)**, and **C4 (objects + deploy pipeline — built S26)** are now RESOLVED. Remaining open: **C3** (addendum) and **C5** (prod go-live approval). C5 pairs directly with C4 — it sets `prodApprovedAt`, which is the gate the partner prod-deploy step waits on.
+
 Legend: ✅ present · ❌ missing · ➖ N/A by design
 
 ---
@@ -41,12 +43,12 @@ Legend: ✅ present · ❌ missing · ➖ N/A by design
 | Mark balance paid → fully_paid | ✅ | ✅ (manual) | |
 | AI: feasibility / spec / dev-plan / dev-notes / coding | ✅ | ✅ | S23 |
 | **Assign / reassign developer** | ✅ (`assign` + modal + workload) | ✅ DONE (S25) — partner PATCH, partner_admin, own staff | **C1 RESOLVED** |
-| **Developer "mark unable to complete"** | ✅ (`mark-unable`) | ❌ **MISSING** for partner_developer | **C2** (direct route now rejects partner tenants; partner equivalent not built) |
+| **Developer "mark unable to complete"** | ✅ (`mark-unable`) | ✅ DONE — partner `mark-unable` route (requirePartnerSession + tenant ownership, notifies partner admins) | **C2 RESOLVED** (was already built; audit line was stale) |
 | **Addendum (post-acceptance spec change)** | ✅ (`addendum`) | ❌ **MISSING** | **C3** |
 | **Submit-for-review (senior dev gate)** | ✅ (`submit-for-review`) | ❌ likely N/A — partner is the senior | verify, prob ➖ |
-| **Objects: fetch from BC / GitHub** (`fetch-objects`, `objects/*`, `sync-from-github`, `write`) | ✅ | ❌ **MISSING** | **C4** — but partner uses coding-assistant+commit; need to confirm the deploy path |
-| **Deploy to test** (`objects/deploy-test`, `manual-deploy-test`) | ✅ | ❌ **MISSING** | **C4** |
-| **Deploy to prod** (`objects/deploy-prod`, `manual-deploy-prod`) | ✅ | ❌ **MISSING** | **C4** |
+| **Objects: sync from GitHub / write / list** (`objects/*`, `sync-from-github`, `write`) | ✅ | ✅ DONE (S26) — partner `objects/{sync-from-github,write,route GET}`; partner authors via coding-assistant+commit then syncs (no fetch-from-BC needed) | **C4 RESOLVED** |
+| **Deploy to test** (`objects/deploy-test`) | ✅ | ✅ DONE (S26) — partner `objects/deploy-test` → in_uat, notifies client (white-label) | **C4 RESOLVED** |
+| **Deploy to prod** (`objects/deploy-prod`) | ✅ | ✅ DONE (S26) — partner `objects/deploy-prod`, gated on `prodApprovedAt` (blocked until C5) | **C4 RESOLVED** |
 | **Prod go-live approval doc** (`prod-approval` → `prod-approve`) | ✅ | ❌ **MISSING** | **C5** |
 
 ---
@@ -57,20 +59,32 @@ Legend: ✅ present · ❌ missing · ➖ N/A by design
 - DONE: partner requirement PATCH (`app/api/partner/tenants/[id]/requirements/[reqId]`) accepts `assignedDeveloperId`, gated `partner_admin`, validates assignee is a `PartnerUser` of that account. UI dropdown in partner requirement detail (candidates from `/api/partner/users`). Admin side made read-only on partner tenants. (`408876c`)
 - NOT built: the workload-indicator modal (direct portal has one); partner uses a simple dropdown. Add the modal later if wanted — not required for parity.
 
-### C2 — Partner developer "mark unable to complete" (still open)
-- Mirror `mark-unable` for `partner_developer` self-service. NOTE: the direct `/mark-unable` now REJECTS partner tenants (S25), so a partner-side route is required for this to work at all on partner tenants.
+### C2 — Partner developer "mark unable to complete" ✅ RESOLVED (already built)
+- Partner-side `mark-unable` route exists at `app/api/partner/tenants/[id]/requirements/[reqId]/mark-unable/route.ts`: `requirePartnerSession` + `assertTenantBelongsToPartner`, sets `unableToCompleteAt`, notifies partner admins via `notifyPartnerRequirementUnableToComplete`. The direct `/mark-unable` rejects partner tenants (S25) by design; the partner route is the correct path on partner tenants. Audit's "still open" line was stale.
 
 ### C3 — Addendum (post-acceptance scope change)
 - Direct flow lets the deliverer add an addendum after a spec is accepted (quoted+). No partner equivalent. Partner deliverer needs this to handle change requests without a fresh requirement.
 
-### C4 — Objects + deployment pipeline (the BIGGEST gap)
-- Direct deliverer can: fetch C/AL objects, sync from GitHub, write to BCAgent, **deploy to test** (→ in_uat), **deploy to prod**.
-- Partner deliverer has the **coding assistant + commit** (writes C/AL to GitHub) but **no deploy path** — so a partner can author objects but cannot push them to the customer's test/prod BC. The lifecycle visibly stops: partner can reach `in_development` and AI-write code, but the "Deploy to Test → in_uat → UAT" loop has no partner trigger.
-- **This is the thing that most breaks "fully see out the requirement lifecycle."**
-- Needs design: does the partner deploy via the **customer tenant's** BCAgent (same tunnel mechanics, partner-authenticated)? Almost certainly yes — the objects target the customer's BC regardless of who delivers.
+### C4 — Objects + deployment pipeline ✅ RESOLVED (S26, two slices)
+**Design confirmed:** objects target the **client tenant's** BCAgent (same tunnel + `apiKey`) regardless of deliverer — so the partner routes do byte-identical agent calls; only the auth gate + notification routing differ. Partner authors via coding-assistant + commit, then syncs from GitHub (no fetch-from-BC step needed on the partner side).
 
-### C5 — Production go-live approval
+**Slice 1 — API (`2b388fd`):** four routes under `app/api/partner/tenants/[id]/requirements/[reqId]/objects/`:
+- `sync-from-github` — pulls C/AL from the requirement branch via `resolvePartnerToken` (partner org → BespoxAI fallback), upserts `TenantObjectFile`.
+- `write` — writes selected files to the client BCAgent Deployments folder, returns + persists `testDeploySnapshotId`.
+- `deploy-test` — agent import+compile to test, sets `status:'in_uat'` + `testDeployedAt`, clears prior UAT cycle, reuses `notifyCustomerReadyForUAT` (already white-labels via `getPartnerFromEmail`).
+- `deploy-prod` — agent import+compile to prod, **keeps the `prodApprovedAt` gate**, sets `prodDeployedAt`, reuses `notifyCustomerProdDeployed`.
+- Auth on all four: `requirePartnerSession` + `assertTenantBelongsToPartner` + `assertPartnerCanDevelop`. write/deploy-test/deploy-prod additionally gated to **partner_admin OR the requirement's assigned developer** via new `partnerCanDeploy()` in `lib/partner-auth.ts` (server-enforced → 403; button not hidden).
+
+**Slice 2 — UI + list route (`62d694c`):**
+- `objects/route.ts` (GET) — lists deployable object files (metadata + `hasContent`) so the write step can collect `fileIds`.
+- "Deploy to Client BC" card in partner `RequirementDetail`, gated to dev stages (`in_development`..`complete_pending_payment`). Linear flow: Sync from GitHub → Write Files to Server → Deploy + Compile to Test; plus a Production step gated on `prodApprovedAt` (shows "awaiting client go-live approval" until C5). Per-object compile results for test + prod. Theme-aware via `--rb-*`, SWC-safe JSX.
+- `Requirement` type extended with `testDeploySnapshotId`/`prodDeploySnapshotId`/`prodApprovedAt`/`assignedDeveloperId` (already in the GET payload via `REQ_INCLUDE`).
+
+**Testing prerequisites:** requirement needs a linked `githubBranch` (≥1 committed object) AND the client tenant's **test NAV database** configured, else Write returns a clear config error. deploy-prod stays blocked (clean message) until C5 sets `prodApprovedAt` — to test prod before C5, set `prodApprovedAt` via SQL on a test requirement.
+
+### C5 — Production go-live approval (OPEN — next)
 - Direct flow: deliverer generates a go-live approval doc (`prod-approval`), customer approves (`prod-approve`). No partner equivalent. Needed to close out prod deployments cleanly.
+- **Now the natural next item:** C4's partner `deploy-prod` is gated on `prodApprovedAt`, which only C5 can set. Until C5, partner production deploys stay blocked (by design). Build C5 to unblock them.
 
 ---
 
@@ -80,11 +94,11 @@ Legend: ✅ present · ❌ missing · ➖ N/A by design
 
 ---
 
-## E. Suggested sequencing (for discussion — NOT yet approved)
-1. **Hotfix (low risk, deploy first):** A — remove customer leak in `RequirementsBuilder`; B — lock direct `assign` API to superadmin; D — superadmin read-only gate on partner tenants in admin view.
-2. **C1 + C2:** partner assignment + mark-unable (self-contained, mirrors a known pattern).
-3. **C3:** addendum parity.
-4. **C4:** objects + deploy pipeline for partner — **largest, needs its own design pass** (BCAgent targeting, deploy-test/prod routes, status→in_uat wiring).
-5. **C5:** prod go-live approval parity.
+## E. Suggested sequencing — STATUS
+1. **Hotfix** ✅ DONE (S25) — customer leak removed, `assign` locked to superadmin, admin read-only on partner tenants.
+2. **C1 + C2** ✅ DONE — C1 (S25 partner assignment), C2 (partner mark-unable, pre-existing).
+3. **C3** — addendum parity. OPEN.
+4. **C4** ✅ DONE (S26) — objects + deploy pipeline for partner (two slices, `2b388fd` + `62d694c`).
+5. **C5** — prod go-live approval parity. OPEN — **next**; unblocks C4's partner prod deploy.
 
-Each of 2–5 is a session-sized chunk. 1 is small and stops the active bug.
+Remaining: **C3** (addendum) and **C5** (go-live approval). C5 is the natural pairing with C4.
