@@ -1,1219 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BespoxAI — Intelligence for BC & NAV</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 80 80' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='72' height='72' x='4' y='4' rx='16' fill='%230A5C46'/%3E%3Cpath d='M24 22 L24 58 L43 58 C51 58 57 53 57 46 C57 41.5 54.5 38 50 36.5 C54 34.5 56 31 56 27 C56 20.5 50.5 22 43 22 Z' fill='none' stroke='%23F4EFE4' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M24 40.5 L43 40.5' stroke='%23F4EFE4' stroke-width='4'/%3E%3Cpath d='M32 40.5 L36.5 34 L39 47 L41.5 38 L44 40.5' stroke='%23E8A838' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"/>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BespoxAI — A new home page is on the way</title>
+<meta name="description" content="BespoxAI is rebuilding its home page. The platform is fully operational — customers and partners can sign in as usual.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#040E09;--forest:#0A5C46;--emerald:#0F6E56;--jade:#1A9272;--gold:#C8952A;--amber:#E8A838;--cream:#F4EFE4;--parchment:#EDE8DC;--slate:#3B5249;--fog:#D6D9D4;--white:#FAFAF8}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;overflow-x:hidden}
-.view{display:none}
-.view.active{display:block}
-
-/* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:flex;justify-content:space-between;align-items:center;background:rgba(4,14,9,.88);backdrop-filter:blur(20px);border-bottom:1px solid rgba(244,239,228,.05)}
-.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
-.nl-text{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--cream);font-weight:500;letter-spacing:-.01em}
-.nl-ai{font-family:'DM Mono',monospace;font-size:14px;color:var(--amber);letter-spacing:.04em}
-.nav-links{display:flex;gap:2rem;list-style:none}
-.nav-links a{font-size:13px;color:rgba(244,239,228,.7);text-decoration:none;cursor:pointer;transition:color .2s}
-.nav-links a:hover{color:var(--cream)}
-.nav-r{display:flex;gap:.7rem;align-items:center}
-.btn-ns{font-size:12px;color:rgba(244,239,228,.6);padding:.55rem 1.3rem;border:1px solid rgba(244,239,228,.12);border-radius:6px;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
-.btn-ns:hover{color:var(--cream);border-color:rgba(244,239,228,.3)}
-.btn-np{font-size:12px;color:var(--cream);padding:.55rem 1.4rem;border:1px solid rgba(244,239,228,.1);border-radius:6px;background:var(--forest);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
-.btn-np:hover{background:var(--emerald)}
-
-/* HERO */
-.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:8rem 3rem 5rem;position:relative;overflow:hidden;background:var(--ink);color:var(--cream)}
-.hero-bg{position:absolute;inset:0;pointer-events:none}
-.hg1{position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(26,146,114,.13),transparent 65%);top:-250px;right:-200px}
-.hg2{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(200,149,42,.07),transparent 65%);bottom:-150px;left:-100px}
-.hgrid{position:absolute;inset:0;opacity:.033;background-image:linear-gradient(rgba(244,239,228,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(244,239,228,.8) 1px,transparent 1px);background-size:64px 64px}
-.hero-in{position:relative;z-index:1;max-width:1100px;margin:0 auto;width:100%}
-.eyebrow{display:flex;align-items:center;gap:12px;margin-bottom:2.5rem}
-.ey-line{width:36px;height:1px;background:var(--jade)}
-.ey-text{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--jade)}
-.hero-title{font-family:'Cormorant Garamond',serif;font-size:84px;font-weight:300;line-height:.95;margin-bottom:3rem}
-.hero-title em{font-style:italic;color:var(--jade)}
-.hero-body{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:end}
-.hero-desc{font-size:15px;color:rgba(244,239,228,.72);line-height:1.85;max-width:460px;margin-bottom:2.5rem}
-.hero-actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
-.btn-p{background:var(--forest);color:var(--cream);font-size:13px;padding:.9rem 2rem;border-radius:8px;border:1px solid rgba(244,239,228,.1);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .2s}
-.btn-p:hover{background:var(--emerald);transform:translateY(-1px)}
-.btn-g{font-size:13px;color:rgba(244,239,228,.5);cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .2s;background:none;border:none;font-family:'DM Sans',sans-serif}
-.btn-g:hover{color:var(--cream)}
-.btn-g::after{content:'→';transition:transform .2s}
-.btn-g:hover::after{transform:translateX(4px)}
-.hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
-.h-stat{background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.07);border-radius:10px;padding:1.25rem;position:relative;overflow:hidden}
-.h-stat::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(26,146,114,.06),transparent);pointer-events:none}
-.sv{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:300;line-height:1;color:var(--cream)}
-.sv span{color:var(--jade)}
-.sl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,239,228,.6);margin-top:.5rem}
-.hero-badge{background:rgba(26,146,114,.1);border:1px solid rgba(26,146,114,.2);border-radius:8px;padding:1rem 1.25rem;display:flex;align-items:center;gap:12px}
-.bdot{width:8px;height:8px;border-radius:50%;background:var(--jade);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
-.badge-text{font-size:12px;color:rgba(244,239,228,.7);line-height:1.5}
-.badge-text strong{color:var(--cream);display:block}
-
-/* MARQUEE */
-.mq-wrap{border-top:1px solid rgba(244,239,228,.06);border-bottom:1px solid rgba(244,239,228,.06);padding:.85rem 0;overflow:hidden;background:rgba(244,239,228,.018);background-color:var(--ink)}
-.mq-track{display:flex;gap:3rem;animation:marquee 28s linear infinite;white-space:nowrap}
-.mq-item{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(244,239,228,.5);display:flex;align-items:center;gap:1rem}
-.mq-dot{width:4px;height:4px;border-radius:50%;background:var(--jade);flex-shrink:0}
-
-/* SECTIONS */
-.dark-section{background:var(--ink);color:var(--cream)}
-.sec{padding:7rem 3rem}
-.sec-in{max-width:1100px;margin:0 auto}
-.sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--jade);margin-bottom:1rem;display:flex;align-items:center;gap:12px}
-.sec-label::before{content:'';display:block;width:28px;height:1px;background:var(--jade)}
-.sec-label.light{color:rgba(244,239,228,.75)}
-.sec-label.light::before{background:rgba(244,239,228,.6)}
-.sec-h{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;line-height:1.05;margin-bottom:1.5rem;color:var(--ink)}
-.sec-h.light{color:var(--cream)}
-.sec-h em{font-style:italic;color:var(--jade)}
-.sec-h.light em{color:rgba(244,239,228,.8)}
-.sec-sub{font-size:15px;color:rgba(244,239,228,.7);line-height:1.8;max-width:580px}
-
-/* PROBLEM */
-.prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(244,239,228,.07);border-radius:12px;overflow:hidden;margin-top:3rem}
-.prob-card{background:var(--ink);padding:2rem;position:relative;overflow:hidden}
-.prob-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--forest),transparent)}
-.pnum{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;color:rgba(26,146,114,.35);line-height:1;margin-bottom:1rem}
-.ptitle{font-size:14px;font-weight:500;color:var(--cream);margin-bottom:.75rem}
-.pdesc{font-size:13px;color:rgba(244,239,228,.7);line-height:1.7}
-.pstat{font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(244,239,228,.06)}
-
-/* COMPARISON */
-.comp-box{background:rgba(244,239,228,.025);border:1px solid rgba(244,239,228,.07);border-radius:14px;padding:2.5rem;margin-top:3rem}
-.comp-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--cream);margin-bottom:1.5rem}
-.cr{display:flex;padding:.7rem 0;border-bottom:1px solid rgba(244,239,228,.05);font-size:13px;align-items:center}
-.cr:last-child{border-bottom:none}
-.cf{flex:1.5;color:rgba(244,239,228,.75)}
-.cb{flex:1;color:var(--jade);font-weight:500}
-.cc{flex:1;color:rgba(244,239,228,.45)}
-.ch{flex:1;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,239,228,.5)}
-.ch.bx{color:var(--jade)}
-
-/* PRODUCTS */
-.prod-sec{background:rgba(244,239,228,.015);padding:7rem 3rem}
-.prod-list{display:flex;flex-direction:column;gap:1px;background:rgba(244,239,228,.07);border-radius:14px;overflow:hidden;margin-top:3.5rem}
-.prod-item{background:var(--ink);padding:2rem 2.5rem;display:grid;grid-template-columns:2.2fr 1fr .85fr;gap:2rem;align-items:center}
-.prod-name{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:300;color:var(--cream);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:20px}
-.p-free{background:rgba(26,146,114,.15);color:var(--jade)}
-.p-start{background:rgba(244,239,228,.08);color:rgba(244,239,228,.5)}
-.p-pro{background:rgba(200,149,42,.15);color:var(--amber)}
-.p-fix{background:rgba(244,239,228,.06);color:rgba(244,239,228,.4)}
-.prod-desc{font-size:12px;color:rgba(244,239,228,.65);line-height:1.65}
-.prod-price{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;color:var(--cream);text-align:right}
-.prod-pl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,239,228,.55);text-align:right;margin-top:4px}
-.prod-tokens{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:rgba(200,149,42,0.8);background:rgba(200,149,42,0.08);border:1px solid rgba(200,149,42,0.18);border-radius:5px;padding:2px 8px;display:inline-block;margin-top:6px;text-align:right}
-
-/* DEMO */
-.demo-window{background:#07111D;border:1px solid rgba(244,239,228,.08);border-radius:14px;overflow:hidden;margin-top:3rem}
-.dw-header{padding:1rem 1.5rem;border-bottom:1px solid rgba(244,239,228,.06);display:flex;justify-content:space-between;align-items:center}
-.dw-htitle{font-size:13px;font-weight:500;color:rgba(244,239,228,.65)}
-.dw-live{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--jade)}
-.dw-ldot{width:6px;height:6px;border-radius:50%;background:var(--jade);animation:pulse 2s ease-in-out infinite}
-.dw-body{padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem}
-.chat-msg{display:flex;gap:10px;align-items:flex-start}
-.chat-msg.user{flex-direction:row-reverse}
-.av{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.av-ai{background:rgba(10,92,70,.35);border:1px solid rgba(26,146,114,.25)}
-.av-user{background:rgba(244,239,228,.06);border:1px solid rgba(244,239,228,.1);font-size:11px;color:rgba(244,239,228,.5)}
-.bubble{font-size:13px;line-height:1.75;padding:.8rem 1rem;border-radius:10px;max-width:76%}
-.bai{background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.07);color:rgba(244,239,228,.8);border-radius:4px 10px 10px 10px}
-.buser{background:rgba(10,92,70,.18);border:1px solid rgba(26,146,114,.18);color:rgba(244,239,228,.78);border-radius:10px 4px 10px 10px}
-.hl{color:var(--cream);font-weight:500}
-.al{color:var(--amber)}
-.dw-input{padding:1rem 1.5rem;border-top:1px solid rgba(244,239,228,.06);display:flex;gap:.75rem;align-items:center}
-.dw-ibox{flex:1;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.08);border-radius:8px;padding:.6rem 1rem;font-size:13px;color:rgba(244,239,228,.35);font-family:'DM Sans',sans-serif}
-.dw-send{background:var(--forest);width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0}
-
-/* ROI */
-.roi-wrap{background:var(--forest);color:var(--cream)}
-.roi-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;margin-top:3rem}
-.roi-nums{display:flex;flex-direction:column;gap:1.5rem}
-.roi-row{display:flex;justify-content:space-between;align-items:center;padding-bottom:1.5rem;border-bottom:1px solid rgba(244,239,228,.12)}
-.roi-row:last-child{border-bottom:none;padding-bottom:0}
-.roi-label{font-size:13px;color:rgba(244,239,228,.7)}
-.roi-val{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--cream)}
-.roi-r-desc{color:rgba(244,239,228,.7);font-size:14px;line-height:1.8}
-.roi-hl{margin-top:2rem;padding:1.5rem;background:rgba(244,239,228,.09);border-radius:12px}
-.roi-hl-l{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,239,228,.5);margin-bottom:.75rem}
-.roi-hl-v{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:var(--cream)}
-.roi-hl-s{font-size:13px;color:rgba(244,239,228,.6);margin-top:.5rem}
-.roi-cta{margin-top:1.5rem;display:inline-block;background:rgba(244,239,228,.12);color:var(--cream);border:1px solid rgba(244,239,228,.2);padding:.9rem 1.8rem;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
-.roi-cta:hover{background:rgba(244,239,228,.2)}
-
-/* TESTIMONIALS */
-.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3rem}
-.testi-card{background:rgba(244,239,228,.03);border:1px solid rgba(244,239,228,.07);border-radius:12px;padding:1.75rem}
-.tq{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;font-style:italic;color:rgba(244,239,228,.82);line-height:1.6;margin-bottom:1.5rem}
-.ta{display:flex;gap:10px;align-items:center}
-.tav{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--forest),var(--jade));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--cream);flex-shrink:0}
-.tname{font-size:13px;font-weight:500;color:var(--cream)}
-.trole{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,239,228,.55);margin-top:2px}
-
-/* CTA */
-.cta-wrap{padding:8rem 3rem;text-align:center;position:relative;overflow:hidden;background:var(--ink);color:var(--cream)}
-.cta-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(10,92,70,.16),transparent)}
-.cta-in{position:relative;z-index:1}
-.cta-title{font-family:'Cormorant Garamond',serif;font-size:68px;font-weight:300;line-height:1;margin-bottom:1.5rem;color:var(--cream)}
-.cta-title em{font-style:italic;color:var(--jade)}
-.cta-sub{font-size:15px;color:rgba(244,239,228,.5);margin-bottom:3rem;line-height:1.7;max-width:460px;margin-left:auto;margin-right:auto}
-.cta-acts{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
-.btn-lg{padding:1.1rem 2.5rem;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;text-decoration:none;display:inline-block;border:none}
-.btn-forest{background:var(--forest);color:var(--cream);border:1px solid rgba(244,239,228,.1)}
-.btn-forest:hover{background:var(--emerald);transform:translateY(-2px)}
-.btn-outline{background:transparent;color:rgba(244,239,228,.6);border:1px solid rgba(244,239,228,.15)}
-.btn-outline:hover{border-color:rgba(244,239,228,.3);color:var(--cream)}
-.cta-note{margin-top:2rem;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,239,228,.45)}
-
-/* FOOTER */
-footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem;background:var(--ink)}
-.fl{display:flex;align-items:center;gap:10px}
-.fl-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(244,239,228,.4)}
-.fl-ai{font-family:'DM Mono',monospace;font-size:11px;color:rgba(200,149,42,.5)}
-.fr{display:flex;gap:2rem;flex-wrap:wrap}
-.fr a{font-size:12px;color:rgba(244,239,228,.45);text-decoration:none;cursor:pointer;transition:color .2s}
-.fr a:hover{color:rgba(244,239,228,.75)}
-.fc{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,228,.4)}
-
-/* === SIGN IN === */
-.si-view{min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;padding:2rem;position:relative;overflow:hidden}
-.si-glow{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(26,146,114,.12),transparent 65%);top:-200px;right:-200px;pointer-events:none}
-.si-grid{position:absolute;inset:0;opacity:.025;background-image:linear-gradient(rgba(244,239,228,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(244,239,228,.8) 1px,transparent 1px);background-size:64px 64px;pointer-events:none}
-.si-card{position:relative;z-index:1;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.1);border-radius:18px;padding:3rem;width:100%;max-width:440px;backdrop-filter:blur(20px)}
-.si-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2.5rem}
-.si-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;color:var(--cream);text-align:center;margin-bottom:.5rem}
-.si-sub{font-size:13px;color:rgba(244,239,228,.45);text-align:center;line-height:1.7;margin-bottom:2.5rem}
-.si-divider{display:flex;align-items:center;gap:1rem;margin:1.5rem 0}
-.si-dl{flex:1;height:1px;background:rgba(244,239,228,.1)}
-.si-dt{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(244,239,228,.5)}
-.btn-ms{width:100%;padding:.9rem 1.5rem;border-radius:10px;border:1px solid rgba(244,239,228,.15);background:rgba(244,239,228,.06);color:var(--cream);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:1rem}
-.btn-ms:hover{background:rgba(244,239,228,.1);border-color:rgba(244,239,228,.25)}
-.btn-manual{width:100%;padding:.9rem 1.5rem;border-radius:10px;border:1px solid rgba(26,146,114,.25);background:rgba(10,92,70,.12);color:var(--jade);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
-.btn-manual:hover{background:rgba(10,92,70,.22)}
-.si-note{font-size:11px;color:rgba(244,239,228,.3);text-align:center;margin-top:2rem;line-height:1.7}
-.si-back{font-size:12px;color:rgba(244,239,228,.55);text-align:center;margin-top:1.25rem;cursor:pointer;transition:color .2s}
-.si-back:hover{color:rgba(244,239,228,.65)}
-.conn-form{display:none;margin-top:1.5rem}
-.conn-form.show{display:block}
-.fg{margin-bottom:1.2rem}
-.fl-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(244,239,228,.45);margin-bottom:.5rem;display:block}
-.f-input{width:100%;background:rgba(244,239,228,.05);border:1px solid rgba(244,239,228,.12);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--cream);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
-.f-input:focus{border-color:rgba(26,146,114,.4)}
-.f-input::placeholder{color:rgba(244,239,228,.22)}
-.f-select{width:100%;background:#0A1812;border:1px solid rgba(244,239,228,.12);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--cream);font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;-webkit-appearance:none}
-.si-loading{display:none;text-align:center;padding:2rem 0}
-.si-spinner{width:36px;height:36px;border-radius:50%;border:2px solid rgba(26,146,114,.2);border-top-color:var(--jade);animation:spin 1s linear infinite;margin:0 auto 1rem}
-.si-loading-text{font-size:13px;color:rgba(244,239,228,.5)}
-
-/* === PORTAL === */
-.portal-view{min-height:100vh;background:var(--parchment);display:flex}
-.sidebar{width:240px;flex-shrink:0;background:var(--ink);border-right:1px solid rgba(244,239,228,.07);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
-.sb-logo{padding:1.5rem;border-bottom:1px solid rgba(244,239,228,.07);display:flex;align-items:center;gap:10px;cursor:pointer}
-.sb-lt{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--cream)}
-.sb-lai{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber)}
-.sb-company{padding:.85rem 1rem;margin:.65rem .75rem;background:rgba(244,239,228,.05);border:1px solid rgba(244,239,228,.08);border-radius:8px;cursor:pointer;transition:all .2s}
-.sb-company:hover{background:rgba(244,239,228,.08)}
-.sb-cl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:rgba(244,239,228,.55);margin-bottom:4px}
-.sb-cn{font-size:13px;font-weight:500;color:var(--cream);display:flex;align-items:center;justify-content:space-between}
-.sb-ct{font-family:'DM Mono',monospace;font-size:9px;color:var(--jade);margin-top:3px;display:flex;align-items:center;gap:5px}
-.sb-ctdot{width:5px;height:5px;border-radius:50%;background:var(--jade);animation:pulse 2s ease-in-out infinite}
-.sb-nav{flex:1;padding:.5rem .75rem;overflow-y:auto}
-.sb-nl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(244,239,228,.5);padding:.75rem .75rem .4rem;margin-top:.25rem}
-.sb-item{display:flex;align-items:center;gap:10px;padding:.65rem .75rem;border-radius:7px;cursor:pointer;transition:all .2s;color:rgba(244,239,228,.6);font-size:13px;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:'DM Sans',sans-serif}
-.sb-item:hover{background:rgba(244,239,228,.06);color:rgba(244,239,228,.85)}
-.sb-item.on{background:rgba(10,92,70,.28);color:var(--cream);border:1px solid rgba(26,146,114,.22)}
-.sb-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
-.sb-badge{margin-left:auto;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;border-radius:10px;background:rgba(26,146,114,.2);color:var(--jade)}
-.sb-badge.soon{background:rgba(244,239,228,.07);color:rgba(244,239,228,.5)}
-.sb-footer{padding:1rem .75rem;border-top:1px solid rgba(244,239,228,.07)}
-.sb-user{display:flex;align-items:center;gap:10px;padding:.65rem .75rem;border-radius:7px;cursor:pointer}
-.sb-uav{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--forest),var(--jade));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--cream);flex-shrink:0}
-.sb-uname{font-size:12px;color:rgba(244,239,228,.75)}
-.sb-urole{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,239,228,.5)}
-.sb-signout{font-size:11px;color:rgba(244,239,228,.45);cursor:pointer;margin-top:.25rem;padding:.4rem .75rem;border-radius:5px;transition:all .2s;font-family:'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}
-.sb-signout:hover{color:rgba(244,239,228,.7);background:rgba(244,239,228,.04)}
-
-.portal-main{flex:1;margin-left:240px;display:flex;flex-direction:column;min-height:100vh}
-.ptopbar{background:var(--white);border-bottom:1px solid var(--fog);padding:.9rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.ptb-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--ink)}
-.ptb-right{display:flex;align-items:center;gap:.75rem}
-.ptb-badge{font-family:'DM Mono',monospace;font-size:10px;padding:.35rem .85rem;border-radius:20px;background:rgba(26,146,114,.1);color:var(--forest);border:1px solid rgba(26,146,114,.18);display:flex;align-items:center;gap:6px}
-.ptb-dot{width:6px;height:6px;border-radius:50%;background:var(--jade);animation:pulse 2s ease-in-out infinite}
-.ptb-btn{font-size:12px;color:var(--slate);padding:.45rem 1rem;border:1px solid var(--fog);border-radius:6px;background:var(--white);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
-.ptb-btn:hover{border-color:rgba(10,92,70,.3);color:var(--forest)}
-
-.pcontent{flex:1;padding:2rem}
-.ptab{display:none}
-.ptab.on{display:block}
-
-/* KPI grid */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.75rem}
-.kpi-card{background:var(--white);border:1px solid var(--fog);border-radius:12px;padding:1.25rem;position:relative;overflow:hidden}
-.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-.kpi-card:nth-child(1)::before{background:linear-gradient(to right,var(--forest),var(--jade))}
-.kpi-card:nth-child(2)::before{background:linear-gradient(to right,var(--jade),rgba(26,146,114,.3))}
-.kpi-card:nth-child(3)::before{background:linear-gradient(to right,var(--gold),rgba(200,149,42,.3))}
-.kpi-card:nth-child(4)::before{background:linear-gradient(to right,#A32D2D,rgba(163,45,45,.3))}
-.kpi-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin-bottom:.75rem}
-.kpi-val{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--ink);line-height:1}
-.kpi-change{font-size:11px;margin-top:.5rem;display:flex;align-items:center;gap:4px}
-.kpi-change.up{color:var(--forest)}
-.kpi-change.dn{color:#A32D2D}
-
-.dash-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
-.p-card{background:var(--white);border:1px solid var(--fog);border-radius:12px;padding:1.5rem}
-.p-card-hdr{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between}
-.p-card-hdr span{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);cursor:pointer;opacity:.6;font-weight:400}
-
-/* Cash flow bars */
-.cf-chart{display:flex;align-items:flex-end;gap:5px;height:110px}
-.cf-bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.cf-bar{width:100%;border-radius:3px 3px 0 0;min-height:3px;transition:opacity .2s}
-.cf-bar:hover{opacity:.8}
-.cf-bar.pos{background:var(--forest)}
-.cf-bar.neg{background:#C8392B}
-.cf-bl{font-family:'DM Mono',monospace;font-size:7px;color:var(--slate);white-space:nowrap;text-align:center}
-
-/* Alerts */
-.alert-item{display:flex;gap:10px;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid var(--fog)}
-.alert-item:last-child{border-bottom:none}
-.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
-.alert-dot.crit{background:#A32D2D}
-.alert-dot.warn{background:var(--gold)}
-.alert-dot.info{background:var(--forest)}
-.alert-text strong{display:block;font-size:13px;color:var(--ink);margin-bottom:2px}
-.alert-text span{font-size:12px;color:var(--slate);line-height:1.55}
-
-/* Quick actions */
-.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
-.qa-item{background:var(--white);border:1px solid var(--fog);border-radius:12px;padding:1.1rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px}
-.qa-item:hover{border-color:rgba(10,92,70,.35);background:rgba(10,92,70,.02);transform:translateY(-1px)}
-.qa-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--parchment)}
-.qa-text strong{display:block;font-size:13px;color:var(--ink);margin-bottom:2px}
-.qa-text span{font-size:11px;color:var(--slate)}
-
-/* PORTAL CHAT */
-.pchat-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px)}
-.pchat-body{flex:1;overflow-y:auto;padding:1.5rem;background:var(--white);border:1px solid var(--fog);border-radius:12px 12px 0 0;display:flex;flex-direction:column;gap:1.25rem}
-.pchat-msg{display:flex;gap:10px;align-items:flex-start}
-.pchat-msg.user{flex-direction:row-reverse}
-.pc-ai-av{width:28px;height:28px;border-radius:6px;background:var(--forest);border:1px solid rgba(10,92,70,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.pc-u-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--forest),var(--jade));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--cream);flex-shrink:0}
-.pc-bai{background:var(--parchment);border:1px solid var(--fog);color:var(--ink);border-radius:4px 12px 12px 12px;font-size:13px;line-height:1.75;padding:.85rem 1.1rem;max-width:76%}
-.pc-buser{background:var(--forest);color:var(--cream);border-radius:12px 4px 12px 12px;font-size:13px;line-height:1.75;padding:.85rem 1.1rem;max-width:76%;margin-left:auto}
-.pc-hl{color:var(--forest);font-weight:500}
-.pc-al{color:var(--gold);font-weight:500}
-.pchat-input-wrap{background:var(--white);border:1px solid var(--fog);border-top:none;border-radius:0 0 12px 12px;padding:1rem}
-.pchat-row{display:flex;gap:.75rem;align-items:flex-end}
-.pc-input{flex:1;background:var(--parchment);border:1px solid var(--fog);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--ink);font-family:'DM Sans',sans-serif;outline:none;resize:none;line-height:1.5;height:44px}
-.pc-input:focus{border-color:rgba(10,92,70,.3)}
-.pc-send{background:var(--forest);width:42px;height:42px;border-radius:8px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
-.pc-send:hover{background:var(--emerald)}
-.pc-sug{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}
-.pc-sug-btn{font-size:11px;padding:.4rem .9rem;border:1px solid var(--fog);border-radius:20px;background:transparent;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
-.pc-sug-btn:hover{border-color:rgba(10,92,70,.3);color:var(--forest)}
-
-/* HEALTH SCANNER */
-.scan-grid{display:grid;grid-template-columns:260px 1fr;gap:1.5rem}
-.scan-score-card{background:var(--white);border:1px solid var(--fog);border-radius:12px;padding:2rem;text-align:center}
-.big-score{font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:300;line-height:1;color:var(--gold);margin:1rem 0}
-.score-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--gold) 0% 63%,var(--fog) 63% 100%);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;position:relative}
-.score-inner{width:90px;height:90px;border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--gold)}
-.score-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--slate);margin-bottom:.5rem}
-.score-sub{font-size:12px;color:var(--slate);line-height:1.5;margin-top:.75rem}
-.scan-cats{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.5rem}
-.cat-pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:4px;border:1px solid var(--fog);color:var(--slate);font-size:9px}
-.cat-pill.fin{background:rgba(163,45,45,.08);color:#A32D2D;border-color:rgba(163,45,45,.2)}
-.cat-pill.md{background:rgba(200,149,42,.08);color:var(--gold);border-color:rgba(200,149,42,.2)}
-.cat-pill.cfg{background:rgba(10,92,70,.08);color:var(--forest);border-color:rgba(10,92,70,.2)}
-.scan-findings{background:var(--white);border:1px solid var(--fog);border-radius:12px;overflow:hidden}
-.sf-header{padding:1rem 1.25rem;border-bottom:1px solid var(--fog);font-size:13px;font-weight:500;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
-.sf-hdr-r{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;color:var(--slate)}
-.finding-row{display:flex;align-items:flex-start;gap:12px;padding:1rem 1.25rem;border-bottom:1px solid var(--fog)}
-.finding-row:last-child{border-bottom:none}
-.fsev{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;flex-shrink:0;margin-top:2px;white-space:nowrap}
-.fsev.crit{background:rgba(163,45,45,.1);color:#A32D2D}
-.fsev.warn{background:rgba(200,149,42,.1);color:var(--gold)}
-.fsev.info{background:rgba(10,92,70,.1);color:var(--forest)}
-.ft strong{display:block;font-size:13px;color:var(--ink);margin-bottom:2px}
-.ft span{font-size:12px;color:var(--slate);line-height:1.5}
-
-/* COMING SOON */
-.cs-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5rem 2rem;text-align:center;background:var(--white);border:1px solid var(--fog);border-radius:12px}
-.cs-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;color:var(--ink);margin-bottom:.75rem}
-.cs-sub{font-size:13px;color:var(--slate);line-height:1.7;max-width:360px;margin-bottom:2rem}
-.cs-pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;padding:5px 14px;border-radius:20px;background:rgba(10,92,70,.1);color:var(--forest);border:1px solid rgba(10,92,70,.2);display:inline-block}
-
-/* ANIMS */
-/* PAIN-POINT TABS */
-.pp-tabs{padding:5rem 3rem 0}
-.pp-inner{max-width:1100px;margin:0 auto}
-.pp-label{display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--jade);margin-bottom:1.5rem;text-align:center}
-.pp-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:2rem;justify-content:center}
-.pp-button{background:transparent;border:1px solid rgba(244,239,228,.15);border-radius:8px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(244,239,228,.7);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:8px}
-.pp-button:hover{background:rgba(26,146,114,.12);border-color:rgba(26,146,114,.3);color:var(--cream)}
-.pp-button.active{background:var(--jade);border-color:var(--jade);color:var(--ink);font-weight:500}
-.pp-content{display:none;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.08);border-radius:12px;padding:2.5rem;animation:fadeUp .3s ease}
-.pp-content.visible{display:block}
-.pp-content h3{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;color:var(--cream);margin-bottom:1.25rem;letter-spacing:-.01em}
-.pp-content p{font-size:14px;line-height:1.8;color:rgba(244,239,228,.75);margin-bottom:1.25rem}
-.pp-content p:last-of-type{margin-bottom:1.75rem}
-.pp-cta{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream);background:var(--forest);border:1px solid rgba(26,146,114,.4);padding:11px 18px;border-radius:8px;cursor:pointer;transition:all .2s}
-.pp-cta:hover{background:var(--jade);color:var(--ink);border-color:var(--jade)}
-
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-
-@media(max-width:900px){
-  .hero-body,.roi-grid,.dash-grid{grid-template-columns:1fr}
-  .hero-title{font-size:52px}
-  .prob-grid,.testi-grid{grid-template-columns:1fr}
-  .kpi-grid{grid-template-columns:1fr 1fr}
-  .scan-grid{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .portal-main{margin-left:0}
-  .sec{padding:4rem 1.5rem}
-  .prod-item{grid-template-columns:1fr}
-  .prod-price{text-align:left}
-  footer{flex-direction:column;text-align:center}
-}
-@media(max-width:600px){
-  .hero{padding:6rem 1.5rem 3rem}
-  .hero-title{font-size:40px}
-  nav{padding:1rem 1.25rem}
-  .nav-links{display:none}
-  .kpi-grid,.qa-grid{grid-template-columns:1fr}
-  .cta-title{font-size:44px}
-}
-
-/* HOW IT WORKS — three-act flow */
-.flow-grid{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:0;align-items:start;margin-top:3.5rem}
-.flow-step{background:var(--white);border:1px solid var(--fog);border-radius:14px;padding:2rem}
-.flow-num{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;line-height:1;color:var(--forest);opacity:.3;margin-bottom:.75rem}
-.flow-icon{font-size:28px;margin-bottom:.75rem}
-.flow-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--ink);margin-bottom:.75rem}
-.flow-desc{font-size:13px;color:var(--slate);line-height:1.75}
-.flow-get{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--fog);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest)}
-.flow-arrow{display:flex;align-items:center;justify-content:center;padding:0 1rem;padding-top:5.5rem;color:var(--jade);font-size:22px;opacity:.45}
-
-/* PARTNER FLEX */
-.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:3rem}
-.pf-card{border-radius:14px;padding:2rem}
-.pf-card.take{background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.1)}
-.pf-card.go{background:rgba(26,146,114,.08);border:1px solid rgba(26,146,114,.22)}
-.pf-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:1.25rem}
-.pf-badge.take{background:rgba(244,239,228,.08);color:rgba(244,239,228,.5)}
-.pf-badge.go{background:rgba(26,146,114,.18);color:var(--jade)}
-.pf-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--cream);margin-bottom:.75rem}
-.pf-desc{font-size:13px;color:rgba(244,239,228,.7);line-height:1.75;margin-bottom:1.5rem}
-.pf-list{list-style:none;display:flex;flex-direction:column;gap:.65rem}
-.pf-list li{font-size:12px;color:rgba(244,239,228,.65);display:flex;gap:8px;align-items:flex-start;line-height:1.55}
-.pf-list li::before{content:'→';color:var(--jade);flex-shrink:0}
-.pf-list.go li::before{content:'✓'}
-
-/* PIPELINE STAGES */
-.pipe-vis{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(4,14,9,.12);border-radius:12px;overflow:hidden;margin-top:3rem}
-.pipe-stage{background:var(--white);padding:1.5rem 1rem;text-align:center}
-.pipe-stage-num{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;color:rgba(4,14,9,.3);margin-bottom:.5rem}
-.pipe-stage-icon{font-size:20px;margin-bottom:.5rem}
-.pipe-stage-name{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--ink);margin-bottom:.4rem}
-.pipe-stage-desc{font-size:11px;color:var(--slate);line-height:1.5}
-.pipe-stage.active-stage{background:rgba(10,92,70,.07);border-top:2px solid var(--forest)}
-.pipe-stage.active-stage .pipe-stage-name{color:var(--forest)}
-
-
-/* CONNECTED INTELLIGENCE */
-.ci-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:start;margin-top:3rem}
-.ci-items{display:flex;flex-direction:column;gap:1px;background:rgba(244,239,228,.07);border-radius:12px;overflow:hidden;align-self:start}
-.ci-item{background:var(--ink);padding:1.25rem 1.5rem;display:flex;gap:1rem;align-items:flex-start}
-.ci-icon{font-size:18px;flex-shrink:0;margin-top:2px}
-.ci-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);margin-bottom:.35rem}
-.ci-text{font-size:12px;color:rgba(244,239,228,.65);line-height:1.6}
-.own-panel{margin-top:3rem;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.09);border-radius:12px;padding:2rem 2.5rem;display:grid;grid-template-columns:auto 1fr;gap:2rem;align-items:start}
-.own-icon{font-size:28px;margin-top:4px}
-.own-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:var(--cream);margin-bottom:1rem}
-.own-list{display:flex;flex-direction:column;gap:.6rem}
-.own-list li{font-size:12px;color:rgba(244,239,228,.7);display:flex;gap:8px;align-items:flex-start;line-height:1.55}
-.own-list li::before{content:'✓';color:var(--jade);flex-shrink:0;font-size:11px}
-@media(max-width:900px){
-  .ci-grid{grid-template-columns:1fr}
-  .own-panel{grid-template-columns:1fr}
-  .own-icon{display:none}
-}
-
-/* STARTER PILL */
-.p-starter{background:rgba(200,149,42,.15);color:var(--gold)}
-
-/* KNOW BEFORE YOU COMMIT panel */
-.kbc-wrap{background:var(--forest);border-radius:16px;padding:2.5rem 3rem;display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-top:4rem}
-.kbc-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(244,239,228,.55);margin-bottom:1rem}
-.kbc-title{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;line-height:1.1;color:var(--cream);margin-bottom:1rem}
-.kbc-desc{font-size:14px;color:rgba(244,239,228,.75);line-height:1.8}
-.kbc-list{list-style:none;display:flex;flex-direction:column;gap:.85rem;margin-top:.5rem}
-.kbc-list li{font-size:13px;color:rgba(244,239,228,.8);display:flex;gap:10px;align-items:flex-start;line-height:1.6}
-.kbc-list li::before{content:'→';color:var(--amber);flex-shrink:0;margin-top:1px}
-
-/* MIGRATION ANALYSER CALLOUT */
-.mig-callout{margin-top:2.5rem;background:var(--ink);border:1px solid rgba(244,239,228,.1);border-radius:12px;padding:2rem 2.5rem;display:grid;grid-template-columns:1.6fr 1fr;gap:2.5rem;align-items:center}
-.mig-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:.6rem}
-.mig-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--cream);margin-bottom:.75rem}
-.mig-desc{font-size:12px;color:rgba(244,239,228,.65);line-height:1.7}
-.mig-phases{display:flex;flex-direction:column;gap:.5rem}
-.mig-phase{background:rgba(244,239,228,.05);border:1px solid rgba(244,239,228,.1);border-radius:8px;padding:.85rem 1.1rem}
-.mig-phase-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,228,.45);margin-bottom:.3rem}
-.mig-phase-text{font-size:12px;color:rgba(244,239,228,.75)}
-
-
-@media(max-width:900px){
-  .kbc-wrap{grid-template-columns:1fr;padding:2rem}
-  .mig-callout{grid-template-columns:1fr}
-}
-@media(max-width:900px){
-  .flow-grid{grid-template-columns:1fr;gap:1.25rem}
-  .flow-arrow{display:none}
-  .pf-grid{grid-template-columns:1fr}
-  .pipe-vis{grid-template-columns:1fr 1fr}
-}
+  :root{
+    --parchment:#F4EFE4;
+    --parchment-deep:#EDE8DC;
+    --ink:#040E09;
+    --jade:#0A5C46;
+    --jade-bright:#1A9272;
+    --amber:#E8A838;
+    --muted:#5C6A61;
+    --rule:#D6D9D4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--parchment);
+    color:var(--ink);
+    font-family:'DM Sans',sans-serif;
+    font-weight:300;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  .frame{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:48px 24px;
+  }
+  .eyebrow{
+    font-family:'DM Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--jade);
+    margin-bottom:28px;
+    opacity:0;
+    animation:rise .8s ease .1s forwards;
+  }
+  .wordmark{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:400;
+    font-size:clamp(52px,9vw,104px);
+    line-height:1.02;
+    letter-spacing:-0.01em;
+    opacity:0;
+    animation:rise .8s ease .25s forwards;
+  }
+  .wordmark .ai{color:var(--jade)}
+  .tagline{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-weight:300;
+    font-size:clamp(19px,3vw,26px);
+    color:var(--muted);
+    margin-top:18px;
+    opacity:0;
+    animation:rise .8s ease .4s forwards;
+  }
+  .divider{
+    width:64px;
+    height:1px;
+    background:var(--rule);
+    margin:40px auto 36px;
+    position:relative;
+    opacity:0;
+    animation:rise .8s ease .55s forwards;
+  }
+  .divider::after{
+    content:'';
+    position:absolute;
+    top:-2.5px;
+    left:0;
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--amber);
+    animation:trace 5s ease-in-out 1.4s infinite;
+  }
+  .note{
+    max-width:520px;
+    font-size:16px;
+    line-height:1.7;
+    color:var(--ink);
+    opacity:0;
+    animation:rise .8s ease .7s forwards;
+  }
+  .note strong{font-weight:500}
+  .actions{
+    margin-top:40px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+    opacity:0;
+    animation:rise .8s ease .85s forwards;
+  }
+  .signin{
+    display:inline-block;
+    background:var(--jade);
+    color:var(--parchment);
+    font-family:'DM Sans',sans-serif;
+    font-weight:400;
+    font-size:15px;
+    letter-spacing:0.02em;
+    text-decoration:none;
+    padding:14px 34px;
+    border-radius:2px;
+    transition:background .2s ease;
+  }
+  .signin:hover{background:var(--jade-bright)}
+  .signin:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .partner{
+    font-family:'DM Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:0.04em;
+    color:var(--muted);
+  }
+  .partner a{
+    color:var(--jade);
+    text-decoration:none;
+    border-bottom:1px solid var(--rule);
+    transition:border-color .2s ease;
+  }
+  .partner a:hover{border-color:var(--jade)}
+  .partner a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  footer{
+    padding:22px 24px 28px;
+    text-align:center;
+    font-family:'DM Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  @keyframes rise{
+    from{opacity:0;transform:translateY(10px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @keyframes trace{
+    0%{left:0}
+    50%{left:58px}
+    100%{left:0}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .eyebrow,.wordmark,.tagline,.divider,.note,.actions{animation:none;opacity:1}
+    .divider::after{animation:none}
+  }
 </style>
 </head>
 <body>
-
-<!-- ============ LANDING ============ -->
-<div id="v-landing" class="view active">
-
-<nav>
-  <div class="nav-logo" onclick="gv('landing')">
-    <svg width="30" height="30" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="url(#ng1)"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3"/><path d="M29 40.5L33 40.5L35.5 34L38 47L40.5 38L43 40.5L52 40.5" stroke="#E8A838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="ng1" x1="4" y1="4" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1A9272"/><stop offset="100%" stop-color="#040E09"/></linearGradient></defs></svg>
-    <span style="display:inline-flex;align-items:baseline;gap:0"><span class="nl-text">Bespox</span><span class="nl-ai">AI</span></span>
-  </div>
-  <ul class="nav-links">
-    <li><a onclick="document.getElementById('sec-how').scrollIntoView({behavior:'smooth'})">How it Works</a></li>
-    <li><a onclick="document.getElementById('sec-partner').scrollIntoView({behavior:'smooth'})">Your Partner</a></li>
-    <li><a onclick="document.getElementById('sec-pricing').scrollIntoView({behavior:'smooth'})">Pricing</a></li>
-    <li><a onclick="document.getElementById('sec-demo').scrollIntoView({behavior:'smooth'})">Demo</a></li>
-  </ul>
-  <div class="nav-r">
-    <button class="btn-ns" onclick="window.location.href='/login'">Sign In</button>
-    <button class="btn-np" onclick="window.location.href='/login'">Get Started &rarr;</button>
-  </div>
-</nav>
-
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-bg"><div class="hg1"></div><div class="hg2"></div><div class="hgrid"></div></div>
-  <div class="hero-in">
-    <div class="eyebrow"><div class="ey-line"></div><div class="ey-text">AI &middot; Feasibility &middot; Customisation &middot; Development &middot; BC &amp; NAV</div></div>
-    <div class="hero-title">Your Business Central.<br><em>One portal.</em><br>Complete control.</div>
-    <div class="hero-body">
-      <div>
-        <p class="hero-desc">BespoxAI manages your entire BC and NAV relationship from one place. Know whether an idea is viable before booking a consultant. Scope customisations with professionally generated specs. Receive a fixed-price quote and track development to completion. Already have a partner? Take the spec to them or let us build it.</p>
-        <div class="hero-actions">
-          <button class="btn-p" onclick="window.location.href='/login'">Start for Free</button>
-          <button class="btn-g" onclick="document.getElementById('sec-how').scrollIntoView({behavior:'smooth'})">See how it works</button>
-        </div>
-      </div>
-      <div>
-        <div class="hero-stats">
-          <div class="h-stat"><div class="sv"><span>47</span> hrs</div><div class="sl">Avg monthly hours eliminated</div></div>
-          <div class="h-stat"><div class="sv"><span>100</span>%</div><div class="sl">Fixed-price development</div></div>
-          <div class="h-stat"><div class="sv"><span>4&ndash;8</span>&times;</div><div class="sl">Typical first-year ROI</div></div>
-          <div class="h-stat"><div class="sv"><span>All</span></div><div class="sl">BC &amp; NAV versions</div></div>
-        </div>
-        <div class="hero-badge"><div class="bdot"></div><div class="badge-text"><strong>Works where Copilot doesn&rsquo;t</strong>NAV 2013&ndash;2018 &middot; BC on-prem &middot; ISV Embed &middot; BC SaaS</div></div>
-      </div>
+  <main class="frame">
+    <div class="eyebrow">A new home page is on the way</div>
+    <h1 class="wordmark">Bespox<span class="ai">AI</span></h1>
+    <p class="tagline">Bespoke AI. Built for the ERP Microsoft left behind.</p>
+    <div class="divider" aria-hidden="true"></div>
+    <p class="note">We're rebuilding this page to tell the story properly. <strong>The platform itself is fully up and running</strong> — customers and partners can sign in as usual.</p>
+    <div class="actions">
+      <a class="signin" href="/login">Sign in to your portal</a>
+      <div class="partner">Partner? Sign in at <a href="https://partners.bespoxai.com/login">partners.bespoxai.com</a></div>
     </div>
-  </div>
-</section>
-
-<!-- MARQUEE -->
-<div class="mq-wrap"><div class="mq-track">
-  <span class="mq-item"><span class="mq-dot"></span>Feasibility Analysis</span>
-  <span class="mq-item"><span class="mq-dot"></span>CFO AI Assistant</span>
-  <span class="mq-item"><span class="mq-dot"></span>Fixed-Price Development</span>
-  <span class="mq-item"><span class="mq-dot"></span>Requirement Scoping</span>
-  <span class="mq-item"><span class="mq-dot"></span>Data Health Scanning</span>
-  <span class="mq-item"><span class="mq-dot"></span>Project Pipeline</span>
-  <span class="mq-item"><span class="mq-dot"></span>NAV Migration Analysis</span>
-  <span class="mq-item"><span class="mq-dot"></span>Business Central SaaS</span>
-  <span class="mq-item"><span class="mq-dot"></span>Dynamics NAV 2013&ndash;2018</span>
-  <span class="mq-item"><span class="mq-dot"></span>Bring Your Own Partner</span>
-  <span class="mq-item"><span class="mq-dot"></span>Feasibility Analysis</span>
-  <span class="mq-item"><span class="mq-dot"></span>CFO AI Assistant</span>
-  <span class="mq-item"><span class="mq-dot"></span>Fixed-Price Development</span>
-  <span class="mq-item"><span class="mq-dot"></span>Requirement Scoping</span>
-  <span class="mq-item"><span class="mq-dot"></span>Data Health Scanning</span>
-  <span class="mq-item"><span class="mq-dot"></span>Project Pipeline</span>
-  <span class="mq-item"><span class="mq-dot"></span>NAV Migration Analysis</span>
-  <span class="mq-item"><span class="mq-dot"></span>Business Central SaaS</span>
-  <span class="mq-item"><span class="mq-dot"></span>Dynamics NAV 2013&ndash;2018</span>
-  <span class="mq-item"><span class="mq-dot"></span>Bring Your Own Partner</span>
-</div></div>
-
-<!-- PROBLEM -->
-<div class="dark-section">
-<div class="sec">
-<div class="sec-in">
-  <div class="sec-label">The problem</div>
-  <div class="sec-h light">Your BC services are fragmented.<br><em>Slow, expensive, and hard to hold accountable.</em></div>
-  <p class="sec-sub">Whether it&rsquo;s getting answers from your data, testing whether an idea is even viable, or managing a development build, BC businesses are patching together too many relationships with too little visibility.</p>
-  <div class="prob-grid">
-    <div class="prob-card">
-      <div class="pnum">01</div>
-      <div class="ptitle">Answers that take days</div>
-      <div class="pdesc">Non-standard financial questions require IT involvement, custom reports, or manual Excel work. The average BC or NAV CFO waits 2&ndash;4 days for answers that should take seconds.</div>
-      <div class="pstat">47 hours per month lost to manual reporting</div>
-    </div>
-    <div class="prob-card">
-      <div class="pnum">02</div>
-      <div class="ptitle">Ideas that die in a calendar</div>
-      <div class="pdesc">Testing whether a customisation is viable means booking a discovery session with your partner. That session takes weeks to schedule, costs consultant time, and often ends with the idea being out of budget or technically constrained. Most businesses never find out what was actually possible.</div>
-      <div class="pstat">Weeks of delay to learn an idea won&rsquo;t work</div>
-    </div>
-    <div class="prob-card">
-      <div class="pnum">03</div>
-      <div class="ptitle">Partner bottlenecks</div>
-      <div class="pdesc">Scoping takes weeks. Quotes are vague. Change requests arrive mid-build. Most BC customisations cost far more than they should because the brief was never clearly defined from the start.</div>
-      <div class="pstat">62% of BC projects exceed their original budget</div>
-    </div>
-  </div>
-  <div class="comp-box">
-    <div class="comp-title">BespoxAI vs the traditional BC partner model</div>
-    <div class="cr"><div class="cf ch"></div><div class="ch bx">BespoxAI</div><div class="ch">Traditional BC Partner</div></div>
-    <div class="cr"><div class="cf">Feasibility and cost indication</div><div class="cb">&check; In minutes, before you commit</div><div class="cc">&cross; Discovery session, weeks away</div></div>
-    <div class="cr"><div class="cf">Answers from live BC/NAV data</div><div class="cb">&check; Instant, any question</div><div class="cc">&cross; Custom reports, days of waiting</div></div>
-    <div class="cr"><div class="cf">Professionally generated requirement specs</div><div class="cb">&check; In minutes</div><div class="cc">&cross; Weeks of back-and-forth</div></div>
-    <div class="cr"><div class="cf">Fixed-price development quotes</div><div class="cb">&check; Always, quoted from the spec</div><div class="cc">&cross; Estimates only, change requests common</div></div>
-    <div class="cr"><div class="cf">Pipeline visibility into your project</div><div class="cb">&check; Real-time in your portal</div><div class="cc">&cross; Email updates at best</div></div>
-    <div class="cr"><div class="cf">Take your spec to any developer</div><div class="cb">&check; Fully open, your choice</div><div class="cc">&cross; Locked to one provider</div></div>
-    <div class="cr"><div class="cf">Identifies when development isn&rsquo;t needed</div><div class="cb">&check; Flagged during feasibility</div><div class="cc">&cross; Scoped as billable work regardless</div></div>
-  </div>
-</div>
-</div>
-</div>
-
-<!-- PAIN-POINT TABS -->
-<div class="dark-section">
-<div class="pp-tabs">
-<div class="pp-inner">
-  <span class="pp-label">What's your main challenge?</span>
-  <div class="pp-buttons">
-    <button class="pp-button active" onclick="ppTab(event,'speed')">⏱&nbsp; Speed</button>
-    <button class="pp-button" onclick="ppTab(event,'partnership')">👥&nbsp; Partnership</button>
-    <button class="pp-button" onclick="ppTab(event,'transparency')">📋&nbsp; Transparency</button>
-    <button class="pp-button" onclick="ppTab(event,'unsure')">❓&nbsp; Not sure</button>
-  </div>
-
-  <div id="pp-speed" class="pp-content visible">
-    <h3>You need an answer—now, not in weeks</h3>
-    <p>You have a modification idea. You contact your existing partner. They book you in—three weeks from now. The consultation happens. Discovery, questions, drafting a Functional Requirements Document. Days or weeks. Then the estimate. Weeks more. Thousands of dollars in hidden consulting costs before you even know the price.</p>
-    <p>With BespoxAI, you start generating that document today. Minutes. Our AI, trained on your version of BC or NAV, walks you through the requirements in real time. You refine it yourself. Then you request a senior developer review. They ask clarifying questions, you finalize the spec, and you get a transparent quote. Scope locked. No surprises.</p>
-    <button class="pp-cta" onclick="gv('signin')">Get started →</button>
-  </div>
-
-  <div id="pp-partnership" class="pp-content">
-    <h3>Your partner is great—just overbooked</h3>
-    <p>We're not here to replace your partner. We exist because they're busy—and they should be. When you have a modification or enhancement that needs exploring, your partner is often focused on larger deliverables, bigger customers, and pipeline priorities. That's not a failure of theirs; it's reality. But your idea deserves exploration without a three-month lag.</p>
-    <p>BespoxAI handles the rapid discovery and specification phase. You work with our AI and senior developers to define requirements clearly, get a transparent estimate, and prove concept validity—all in days, not months. Then you can confidently take that specification to your partner, negotiate scope, or decide whether to build internally.</p>
-    <button class="pp-cta" onclick="gv('signin')">Explore with us →</button>
-  </div>
-
-  <div id="pp-transparency" class="pp-content">
-    <h3>Hidden costs and unclear scope—not anymore</h3>
-    <p>A simple modification request to your partner becomes a multi-step cost center: consultant time for discovery, developer time for estimation, project management overhead—all baked into a final quote you can't unpack. You pay for the entire process, whether the idea is worth pursuing or not.</p>
-    <p>With BespoxAI, you see exactly what you're building before you commit. Our AI generates your Functional Requirements Document in minutes, you refine it yourself at no cost, then a senior developer reviews it and gives you a clear, itemized quote. No hidden consulting fees. Scope is locked. You decide with full visibility.</p>
-    <button class="pp-cta" onclick="gv('signin')">See the difference →</button>
-  </div>
-
-  <div id="pp-unsure" class="pp-content">
-    <h3>Let's figure out what matters to you</h3>
-    <p>The three pain points above cover most challenges for BC and NAV deployments. But your situation might be different. Tell us what's on your mind—what's holding you back from exploring modifications or enhancements to your system right now?</p>
-    <p>We're here to listen and help you move forward.</p>
-    <button class="pp-cta" onclick="gv('signin')">Start a conversation →</button>
-  </div>
-</div>
-</div>
-</div>
-
-<!-- HOW IT WORKS -->
-<div class="sec" style="background:var(--cream)" id="sec-how">
-<div class="sec-in">
-  <div class="sec-label">How it works</div>
-  <div class="sec-h">Three steps.<br><em>One BC portal.</em></div>
-  <p style="font-size:15px;color:var(--slate);line-height:1.8;max-width:560px">Every BC and NAV service, from a quick question to a fully tracked development build, managed in one place.</p>
-  <div class="flow-grid">
-    <div class="flow-step">
-      <div class="flow-num">01</div>
-      <div class="flow-icon">&#x1F4AC;</div>
-      <div class="flow-title">Ask</div>
-      <p class="flow-desc">Get answers from your live BC or NAV system in seconds, from any browser, without opening BC. Ask anything about your finances in plain English. Multi-turn conversation memory included.</p>
-      <div class="flow-get">Instant answers &middot; Live data &middot; Any device</div>
-    </div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-step">
-      <div class="flow-num">02</div>
-      <div class="flow-icon">&#x1F4CB;</div>
-      <div class="flow-title">Scope</div>
-      <p class="flow-desc">Describe a customisation idea and BespoxAI assesses feasibility, flags technical constraints, and gives you a cost and time indication before you involve anyone. If the requirement is a financial report or data query, BespoxAI will flag whether the CFO Assistant can answer it directly — saving you the cost of a development engagement entirely. If it needs building, a full professional specification is generated and ready for any developer to quote against.</p>
-      <div class="flow-get">Feasibility first &middot; Cost indication &middot; Professional spec</div>
-    </div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-step">
-      <div class="flow-num">03</div>
-      <div class="flow-icon">&#x1F3D7;</div>
-      <div class="flow-title">Build</div>
-      <p class="flow-desc">Before any quote is issued, a senior BC developer reviews the spec. Accept the fixed-price quote and pay a 20% deposit to begin. Track every stage in your pipeline. Balance on delivery. No scope creep. No surprise invoices.</p>
-      <div class="flow-get">Senior dev reviewed &middot; Fixed price &middot; 20% deposit</div>
-    </div>
-  </div>
-
-  <!-- KNOW BEFORE YOU COMMIT -->
-  <div class="kbc-wrap">
-    <div>
-      <div class="kbc-label">Know before you commit</div>
-      <div class="kbc-title">Find out if it&rsquo;s viable<br>before booking a consultant.</div>
-      <p class="kbc-desc">Most BC development ideas never get properly evaluated. A discovery session with your partner takes weeks to schedule, costs consultant time, and often ends with the idea being out of budget or technically constrained. BespoxAI gives you that answer in minutes, at a fraction of the cost.</p>
-    </div>
-    <div>
-      <ul class="kbc-list">
-        <li>Describe your idea and BespoxAI assesses whether it is technically achievable in your BC or NAV version</li>
-        <li>Get a cost range and time estimate before involving your partner or ours</li>
-        <li>Reshape the scope early if the first pass is over budget</li>
-        <li>Arrive at any developer conversation already informed, with a professional spec in hand</li>
-        <li>Typical customisations from $2&ndash;5k NZD, deposits from $400</li>
-        <li>If your idea is a financial report or data query, BespoxAI may be able to answer it right now without any development cost</li>
-      </ul>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- PARTNER FLEX -->
-<div class="dark-section sec" id="sec-partner">
-<div class="sec-in">
-  <div class="sec-label light">Already have a BC partner?</div>
-  <div class="sec-h light">Keep them. <em>Or replace them.</em><br>Either way, you&rsquo;re in control.</div>
-  <p class="sec-sub">BespoxAI is deliberately open. Use the tools and take the spec document to any developer. Or let our team build it at a fixed price. You&rsquo;re never locked in and the pipeline is always yours.</p>
-  <div class="pf-grid">
-    <div class="pf-card take">
-      <div class="pf-badge take">Option A</div>
-      <div class="pf-title">Take the spec to your partner</div>
-      <p class="pf-desc">Get a professionally scoped requirement document from BespoxAI, structured and detailed enough for any BC or NAV developer to quote and build against.</p>
-      <ul class="pf-list">
-        <li>BespoxAI-generated spec in minutes, not weeks</li>
-        <li>Full context of your BC version and existing customisations</li>
-        <li>Developer-ready document you can hand to anyone</li>
-        <li>Compare your partner&rsquo;s quote with ours before deciding</li>
-      </ul>
-    </div>
-    <div class="pf-card go">
-      <div class="pf-badge go">Option B &mdash; Let us build it</div>
-      <div class="pf-title">Fixed-price development from BespoxAI</div>
-      <p class="pf-desc">Our BC and NAV developers quote directly from your scoped requirement. Accept the quote, pay a 20% deposit, and track every stage in your portal pipeline.</p>
-      <ul class="pf-list go">
-        <li>Fixed price agreed before work begins. No changes.</li>
-        <li>20% deposit to start, balance on delivery</li>
-        <li>Full pipeline visibility from scoping to completion</li>
-        <li>Executive plan customers receive 10% off all development</li>
-        <li>Every spec is reviewed by a senior BC developer before a quote is issued</li>
-      </ul>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- PIPELINE VISUAL -->
-<div class="sec" style="background:var(--parchment)">
-<div class="sec-in">
-  <div class="sec-label">Your development pipeline</div>
-  <div class="sec-h">Every project tracked.<br><em>Nothing hidden.</em></div>
-  <p style="font-size:15px;color:var(--slate);line-height:1.8;max-width:560px">From the moment a requirement is created to the day it goes live, every stage is visible in your portal. You always know where things stand.</p>
-  <div class="pipe-vis">
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">01</div>
-      <div class="pipe-stage-icon">&#x270F;&#xFE0F;</div>
-      <div class="pipe-stage-name">Scoping</div>
-      <div class="pipe-stage-desc">Requirement described, BespoxAI spec generated</div>
-    </div>
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">02</div>
-      <div class="pipe-stage-icon">&#x1F4B0;</div>
-      <div class="pipe-stage-name">Quoted</div>
-      <div class="pipe-stage-desc">Senior developer reviewed. Fixed price issued, awaiting your decision</div>
-    </div>
-    <div class="pipe-stage active-stage">
-      <div class="pipe-stage-num">03</div>
-      <div class="pipe-stage-icon">&#x2705;</div>
-      <div class="pipe-stage-name">Accepted</div>
-      <div class="pipe-stage-desc">20% deposit collected, work begins</div>
-    </div>
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">04</div>
-      <div class="pipe-stage-icon">&#x2699;&#xFE0F;</div>
-      <div class="pipe-stage-name">In Progress</div>
-      <div class="pipe-stage-desc">Development underway, progress visible</div>
-    </div>
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">05</div>
-      <div class="pipe-stage-icon">&#x1F3AF;</div>
-      <div class="pipe-stage-name">Complete</div>
-      <div class="pipe-stage-desc">Delivered and signed off, balance collected</div>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- CONNECTED INTELLIGENCE -->
-<div class="dark-section sec">
-<div class="sec-in">
-  <div class="sec-label light">Connected intelligence</div>
-  <div class="sec-h light">The longer you&rsquo;re connected,<br><em>the smarter BespoxAI gets.</em></div>
-  <div class="ci-grid">
-    <div>
-      <p style="font-size:14px;color:rgba(244,239,228,.72);line-height:1.85;margin-bottom:2rem">When your BC or NAV is connected to BespoxAI, it builds a profile of your system over time. That profile is applied automatically to every feasibility assessment, every requirement spec, every development quote, and every interaction. The result is less discovery time, faster delivery, and lower cost on every engagement.</p>
-      <p style="font-size:14px;color:rgba(244,239,228,.72);line-height:1.85;margin-bottom:2rem">Most BC development projects start with a partner who knows nothing about your environment. They discover your existing objects mid-build, find conflicts they didn&rsquo;t expect, and issue change requests. BespoxAI starts every engagement from a position of knowledge. Your profile means feasibility checks are accurate, specs are built around your actual codebase, and quotes reflect reality from day one.</p>
-      <p style="font-size:14px;color:rgba(244,239,228,.72);line-height:1.85">The more requirements you scope and the more work you track, the more history BespoxAI has to draw on. Patterns emerge. Costs come down. Timelines tighten. Over time, BespoxAI becomes an institutional record of your BC environment that no partner relationship can replicate.</p>
-    </div>
-    <div class="ci-items" style="align-self:start">
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F4BB;</div>
-        <div>
-          <div class="ci-label">Your BC version &amp; configuration</div>
-          <div class="ci-text">Every feasibility check and spec references the right objects, APIs, and patterns for your exact version. No generic assumptions.</div>
-        </div>
-      </div>
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F9E9;</div>
-        <div>
-          <div class="ci-label">Your existing customisations</div>
-          <div class="ci-text">BespoxAI builds around what&rsquo;s already there, avoiding conflicts and reusing existing logic where possible.</div>
-        </div>
-      </div>
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F4DA;</div>
-        <div>
-          <div class="ci-label">Your full requirement history</div>
-          <div class="ci-text">Every scoped requirement adds context. Future feasibility checks and specs benefit from decisions already made in your environment.</div>
-        </div>
-      </div>
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F4CA;</div>
-        <div>
-          <div class="ci-label">Your development pipeline</div>
-          <div class="ci-text">Costs, timelines, and outcomes feed back into how BespoxAI assesses and quotes future work for your system.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="own-panel">
-    <div class="own-icon">&#x1F513;</div>
-    <div>
-      <div class="own-title">Your data. Always yours.</div>
-      <ul class="own-list">
-        <li>Download your specs, requirements, and full history at any time from your portal</li>
-        <li>If you ever leave BespoxAI, everything comes with you, structured, complete, and nothing left behind</li>
-        <li>A full documented record of every feasibility check, spec, and development outcome makes internal audits straightforward</li>
-        <li>The knowledge you build in BespoxAI belongs to you, regardless of what you decide later</li>
-      </ul>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- PRICING -->
-<div class="prod-sec" id="sec-pricing">
-<div class="sec-in" id="sec-services">
-  <div class="sec-label">Pricing</div>
-  <div class="sec-h">Start free.<br><em>Pay only for what you need.</em></div>
-  <p style="font-size:14px;color:var(--slate);line-height:1.8;max-width:560px;margin-bottom:0">Five tiers built around how you actually use BC. Development services are quoted separately at a fixed price, every time.</p>
-  <div class="prod-list">
-
-    <div class="prod-item">
-      <div>
-        <div class="prod-name">&#x1F9EA; Evaluate BespoxAI <span class="pill p-free">Free</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">Get a feel for the platform with no credit card and no commitment. Run unlimited feasibility checks on any customisation idea &mdash; BespoxAI will tell you whether it needs development, whether the CFO Assistant can handle it directly, and what it might cost. Generate one free AI specification to evaluate the output quality firsthand. Data health scanner is available once your BC instance is connected.</p>
-      </div>
-      <div class="prod-desc">Unlimited feasibility checks<br>1 free AI specification<br>Data health scanner (BC connection required)<br>No credit card needed</div>
-      <div><div class="prod-price">Free</div><div class="prod-pl">No cost &middot; no commitment</div></div>
-    </div>
-
-    <div class="prod-item">
-      <div>
-        <div class="prod-name">&#x1F4CB; Feasibility &amp; Scoping <span class="pill p-starter">Starter</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">Unlimited AI specification generation and full feasibility output across all your requirements. Know whether your idea is technically achievable, get a cost and time indication, and generate a professional spec ready for any developer to quote against &mdash; all before spending anything on development. Data health scanner included when your BC instance is connected. No CFO Assistant.</p>
-      </div>
-      <div class="prod-desc">Unlimited spec generation<br>Full feasibility output with cost range<br>Data health scanner (BC connection required)<br>Development pipeline</div>
-      <div><div class="prod-price">$59<span style="font-size:15px;color:rgba(244,239,228,.4)">/mo</span></div><div class="prod-pl">Everything in Free, unlimited specs &middot; excl. GST</div><div class="prod-tokens">&#x2756; 50,000 AI tokens / mo</div></div>
-    </div>
-
-    <div class="prod-item">
-      <div>
-        <div class="prod-name">&#x1F4AC; CFO Assistant <span class="pill p-start">Assistant</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">Ask anything about your finances in plain English and get answers from your live BC or NAV data in seconds, from any browser, without opening BC. Multi-turn conversation memory and full query history included. Includes one senior developer spec review per month (normally $249) &mdash; so your most active requirements move through the pipeline faster.</p>
-      </div>
-      <div class="prod-desc">Standalone portal at bespoxai.com<br>BC OAuth &middot; your own permissions<br>Multi-turn memory<br>1 included spec review/month</div>
-      <div><div class="prod-price">$299<span style="font-size:15px;color:rgba(244,239,228,.4)">/mo</span></div><div class="prod-pl">Includes everything in Starter &middot; excl. GST</div><div class="prod-tokens">&#x2756; 300,000 AI tokens / mo</div></div>
-    </div>
-
-    <div class="prod-item">
-      <div>
-        <div class="prod-name">&#x1F4C5; One Day Close <span class="pill p-start">Manager</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">Guided month-end close with automated pre-checks. Bank recs balanced? Accruals posted? Dimensions complete? All verified automatically, with flags and drill-downs on anything that needs attention before you touch the period lock. Includes two senior developer spec reviews per month &mdash; enough for most teams running an active development pipeline.</p>
-      </div>
-      <div class="prod-desc">Embedded in Business Central<br>AL extension &middot; no separate login<br>5-day close to same-day<br>2 included spec reviews/month</div>
-      <div><div class="prod-price">$499<span style="font-size:15px;color:rgba(244,239,228,.4)">/mo</span></div><div class="prod-pl">Includes everything in Assistant &middot; excl. GST</div><div class="prod-tokens">&#x2756; 750,000 AI tokens / mo</div></div>
-    </div>
-
-    <div class="prod-item">
-      <div>
-        <div class="prod-name">&#x2B50; Executive Plan <span class="pill p-pro">Executive</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">The complete BC operating model. Data intelligence, CFO assistant, guided close, and 10% off all fixed-price development work, all in one subscription. The 10% development discount pays for the upgrade the moment your annual development spend exceeds $60k NZD.</p>
-      </div>
-      <div class="prod-desc">All features included<br>10% off all development<br>Priority support</div>
-      <div><div class="prod-price" style="color:var(--amber)">$999<span style="font-size:15px;color:rgba(244,239,228,.3)">/mo</span></div><div class="prod-pl">Best value &middot; all-inclusive &middot; excl. GST</div><div class="prod-tokens">&#x2756; 3,000,000 AI tokens / mo</div></div>
-    </div>
-
-    <div class="prod-item">
-      <div>
-        <div class="prod-name">&#x1F3D7; Development Services <span class="pill p-fix">Fixed Fee</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">BC and NAV customisation development, quoted directly from your scoped requirement. Before any quote is issued, a senior BC developer reviews your spec &mdash; a $249 NZD review fee that is credited in full against development costs if you proceed. Fixed price agreed before work begins, no scope creep, no surprises. 20% deposit to start, balance on delivery. Most builds $2&ndash;15k NZD. Executive subscribers receive 10% off all quoted work. Manager and Executive subscribers receive included monthly reviews.</p>
-      </div>
-      <div class="prod-desc">$249 senior developer review (credited vs dev)<br>Most builds $2&ndash;15k NZD<br>20% deposit &middot; balance on delivery<br>Executive subscribers save 10%</div>
-      <div><div class="prod-price">Fixed</div><div class="prod-pl">Quoted from your spec &middot; excl. GST</div></div>
-    </div>
-
-  </div>
-
-  <!-- MIGRATION ANALYSER CALLOUT -->
-  <div class="mig-callout">
-    <div>
-      <div class="mig-label">Fixed-fee project</div>
-      <div class="mig-title">NAV Migration Analyser</div>
-      <p class="mig-desc">If you&rsquo;re running Dynamics NAV and considering a move to Business Central, the Migration Analyser gives you a clear picture of what that transition actually involves. BespoxAI scans your C/AL codebase, counts modified objects, identifies deprecated patterns, and produces a board-ready business case with a realistic effort estimate. Available to any tenant, independent of subscription tier.</p>
-    </div>
-    <div class="mig-phases">
-      <div class="mig-phase">
-        <div class="mig-phase-label">Phase 1 &mdash; Analysis</div>
-        <div class="mig-phase-text">Codebase scan, complexity scoring, and detailed findings report. $500 NZD deposit to begin.</div>
-      </div>
-      <div class="mig-phase">
-        <div class="mig-phase-label">Phase 2 &mdash; Business Case</div>
-        <div class="mig-phase-text">Board-ready migration plan, effort estimate, and risk assessment. Gated on Phase 1 completion.</div>
-      </div>
-    </div>
-  </div>
-
-</div>
-</div>
-
-<!-- DEMO ANCHOR -->
-<div id="sec-demo"></div>
-
-<!-- ROI -->
-<div class="roi-wrap sec">
-<div class="sec-in">
-  <div class="sec-label light">Return on investment</div>
-  <div class="sec-h light">The numbers<br><em>speak for themselves.</em></div>
-  <div class="roi-grid">
-    <div class="roi-nums">
-      <div class="roi-row"><div class="roi-label">Monthly hours saved per finance user</div><div class="roi-val">47 hrs</div></div>
-      <div class="roi-row"><div class="roi-label">Avg reduction in customisation project cost</div><div class="roi-val">35&ndash;50%</div></div>
-      <div class="roi-row"><div class="roi-label">Data issues found in first automated scan</div><div class="roi-val">3 critical</div></div>
-      <div class="roi-row"><div class="roi-label">Typical first-year ROI</div><div class="roi-val">4&ndash;8&times;</div></div>
-    </div>
-    <div>
-      <p class="roi-r-desc">Most customers see 4&ndash;8&times; ROI in year one from reporting time savings and data quality improvements alone, before a single customisation is built. Fixed-price development means no scope creep, no surprise invoices, and significantly lower total cost of ownership across your BC and NAV estate.</p>
-      <div class="roi-hl"><div class="roi-hl-l">Typical first-year outcome</div><div class="roi-hl-v">$51&ndash;125k</div><div class="roi-hl-s">in quantified savings, working capital improvement, and avoided development overruns</div></div>
-      <button class="roi-cta" onclick="window.location.href='/login'">Start free &mdash; see your numbers &rarr;</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- TESTIMONIALS -->
-<div class="dark-section">
-<div class="sec">
-<div class="sec-in">
-  <div class="sec-label">Customers</div>
-  <div class="sec-h light">From first scan<br><em>to final delivery.</em></div>
-  <div class="testi-grid">
-    <div class="testi-card"><p class="tq">&ldquo;The scanner found 14 customers sharing VAT registration numbers, some for over 3 years. We had no idea. BespoxAI found it in 4 minutes.&rdquo;</p><div class="ta"><div class="tav">SR</div><div><div class="tname">Sarah R.</div><div class="trole">CFO &middot; Engineering &middot; NAV 2016</div></div></div></div>
-    <div class="testi-card"><p class="tq">&ldquo;We scoped a customisation in the portal, received the spec from BespoxAI, and had three developers quote against it. We used BespoxAI&rsquo;s team in the end. Fixed price, done in two weeks, exactly as quoted.&rdquo;</p><div class="ta"><div class="tav">MK</div><div><div class="tname">Michael K.</div><div class="trole">Finance Director &middot; Wholesale &middot; BC SaaS</div></div></div></div>
-    <div class="testi-card"><p class="tq">&ldquo;We used BespoxAI to scope a workflow change we&rsquo;d been putting off for two years because we assumed it would be expensive. The feasibility check came back green and the quote was $3,200. We approved it the same day.&rdquo;</p><div class="ta"><div class="tav">LT</div><div><div class="tname">Lisa T.</div><div class="trole">Operations Manager &middot; Distribution &middot; BC on-prem</div></div></div></div>
-  </div>
-</div>
-</div>
-</div>
-
-<!-- CTA -->
-<section class="cta-wrap">
-  <div class="cta-bg"></div>
-  <div class="cta-in">
-    <div class="cta-title">One portal.<br><em>All of BC.</em></div>
-    <p class="cta-sub">Start free. Run unlimited feasibility checks, generate your first spec, and see exactly what BespoxAI would scope before you spend a dollar. No credit card. No commitment.</p>
-    <div class="cta-acts">
-      <button class="btn-lg btn-forest" onclick="window.location.href='/login'">Get started free</button>
-      <button class="btn-lg btn-outline" onclick="document.getElementById('sec-how').scrollIntoView({behavior:'smooth'})">See how it works</button>
-    </div>
-    <div class="cta-note">Free forever &middot; No credit card &middot; BC SaaS &middot; BC on-prem &middot; All NAV versions</div>
-  </div>
-</section>
-
-<footer>
-  <div class="fl"><svg width="22" height="22" viewBox="0 0 80 80" fill="none" style="opacity:.4"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="4" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="4"/></svg><span class="fl-text">bespox</span><span class="fl-ai">AI</span></div>
-  <div class="fr"><a>Products</a><a>Pricing</a><a>About</a><a>Blog</a><a>Privacy</a><a>Contact</a></div>
-  <div class="fc">&copy; 2026 BespoxAI Ltd &middot; Auckland, New Zealand</div>
-</footer>
-
-</div><!-- end landing -->
-
-<!-- ============ SIGN IN ============ -->
-<div id="v-signin" class="view">
-<div class="si-view">
-  <div class="si-glow"></div><div class="si-grid"></div>
-  <div class="si-card">
-    <div class="si-logo">
-      <svg width="36" height="36" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="url(#ng2)"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3"/><path d="M29 40.5L33 40.5L35.5 34L38 47L40.5 38L43 40.5L52 40.5" stroke="#E8A838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="ng2" x1="4" y1="4" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1A9272"/><stop offset="100%" stop-color="#040E09"/></linearGradient></defs></svg>
-      <div><span style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--cream)">bespox</span><span style="font-family:'DM Mono',monospace;font-size:14px;color:var(--amber)">AI</span></div>
-    </div>
-    <div id="si-main">
-      <div class="si-title">Connect your ERP</div>
-      <p class="si-sub">Sign in with Microsoft to instantly connect your Business Central environment. NAV and BC on-prem customers can use a direct API connection below.</p>
-      <button class="btn-ms" onclick="doConnect()">
-        <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
-        Sign in with Microsoft (BC SaaS)
-      </button>
-      <div class="si-divider"><div class="si-dl"></div><div class="si-dt">or connect manually</div><div class="si-dl"></div></div>
-      <button class="btn-manual" onclick="toggleManual()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        NAV / BC On-Premises Connection
-      </button>
-      <div class="conn-form" id="conn-form">
-        <div class="fg"><label class="fl-label">Server URL</label><input class="f-input" placeholder="https://your-nav-server.com:7048/BC" /></div>
-        <div class="fg"><label class="fl-label">Company Name</label><input class="f-input" placeholder="My Company Ltd" /></div>
-        <div class="fg"><label class="fl-label">Authentication</label><select class="f-select"><option>Basic Authentication</option><option>Windows Authentication</option><option>OAuth 2.0</option><option>API Key</option></select></div>
-        <div class="fg"><label class="fl-label">Username / Client ID</label><input class="f-input" placeholder="username or client ID" /></div>
-        <div class="fg"><label class="fl-label">Password / Secret</label><input class="f-input" type="password" placeholder="••••••••••" /></div>
-        <button class="btn-ms" onclick="doConnect()" style="margin-top:.5rem">Test &amp; Connect →</button>
-      </div>
-      <p class="si-note">Your credentials never leave your browser unencrypted. BespoxAI uses delegated authentication — we never store your ERP password.</p>
-    </div>
-    <div class="si-loading" id="si-loading">
-      <div class="si-spinner"></div>
-      <div class="si-loading-text">Connecting to Business Central…</div>
-      <div style="margin-top:.5rem;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,228,.55)">Verifying permissions</div>
-    </div>
-    <div class="si-back" onclick="gv('landing')">← Back to bespoxai.com</div>
-  </div>
-</div>
-</div><!-- end signin -->
-
-<!-- ============ PORTAL ============ -->
-<div id="v-portal" class="view">
-<div class="portal-view">
-
-  <div class="sidebar">
-    <div class="sb-logo" onclick="gv('landing')">
-      <svg width="28" height="28" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="url(#ng3)"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3"/><path d="M29 40.5L33 40.5L35.5 34L38 47L40.5 38L43 40.5L52 40.5" stroke="#E8A838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="ng3" x1="4" y1="4" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1A9272"/><stop offset="100%" stop-color="#040E09"/></linearGradient></defs></svg>
-      <div><span class="sb-lt">bespox</span><span class="sb-lai">AI</span></div>
-    </div>
-    <div class="sb-company">
-      <div class="sb-cl">Connected Company</div>
-      <div class="sb-cn">Meridian Engineering <span>▾</span></div>
-      <div class="sb-ct"><div class="sb-ctdot"></div>BC SaaS · Live</div>
-    </div>
-    <div class="sb-nav">
-      <div class="sb-nl">Workspace</div>
-      <button class="sb-item on" onclick="ptab('dashboard',this)"><span class="sb-icon">⊞</span>Overview</button>
-      <button class="sb-item" onclick="ptab('chat',this)"><span class="sb-icon">💬</span>CFO Assistant</button>
-      <div class="sb-nl">Tools</div>
-      <button class="sb-item" onclick="ptab('scanner',this)"><span class="sb-icon">🔍</span>Health Scanner<span class="sb-badge">63</span></button>
-      <button class="sb-item" onclick="ptab('cashflow',this)"><span class="sb-icon">📊</span>Cash Flow<span class="sb-badge soon">Soon</span></button>
-      <button class="sb-item" onclick="ptab('close',this)"><span class="sb-icon">📅</span>Month-End Close<span class="sb-badge soon">Soon</span></button>
-      <button class="sb-item" onclick="ptab('migration',this)"><span class="sb-icon">🏗️</span>Migration Analyser<span class="sb-badge soon">Soon</span></button>
-    </div>
-    <div class="sb-footer">
-      <div class="sb-user"><div class="sb-uav">SM</div><div><div class="sb-uname">Sarah Mitchell</div><div class="sb-urole">Chief Financial Officer</div></div></div>
-      <div class="sb-signout" onclick="window.location.href='/login'">Sign out</div>
-    </div>
-  </div>
-
-  <div class="portal-main">
-    <div class="ptopbar">
-      <div class="ptb-title" id="ptb-title">Overview</div>
-      <div class="ptb-right">
-        <div class="ptb-badge"><div class="ptb-dot"></div>Live · Last sync 2 min ago</div>
-        <button class="ptb-btn">⚙ Settings</button>
-      </div>
-    </div>
-
-    <div class="pcontent">
-
-      <!-- DASHBOARD TAB -->
-      <div class="ptab on" id="pt-dashboard">
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-label">Current Cash Position</div><div class="kpi-val">$399,640</div><div class="kpi-change up">↑ $12,400 vs last week</div></div>
-          <div class="kpi-card"><div class="kpi-label">Revenue MTD</div><div class="kpi-val">$284,500</div><div class="kpi-change up">↑ 8.2% vs prior month</div></div>
-          <div class="kpi-card"><div class="kpi-label">AR Overdue</div><div class="kpi-val">$94,200</div><div class="kpi-change dn">↑ $31,400 vs last month</div></div>
-          <div class="kpi-card"><div class="kpi-label">Health Score</div><div class="kpi-val" style="color:var(--gold)">63 / 100</div><div class="kpi-change dn">3 critical issues found</div></div>
-        </div>
-        <div class="qa-grid">
-          <div class="qa-item" onclick="ptab('chat',null)"><div class="qa-icon">💬</div><div class="qa-text"><strong>Ask the CFO Assistant</strong><span>Natural language financial queries</span></div></div>
-          <div class="qa-item" onclick="ptab('scanner',null)"><div class="qa-icon">🔍</div><div class="qa-text"><strong>View Health Scan Results</strong><span>3 critical findings need attention</span></div></div>
-          <div class="qa-item" onclick="ptab('cashflow',null)"><div class="qa-icon">📊</div><div class="qa-text"><strong>13-Week Cash Forecast</strong><span>Coming soon — on the roadmap</span></div></div>
-          <div class="qa-item" onclick="ptab('close',null)"><div class="qa-icon">📅</div><div class="qa-text"><strong>Start Month-End Close</strong><span>Coming soon — on the roadmap</span></div></div>
-        </div>
-        <div class="dash-grid">
-          <div class="p-card">
-            <div class="p-card-hdr">13-Week Cash Forecast (Preview) <span>Full view →</span></div>
-            <div class="cf-chart" id="cf-chart"></div>
-          </div>
-          <div class="p-card">
-            <div class="p-card-hdr">Alerts &amp; Findings <span>View all →</span></div>
-            <div class="alert-item"><div class="alert-dot crit"></div><div class="alert-text"><strong>Duplicate VAT registrations</strong><span>14 customers share VAT numbers — data integrity risk</span></div></div>
-            <div class="alert-item"><div class="alert-dot warn"></div><div class="alert-text"><strong>Summit Developments overdue</strong><span>$67,400 outstanding — 127 days past due</span></div></div>
-            <div class="alert-item"><div class="alert-dot info"></div><div class="alert-text"><strong>Job queue completed</strong><span>Scheduled integration sync ran successfully</span></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CFO CHAT TAB -->
-      <div class="ptab" id="pt-chat">
-        <div class="pchat-wrap">
-          <div class="pchat-body">
-            <div class="pchat-msg"><div class="pc-ai-av"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div><div class="pc-bai">Good morning, Sarah. I'm connected to <span class="pc-hl">Meridian Engineering Ltd</span> and ready to answer questions about your finances.<br><br>Your current cash position is <span class="pc-hl">$399,640</span>. I've flagged <span class="pc-al">3 items</span> that need your attention today — would you like a morning briefing, or do you have a specific question?</div></div>
-            <div class="pchat-msg user"><div class="pc-u-av">SM</div><div class="pc-buser">What's our gross margin by product line this month vs last year?</div></div>
-            <div class="pchat-msg"><div class="pc-ai-av"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div><div class="pc-bai">Here's the gross margin breakdown for April vs April 2025:<br><br><span class="pc-hl">Engineering Services:</span> 58.2% (↑ from 52.1%) — best performer, margin expansion driven by higher project rates<br><span class="pc-hl">Equipment Sales:</span> 23.4% (↓ from 29.8%) — compression likely from supplier price increases in Q1<br><span class="pc-al">Maintenance Contracts:</span> 41.1% (↓ from 44.6%) — worth investigating; may be unrecovered material costs<br><br>Overall blended margin: <span class="pc-hl">44.9%</span> vs 42.3% prior year. The equipment line is your biggest concern — want me to drill into which suppliers drove the cost increases?</div></div>
-          </div>
-          <div class="pchat-input-wrap">
-            <div class="pchat-row">
-              <textarea class="pc-input" placeholder="Ask anything about your finances…" rows="1"></textarea>
-              <button class="pc-send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4EFE4" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-            </div>
-            <div class="pc-sug">
-              <button class="pc-sug-btn">Show me overdue debtors</button>
-              <button class="pc-sug-btn">Budget vs actual this month</button>
-              <button class="pc-sug-btn">Which costs increased most in Q1?</button>
-              <button class="pc-sug-btn">Forecast cash for next 4 weeks</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- HEALTH SCANNER TAB -->
-      <div class="ptab" id="pt-scanner">
-        <div class="scan-grid">
-          <div>
-            <div class="scan-score-card">
-              <div class="score-label">Data Health Score</div>
-              <div class="score-ring"><div class="score-inner">63</div></div>
-              <div class="score-sub">Moderate — 3 critical issues and 7 warnings require attention before end of month</div>
-              <div class="scan-cats">
-                <span class="cat-pill fin">Financial: 2 critical</span>
-                <span class="cat-pill md">Master Data: 1 critical</span>
-                <span class="cat-pill cfg">Config: 4 warnings</span>
-              </div>
-            </div>
-          </div>
-          <div class="scan-findings">
-            <div class="sf-header">All Findings <div class="sf-hdr-r">Last scan: Today 9:14am · 34 checks run</div></div>
-            <div class="finding-row"><span class="fsev crit">Critical</span><div class="ft"><strong>Duplicate VAT registration numbers</strong><span>14 customers share VAT numbers — potential HMRC / IRD compliance risk and fraud exposure</span></div></div>
-            <div class="finding-row"><span class="fsev crit">Critical</span><div class="ft"><strong>G/L balance discrepancy detected</strong><span>3 accounts show net debit/credit imbalance totalling $2,140 — likely from a failed posting batch in March</span></div></div>
-            <div class="finding-row"><span class="fsev crit">Critical</span><div class="ft"><strong>Bank reconciliation 47 days overdue</strong><span>Reserve account (BNZ-002) has not been reconciled since 11 March — period is still open</span></div></div>
-            <div class="finding-row"><span class="fsev warn">Warning</span><div class="ft"><strong>4 vendors without payment terms</strong><span>Missing terms cause inconsistent due date calculation on AP ageing reports</span></div></div>
-            <div class="finding-row"><span class="fsev warn">Warning</span><div class="ft"><strong>Dimension gaps on 23 transactions</strong><span>Sales journal entries missing required department dimension — affects management reporting</span></div></div>
-            <div class="finding-row"><span class="fsev warn">Warning</span><div class="ft"><strong>Number series approaching limit</strong><span>Sales Invoice series (SI-) at 94% capacity — will fail to post when exhausted</span></div></div>
-            <div class="finding-row"><span class="fsev info">Info</span><div class="ft"><strong>2 inactive user accounts with SUPER role</strong><span>Former employees retain SUPER permissions — recommend removing access</span></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- COMING SOON TABS -->
-      <div class="ptab" id="pt-cashflow">
-        <div class="cs-wrap"><div style="font-size:40px;margin-bottom:1.5rem;opacity:.35">📊</div><div class="cs-title">Cash Flow Intelligence</div><p class="cs-sub">13-week rolling AI forecast with scenario modelling and proactive risk alerts. Launching Phase 3 — Month 7–9 on the roadmap.</p><div class="cs-pill">Coming in Phase 3</div></div>
-      </div>
-      <div class="ptab" id="pt-close">
-        <div class="cs-wrap"><div style="font-size:40px;margin-bottom:1.5rem;opacity:.35">📅</div><div class="cs-title">Month-End Close Assistant</div><p class="cs-sub">Guided close with automated pre-checks. Bank recs, accruals, dimensions, intercompany — all verified before you touch the period lock.</p><div class="cs-pill">Coming in Phase 2</div></div>
-      </div>
-      <div class="ptab" id="pt-migration">
-        <div class="cs-wrap"><div style="font-size:40px;margin-bottom:1.5rem;opacity:.35">🏗️</div><div class="cs-title">NAV Migration Analyser</div><p class="cs-sub">Full C/AL codebase scan, complexity scoring, and a board-ready migration business case. Available now as a fixed-fee project engagement.</p><div class="cs-pill">Available as Fixed-Fee Project</div></div>
-      </div>
-
-    </div><!-- pcontent -->
-  </div><!-- portal-main -->
-</div><!-- portal-view -->
-</div><!-- end portal -->
-
-<script>
-function gv(view) {
-  if (view === 'signin') { window.location.href = '/login'; return; }
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('v-' + view).classList.add('active');
-  window.scrollTo(0, 0);
-}
-
-function toggleManual() {
-  var f = document.getElementById('conn-form');
-  f.classList.toggle('show');
-}
-
-function doConnect() {
-  var main = document.getElementById('si-main');
-  var loading = document.getElementById('si-loading');
-  main.style.display = 'none';
-  loading.style.display = 'block';
-  setTimeout(function() { gv('portal'); loading.style.display = 'block'; main.style.display = 'block'; }, 1800);
-}
-
-function ptab(tab, btn) {
-  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
-  document.getElementById('pt-' + tab).classList.add('on');
-  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  var titles = {dashboard:'Overview',chat:'CFO Assistant',scanner:'Data Health Scanner',cashflow:'Cash Flow Intelligence',close:'Month-End Close',migration:'NAV Migration Analyser'};
-  document.getElementById('ptb-title').textContent = titles[tab] || tab;
-}
-
-function ppTab(event, tabId) {
-  document.querySelectorAll('.pp-button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.pp-content').forEach(c => c.classList.remove('visible'));
-  event.target.closest('.pp-button').classList.add('active');
-  document.getElementById('pp-' + tabId).classList.add('visible');
-}
-
-// Build cash flow bars
-(function() {
-  var data = [38,42,35,48,30,52,44,26,58,47,35,40,43];
-  var max = Math.max.apply(null,data.map(Math.abs));
-  var weeks = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12','W13'];
-  var container = document.getElementById('cf-chart');
-  if (!container) return;
-  data.forEach(function(v, i) {
-    var wrap = document.createElement('div');
-    wrap.className = 'cf-bw';
-    var bar = document.createElement('div');
-    bar.className = 'cf-bar ' + (v >= 0 ? 'pos' : 'neg');
-    bar.style.height = Math.round(Math.abs(v) / max * 90) + 'px';
-    bar.title = '$' + Math.abs(v) + 'k net';
-    var lbl = document.createElement('div');
-    lbl.className = 'cf-bl';
-    lbl.textContent = weeks[i];
-    wrap.appendChild(bar);
-    wrap.appendChild(lbl);
-    container.appendChild(wrap);
-  });
-})();
-</script>
+  </main>
+  <footer>BespoxAI — Intelligence for Business Central &amp; Microsoft NAV</footer>
 </body>
 </html>
