@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BespoxAI — A new home page is on the way</title>
-<meta name="description" content="BespoxAI is rebuilding its home page. The platform is fully operational — customers and partners can sign in as usual.">
+<title>BespoxAI — Coming soon</title>
+<meta name="description" content="BespoxAI — Microsoft Navision and Business Central services and development. Coming soon.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,6 @@
 <style>
   :root{
     --parchment:#F4EFE4;
-    --parchment-deep:#EDE8DC;
     --ink:#040E09;
     --jade:#0A5C46;
     --jade-bright:#1A9272;
@@ -61,7 +60,7 @@
     animation:rise .8s ease .25s forwards;
   }
   .wordmark .ai{color:var(--jade)}
-  .tagline{
+  .services{
     font-family:'Cormorant Garamond',serif;
     font-style:italic;
     font-weight:300;
@@ -91,53 +90,22 @@
     background:var(--amber);
     animation:trace 5s ease-in-out 1.4s infinite;
   }
-  .note{
-    max-width:520px;
-    font-size:16px;
-    line-height:1.7;
-    color:var(--ink);
+  .contact{
+    font-family:'DM Mono',monospace;
+    font-size:13.5px;
+    letter-spacing:0.04em;
+    color:var(--muted);
     opacity:0;
     animation:rise .8s ease .7s forwards;
   }
-  .note strong{font-weight:500}
-  .actions{
-    margin-top:40px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:18px;
-    opacity:0;
-    animation:rise .8s ease .85s forwards;
-  }
-  .signin{
-    display:inline-block;
-    background:var(--jade);
-    color:var(--parchment);
-    font-family:'DM Sans',sans-serif;
-    font-weight:400;
-    font-size:15px;
-    letter-spacing:0.02em;
-    text-decoration:none;
-    padding:14px 34px;
-    border-radius:2px;
-    transition:background .2s ease;
-  }
-  .signin:hover{background:var(--jade-bright)}
-  .signin:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-  .partner{
-    font-family:'DM Mono',monospace;
-    font-size:12.5px;
-    letter-spacing:0.04em;
-    color:var(--muted);
-  }
-  .partner a{
+  .contact a{
     color:var(--jade);
     text-decoration:none;
     border-bottom:1px solid var(--rule);
-    transition:border-color .2s ease;
+    transition:border-color .2s ease, color .2s ease;
   }
-  .partner a:hover{border-color:var(--jade)}
-  .partner a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .contact a:hover{color:var(--jade-bright);border-color:var(--jade)}
+  .contact a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   footer{
     padding:22px 24px 28px;
     text-align:center;
@@ -157,23 +125,19 @@
     100%{left:0}
   }
   @media (prefers-reduced-motion: reduce){
-    .eyebrow,.wordmark,.tagline,.divider,.note,.actions{animation:none;opacity:1}
+    .eyebrow,.wordmark,.services,.divider,.contact{animation:none;opacity:1}
     .divider::after{animation:none}
   }
 </style>
 </head>
 <body>
   <main class="frame">
-    <div class="eyebrow">A new home page is on the way</div>
+    <div class="eyebrow">Coming soon</div>
     <h1 class="wordmark">Bespox<span class="ai">AI</span></h1>
-    <p class="tagline">Bespoke AI. Built for the ERP Microsoft left behind.</p>
+    <p class="services">Microsoft Navision &amp; Business Central services and development</p>
     <div class="divider" aria-hidden="true"></div>
-    <p class="note">We're rebuilding this page to tell the story properly. <strong>The platform itself is fully up and running</strong> — customers and partners can sign in as usual.</p>
-    <div class="actions">
-      <a class="signin" href="/login">Sign in to your portal</a>
-      <div class="partner">Partner? Sign in at <a href="https://partners.bespoxai.com/login">partners.bespoxai.com</a></div>
-    </div>
+    <p class="contact">Contact — <a href="mailto:Admin@bespoxai.com">Admin@bespoxai.com</a></p>
   </main>
-  <footer>BespoxAI — Intelligence for Business Central &amp; Microsoft NAV</footer>
+  <footer>&copy; 2026 BespoxAI</footer>
 </body>
 </html>
