@@ -15,6 +15,7 @@ export type AiFeature =
   | 'dev_assistant'
   | 'coding_assistant'
   | 'spec_gen'
+  | 'feasibility_analysis'
   | 'dev_plan'
   | 'feasibility'
   | 'cfo_query'

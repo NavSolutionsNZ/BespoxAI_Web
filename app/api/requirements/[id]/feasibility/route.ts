@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getAiConfig } from '@/lib/ai-config'
 import { buildTenantContext, resolveBcVersion } from '@/lib/tenant-context'
+import { objectInventory } from '@/lib/bc-retrieval'
+import { runIndexToolLoop } from '@/lib/ai-tools'
 
 export const dynamic = 'force-dynamic'
 
@@ -129,12 +131,89 @@ ${requirement.description}`
       throw new Error('Unexpected classification value returned')
     }
 
+    // ── Stage 2: grounded analysis against the environment index ────────────
+    //
+    // Only runs when the CR needs development, the tenant has objects indexed,
+    // and the provider is Anthropic (the tool loop is Anthropic-only — the
+    // classifier above keeps its dual-provider path). Non-fatal: any failure
+    // here preserves the stage-1 result.
+    let feasibilityAnalysis: string | null = null
+    if (feasibility === 'development' && cfg.provider === 'anthropic') {
+      try {
+        const inventory = await objectInventory(requirement.tenantId)
+        if (inventory.totalObjects > 0) {
+          const analysisSystem = `You are a senior Microsoft Dynamics NAV / Business Central developer performing a grounded feasibility analysis for a customer change request.
+
+${tenantCtx}
+
+Customer is running: ${bcVersion}
+Their object index contains ${inventory.totalObjects} objects (${inventory.customisedCount} carrying existing customisations${inventory.modTags.length ? `; known change tags: ${inventory.modTags.slice(0, 30).join(', ')}` : ''}).
+
+You have tools to query the customer's ACTUAL objects. Use them — do not assert conflicts, touchpoints, or field availability from general BC knowledge alone. Investigate the objects this change request would touch, check for existing customisations in those areas, and run where_used before proposing changes to shared objects. Objects absent from the index are likely unmodified base objects; say so rather than guessing at their customised state.
+
+When your investigation is complete, respond with ONLY valid JSON (no markdown, no preamble):
+{
+  "affectedObjects": [{ "objectType": "...", "objectId": 0, "objectName": "...", "why": "1 sentence" }],
+  "existingCustomisations": [{ "objectType": "...", "objectId": 0, "objectName": "...", "tags": ["AP...."], "relevance": "1 sentence — must be preserved / conflicts / can be extended" }],
+  "conflicts": ["specific conflict, citing object numbers — empty array if none found"],
+  "suggestedApproach": "2-4 sentences: extension vs modification, which objects, where new 50000-range fields would go",
+  "riskNotes": "1-3 sentences on risk, including anything you could not verify from the index",
+  "confirmedCostRange": "2-5k" | "5-15k" | "15k+"
+}`
+
+          const analysisUser = `Change request to analyse:
+
+BC Area: ${requirement.bcArea}
+Title: ${requirement.title}
+
+Customer description:
+${requirement.description}
+
+Initial classification: development (${feasibilityCostRange ?? 'no cost range'}). Verify against the customer's actual objects.`
+
+          const loop = await runIndexToolLoop({
+            tenantId:    requirement.tenantId,
+            apiKey,
+            model:       cfg.model,
+            system:      analysisSystem,
+            messages:    [{ role: 'user', content: analysisUser }],
+            maxTokens:   2500,
+            temperature: 0.2,
+          })
+
+          const analysisClean  = loop.text.replace(/```json|```/g, '').trim()
+          const analysisParsed = JSON.parse(repairJSON(analysisClean))
+          feasibilityAnalysis  = JSON.stringify({
+            ...analysisParsed,
+            _meta: {
+              toolCalls:  loop.toolTrace.length,
+              iterations: loop.iterations,
+              analysedAt: new Date().toISOString(),
+            },
+          })
+
+          const { logAiUsage: logUsage2 } = await import('@/lib/ai-usage')
+          logUsage2({
+            tenantId:      requirement.tenantId,
+            requirementId: params.id,
+            feature:       'feasibility_analysis',
+            model:         cfg.model,
+            inputTokens:   loop.inputTokens,
+            outputTokens:  loop.outputTokens,
+          })
+        }
+      } catch (e) {
+        console.error('[feasibility] stage-2 grounded analysis failed (non-fatal):', e)
+      }
+    }
+
     const updated = await (prisma as any).requirement.update({
       where: { id: params.id },
       data: {
         feasibility,
         feasibilityCostRange: feasibility === 'development' ? (feasibilityCostRange ?? null) : null,
         feasibilityNotes:     feasibilityNotes ?? null,
+        feasibilityAnalysis,
         feasibilityCheckedAt: new Date(),
       },
       include: {

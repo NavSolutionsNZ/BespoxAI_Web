@@ -220,6 +220,7 @@ model Requirement {
   feasibilityNotes     String?   @db.Text // Plain-English explanation from BespoxAI
   feasibilityCostRange String?            // 'NZD 2-5k' | '5-15k' | '15k+' — development only
   feasibilityCheckedAt DateTime?          // Timestamp of most recent check
+  feasibilityAnalysis  String?   @db.Text // JSON: grounded stage-2 analysis (affectedObjects, conflicts, approach) — populated when tenant has an environment index
 
   // Senior developer review fee — $249 NZD (credited against dev if they proceed)
   reviewPaidAt          DateTime?          // Set by webhook when $249 payment confirmed
