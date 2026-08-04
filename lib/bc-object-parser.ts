@@ -28,6 +28,143 @@ function detectLanguage(content: string): 'AL' | 'CAL' {
     : 'AL'
 }
 
+// ── Shared extraction helpers (environment index) ────────────────────────────
+
+export interface ObjectReference {
+  objectType: string          // Table, Page, Codeunit, Report, XMLport, Query
+  objectId?:  number | null   // numeric when known (C/AL is mostly numeric)
+  name?:      string | null   // name when the reference is by name (AL, TableRelation)
+}
+
+const MAX_REFERENCES = 200
+
+/** Normalise reference type names — Record → Table, casing consistent */
+function normRefType(t: string): string {
+  const lower = t.toLowerCase()
+  if (lower === 'record') return 'Table'
+  if (lower === 'xmlport') return 'XMLport'
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
+}
+
+function dedupeReferences(refs: ObjectReference[]): ObjectReference[] {
+  const seen = new Set<string>()
+  const out: ObjectReference[] = []
+  for (const r of refs) {
+    const key = `${r.objectType}|${r.objectId ?? ''}|${(r.name ?? '').toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(r)
+    if (out.length >= MAX_REFERENCES) break
+  }
+  return out
+}
+
+/**
+ * Extract modification tags from source — the Start/Stop AP wrapper convention,
+ * bare AP/CR comment tags, and Description= property tags used on field changes.
+ * e.g. "// Start AP2378", "//Stop AP2378", "// AP202607", "Description=AP2267"
+ */
+export function extractModTags(content: string): string[] {
+  const tags = new Set<string>()
+
+  // Start/Stop wrappers and bare comment tags: // Start AP2378, //AP2267 etc.
+  for (const m of Array.from(content.matchAll(/\/\/+\s*(?:Start\s+|Stop\s+|End\s+)?((?:AP|CR)\s?\d{3,8})/gi))) {
+    tags.add(m[1].replace(/\s+/g, '').toUpperCase())
+  }
+  // C/AL brace comments: { AP2378 ... }
+  for (const m of Array.from(content.matchAll(/\{\s*(?:Start\s+|Stop\s+)?((?:AP|CR)\s?\d{3,8})/gi))) {
+    tags.add(m[1].replace(/\s+/g, '').toUpperCase())
+  }
+  // Description= property tags on fields/controls
+  for (const m of Array.from(content.matchAll(/Description\s*=\s*"?[^";\n}]*\b((?:AP|CR)\d{3,8})\b/gi))) {
+    tags.add(m[1].toUpperCase())
+  }
+  // Documentation trigger / Version List entries
+  for (const m of Array.from(content.matchAll(/Version List\s*=\s*[^;\n]*\b((?:AP|CR)\d{3,8})\b/gi))) {
+    tags.add(m[1].toUpperCase())
+  }
+
+  return Array.from(tags).sort()
+}
+
+/** Extract Version List from C/AL OBJECT-PROPERTIES */
+function extractVersionList(block: string): string | null {
+  const m = block.match(/Version List\s*=\s*([^;\n]+)/i)
+  return m ? m[1].trim() : null
+}
+
+/**
+ * Extract cross-object references from C/AL source.
+ * Covers variable declarations, RunObject, SourceTable, TableRelation,
+ * CODEUNIT/REPORT/PAGE.RUN calls, and CalcFormula table names.
+ */
+function extractCALReferences(block: string): ObjectReference[] {
+  const refs: ObjectReference[] = []
+
+  // Variable declarations: Name@1000 : Record 36; / : Codeunit 50009;
+  for (const m of Array.from(block.matchAll(/:\s*(Record|Codeunit|Page|Report|XMLport|Query)\s+(\d+)/gi))) {
+    refs.push({ objectType: normRefType(m[1]), objectId: parseInt(m[2]) })
+  }
+  // RunObject=Page 21; RunObject=Report 304;
+  for (const m of Array.from(block.matchAll(/RunObject\s*=\s*(Page|Report|Codeunit|XMLport)\s+(\d+)/gi))) {
+    refs.push({ objectType: normRefType(m[1]), objectId: parseInt(m[2]) })
+  }
+  // SourceTable=Table36
+  for (const m of Array.from(block.matchAll(/SourceTable\s*=\s*Table(\d+)/gi))) {
+    refs.push({ objectType: 'Table', objectId: parseInt(m[1]) })
+  }
+  // Direct runs: CODEUNIT.RUN(50009), REPORT.RUNMODAL(116, ...), PAGE.RUN(0, ...)
+  for (const m of Array.from(block.matchAll(/\b(CODEUNIT|REPORT|PAGE|XMLPORT)\.RUN(?:MODAL)?\s*\(\s*(\d+)/gi))) {
+    const id = parseInt(m[2])
+    if (id > 0) refs.push({ objectType: normRefType(m[1]), objectId: id })
+  }
+  // TableRelation="Sales Header" or TableRelation=Customer
+  for (const m of Array.from(block.matchAll(/TableRelation\s*=\s*"?([A-Za-z][^";.\n(]*)"?/g))) {
+    const name = m[1].trim()
+    if (name && !/^\d+$/.test(name)) refs.push({ objectType: 'Table', name })
+  }
+  // CalcFormula table names: CalcFormula=Sum("Sales Line".Amount)
+  for (const m of Array.from(block.matchAll(/CalcFormula\s*=\s*\w+\s*\(\s*"([^".]+)"/gi))) {
+    refs.push({ objectType: 'Table', name: m[1].trim() })
+  }
+
+  return dedupeReferences(refs)
+}
+
+/**
+ * Extract cross-object references from AL source.
+ * Covers variable declarations, ::"Name" scoped references, and TableRelation.
+ */
+function extractALReferences(content: string): ObjectReference[] {
+  const refs: ObjectReference[] = []
+
+  // Variable declarations: : Record "Sales Line"; / : Codeunit "eDoc. Send";
+  for (const m of Array.from(content.matchAll(/:\s*(Record|Codeunit|Page|Report|Query|XmlPort)\s+"?([^";\n]+)"?\s*;/gi))) {
+    const name = m[2].trim()
+    if (/^\d+$/.test(name)) refs.push({ objectType: normRefType(m[1]), objectId: parseInt(name) })
+    else refs.push({ objectType: normRefType(m[1]), name })
+  }
+  // Scoped enums/objects: Codeunit::"Sales-Post", Page::"Customer Card", Database::"Sales Header"
+  for (const m of Array.from(content.matchAll(/\b(Codeunit|Page|Report|Table|Database|Query|XmlPort)::"?([^",;)\n]+)"?/g))) {
+    const t = m[1] === 'Database' ? 'Table' : m[1]
+    refs.push({ objectType: normRefType(t), name: m[2].trim() })
+  }
+  // TableRelation = "Item";
+  for (const m of Array.from(content.matchAll(/TableRelation\s*=\s*"?([A-Za-z][^";.\n(]*)"?/g))) {
+    const name = m[1].trim()
+    if (name) refs.push({ objectType: 'Table', name })
+  }
+
+  return dedupeReferences(refs)
+}
+
+/** Flag custom fields: 50000-range IDs (Webbline convention and general custom range) */
+function flagCustomFields(fields: Array<{ id: number; name: string; type: string }> | undefined) {
+  if (!fields?.length) return undefined
+  const custom = fields.filter(f => f.id >= 50000 && f.id < 100000)
+  return custom.length > 0 ? custom : undefined
+}
+
 // ── C/AL parsing ──────────────────────────────────────────────────────────────
 
 function splitCALObjects(content: string): string[] {
@@ -82,6 +219,19 @@ function parseCALObject(block: string, filename: string): ParsedObject {
     const diMatches = Array.from(block.matchAll(/DataItemTable\s*=\s*Table(\d+)/g))
     summary.dataItems = diMatches.map(m => ({ tableId: parseInt(m[1]) }))
   }
+
+  // ── Environment index enrichment ────────────────────────────────────────
+  const versionList = extractVersionList(block)
+  if (versionList) summary.versionList = versionList
+
+  const modTags = extractModTags(block)
+  if (modTags.length > 0) summary.modTags = modTags
+
+  const references = extractCALReferences(block)
+  if (references.length > 0) summary.references = references
+
+  const customFields = flagCustomFields(summary.fields)
+  if (customFields) summary.customFields = customFields
 
   return { filename, objectType, objectId, objectName, language: 'CAL', summary, parseError: false }
 }
@@ -198,6 +348,22 @@ function parseALObject(content: string, filename: string): ParsedObject {
       name:  m[1].trim(),
       table: m[2].trim(),
     }))
+  }
+
+  // ── Environment index enrichment ────────────────────────────────────────
+  const modTags = extractModTags(content)
+  if (modTags.length > 0) summary.modTags = modTags
+
+  const references = extractALReferences(content)
+  if (references.length > 0) summary.references = references
+
+  // In AL, extension objects are custom by construction — flag all their fields;
+  // for base-style objects apply the 50000-range rule.
+  if (rawType.endsWith('extension') && summary.fields?.length) {
+    summary.customFields = summary.fields
+  } else {
+    const customFields = flagCustomFields(summary.fields)
+    if (customFields) summary.customFields = customFields
   }
 
   return { filename, objectType, objectId, objectName, language: 'AL', summary, parseError: false }
