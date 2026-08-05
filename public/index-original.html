@@ -79,6 +79,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:
 .sec-h.light em{color:rgba(244,239,228,.8)}
 .sec-sub{font-size:15px;color:rgba(244,239,228,.7);line-height:1.8;max-width:580px}
 
+/* PERPETUAL */
+.perp-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:3.5rem;margin-top:3rem;align-items:start}
+.perp-p{font-size:15px;color:var(--slate);line-height:1.85;margin-bottom:1.25rem;max-width:560px}
+.perp-p strong{color:var(--ink);font-weight:500}
+.perp-callout{font-family:'Cormorant Garamond',serif;font-size:25px;font-style:italic;color:var(--forest);margin:1.75rem 0;padding-left:1.25rem;border-left:2px solid var(--amber)}
+.perp-card{background:var(--ink);color:var(--cream);border-radius:14px;padding:2.5rem;position:relative;overflow:hidden}
+.perp-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 0%,rgba(26,146,114,.18),transparent 60%);pointer-events:none}
+.perp-card>*{position:relative}
+.perp-card-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);margin-bottom:1rem}
+.perp-card-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1.1;margin-bottom:1.25rem}
+.perp-card-title em{font-style:italic;color:var(--jade)}
+.perp-card p{font-size:13.5px;color:rgba(244,239,228,.75);line-height:1.8;margin-bottom:1rem}
+.perp-tags{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.5rem}
+.perp-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;padding:.4rem .7rem;border:1px solid rgba(244,239,228,.15);border-radius:6px;color:rgba(244,239,228,.7)}
+@media(max-width:900px){.perp-grid{grid-template-columns:1fr;gap:2rem}}
+
 /* PROBLEM */
 .prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(244,239,228,.07);border-radius:12px;overflow:hidden;margin-top:3rem}
 .prob-card{background:var(--ink);padding:2rem;position:relative;overflow:hidden}
@@ -503,6 +519,8 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
     <li><a onclick="document.getElementById('sec-partner').scrollIntoView({behavior:'smooth'})">Your Partner</a></li>
     <li><a onclick="document.getElementById('sec-pricing').scrollIntoView({behavior:'smooth'})">Pricing</a></li>
     <li><a onclick="document.getElementById('sec-demo').scrollIntoView({behavior:'smooth'})">Demo</a></li>
+    <li><a href="/faq">FAQ</a></li>
+    <li><a href="/about">About</a></li>
   </ul>
   <div class="nav-r">
     <button class="btn-ns" onclick="window.location.href='/login'">Sign In</button>
@@ -560,6 +578,29 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
   <span class="mq-item"><span class="mq-dot"></span>Dynamics NAV 2013&ndash;2018</span>
   <span class="mq-item"><span class="mq-dot"></span>Bring Your Own Partner</span>
 </div></div>
+
+<!-- PERPETUAL LICENSING -->
+<div class="sec" style="background:var(--cream)" id="sec-perpetual">
+<div class="sec-in">
+  <div class="sec-label">Perpetual licensing</div>
+  <div class="sec-h">You chose ownership.<br><em>You were right.</em></div>
+  <div class="perp-grid">
+    <div>
+      <p class="perp-p">When you bought Dynamics NAV on a perpetual license, you made a deliberate decision: own your software outright, own your data, own your infrastructure, and control your own upgrade cadence. No subscription treadmill. No forced updates. No per-user-per-month bill that never ends.</p>
+      <div class="perp-callout">Microsoft calls it &ldquo;legacy&rdquo;. We call it paid for.</div>
+      <p class="perp-p">Your NAV system still closes the books, still runs the warehouse, still posts thousands of transactions a day &mdash; exactly as it was engineered to. The concurrent-user model you bought remains some of the most cost-effective ERP licensing the mid-market has ever had. The only thing it&rsquo;s missing is the modern intelligence layer Microsoft chose not to build for it.</p>
+      <p class="perp-p"><strong>That&rsquo;s what we build. On your system. On your terms. No migration required.</strong></p>
+    </div>
+    <div class="perp-card">
+      <div class="perp-card-label">Who builds this</div>
+      <div class="perp-card-title">Built by Navision developers.<br><em>Not vibe coders.</em></div>
+      <p>BespoxAI wasn&rsquo;t prompted into existence by people who discovered ERP last year. It was built by developers who have spent decades inside C/AL &mdash; who know their way around posting routines, dimension sets, ledger entries and FlowFields, because we&rsquo;ve written and debugged them for a living.</p>
+      <p>We understand your customisations because we&rsquo;ve built ones just like them. Your ERP runs your business. It deserves better than guesswork.</p>
+      <div class="perp-tags"><span class="perp-tag">C/AL</span><span class="perp-tag">Posting routines</span><span class="perp-tag">FlowFields</span><span class="perp-tag">Dimension sets</span><span class="perp-tag">Object Designer</span><span class="perp-tag">SQL Server</span></div>
+    </div>
+  </div>
+</div>
+</div>
 
 <!-- PROBLEM -->
 <div class="dark-section">
@@ -972,7 +1013,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
 
 <footer>
   <div class="fl"><svg width="22" height="22" viewBox="0 0 80 80" fill="none" style="opacity:.4"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="4" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="4"/></svg><span class="fl-text">bespox</span><span class="fl-ai">AI</span></div>
-  <div class="fr"><a>Products</a><a>Pricing</a><a>About</a><a>Blog</a><a>Privacy</a><a>Contact</a></div>
+  <div class="fr"><a onclick="document.getElementById('sec-services').scrollIntoView({behavior:'smooth'})" style="cursor:pointer">Products</a><a onclick="document.getElementById('sec-pricing').scrollIntoView({behavior:'smooth'})" style="cursor:pointer">Pricing</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="mailto:Admin@bespoxai.com">Contact</a></div>
   <div class="fc">&copy; 2026 BespoxAI Ltd &middot; Auckland, New Zealand</div>
 </footer>
 
