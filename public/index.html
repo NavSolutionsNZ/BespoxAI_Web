@@ -147,6 +147,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:
 .bubble{font-size:13px;line-height:1.75;padding:.8rem 1rem;border-radius:10px;max-width:76%}
 .bai{background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.07);color:rgba(244,239,228,.8);border-radius:4px 10px 10px 10px}
 .buser{background:rgba(10,92,70,.18);border:1px solid rgba(26,146,114,.18);color:rgba(244,239,228,.78);border-radius:10px 4px 10px 10px}
+.trace{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.06em;color:var(--jade);opacity:.85;margin-bottom:.45rem;display:block}
+.typing{display:inline-flex;gap:4px;padding:.9rem 1rem}
+.typing span{width:6px;height:6px;border-radius:50%;background:rgba(244,239,228,.4);animation:tblink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes tblink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.dw-input-wrap{border-top:1px solid rgba(244,239,228,.06);padding:1rem 1.5rem}
+.dw-row{display:flex;gap:.6rem;align-items:center}
+.dw-input{flex:1;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.1);border-radius:8px;padding:.7rem .9rem;font-size:13px;color:var(--cream);font-family:'DM Sans',sans-serif;outline:none;resize:none}
+.dw-input:focus{border-color:rgba(26,146,114,.4)}
+.dw-input::placeholder{color:rgba(244,239,228,.3)}
+.dw-send{background:var(--forest);border:1px solid rgba(244,239,228,.1);border-radius:8px;padding:.7rem .9rem;cursor:pointer;transition:background .2s;display:flex;align-items:center}
+.dw-send:hover{background:var(--emerald)}
+.dw-sug{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}
+.dw-sug-btn{font-size:11.5px;color:rgba(244,239,228,.6);background:rgba(244,239,228,.03);border:1px solid rgba(244,239,228,.1);border-radius:20px;padding:.45rem .9rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.dw-sug-btn:hover{color:var(--cream);border-color:rgba(26,146,114,.4);background:rgba(26,146,114,.08)}
+.dw-note{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;color:rgba(244,239,228,.35);margin-top:1rem;text-align:center}
+.dw-body{max-height:460px;overflow-y:auto;scroll-behavior:smooth}
 .hl{color:var(--cream);font-weight:500}
 .al{color:var(--amber)}
 .dw-input{padding:1rem 1.5rem;border-top:1px solid rgba(244,239,228,.06);display:flex;gap:.75rem;align-items:center}
@@ -960,8 +977,91 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
 </div>
 </div>
 
-<!-- DEMO ANCHOR -->
-<div id="sec-demo"></div>
+<!-- DEMO -->
+<div class="dark-section sec" id="sec-demo">
+<div class="sec-in">
+  <div class="sec-label light">Live demo</div>
+  <div class="sec-h light">Ask it something.<br><em>Go on.</em></div>
+  <p class="sec-sub">This is the CFO Assistant connected to Meridian Engineering Ltd &mdash; a fictional company running Dynamics NAV 2017. Click a question or type your own, and watch where each answer comes from.</p>
+  <div class="demo-window">
+    <div class="dw-header">
+      <div class="dw-htitle">CFO Assistant &mdash; Meridian Engineering Ltd &middot; Dynamics NAV 2017</div>
+      <div class="dw-live"><div class="dw-ldot"></div>CONNECTED &middot; READ-ONLY</div>
+    </div>
+    <div class="dw-body" id="dw-body">
+      <div class="chat-msg"><div class="av av-ai"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div><div class="bubble bai">Good morning. I&rsquo;m connected to <span class="hl">Meridian Engineering Ltd</span> with read-only access, and I&rsquo;ve indexed all 412 objects in this environment &mdash; including its customisations. Ask me anything about the business.</div></div>
+    </div>
+    <div class="dw-input-wrap">
+      <div class="dw-row">
+        <input class="dw-input" id="dw-input" placeholder="Ask anything about Meridian&rsquo;s finances or system&hellip;" onkeydown="if(event.key==='Enter')demoSend()"/>
+        <button class="dw-send" onclick="demoSend()" aria-label="Send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4EFE4" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+      <div class="dw-sug" id="dw-sug">
+        <button class="dw-sug-btn" onclick="demoAsk('debtors')">Show me overdue debtors</button>
+        <button class="dw-sug-btn" onclick="demoAsk('budget')">Budget vs actual this month</button>
+        <button class="dw-sug-btn" onclick="demoAsk('cash')">Forecast cash for the next 4 weeks</button>
+        <button class="dw-sug-btn" onclick="demoAsk('custom')">What customisations are on sales posting?</button>
+      </div>
+    </div>
+  </div>
+  <div class="dw-note">Scripted demonstration with fictional data &mdash; the live product answers from <em>your</em> environment. <a href="/login" style="color:var(--jade);text-decoration:none">Connect yours free &rarr;</a></div>
+</div>
+</div>
+
+<script>
+var DEMO_QA = {
+  debtors: {q:"Show me overdue debtors",
+    t:"&rarr; Table 21 Cust. Ledger Entry &middot; Table 18 Customer &middot; FILTER Open=Yes, Due Date < TODAY",
+    a:"You have <span class='hl'>$84,210</span> overdue across 7 customers. The three that matter:<br><br><span class='hl'>Hartwell Construction</span> &mdash; $31,450, 47 days overdue, and now <span class='hl'>at 96% of credit limit</span><br><span class='hl'>Pacific Marine Services</span> &mdash; $22,800, 33 days overdue (historically pays at ~40 days)<br><span class='hl'>Douglas &amp; Fry Ltd</span> &mdash; $11,960, 61 days overdue &mdash; oldest item, worth a call today<br><br>The remaining four total $18,000 and are under 14 days past due. Want a statement run for any of these?"},
+  budget: {q:"Budget vs actual this month",
+    t:"&rarr; Table 96 G/L Budget Entry &middot; Table 17 G/L Entry &middot; Dimension DEPT &middot; CALCSUMS",
+    a:"July actuals against the FY26 budget:<br><br><span class='hl'>Revenue:</span> $412,300 vs $390,000 budget &mdash; <span class='hl'>5.7% ahead</span><br><span class='hl'>Cost of Sales:</span> $228,900 vs $214,500 &mdash; 6.7% over, tracking the revenue overrun<br><span class='hl'>Operating Expenses:</span> $96,400 vs $101,200 &mdash; 4.7% under, mostly unfilled vacancy in DEPT&middot;WORKSHOP<br><br>Net result <span class='hl'>$87,000 vs $74,300 budgeted</span>. The only line moving the wrong way independently is freight &mdash; 18% over budget for a second straight month."},
+  cash: {q:"Forecast cash for the next 4 weeks",
+    t:"&rarr; Table 21 Cust. Ledger Entry &middot; Table 25 Vendor Ledger Entry &middot; Due Date &middot; payment history weighting",
+    a:"Starting from today&rsquo;s <span class='hl'>$399,640</span>, weighted by each customer&rsquo;s actual payment behaviour rather than raw due dates:<br><br>Week 1: +$61k in / &minus;$48k out &rarr; <span class='hl'>$412k</span><br>Week 2: +$38k / &minus;$72k (incl. GST payment) &rarr; <span class='hl'>$378k</span><br>Week 3: +$95k / &minus;$41k &rarr; <span class='hl'>$432k</span><br>Week 4: +$44k / &minus;$59k &rarr; <span class='hl'>$417k</span><br><br>Lowest point is week 2 at $378k &mdash; comfortable, but note $54k of week-3 inflow assumes Hartwell pays on their usual 47-day pattern. If they slip further, week 3 lands at $378k instead."},
+  custom: {q:"What customisations are on sales posting?",
+    t:"&rarr; Object index &middot; Codeunit 80 Sales-Post &middot; Codeunit 50021 &middot; Table 36 Sales Header",
+    a:"Codeunit 80 carries <span class='hl'>two customisations</span> in this environment:<br><br><span class='hl'>Margin guard (2019)</span> &mdash; blocks release of any sales order below a floor margin held per item category on Table 36 field 50010. Added after the FY19 discounting issue, by the look of the commit trail.<br><br><span class='hl'>eDocs export hook</span> &mdash; posting calls Codeunit 50021 to queue the invoice for electronic delivery; failures land in a retry queue rather than blocking the post.<br><br>Both survive in the object index with full call trees &mdash; so any developer quoting work on sales posting sees them <em>before</em> they estimate, not after they break something."},
+  margin: {q:"Gross margin by product line",
+    t:"&rarr; Table 5802 Value Entry &middot; Table 32 Item Ledger Entry &middot; Item Category rollup",
+    a:"July gross margin vs the same month last year:<br><br><span class='hl'>Engineering Services:</span> 58.2% (up from 52.1%) &mdash; rate increases holding<br><span class='hl'>Equipment Sales:</span> 23.4% (down from 29.8%) &mdash; supplier cost increases not yet passed through<br><span class='hl'>Maintenance Contracts:</span> 41.1% (down from 44.6%) &mdash; unrecovered materials worth investigating<br><br>Blended: <span class='hl'>44.9%</span> against 42.3% prior year. Equipment is the line to fix &mdash; want the supplier-level cost breakdown?"}
+};
+var DEMO_KEYS = [
+  [/debtor|overdue|receivab|owe|aged/i,'debtors'],
+  [/budget|actual|variance/i,'budget'],
+  [/cash|forecast|flow|liquidity/i,'cash'],
+  [/customis|customiz|codeunit|posting|object|modif/i,'custom'],
+  [/margin|profit|product line|gp/i,'margin']
+];
+var demoBusy=false;
+function demoAsk(key){ if(demoBusy)return; demoRun(DEMO_QA[key].q, key); }
+function demoSend(){
+  if(demoBusy)return;
+  var inp=document.getElementById('dw-input'); var v=inp.value.trim(); if(!v)return; inp.value='';
+  var key=null; for(var i=0;i<DEMO_KEYS.length;i++){ if(DEMO_KEYS[i][0].test(v)){ key=DEMO_KEYS[i][1]; break; } }
+  demoRun(v, key);
+}
+function demoRun(q, key){
+  demoBusy=true;
+  var body=document.getElementById('dw-body');
+  body.insertAdjacentHTML('beforeend','<div class="chat-msg user"><div class="av av-user">SM</div><div class="bubble buser"></div></div>');
+  body.lastElementChild.querySelector('.bubble').textContent=q;
+  body.scrollTop=body.scrollHeight;
+  var aiAv='<div class="av av-ai"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div>';
+  body.insertAdjacentHTML('beforeend','<div class="chat-msg" id="dw-typing">'+aiAv+'<div class="bubble bai typing"><span></span><span></span><span></span></div></div>');
+  body.scrollTop=body.scrollHeight;
+  setTimeout(function(){
+    var typ=document.getElementById('dw-typing'); if(typ)typ.remove();
+    var trace, ans;
+    if(key){ trace=DEMO_QA[key].t; ans=DEMO_QA[key].a; }
+    else { trace="&rarr; Demo environment &middot; scripted responses only";
+      ans="Good question &mdash; in the live product I&rsquo;d query Meridian&rsquo;s environment and answer it. This demo is scripted, so I only know a handful of topics. Try one of the suggestions below, or <span class='hl'><a href=\"/login\" style=\"color:inherit\">connect your own system free</a></span> and ask me anything."; }
+    body.insertAdjacentHTML('beforeend','<div class="chat-msg">'+aiAv+'<div class="bubble bai"><span class="trace">'+trace+'</span>'+ans+'</div></div>');
+    body.scrollTop=body.scrollHeight;
+    demoBusy=false;
+  }, 900+Math.random()*500);
+}
+</script>
 
 <!-- ROI -->
 <div class="roi-wrap sec">
