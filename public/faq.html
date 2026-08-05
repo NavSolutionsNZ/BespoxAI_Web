@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FAQ — BespoxAI</title>
+<meta name="description" content="Frequently asked questions about BespoxAI: supported NAV and Business Central versions, security, Cloudflare Tunnel connectivity, read-only data access, and pricing."/>
+<link rel="canonical" href="https://bespoxai.com/faq"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--ink:#040E09;--forest:#0A5C46;--emerald:#0F6E56;--jade:#1A9272;--gold:#C8952A;--amber:#E8A838;--cream:#F4EFE4;--parchment:#EDE8DC;--slate:#3B5249;--fog:#D6D9D4;--white:#FAFAF8}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink)}
+nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:flex;justify-content:space-between;align-items:center;background:rgba(4,14,9,.88);backdrop-filter:blur(20px);border-bottom:1px solid rgba(244,239,228,.05)}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none}
+.nl-text{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--cream);font-weight:500;letter-spacing:-.01em}
+.nl-ai{font-family:'DM Mono',monospace;font-size:14px;color:var(--amber);letter-spacing:.04em}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:13px;color:rgba(244,239,228,.7);text-decoration:none;cursor:pointer;transition:color .2s}
+.nav-links a:hover{color:var(--cream)}
+.nav-links a.on{color:var(--cream)}
+.btn-np{font-size:12px;color:var(--cream);padding:.55rem 1.4rem;border:1px solid rgba(244,239,228,.1);border-radius:6px;background:var(--forest);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;text-decoration:none}
+.btn-np:hover{background:var(--emerald)}
+.hero{padding:10rem 3rem 4rem;background:var(--ink);color:var(--cream)}
+.hero-in{max-width:900px;margin:0 auto}
+.sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--jade);margin-bottom:1rem;display:flex;align-items:center;gap:12px}
+.sec-label::before{content:'';display:block;width:28px;height:1px;background:var(--jade)}
+h1{font-family:'Cormorant Garamond',serif;font-size:56px;font-weight:300;line-height:1.05}
+h1 em{font-style:italic;color:var(--jade)}
+.hero p{margin-top:1.25rem;font-size:15px;color:rgba(244,239,228,.7);line-height:1.8;max-width:560px}
+main{max-width:900px;margin:0 auto;padding:4rem 3rem 6rem}
+.grp{margin-bottom:3.5rem}
+.grp-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;margin-bottom:1.5rem;color:var(--forest)}
+details{border:1px solid var(--fog);border-radius:10px;background:var(--white);margin-bottom:.75rem;overflow:hidden}
+summary{cursor:pointer;list-style:none;padding:1.15rem 1.4rem;font-size:15px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';font-family:'DM Mono',monospace;color:var(--jade);font-size:18px;flex-shrink:0;transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details[open] summary{border-bottom:1px solid var(--fog)}
+.ans{padding:1.15rem 1.4rem 1.4rem;font-size:14px;color:var(--slate);line-height:1.8}
+.ans p{margin-bottom:.9rem}
+.ans p:last-child{margin-bottom:0}
+.ans strong{color:var(--ink);font-weight:500}
+.cta{background:var(--ink);color:var(--cream);border-radius:14px;padding:2.5rem;text-align:center;margin-top:2rem}
+.cta-t{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;margin-bottom:.75rem}
+.cta-t em{font-style:italic;color:var(--jade)}
+.cta p{font-size:14px;color:rgba(244,239,228,.7);margin-bottom:1.5rem}
+footer{background:var(--ink);color:rgba(244,239,228,.5);padding:2rem 3rem;text-align:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em}
+footer a{color:rgba(244,239,228,.7);text-decoration:none;margin:0 .75rem}
+footer a:hover{color:var(--cream)}
+@media(max-width:760px){nav{padding:1rem 1.25rem}.nav-links{display:none}.hero{padding:8rem 1.5rem 3rem}h1{font-size:40px}main{padding:3rem 1.5rem 4rem}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">
+    <svg width="30" height="30" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="url(#ng1)"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3"/><path d="M29 40.5L33 40.5L35.5 34L38 47L40.5 38L43 40.5L52 40.5" stroke="#E8A838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="ng1" x1="4" y1="4" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1A9272"/><stop offset="100%" stop-color="#040E09"/></linearGradient></defs></svg>
+    <span style="display:inline-flex;align-items:baseline;gap:0"><span class="nl-text">Bespox</span><span class="nl-ai">AI</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/index.html#sec-how">How it Works</a></li>
+    <li><a href="/index.html#sec-pricing">Pricing</a></li>
+    <li><a class="on" href="/faq">FAQ</a></li>
+    <li><a href="/about">About</a></li>
+  </ul>
+  <a class="btn-np" href="/login">Get Started &rarr;</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-in">
+    <div class="sec-label">Frequently asked questions</div>
+    <h1>Straight answers.<br><em>No sales fog.</em></h1>
+    <p>The questions NAV and Business Central customers actually ask us &mdash; about versions, security, data access, and what happens to the licenses you already own.</p>
+  </div>
+</section>
+
+<main>
+  <div class="grp">
+    <div class="grp-title">Getting started</div>
+    <details><summary>Which versions of NAV and Business Central do you support?</summary><div class="ans"><p>Dynamics NAV 2009 and later &mdash; Classic and RoleTailored clients &mdash; along with Business Central on-premises, ISV Embed deployments, and Business Central SaaS. If your system runs C/AL or AL, we speak its language.</p></div></details>
+    <details><summary>Do we need to upgrade or migrate first?</summary><div class="ans"><p>No. That's the point. BespoxAI works with the system you own today, as it is today &mdash; customisations, vertical solutions and all. We will never make you migrate as the price of getting modern tooling.</p></div></details>
+    <details><summary>Do we need an active enhancement plan or a Microsoft partner?</summary><div class="ans"><p>No. Whether your enhancement plan lapsed years ago or you still have an active partner relationship, BespoxAI works alongside whatever support arrangement you have &mdash; including none. If you do have a partner, you can take everything we produce straight to them.</p></div></details>
+    <details><summary>How long until we see value?</summary><div class="ans"><p>Days, not months. Onboarding is an automated environment ingest, not an implementation project &mdash; most environments are live within days of connecting.</p></div></details>
+  </div>
+
+  <div class="grp">
+    <div class="grp-title">Your system and your customisations</div>
+    <details><summary>We're heavily customised. Does that break this?</summary><div class="ans"><p>The opposite &mdash; it's why we exist. BespoxAI indexes <strong>your</strong> objects: customisations, vertical solutions and bespoke ranges included. Answers reflect your system as it's actually built, not a textbook copy of standard NAV.</p></div></details>
+    <details><summary>Does it work with vertical and ISV solutions?</summary><div class="ans"><p>Yes. The object index covers your full licensed object range, not just the base application &mdash; dealer management, manufacturing add-ons and other verticals are treated as first-class parts of your system, because to your business, they are.</p></div></details>
+    <details><summary>Does BespoxAI replace our NAV developer?</summary><div class="ans"><p>No &mdash; it makes whoever supports your system faster and less dependent on tribal knowledge. With C/AL developers retiring faster than they're being replaced, think of it as insurance for the knowledge locked inside your system, not a redundancy plan for the people who hold it.</p></div></details>
+  </div>
+
+  <div class="grp">
+    <div class="grp-title">Security and data</div>
+    <details><summary>How does BespoxAI connect to our system?</summary><div class="ans"><p>Through an outbound-only encrypted tunnel (Cloudflare Tunnel). A lightweight connector on your network dials out &mdash; no inbound firewall rules, no open ports, no part of your ERP exposed to the internet. Your perimeter stays exactly as closed as it is today.</p></div></details>
+    <details><summary>What data does BespoxAI access?</summary><div class="ans"><p>Two things, for two purposes. First, your object metadata &mdash; table, codeunit and report definitions &mdash; is indexed so BespoxAI understands how <strong>your</strong> system is built, customisations included.</p><p>Second, when you ask a question that needs live figures, a scoped query runs against your environment and the result comes back through the tunnel to answer it. Query results are used to answer your question and are not stored by BespoxAI.</p></div></details>
+    <details><summary>Can BespoxAI change anything in our system?</summary><div class="ans"><p>No &mdash; and not just as policy. The connector authenticates with read-only credentials that <strong>you provision and control</strong>. Writing to your database isn't something we choose not to do; it's something the access you grant makes impossible. You can audit, scope, or revoke that access at any time using the same SQL and NAV security tools you use today.</p></div></details>
+    <details><summary>Who can see financial data through BespoxAI?</summary><div class="ans"><p>Access is controlled at two levels. Within BespoxAI, only the users you invite to your tenant can ask questions of your environment. Beneath that, the read-only credential you provision defines what any query can ever reach &mdash; and you can scope it to specific tables and companies, audit it, or revoke it entirely at any time.</p></div></details>
+    <details><summary>Is our data stored, or used to train AI models?</summary><div class="ans"><p>Query results are returned to answer your question and are not stored by BespoxAI. Your environment data is isolated per tenant and is not used to train AI models &mdash; ours or anyone else's.</p></div></details>
+    <details><summary>What AI powers BespoxAI?</summary><div class="ans"><p>BespoxAI is currently powered by Anthropic's Claude models, grounded in the object index of your specific environment. We name our model provider openly because you deserve to know what's answering questions about your business &mdash; no black boxes.</p></div></details>
+  </div>
+
+  <div class="grp">
+    <div class="grp-title">Commercial</div>
+    <details><summary>We own our licenses outright. Does this put us back on a subscription treadmill?</summary><div class="ans"><p>Honest answer: BespoxAI is a subscription &mdash; but it subscribes you to the thing NAV never had (intelligence), not the thing you already own (your ERP). Your perpetual license stays exactly that: yours, in perpetuity. Cancel BespoxAI tomorrow and your system runs precisely as it does today.</p></div></details>
+    <details><summary>What happens if we migrate to Business Central someday?</summary><div class="ans"><p>Nothing is wasted. The same platform serves Business Central, and the indexed knowledge of your customisations makes an eventual migration <strong>easier</strong>, not stranded &mdash; you'd be arriving with a complete, searchable map of everything your system does.</p></div></details>
+    <details><summary>How is BespoxAI priced?</summary><div class="ans"><p>By product line, with transparent pricing published on our <a href="/index.html#sec-pricing">pricing section</a>. You can start free &mdash; no credit card, no commitment.</p></div></details>
+  </div>
+
+  <div class="cta">
+    <div class="cta-t">Still have a question?<br><em>Ask a Navision developer.</em></div>
+    <p>Email us and a developer &mdash; not a salesperson &mdash; will answer.</p>
+    <a class="btn-np" href="mailto:Admin@bespoxai.com">Admin@bespoxai.com</a>
+  </div>
+</main>
+
+<footer>
+  <a href="/">Home</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="mailto:Admin@bespoxai.com">Contact</a>
+  <div style="margin-top:1rem">&copy; 2026 BespoxAI Ltd &middot; Auckland, New Zealand</div>
+</footer>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"Which versions of NAV and Business Central do you support?","acceptedAnswer":{"@type":"Answer","text":"Dynamics NAV 2009 and later — Classic and RoleTailored clients — along with Business Central on-premises, ISV Embed deployments, and Business Central SaaS. If your system runs C/AL or AL, we speak its language."}},
+    {"@type":"Question","name":"Do we need to upgrade or migrate first?","acceptedAnswer":{"@type":"Answer","text":"No. BespoxAI works with the system you own today, as it is today — customisations, vertical solutions and all. We will never make you migrate as the price of getting modern tooling."}},
+    {"@type":"Question","name":"Do we need an active enhancement plan or a Microsoft partner?","acceptedAnswer":{"@type":"Answer","text":"No. Whether your enhancement plan lapsed years ago or you still have an active partner relationship, BespoxAI works alongside whatever support arrangement you have — including none."}},
+    {"@type":"Question","name":"How long until we see value?","acceptedAnswer":{"@type":"Answer","text":"Days, not months. Onboarding is an automated environment ingest, not an implementation project — most environments are live within days of connecting."}},
+    {"@type":"Question","name":"We're heavily customised. Does that break this?","acceptedAnswer":{"@type":"Answer","text":"The opposite — it's why we exist. BespoxAI indexes your objects: customisations, vertical solutions and bespoke ranges included. Answers reflect your system as it's actually built, not a textbook copy of standard NAV."}},
+    {"@type":"Question","name":"Does it work with vertical and ISV solutions?","acceptedAnswer":{"@type":"Answer","text":"Yes. The object index covers your full licensed object range, not just the base application — vertical and ISV solutions are treated as first-class parts of your system."}},
+    {"@type":"Question","name":"Does BespoxAI replace our NAV developer?","acceptedAnswer":{"@type":"Answer","text":"No — it makes whoever supports your system faster and less dependent on tribal knowledge. It's insurance for the knowledge locked inside your system, not a redundancy plan."}},
+    {"@type":"Question","name":"How does BespoxAI connect to our system?","acceptedAnswer":{"@type":"Answer","text":"Through an outbound-only encrypted tunnel (Cloudflare Tunnel). A lightweight connector on your network dials out — no inbound firewall rules, no open ports, no part of your ERP exposed to the internet."}},
+    {"@type":"Question","name":"What data does BespoxAI access?","acceptedAnswer":{"@type":"Answer","text":"Object metadata (table, codeunit and report definitions) is indexed so BespoxAI understands how your system is built. When you ask a question that needs live figures, a scoped query runs against your environment and the result comes back through the tunnel to answer it. Query results are not stored by BespoxAI."}},
+    {"@type":"Question","name":"Can BespoxAI change anything in our system?","acceptedAnswer":{"@type":"Answer","text":"No — the connector authenticates with read-only credentials that you provision and control. Writing to your database is made impossible by the access you grant. You can audit, scope, or revoke that access at any time."}},
+    {"@type":"Question","name":"Who can see financial data through BespoxAI?","acceptedAnswer":{"@type":"Answer","text":"Only the users you invite to your tenant can ask questions of your environment, and the read-only credential you provision defines what any query can ever reach. You can scope it to specific tables and companies, audit it, or revoke it at any time."}},
+    {"@type":"Question","name":"Is our data stored, or used to train AI models?","acceptedAnswer":{"@type":"Answer","text":"Query results are returned to answer your question and are not stored by BespoxAI. Your environment data is isolated per tenant and is not used to train AI models — ours or anyone else's."}},
+    {"@type":"Question","name":"What AI powers BespoxAI?","acceptedAnswer":{"@type":"Answer","text":"BespoxAI is currently powered by Anthropic's Claude models, grounded in the object index of your specific environment."}},
+    {"@type":"Question","name":"Does this put us back on a subscription treadmill?","acceptedAnswer":{"@type":"Answer","text":"BespoxAI is a subscription — but it subscribes you to the thing NAV never had (intelligence), not the thing you already own (your ERP). Your perpetual license stays yours. Cancel BespoxAI tomorrow and your system runs precisely as it does today."}},
+    {"@type":"Question","name":"What happens if we migrate to Business Central someday?","acceptedAnswer":{"@type":"Answer","text":"Nothing is wasted. The same platform serves Business Central, and the indexed knowledge of your customisations makes an eventual migration easier — you'd arrive with a complete, searchable map of everything your system does."}},
+    {"@type":"Question","name":"How is BespoxAI priced?","acceptedAnswer":{"@type":"Answer","text":"By product line, with transparent pricing published on the BespoxAI website. You can start free — no credit card, no commitment."}}
+  ]
+}
+</script>
+</body>
+</html>
