@@ -11,7 +11,7 @@ export interface AgreementScrollProps {
 // Full agreement text extracted for scrolling
 const FULL_AGREEMENT_TEXT = `BESPOXAI PARTNER AGREEMENT
 
-This Agreement is entered into between BespoxAI Limited ("Provider") and [Partner Name] ("Partner").
+This Agreement is entered into between Nav Solutions Limited, trading as BespoxAI ("Provider") and [Partner Name] ("Partner").
 
 SECTION 1: PARTIES AND RELATIONSHIP
 The Partner is an independent contractor and not an employee, agent, or representative of BespoxAI, except as expressly stated in this Agreement. The Partner is not authorized to bind BespoxAI to any obligation without prior written consent.
