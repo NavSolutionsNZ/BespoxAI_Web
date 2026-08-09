@@ -166,7 +166,16 @@ ${requirement.description}`
     })
 
     const { devPlan, ...sanitised } = updated
-    return NextResponse.json({ requirement: user.role === 'superadmin' ? updated : sanitised })
+
+    // Tenant has no indexed objects → results are version-aware but generic
+    const objectCount = await (prisma as any).tenantObjectFile.count({
+      where: { tenantId: requirement.tenantId },
+    })
+
+    return NextResponse.json({
+      requirement: user.role === 'superadmin' ? updated : sanitised,
+      grounded:    objectCount > 0,
+    })
 
   } catch (err: any) {
     return NextResponse.json(
