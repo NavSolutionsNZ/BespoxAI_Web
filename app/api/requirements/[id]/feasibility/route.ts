@@ -56,6 +56,27 @@ export async function POST(
   if (user.role !== 'superadmin' && requirement.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // ── Free tier: lifetime cap of 5 feasibility checks ──────────────────────
+  if (user.role !== 'superadmin') {
+    const tenant = await prisma.tenant.findUnique({
+      where:  { id: requirement.tenantId },
+      select: { tier: true },
+    })
+    if ((tenant?.tier ?? 'free') === 'free') {
+      const used = await (prisma as any).aiUsageLog.count({
+        where: { tenantId: requirement.tenantId, feature: 'feasibility' },
+      })
+      if (used >= 5) {
+        return NextResponse.json(
+          {
+            error: 'The free plan includes 5 feasibility checks so you can evaluate BespoxAI. Upgrade to Starter ($59/mo) for full feasibility output on every requirement.',
+          },
+          { status: 403 }
+        )
+      }
+    }
+  }
+
   const bcVersion  = resolveBcVersion(requirement.tenant)
   const tenantCtx  = await buildTenantContext(requirement.tenantId)
 
