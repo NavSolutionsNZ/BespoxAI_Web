@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#040E09"/>
+      <stop offset="100%" stop-color="#0A2E1F"/>
+    </linearGradient>
+    <linearGradient id="logo-g" x1="4" y1="4" x2="76" y2="76" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A9272"/>
+      <stop offset="100%" stop-color="#040E09"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="900" cy="315" r="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A9272" stop-opacity=".12"/>
+      <stop offset="100%" stop-color="#040E09" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Subtle grid lines -->
+  <g stroke="#1A9272" stroke-opacity=".06" stroke-width="1">
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+  </g>
+
+  <!-- Logo mark -->
+  <g transform="translate(80, 80)">
+    <rect width="56" height="56" rx="12" fill="url(#logo-g)"/>
+    <path d="M17 16L17 42L31 42C37 42 41 38 41 33C41 30 39.5 27.5 36.5 26.5C39 25 40.5 23 40.5 20C40.5 15.5 36.5 16 31 16Z" fill="none" stroke="#F4EFE4" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M17 29L31 29" stroke="#F4EFE4" stroke-width="2.5"/>
+    <path d="M21 29L24 29L26 24.5L28 34L30 27.5L31.5 29L37 29" stroke="#E8A838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Brand name -->
+  <text x="148" y="118" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="400" fill="#F4EFE4" letter-spacing="-0.3">Bespox</text>
+  <text x="232" y="118" font-family="'Courier New', monospace" font-size="20" fill="#E8A838" letter-spacing="1">AI</text>
+
+  <!-- Accent line -->
+  <line x1="80" y1="168" x2="130" y2="168" stroke="#1A9272" stroke-width="1.5"/>
+  <text x="142" y="173" font-family="'Courier New', monospace" font-size="11" fill="#1A9272" letter-spacing="3" text-transform="uppercase">INTELLIGENCE FOR NAV &amp; BC</text>
+
+  <!-- Main headline -->
+  <text x="80" y="270" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="300" fill="#F4EFE4" letter-spacing="-1.5">Bespoke AI. Built for the ERP</text>
+  <text x="80" y="345" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="300" font-style="italic" fill="#1A9272" letter-spacing="-1.5">Microsoft left behind.</text>
+
+  <!-- Subtext -->
+  <text x="80" y="410" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#F4EFE4" fill-opacity=".6">AI-powered feasibility, specs, live financial answers, and fixed-price development.</text>
+  <text x="80" y="440" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#F4EFE4" fill-opacity=".6">On your system. On your terms. No migration required.</text>
+
+  <!-- Bottom tags -->
+  <g transform="translate(80, 510)">
+    <rect width="70" height="28" rx="5" fill="none" stroke="#F4EFE4" stroke-opacity=".15"/>
+    <text x="35" y="18" font-family="'Courier New', monospace" font-size="10" fill="#F4EFE4" fill-opacity=".5" text-anchor="middle" letter-spacing="1">C/AL</text>
+
+    <rect x="82" width="120" height="28" rx="5" fill="none" stroke="#F4EFE4" stroke-opacity=".15"/>
+    <text x="142" y="18" font-family="'Courier New', monospace" font-size="10" fill="#F4EFE4" fill-opacity=".5" text-anchor="middle" letter-spacing="1">NAV 2009–2018</text>
+
+    <rect x="214" width="90" height="28" rx="5" fill="none" stroke="#F4EFE4" stroke-opacity=".15"/>
+    <text x="259" y="18" font-family="'Courier New', monospace" font-size="10" fill="#F4EFE4" fill-opacity=".5" text-anchor="middle" letter-spacing="1">BC on-prem</text>
+
+    <rect x="316" width="80" height="28" rx="5" fill="none" stroke="#F4EFE4" stroke-opacity=".15"/>
+    <text x="356" y="18" font-family="'Courier New', monospace" font-size="10" fill="#F4EFE4" fill-opacity=".5" text-anchor="middle" letter-spacing="1">BC SaaS</text>
+
+    <rect x="408" width="100" height="28" rx="5" fill="none" stroke="#F4EFE4" stroke-opacity=".15"/>
+    <text x="458" y="18" font-family="'Courier New', monospace" font-size="10" fill="#F4EFE4" fill-opacity=".5" text-anchor="middle" letter-spacing="1">Read-only</text>
+
+    <rect x="520" width="130" height="28" rx="5" fill="none" stroke="#F4EFE4" stroke-opacity=".15"/>
+    <text x="585" y="18" font-family="'Courier New', monospace" font-size="10" fill="#F4EFE4" fill-opacity=".5" text-anchor="middle" letter-spacing="1">Fixed-price dev</text>
+  </g>
+
+  <!-- Domain -->
+  <text x="1120" y="590" font-family="'Courier New', monospace" font-size="14" fill="#1A9272" fill-opacity=".7" text-anchor="end" letter-spacing="1">bespoxai.com</text>
+</svg>
