@@ -40,6 +40,7 @@ const NAV_VERSIONS = [
 
 export default function SignupPage() {
   const [form, setForm]       = useState({ companyName: '', country: 'NZ', bcVersion: 'BC25', email: '' })
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [done, setDone]       = useState(false)
   const [error, setError]     = useState('')
@@ -54,13 +55,17 @@ export default function SignupPage() {
       setError('Company name and email are required.')
       return
     }
+    if (!termsAccepted) {
+      setError('Please accept the Terms of Service to continue.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
       const res  = await fetch('/api/signup', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(form),
+        body:    JSON.stringify({ ...form, termsAccepted }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong.'); return }
@@ -186,6 +191,21 @@ export default function SignupPage() {
                   </optgroup>
                 </select>
               </div>
+
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#3B5249', lineHeight: 1.5, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={e => { setTermsAccepted(e.target.checked); setError('') }}
+                  style={{ marginTop: 3, accentColor: '#0A5C46', width: 15, height: 15, flexShrink: 0 }}
+                />
+                <span>
+                  I agree to the BespoxAI{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#0A5C46', fontWeight: 600 }}>
+                    Terms of Service
+                  </a>
+                </span>
+              </label>
 
               {error && (
                 <div style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991b1b' }}>
