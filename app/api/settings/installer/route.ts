@@ -51,6 +51,18 @@ export async function POST(req: NextRequest) {
   const role = (session?.user as any)?.role
   if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // ── Agent is a paid-tier feature — free tier cannot generate the installer ──
+  {
+    const { checkFeatureAccess } = await import('@/lib/tier')
+    const allowed = await checkFeatureAccess((session.user as any).tenantId, 'agent')
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'The BespoxAI Agent is available on paid plans. Upgrade to Starter ($59/mo) to connect your environment and ground every feasibility check in your actual objects and customisations.' },
+        { status: 403 }
+      )
+    }
+  }
+
   const body = await req.json().catch(() => ({}))
   const { bcUsername, bcPassword, bcPort = 8048, agentPort = 9099, bcInstance, bcCompany,
           navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',

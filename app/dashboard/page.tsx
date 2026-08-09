@@ -1124,6 +1124,7 @@ function DashboardInner() {
             userRole={user?.role ?? 'user'}
             userId={user?.id ?? ''}
             tenantId={user?.tenantId ?? ''}
+            tenantTier={user?.tenantTier ?? 'free'}
             bcConnected={isConnected}
             erpLabel={erpLabel}
             paymentSuccess={paymentSuccess}

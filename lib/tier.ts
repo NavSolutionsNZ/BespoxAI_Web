@@ -96,7 +96,7 @@ export async function checkTierAccess(tenantId: string): Promise<TierStatus> {
  */
 export async function checkFeatureAccess(
   tenantId: string,
-  feature: 'assistant' | 'manager' | 'executive' | 'unlimited_specs'
+  feature: 'assistant' | 'manager' | 'executive' | 'unlimited_specs' | 'agent'
 ): Promise<boolean> {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -115,6 +115,9 @@ export async function checkFeatureAccess(
       return tier === 'executive'
     case 'unlimited_specs':
       // Free tier gets 1 spec; Starter and above get unlimited
+      return ['starter', 'assistant', 'manager', 'executive', 'paid', 'enterprise', 'trial'].includes(tier)
+    case 'agent':
+      // BespoxAI Agent (BCAgent) install + environment indexing: paid tiers and trial, not free
       return ['starter', 'assistant', 'manager', 'executive', 'paid', 'enterprise', 'trial'].includes(tier)
     default:
       return false

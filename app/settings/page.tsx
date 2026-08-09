@@ -19,6 +19,7 @@ interface Tenant {
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
   testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null; testNavManagementPort: number | null
   bcUsername: string | null
+  tier: string | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
@@ -711,6 +712,18 @@ function SettingsInner() {
           {/* Installer */}
           {tab === 'installer' && <>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 22 : 28, fontWeight: 400, color: 'var(--ink)', marginBottom: 10 }}>{erpLabel} Agent Installer</h1>
+
+            {tenant?.tier === 'free' ? (
+              <div style={{ border: '1px solid rgba(200,149,42,0.35)', borderRadius: 12, padding: '1.5rem 1.75rem', background: 'rgba(200,149,42,0.06)', maxWidth: 560 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                  <strong>The BespoxAI Agent is available on paid plans.</strong>
+                </p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', lineHeight: 1.7, margin: '0 0 16px' }}>
+                  Your free plan includes 5 feasibility checks using your NAV version, but results are generic. Upgrade to Starter to install the agent, index your actual objects and customisations, and ground every check in your real environment.
+                </p>
+                <a href="/billing" style={{ display: 'inline-block', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 20px', textDecoration: 'none', cursor: 'pointer' }}>Upgrade to Starter →</a>
+              </div>
+            ) : (<>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 28, lineHeight: 1.65 }}>Download a pre-configured installer for the BespoxAI BCAgent. Run it on the Windows Server hosting Business Central — it installs the agent, configures the Cloudflare tunnel, and starts the service automatically.</p>
 
             <Card style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)' }}>
@@ -804,6 +817,7 @@ function SettingsInner() {
               {instLoading ? 'Generating…' : ('⬇ Download Installer ' + (agentVersion ? 'v' + agentVersion + ' ' : '') + '(.zip)')}
             </button>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--slate)', marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>{erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}</p>
+          </>)}
           </>}
 
         </div>

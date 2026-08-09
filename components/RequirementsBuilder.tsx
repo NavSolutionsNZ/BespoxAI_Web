@@ -142,6 +142,7 @@ interface Props {
   userRole:string
   userId: string
   tenantId:string
+  tenantTier?:string
   bcConnected?:boolean
   erpLabel?:string
   paymentSuccess?: 'deposit' | 'review' | 'balance' | null
@@ -227,7 +228,7 @@ function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
   return <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1 }} title={collapsed ? 'Expand' : 'Collapse'}>{collapsed ? '▾' : '▴'}</button>
 }
 
-export default function RequirementsBuilder({ userRole, userId, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
+export default function RequirementsBuilder({ userRole, userId, tenantId, tenantTier='free', bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const isDeveloper = userRole === 'developer'
   const router = useRouter()
@@ -317,6 +318,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
 
   const [feasLoadingId, setFeasLoadingId] = useState<string|null>(null)
   const [feasErr, setFeasErr]             = useState('')
+  const [feasUngrounded, setFeasUngrounded] = useState<Record<string, boolean>>({})
   const [reviewAllowance, setReviewAllowance] = useState<{included:number;used:number;remaining:number}|null>(null)
   const [reviewLoading, setReviewLoading]     = useState(false)
   const [collapsedCards, setCC] = useState<Record<string,boolean>>({})
@@ -448,6 +450,9 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
       const res = await fetch(`/api/requirements/${req.id}/feasibility`, { method: 'POST' })
       const d   = await res.json()
       if (!res.ok) throw new Error(d.error)
+      if (typeof d.grounded === 'boolean') {
+        setFeasUngrounded(prev => ({ ...prev, [req.id]: !d.grounded }))
+      }
       setReqs(prev => prev.map(r => r.id === req.id ? d.requirement : r))
       setSelected(d.requirement)
     } catch (e: any) { setFeasErr(e.message) }
@@ -1531,6 +1536,19 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                   )}
 
                   {feasErr&&<p style={{fontFamily:'var(--font-body)',fontSize:12,color:'#A32D2D',marginTop:8}}>{feasErr}</p>}
+
+                  {feasLoadingId!==req.id&&req.feasibility&&feasUngrounded[req.id]&&(
+                    <div style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,padding:'10px 12px',border:'1px solid rgba(200,149,42,0.35)',borderRadius:8,background:'rgba(200,149,42,0.06)'}}>
+                      <span style={{fontSize:14,flexShrink:0}}>ℹ️</span>
+                      <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6,margin:0}}>
+                        <strong style={{color:'var(--ink)',fontWeight:500}}>Generic assessment.</strong>{' '}
+                        {tenantTier === 'free'
+                          ? <>This check used your NAV version only. <a href="/billing" style={{color:'var(--forest)',textDecoration:'none',fontWeight:500}}>Upgrade to Starter →</a> to install the BespoxAI Agent and ground every check in your actual objects and customisations.</>
+                          : <>This check used your NAV version only — your objects and customisations aren&rsquo;t indexed yet. <a href="/settings?tab=installer" style={{color:'var(--forest)',textDecoration:'none',fontWeight:500}}>Install the BespoxAI Agent →</a> to ground every check in your actual environment.</>
+                        }
+                      </p>
+                    </div>
+                  )}
                   </div>
                 </div>
               )}
