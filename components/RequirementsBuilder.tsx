@@ -142,6 +142,7 @@ interface Props {
   userRole:string
   userId: string
   tenantId:string
+  tenantTier?:string
   bcConnected?:boolean
   erpLabel?:string
   paymentSuccess?: 'deposit' | 'review' | 'balance' | null
@@ -227,7 +228,7 @@ function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
   return <button onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--slate)', fontSize: 13, lineHeight: 1 }} title={collapsed ? 'Expand' : 'Collapse'}>{collapsed ? '▾' : '▴'}</button>
 }
 
-export default function RequirementsBuilder({ userRole, userId, tenantId, bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
+export default function RequirementsBuilder({ userRole, userId, tenantId, tenantTier='free', bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const isDeveloper = userRole === 'developer'
   const router = useRouter()
@@ -1540,7 +1541,11 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, bcConn
                     <div style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,padding:'10px 12px',border:'1px solid rgba(200,149,42,0.35)',borderRadius:8,background:'rgba(200,149,42,0.06)'}}>
                       <span style={{fontSize:14,flexShrink:0}}>ℹ️</span>
                       <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',lineHeight:1.6,margin:0}}>
-                        <strong style={{color:'var(--ink)',fontWeight:500}}>Generic assessment.</strong> This check used your NAV version only — your objects and customisations aren&rsquo;t indexed yet. <a href="/settings" style={{color:'var(--forest)',textDecoration:'none',fontWeight:500}}>Install the BespoxAI Agent →</a> to ground every check in your actual environment.
+                        <strong style={{color:'var(--ink)',fontWeight:500}}>Generic assessment.</strong>{' '}
+                        {tenantTier === 'free'
+                          ? <>This check used your NAV version only. <a href="/billing" style={{color:'var(--forest)',textDecoration:'none',fontWeight:500}}>Upgrade to Starter →</a> to install the BespoxAI Agent and ground every check in your actual objects and customisations.</>
+                          : <>This check used your NAV version only — your objects and customisations aren&rsquo;t indexed yet. <a href="/settings?tab=installer" style={{color:'var(--forest)',textDecoration:'none',fontWeight:500}}>Install the BespoxAI Agent →</a> to ground every check in your actual environment.</>
+                        }
                       </p>
                     </div>
                   )}

@@ -46,7 +46,7 @@ export async function GET() {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: {
-      id: true, name: true, tunnelSubdomain: true, bcInstance: true,
+      id: true, name: true, tunnelSubdomain: true, bcInstance: true, tier: true,
       bcCompany: true, bcUsername: true, active: true, country: true, entityConfig: true,
       tunnelId: true, createdAt: true,
       navProduct: true, navVersion: true, lastCU: true,

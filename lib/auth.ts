@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await (prisma as any).user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
-          include: { tenant: { select: { id: true, name: true, active: true, navProduct: true, partnerAccountId: true } } },
+          include: { tenant: { select: { id: true, name: true, active: true, navProduct: true, tier: true, partnerAccountId: true } } },
         })
 
         if (!user || !user.active) return null
@@ -51,6 +51,7 @@ export const authOptions: NextAuthOptions = {
           tenantId: isPartner ? undefined : user.tenantId,
           tenantName: isPartner ? undefined : (user.tenant?.name ?? null),
           navProduct: isPartner ? undefined : (user.tenant.navProduct ?? null),
+          tenantTier: isPartner ? undefined : (user.tenant?.tier ?? 'free'),
           role: user.role,
           persona: user.persona,
           onboardingDone: user.onboardingDone,
@@ -93,6 +94,7 @@ export const authOptions: NextAuthOptions = {
         token.tenantId      = (user as any).tenantId
         token.tenantName    = (user as any).tenantName
         token.navProduct    = (user as any).navProduct ?? null
+        token.tenantTier    = (user as any).tenantTier ?? 'free'
         token.role          = (user as any).role
         token.persona       = (user as any).persona ?? null
         token.onboardingDone = (user as any).onboardingDone ?? false
@@ -127,6 +129,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).tenantId      = token.tenantId
         ;(session.user as any).tenantName    = token.tenantName
         ;(session.user as any).navProduct    = token.navProduct ?? null
+        ;(session.user as any).tenantTier    = token.tenantTier ?? 'free'
         ;(session.user as any).role          = token.role
         ;(session.user as any).persona       = token.persona
         ;(session.user as any).onboardingDone     = token.onboardingDone
