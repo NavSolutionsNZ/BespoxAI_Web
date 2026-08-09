@@ -126,33 +126,10 @@ export async function checkFeatureAccess(
 
 /**
  * Get the monthly senior developer review allowance for a tenant.
- * Manager = 1 included review/month, Executive = 2/month, others = 0.
+ * Spec reviews are a human cost ($249 NZD), not included in any plan.
  */
 export async function getReviewAllowance(
   tenantId: string
 ): Promise<{ included: number; used: number; remaining: number }> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { tier: true },
-  })
-
-  const tier = tenant?.tier ?? 'free'
-  const included = tier === 'executive' ? 2 : tier === 'manager' ? 1 : 0
-
-  if (included === 0) return { included: 0, used: 0, remaining: 0 }
-
-  // Count reviews consumed this calendar month via allowance
-  const monthStart = new Date()
-  monthStart.setDate(1)
-  monthStart.setHours(0, 0, 0, 0)
-
-  const used = await (prisma as any).requirement.count({
-    where: {
-      tenantId,
-      reviewIncluded: true,
-      reviewSubmittedAt: { gte: monthStart },
-    },
-  })
-
-  return { included, used, remaining: Math.max(0, included - used) }
+  return { included: 0, used: 0, remaining: 0 }
 }
