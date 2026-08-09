@@ -5,12 +5,18 @@ import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
+const TERMS_VERSION = '2026-08'
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
-  const { companyName, country, bcVersion, email } = body
+  const { companyName, country, bcVersion, email, termsAccepted } = body
 
   if (!companyName || !email) {
     return NextResponse.json({ error: 'Company name and email are required' }, { status: 400 })
+  }
+
+  if (termsAccepted !== true) {
+    return NextResponse.json({ error: 'You must accept the Terms of Service to request access' }, { status: 400 })
   }
 
   // Basic email validation
@@ -48,6 +54,8 @@ export async function POST(req: NextRequest) {
       bcVersion: bcVersion ?? 'BC25',
       email,
       verifyToken,
+      termsAcceptedAt: new Date(),
+      termsVersion:    TERMS_VERSION,
     },
   })
 

@@ -114,6 +114,8 @@ model SignupRequest {
   verifyToken   String   @unique
   verifiedAt    DateTime?
   activatedAt   DateTime?                        // set when admin sends password
+  termsAcceptedAt DateTime?                      // clickwrap acceptance timestamp
+  termsVersion    String?                        // ToS version accepted, e.g. "2026-08"
   createdAt     DateTime @default(now())
 }
 
