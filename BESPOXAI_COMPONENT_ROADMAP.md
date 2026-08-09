@@ -1,12 +1,27 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** June 21, 2026 (Session 26)
+**Last Updated:** August 9, 2026 (Session 27)
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 27 — Marketing site launch** (all live on main)
+- [x] Homepage: perpetual licensing section, interactive demo, founding-customer section, channel-safe copy, NAV-first alignment, partner program CTA
+- [x] `/about` page — founding story, vibe-coders credibility, three beliefs
+- [x] `/faq` page — 17 questions, FAQPage JSON-LD, cloudflared security story
+- [x] `/terms` page — full ToS, Executive 12-month term, development payment, data access
+- [x] SEO: OG/Twitter cards, Organization + SoftwareApplication JSON-LD, OG image, GSC verification, sitemap
+- [x] Signup clickwrap (ToS checkbox + server enforcement + DB recording)
+- [x] Partner agreement PDF regenerated with correct entity (Nav Solutions Limited)
+- [x] Product scope trimmed: Manager/One Day Close, Health Scanner, Migration Analyser removed from marketing
+- [x] Executive plan: billed monthly on 12-month term, discount tied to active term
+- [ ] **Parked:** trial login/demo database (Meridian Engineering seeded tenant)
+- [ ] **Parked:** five product subpages
+- [ ] **Parked:** /blog or /resources for long-tail SEO
+- [ ] **Outstanding:** solicitor review of Terms; Executive upgrade sudo-mode; connector provisioning docs
 
 **Session 26 — C4: Partner deploy pipeline (objects → test → prod)** (deployed green; pending Rich test sign-off)
 - [x] **Slice 1 — 4 partner deploy API routes** under `app/api/partner/tenants/[id]/requirements/[reqId]/objects/`: `sync-from-github`, `write`, `deploy-test` (→ in_uat), `deploy-prod` (gated on `prodApprovedAt`). Mirror the direct chain; objects target the client BCAgent (same tunnel + apiKey). Auth: partner session + tenant ownership + can-develop; write/deploy steps gated to partner_admin OR assigned developer via new `partnerCanDeploy()`. (`2b388fd`)

@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: June 21, 2026 (Session 26)
+**Last Updated: August 9, 2026 (Session 27 — Marketing Launch)
 
 ---
 

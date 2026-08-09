@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** June 21, 2026 (Session 26)
+**Last Updated:** August 9, 2026 (Session 27 — Marketing Launch)
 
 ---
 
@@ -46,6 +46,90 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
 
 ---
+
+---
+
+## Session 27 Key Changes (August 9, 2026) — Marketing Launch
+
+**Goal:** Take the site from coming-soon to a full marketing launch, channel-safe for Dicker Data assessment.
+
+### Legal entity correction
+- **Nav Solutions Limited** (not BespoxAI Ltd) — corrected across all pages, Terms of Service, Organization JSON-LD, partner agreement scroll component, and regenerated partner agreement PDF. Footers now read "© 2026 Nav Solutions Limited · Trading as BespoxAI · Auckland, New Zealand".
+
+### New pages (all static HTML, matching site design, clean-URL rewrites in next.config.js)
+- **`/about`** — founding story (2018), "who we are", "why we built it" (expanded vibe-coders story), three beliefs, CTA
+- **`/faq`** — 17 questions in 4 groups (Getting Started, Your System, Security & Data, Commercial), FAQPage JSON-LD, older-version SQL contact CTA
+- **`/terms`** — full Terms of Service: Executive 12-month term (clause 4), discount anti-arbitrage (clause 5), development payment model (clause 6), data access via cloudflared (clause 7), AI output disclaimer (clause 8), NZ law governing
+
+### Homepage additions
+- **Perpetual licensing section** — "You chose ownership. You were right." + "Built by Navision developers. Not vibe coders." dark card with C/AL credibility tags. Inserted between marquee and problem section.
+- **Interactive CFO Assistant demo** — scripted chat against fictional Meridian Engineering Ltd (NAV 2017). 5 keyword-matched answers with NAV grounding traces (table numbers, CALCSUMS). Graceful fallback for unmatched input → CTA. Disclaimer: "Scripted demonstration with fictional data."
+
+### Channel-safe copy pass (Dicker Data readiness)
+- **Fabricated testimonials removed** — Sarah R., Michael K., Lisa T. replaced with honest "Founding customers" section ("BespoxAI is new — and we'd rather tell you that than invent testimonials")
+- **ROI claims reframed** — all outcome metrics changed from measured claims to openly modelled scenarios ("Modelled first-year ROI", "illustrative, not a promise")
+- **Partner-hostile language removed** — "Partner bottlenecks" → "Engagement bottlenecks", comparison table now "BespoxAI vs the traditional engagement model", "Scoped as billable work regardless" → "No mechanism to tell you", "Keep them. Or replace them" → "Keep them. Arrive better prepared"
+- **"Trained on" → "grounded in"** — fixed internal contradiction with FAQ's no-training claim
+- **Partner program CTA added** — "Are you a NAV or BC partner? BespoxAI works with the channel" linking to partners.bespoxai.com, footer links on all pages
+- **Hero stats** — replaced fabricated outcomes with defensible product facts ("0 inbound ports opened", "2 invoices per build")
+
+### NAV-first alignment
+- ~35-string pass: NAV leads everywhere ("Your NAV & BC", "Intelligence for NAV & BC"). Hero badge corrected to "NAV 2009–2018". "Without opening BC" → "without opening the client". "BC OAuth" → "Secure sign-in". All 20% deposit references made non-descript.
+
+### Product scope trimming
+- **One Day Close (Manager tier)**, **Data Health Scanner**, **NAV Migration Analyser** — all removed from visible marketing until launch-ready. Pricing ladder now Free → Starter → Assistant → Executive.
+
+### Executive 12-month term
+- Executive card: "Billed monthly · 12-month term". FAQ + JSON-LD updated. Development discount tied to active term.
+
+### Development payment model
+- Pricing section + new FAQ entry: "AI involvement is covered by your subscription. Human involvement is quoted." Fixed-price, deposit to commence, balance on delivery, two invoices.
+
+### Signup clickwrap
+- Required ToS checkbox on `/signup` page, server-side enforcement in `/api/signup`, `termsAcceptedAt` + `termsVersion` recorded on `SignupRequest`. Schema pushed to production DB (via `POSTGRES_URL`, not `DATABASE_URL`).
+
+### SEO
+- OG + Twitter card meta tags on all 5 pages, branded 1200×630 OG image (`/og-image.png`)
+- Organization + SoftwareApplication JSON-LD on homepage
+- Google Search Console verification tag (in `app/layout.tsx` — the actual `<head>` served on `/`)
+- `layout.tsx` metadata updated: title "NAV & BC" (was "BC & NAV"), description aligned with homepage
+- Sitemap namespace fixed (`schemas` plural), lastmod added, `/terms` added
+- `robots.txt` pointing at sitemap
+
+### Schema changes — Session 27
+```sql
+-- Already applied via npx prisma db push
+ALTER TABLE "SignupRequest" ADD COLUMN IF NOT EXISTS "termsAcceptedAt" TIMESTAMP;
+ALTER TABLE "SignupRequest" ADD COLUMN IF NOT EXISTS "termsVersion" TEXT;
+```
+
+### Files changed (marketing batch)
+- `public/index.html` + `public/index-original.html` (kept byte-identical throughout)
+- `public/faq.html` (NEW)
+- `public/about.html` (NEW)
+- `public/terms.html` (NEW)
+- `public/og-image.svg` + `public/og-image.png` (NEW)
+- `public/sitemap.xml` (updated)
+- `public/robots.txt` (NEW)
+- `public/legal/BespoxAI_Partner_Agreement_Signable.pdf` (regenerated)
+- `next.config.js` (rewrites for /about, /faq, /terms)
+- `app/layout.tsx` (GSC verification, updated metadata)
+- `app/signup/page.tsx` (clickwrap checkbox)
+- `app/api/signup/route.ts` (termsAccepted enforcement + recording)
+- `prisma/schema.prisma` (termsAcceptedAt, termsVersion on SignupRequest)
+- `components/AgreementScroll.tsx` (entity name fix)
+
+### Outstanding from this session
+- **Revoke GitHub PAT** from this session
+- **Bing Webmaster Tools** — import from GSC
+- **Request indexing** — URL Inspection on /, /about, /faq, /terms
+- **Google Business Profile** — claim Nav Solutions Limited / BespoxAI in Auckland
+- **LinkedIn company page** + launch post
+- **Solicitor review** of /terms (clauses 4, 5, 10, 12; IP vs incadea clause 29)
+- **Executive upgrade flow** — password re-auth + term acknowledgment (billing system build)
+- **Connector provisioning docs** — instruct customers to create read-only credential per FAQ claim
+- **`index-original.html` cleanup** — duplicate of index.html, pick one
+- **Parked:** trial login/demo DB, One Day Close, Health Scanner, Migration Analyser, product subpages, /blog, partner billing
 
 ---
 
@@ -613,10 +697,15 @@ RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
 
 ## Brand & Messaging
 
+- **Legal entity:** Nav Solutions Limited (incorporated May 2018, Auckland NZ), trading as BespoxAI
 - **Login tagline:** "Business Central & Microsoft NAV Intelligence Portal"
 - **Signup tagline:** "CFO Intelligence for Business Central & Microsoft NAV"
-- **Homepage hero:** "Your Business Central. One portal. Complete control."
+- **Homepage hero:** "Your NAV & BC. One portal. Complete control."
 - **Primary brand line:** "Bespoke AI. Built for the ERP Microsoft left behind."
+- **Perpetual licensing section:** "You chose ownership. You were right."
+- **Developer credibility:** "Built by Navision developers. Not vibe coders."
+- **Pricing principle:** "AI involvement is covered by your subscription. Human involvement is quoted."
+- **NAV-first rule:** NAV always leads in copy ("NAV & BC", not "BC & NAV"). BC-only when referring to BC-specific features.
 
 **Portal theming (source of truth):** The admin + partner portals use the shared
 `--rb-*` semantic CSS-variable theme system in `app/globals.css` (two scopes:
