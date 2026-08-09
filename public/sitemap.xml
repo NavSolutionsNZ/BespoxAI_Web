@@ -3,4 +3,5 @@
   <url><loc>https://bespoxai.com/</loc><priority>1.0</priority></url>
   <url><loc>https://bespoxai.com/about</loc><priority>0.7</priority></url>
   <url><loc>https://bespoxai.com/faq</loc><priority>0.7</priority></url>
+  <url><loc>https://bespoxai.com/terms</loc><priority>0.4</priority></url>
 </urlset>
