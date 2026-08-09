@@ -24,11 +24,14 @@ const dmMono = DM_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'BespoxAI — Intelligence for BC & NAV',
-  description: 'AI-powered financial intelligence for Microsoft Business Central and NAV.',
+  title: 'BespoxAI — Intelligence for NAV & BC',
+  description: 'AI-powered feasibility, specs, live financial answers and fixed-price development for Dynamics NAV and Business Central — on the system you own, no migration required.',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
+  },
+  verification: {
+    google: 'QLEhpW5JT5aJmON6rMAvZImZ49YXzLYgvszpiDRETqM',
   },
 }
 
