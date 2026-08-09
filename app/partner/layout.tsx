@@ -24,7 +24,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
 
 function PartnerLayoutInner({ children }: { children: React.ReactNode }) {
   const { theme } = usePartnerTheme()
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -79,6 +79,9 @@ function PartnerLayoutInner({ children }: { children: React.ReactNode }) {
       })
       const data = await res.json()
       if (!res.ok) { setPwError(data.error ?? 'Could not save password.'); return }
+      // Re-read the JWT from the DB so mustChangePassword=false sticks in the session —
+      // without this the stale token re-triggers the modal on the next session refetch
+      await update()
       setShowPwModal(false)
       setNewPw('')
       setConfirmPw('')
