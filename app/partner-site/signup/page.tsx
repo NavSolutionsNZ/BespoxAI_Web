@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import AgreementScroll from '@/components/AgreementScroll'
+import { isBlockedEmailDomain, COMPANY_EMAIL_REQUIRED_MESSAGE } from '@/lib/email-domains'
 
 const inp: React.CSSProperties = {
   width: '100%',
@@ -70,6 +71,10 @@ export default function PartnerSignupPage() {
     setError('')
     if (!form.companyName || !form.contactName || !form.email || !form.phone || !form.address) {
       setError('Please complete all required fields.')
+      return
+    }
+    if (isBlockedEmailDomain(form.email) || (form.billingEmail && isBlockedEmailDomain(form.billingEmail))) {
+      setError(COMPANY_EMAIL_REQUIRED_MESSAGE)
       return
     }
     if (form.paymentMode === 'bespoxai_collected' && !form.bankAccount) {

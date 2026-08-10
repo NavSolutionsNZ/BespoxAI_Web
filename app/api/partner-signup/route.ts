@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
+import {
+  isValidEmailFormat,
+  isBlockedEmailDomain,
+  COMPANY_EMAIL_REQUIRED_MESSAGE,
+} from '@/lib/email-domains'
 import crypto from 'crypto'
 
 const PORTAL = process.env.NEXTAUTH_URL ?? 'https://bespoxai.com'
@@ -39,6 +44,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields: ' + missing.join(', ') }, { status: 400 })
   }
 
+  // Email format + company-domain enforcement (contact and billing addresses)
+  const contactEmail = String(email).toLowerCase().trim()
+  const resolvedBillingEmail = String(billingEmail || email).toLowerCase().trim()
+
+  if (!isValidEmailFormat(contactEmail)) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+  }
+  if (!isValidEmailFormat(resolvedBillingEmail)) {
+    return NextResponse.json({ error: 'Invalid billing email address' }, { status: 400 })
+  }
+  if (isBlockedEmailDomain(contactEmail) || isBlockedEmailDomain(resolvedBillingEmail)) {
+    return NextResponse.json({ error: COMPANY_EMAIL_REQUIRED_MESSAGE }, { status: 400 })
+  }
+
   if (paymentMode === 'bespoxai_collected' && !bankAccount) {
     return NextResponse.json({ error: 'Bank account is required when BespoxAI collects payments' }, { status: 400 })
   }
@@ -48,13 +67,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Check email not already used
-  const existingUser = await (prisma as any).user.findUnique({ where: { email: email.toLowerCase().trim() } })
+  const existingUser = await (prisma as any).user.findUnique({ where: { email: contactEmail } })
   if (existingUser) {
     return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
   }
 
   const existingSignup = await (prisma as any).partnerSignupRequest.findFirst({
-    where: { email: email.toLowerCase().trim(), activatedAt: null },
+    where: { email: contactEmail, activatedAt: null },
   })
   if (existingSignup) {
     return NextResponse.json({ error: 'A signup request for this email is already pending' }, { status: 409 })
@@ -74,8 +93,8 @@ export async function POST(req: NextRequest) {
       id:          crypto.randomUUID(),
       companyName: companyName.trim(),
       slug,
-      billingEmail: (billingEmail || email).toLowerCase().trim(),
-      email:        email.toLowerCase().trim(),
+      billingEmail: resolvedBillingEmail,
+      email:        contactEmail,
       contactName:  contactName.trim(),
       phone:        phone.trim(),
       address:      address.trim(),
@@ -91,7 +110,7 @@ export async function POST(req: NextRequest) {
   const verifyUrl = PORTAL + '/api/partner-signup/verify?token=' + verifyToken
 
   await sendEmail({
-    to: email,
+    to: contactEmail,
     subject: 'Verify your BespoxAI Partner account',
     html: `
       <div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1a2a1e">
