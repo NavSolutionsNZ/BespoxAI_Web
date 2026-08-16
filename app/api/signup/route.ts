@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendVerificationEmail } from '@/lib/email'
+import {
+  isValidEmailFormat,
+  isBlockedEmailDomain,
+  COMPANY_EMAIL_REQUIRED_MESSAGE,
+} from '@/lib/email-domains'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -20,19 +25,22 @@ export async function POST(req: NextRequest) {
   }
 
   // Basic email validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!isValidEmailFormat(email)) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
   }
 
-  // Normalize — must match the lowercase/trim lookup used at login (lib/auth.ts),
-  // forgot/reset-password, and every other signup path. Storing the raw-cased
-  // email here caused activated accounts with any uppercase letters in the
-  // email to be permanently unable to log in (email never matched at auth time).
-  const normEmail = email.trim().toLowerCase()
+  // Normalise before any lookup or persistence, so casing/whitespace variants
+  // cannot bypass the duplicate checks below.
+  const normalisedEmail = String(email).toLowerCase().trim()
+
+  // Company email addresses only — reject free consumer and disposable providers
+  if (isBlockedEmailDomain(normalisedEmail)) {
+    return NextResponse.json({ error: COMPANY_EMAIL_REQUIRED_MESSAGE }, { status: 400 })
+  }
 
   // Check for duplicate pending signup request
   const existing = await prisma.signupRequest.findFirst({
-    where: { email: normEmail, activatedAt: null },
+    where: { email: normalisedEmail, activatedAt: null },
   })
   if (existing) {
     return NextResponse.json(
@@ -42,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Check for already-activated account with this email
-  const existingUser = await prisma.user.findUnique({ where: { email: normEmail } })
+  const existingUser = await prisma.user.findUnique({ where: { email: normalisedEmail } })
   if (existingUser) {
     return NextResponse.json(
       { error: 'An account with this email address already exists' },
@@ -58,14 +66,14 @@ export async function POST(req: NextRequest) {
       companyName,
       country:   country   ?? 'NZ',
       bcVersion: bcVersion ?? 'BC25',
-      email:     normEmail,
+      email: normalisedEmail,
       verifyToken,
       termsAcceptedAt: new Date(),
       termsVersion:    TERMS_VERSION,
     },
   })
 
-  await sendVerificationEmail(normEmail, companyName, verifyToken)
+  await sendVerificationEmail(normalisedEmail, companyName, verifyToken)
 
   return NextResponse.json({ ok: true })
 }

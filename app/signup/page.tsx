@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { isBlockedEmailDomain, COMPANY_EMAIL_REQUIRED_MESSAGE } from '@/lib/email-domains'
 
 const COUNTRIES = [
   { code: 'NZ', label: 'New Zealand' },
@@ -53,6 +54,10 @@ export default function SignupPage() {
   async function handleSubmit() {
     if (!form.companyName.trim() || !form.email.trim()) {
       setError('Company name and email are required.')
+      return
+    }
+    if (isBlockedEmailDomain(form.email)) {
+      setError(COMPANY_EMAIL_REQUIRED_MESSAGE)
       return
     }
     if (!termsAccepted) {
