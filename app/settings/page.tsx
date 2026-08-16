@@ -959,6 +959,10 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       bcCompany:         vals.bcCompany,
       bcPort:            vals.bcPort,
       agentPort:         vals.agentPort,
+      // bcUsername is a real, non-secret DB column — save it like every
+      // other field here. bcPassword is deliberately excluded: it's never
+      // stored, only ever embedded into a downloaded installer.
+      bcUsername:        vals.bcUsername,
     })
     onSaved(vals)
     setSaving(false)

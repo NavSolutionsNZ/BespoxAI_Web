@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest) {
 
   const tenantId = (session.user as any).tenantId
   const body = await req.json().catch(() => ({}))
-  const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany,
+  const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany, bcUsername,
           navDatabaseServer, navDatabaseName, navServerInstance, navManagementPort,
           testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
           testBcPort, testBcInstance, testBcCompany, testNavManagementPort,
@@ -87,6 +87,9 @@ export async function PATCH(req: NextRequest) {
   if (lastCU     !== undefined) data.lastCU     = lastCU     || null
   if (bcInstance !== undefined) data.bcInstance = bcInstance || null
   if (bcCompany  !== undefined) data.bcCompany  = bcCompany  || null
+  // bcPassword is deliberately NOT accepted here — never stored, only ever
+  // embedded into a downloaded installer (see /api/settings/installer).
+  if (bcUsername !== undefined) data.bcUsername = bcUsername || null
   // NAV production DB
   if (navDatabaseServer !== undefined) data.navDatabaseServer = navDatabaseServer || 'localhost'
   if (navDatabaseName   !== undefined) data.navDatabaseName   = navDatabaseName   || null
