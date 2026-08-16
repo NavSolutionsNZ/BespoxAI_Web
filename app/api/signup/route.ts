@@ -24,9 +24,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
   }
 
+  // Normalize — must match the lowercase/trim lookup used at login (lib/auth.ts),
+  // forgot/reset-password, and every other signup path. Storing the raw-cased
+  // email here caused activated accounts with any uppercase letters in the
+  // email to be permanently unable to log in (email never matched at auth time).
+  const normEmail = email.trim().toLowerCase()
+
   // Check for duplicate pending signup request
   const existing = await prisma.signupRequest.findFirst({
-    where: { email, activatedAt: null },
+    where: { email: normEmail, activatedAt: null },
   })
   if (existing) {
     return NextResponse.json(
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Check for already-activated account with this email
-  const existingUser = await prisma.user.findUnique({ where: { email } })
+  const existingUser = await prisma.user.findUnique({ where: { email: normEmail } })
   if (existingUser) {
     return NextResponse.json(
       { error: 'An account with this email address already exists' },
@@ -52,14 +58,14 @@ export async function POST(req: NextRequest) {
       companyName,
       country:   country   ?? 'NZ',
       bcVersion: bcVersion ?? 'BC25',
-      email,
+      email:     normEmail,
       verifyToken,
       termsAcceptedAt: new Date(),
       termsVersion:    TERMS_VERSION,
     },
   })
 
-  await sendVerificationEmail(email, companyName, verifyToken)
+  await sendVerificationEmail(normEmail, companyName, verifyToken)
 
   return NextResponse.json({ ok: true })
 }
