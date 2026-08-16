@@ -124,7 +124,7 @@ export default function OnboardingPage() {
   const [wantsToConnect, setWantsToConnect] = useState<boolean | null>(null)
 
   // Step 4
-  const [bcPort,    setBcPort]    = useState('8048')
+  const [bcPort,    setBcPort]    = useState('7048')
   const [agentPort, setAgentPort] = useState('9099')
 
   const [bcInstance,        setBcInstance]        = useState('')
@@ -223,19 +223,23 @@ export default function OnboardingPage() {
     setStep(s => s - 1)
   }
 
-  async function finish() {
+  // Accepts where to send the user afterwards — the two Step 5 buttons both
+  // need to save first; only their destination differs. Previously "Open BC
+  // Installer" was a plain <a href> that skipped this entirely, so anyone who
+  // clicked it landed on Settings with nothing saved.
+  async function finish(redirectTo: string) {
     setSaving(true); setError('')
     try {
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU,
-          bcPort: parseInt(bcPort, 10) || 8048, agentPort: parseInt(agentPort, 10) || 9099, wantsToConnect,
+          bcPort: parseInt(bcPort, 10) || 7048, agentPort: parseInt(agentPort, 10) || 9099, wantsToConnect,
           bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance }),
       })
       if (!res.ok) throw new Error()
       await update()
-      router.replace('/dashboard')
+      router.replace(redirectTo)
     } catch { setError('Something went wrong — please try again.'); setSaving(false) }
   }
 
@@ -525,30 +529,30 @@ export default function OnboardingPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                     <div>
                       <Label>BC Instance</Label>
-                      <input type="text" value={bcInstance} placeholder={navProduct === 'NAV' ? 'e.g. DynamicsNAV110' : 'e.g. BC'} onChange={e => setBcInstance(e.target.value)} style={inputStyle}
+                      <input type="text" value={bcInstance} placeholder={navProduct === 'NAV' ? 'e.g. DynamicsNAV110' : 'e.g. BC'} title="The instance name segment of your OData URL. Find it via the Server Instance Administration Tool, or Get-NAVServerInstance / Get-BCServerInstance in PowerShell." onChange={e => setBcInstance(e.target.value)} style={inputStyle}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
                       <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Your BC or NAV server instance name.</p>
                     </div>
                     <div>
                       <Label>BC Company</Label>
-                      <input type="text" value={bcCompany} placeholder="e.g. CRONUS International Ltd." onChange={e => setBcCompany(e.target.value)} style={inputStyle}
+                      <input type="text" value={bcCompany} placeholder="e.g. CRONUS International Ltd." title="Must exactly match your BC/NAV company name (case-sensitive) as it appears in the OData URL — Company('Name') — or in the company selector inside BC/NAV." onChange={e => setBcCompany(e.target.value)} style={inputStyle}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
-                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Company name as it appears in the OData URL.</p>
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Must exactly match your BC/NAV company name as it appears in the OData URL — not a nickname or display label.</p>
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                     <div>
                       <Label>NAV Database Server</Label>
-                      <input type="text" value={navDatabaseServer} placeholder="localhost" onChange={e => setNavDatabaseServer(e.target.value)} style={inputStyle}
+                      <input type="text" value={navDatabaseServer} placeholder="localhost" title="The SQL Server instance hosting the NAV/BC database, e.g. SERVERNAME or SERVERNAME\SQLEXPRESS. Find it in SQL Server Management Studio's connection dialog." onChange={e => setNavDatabaseServer(e.target.value)} style={inputStyle}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
                       <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>SQL Server hosting the NAV/BC database.</p>
                     </div>
                     <div>
                       <Label>NAV Database Name</Label>
-                      <input type="text" value={navDatabaseName} placeholder="e.g. Dynamics NAV 2017" onChange={e => setNavDatabaseName(e.target.value)} style={{ ...inputStyle, borderColor: navDatabaseName ? 'var(--fog)' : 'rgba(200,149,42,0.4)' }}
+                      <input type="text" value={navDatabaseName} placeholder="e.g. Dynamics NAV 2017" title="The exact SQL database name. Find it in SQL Server Management Studio's Object Explorer, or the Server Instance Administration Tool under Database → Database Name." onChange={e => setNavDatabaseName(e.target.value)} style={{ ...inputStyle, borderColor: navDatabaseName ? 'var(--fog)' : 'rgba(200,149,42,0.4)' }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = navDatabaseName ? 'var(--fog)' : 'rgba(200,149,42,0.4)')} />
                       <p style={{ fontSize: 11, color: navDatabaseName ? 'var(--slate)' : 'var(--gold)', marginTop: 5 }}>Required for C/AL object export. Find in SQL Server Management Studio.</p>
@@ -557,20 +561,20 @@ export default function OnboardingPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, paddingTop: 16, borderTop: '1px solid var(--fog)' }}>
                     <div>
                       <Label optional>NAV Server Instance</Label>
-                      <input type="text" value={navServerInstance} placeholder="e.g. DynamicsNAV110" onChange={e => setNavServerInstance(e.target.value)} style={inputStyle}
+                      <input type="text" value={navServerInstance} placeholder="e.g. DynamicsNAV110" title="The NAV/BC Server (service) instance name, e.g. DynamicsNAV110 or BC200. Run Get-NAVServerInstance / Get-BCServerInstance in PowerShell to list it." onChange={e => setNavServerInstance(e.target.value)} style={inputStyle}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
                     </div>
                     <div>
                       <Label>BC OData Port</Label>
-                      <input type="number" value={bcPort} onChange={e => setBcPort(e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+                      <input type="number" value={bcPort} title="The OData service port. Find it in the Server Instance Administration Tool under General → OData Services Port, or in the OData URL itself." onChange={e => setBcPort(e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
-                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Default: 8048</p>
+                      <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Default: 7048</p>
                     </div>
                     <div>
                       <Label>Agent Port</Label>
-                      <input type="number" value={agentPort} onChange={e => setAgentPort(e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+                      <input type="number" value={agentPort} title="The port BCAgent listens on locally so the portal can reach it. Not related to BC/NAV configuration — only change this if the port is already in use on the server." onChange={e => setAgentPort(e.target.value)} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
                         onFocus={e => (e.target.style.borderColor = 'var(--forest)')}
                         onBlur={e  => (e.target.style.borderColor = 'var(--fog)')} />
                       <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 5 }}>Default: 9099</p>
@@ -600,9 +604,10 @@ export default function OnboardingPage() {
                 </p>
                 {wantsToConnect ? (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-                    <a href="/settings?tab=installer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--forest)', color: '#fff', borderRadius: 10, padding: '12px 24px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
-                      Open BC Installer →
-                    </a>
+                    <button onClick={() => finish('/settings?tab=installer')} disabled={saving}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--forest)', color: '#fff', borderRadius: 10, padding: '12px 24px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, border: 'none', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+                      {saving ? 'Setting up…' : 'Open BC Installer →'}
+                    </button>
                   </div>
                 ) : null}
 
@@ -630,7 +635,7 @@ export default function OnboardingPage() {
                 {error && <p style={errStyle}>{error}</p>}
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                   <button onClick={handleBack} style={backBtn}>← Back</button>
-                  <button onClick={finish} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}>
+                  <button onClick={() => finish('/dashboard')} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}>
                     {saving ? 'Setting up…' : 'Go to dashboard →'}
                   </button>
                 </div>
