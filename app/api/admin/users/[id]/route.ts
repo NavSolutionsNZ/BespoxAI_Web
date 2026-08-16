@@ -46,6 +46,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (resetPassword) {
     tempPassword = crypto.randomBytes(6).toString('hex').toUpperCase().slice(0, 12)
     updateData.password = await bcrypt.hash(tempPassword, 12)
+    // Force the user to change this temp password on next login — same gap
+    // as the other two temp-password paths (signup activation, admin create).
+    updateData.mustChangePassword = true
   }
 
   const user = await prisma.user.update({

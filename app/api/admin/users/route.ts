@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
         role:     role === 'tenant_admin' ? 'tenant_admin' : 'user',
         password: hashed,
         tenantId,
-      },
+        mustChangePassword: true,
+      } as any,
       select: { id: true, email: true, name: true, role: true, tenantId: true, createdAt: true },
     })
     // Return temp password once — not stored in plaintext

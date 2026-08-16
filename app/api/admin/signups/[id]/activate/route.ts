@@ -68,6 +68,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           role:     'tenant_admin',
           tenantId: tenant.id,
           active:   true,
+          // Without this, the random temp password emailed below is never
+          // flagged for a forced change — mustChangePassword defaults to
+          // false in the schema, so onboarding's Step 0 (password change)
+          // never triggered and users were silently stuck on the temp
+          // password with no prompt to replace it.
+          mustChangePassword: true,
         },
       })
 
