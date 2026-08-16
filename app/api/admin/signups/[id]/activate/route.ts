@@ -36,43 +36,74 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const hashedPw     = await bcrypt.hash(tempPassword, 12)
   const apiKey       = crypto.randomBytes(24).toString('hex')
 
-  // Create tenant + admin user in a transaction
-  const { tenant, user } = await prisma.$transaction(async tx => {
-    const tenant = await tx.tenant.create({
-      data: {
-        name:           signup.companyName,
-        tunnelSubdomain: subdomain,
-        bcInstance:     body.bcInstance ?? 'BC',
-        bcCompany:      body.bcCompany  ?? signup.companyName,
-        apiKey,
-        country:        signup.country,
-        tier:           'trial',
-        trialEndsAt:    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        active:         true,
-      },
+  let tenant: any
+  let user: any
+
+  try {
+    // Create tenant + admin user in a transaction
+    ;({ tenant, user } = await prisma.$transaction(async tx => {
+      const tenant = await tx.tenant.create({
+        data: {
+          name:           signup.companyName,
+          tunnelSubdomain: subdomain,
+          bcInstance:     body.bcInstance ?? 'BC',
+          bcCompany:      body.bcCompany  ?? signup.companyName,
+          apiKey,
+          country:        signup.country,
+          tier:           'trial',
+          trialEndsAt:    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          active:         true,
+        },
+      })
+
+      const user = await tx.user.create({
+        data: {
+          email:    signup.email,
+          name:     null,  // user sets their own name during onboarding
+          password: hashedPw,
+          role:     'tenant_admin',
+          tenantId: tenant.id,
+          active:   true,
+        },
+      })
+
+      await tx.signupRequest.update({
+        where: { id: params.id },
+        data:  { activatedAt: new Date() },
+      })
+
+      return { tenant, user }
+    }))
+  } catch (e: any) {
+    // Unique constraint on tunnelSubdomain — most likely an orphaned tenant from
+    // a prior test/cleanup still holding the derived subdomain. Give the admin
+    // an actionable message instead of an opaque 500 (which the activate button
+    // can't recover from — see app/admin/page.tsx activate handler).
+    if (e.code === 'P2002' && e.meta?.target?.includes?.('tunnelSubdomain')) {
+      return NextResponse.json({
+        error: `Subdomain "${subdomain}" is already in use by another tenant. ` +
+               `Pass a different { subdomain } in the request body, or free up the existing one first.`,
+      }, { status: 409 })
+    }
+    console.error('[admin/signups/activate] failed:', e)
+    return NextResponse.json({ error: e.message ?? 'Activation failed' }, { status: 500 })
+  }
+
+  // Send welcome email with temp password. Activation already succeeded at this
+  // point — an email failure shouldn't undo it or strand the admin on a dead
+  // button, so it's logged rather than thrown.
+  try {
+    await sendWelcomeEmail(signup.email, signup.companyName, tempPassword)
+  } catch (e: any) {
+    console.error('[admin/signups/activate] tenant/user created but welcome email failed:', e)
+    return NextResponse.json({
+      ok: true,
+      tenantId: tenant.id,
+      userId:   user.id,
+      subdomain,
+      emailFailed: true,
     })
-
-    const user = await tx.user.create({
-      data: {
-        email:    signup.email,
-        name:     null,  // user sets their own name during onboarding
-        password: hashedPw,
-        role:     'tenant_admin',
-        tenantId: tenant.id,
-        active:   true,
-      },
-    })
-
-    await tx.signupRequest.update({
-      where: { id: params.id },
-      data:  { activatedAt: new Date() },
-    })
-
-    return { tenant, user }
-  })
-
-  // Send welcome email with temp password
-  await sendWelcomeEmail(signup.email, signup.companyName, tempPassword)
+  }
 
   return NextResponse.json({
     ok: true,

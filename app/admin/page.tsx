@@ -932,14 +932,20 @@ function AdminPageInner() {
                             <button
                               onClick={async () => {
                                 setActivating(s.id)
-                                const res = await fetch(`/api/admin/signups/${s.id}/activate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
-                                const data = await res.json()
-                                if (res.ok) {
-                                  setSignups(prev => prev.map(x => x.id === s.id ? { ...x, activatedAt: new Date().toISOString() } : x))
-                                } else {
-                                  alert(data.error ?? 'Activation failed')
+                                try {
+                                  const res = await fetch(`/api/admin/signups/${s.id}/activate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+                                  const data = await res.json().catch(() => ({}))
+                                  if (res.ok) {
+                                    setSignups(prev => prev.map(x => x.id === s.id ? { ...x, activatedAt: new Date().toISOString() } : x))
+                                    if (data.emailFailed) alert('Tenant activated, but the welcome email failed to send. There is no resend option for customer signups yet — check the server logs for the temp password, or reset it via the tenant\'s Users tab.')
+                                  } else {
+                                    alert(data.error ?? `Activation failed — HTTP ${res.status}`)
+                                  }
+                                } catch (e: any) {
+                                  alert('Activation failed: ' + e.message)
+                                } finally {
+                                  setActivating(null)
                                 }
-                                setActivating(null)
                               }}
                               disabled={activating === s.id}
                               style={{ background: '#0A5C46', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
