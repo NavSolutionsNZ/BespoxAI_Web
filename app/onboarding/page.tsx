@@ -611,11 +611,12 @@ export default function OnboardingPage() {
                   {([
                     ['Name', (preferredName || firstName) ? (preferredName || firstName) + ' ' + lastName : '—'],
                     ['Role',       PERSONAS.find(p => p.id === persona)?.label ?? persona],
-                    ['Company',    tenantName || '—'],
+                    ['Organisation', tenantName || '—'],
                     ['Product',    navProduct === 'BC' ? 'Business Central' : navProduct === 'NAV' ? 'Microsoft NAV' : '—'],
                     ['Version',    navVersion || '—'],
                     ['Last CU',    lastCU     || '—'],
                     ['BC Instance',   bcInstance || '—'],
+                    ...(wantsToConnect ? [['BC Company', bcCompany || '—']] as [string, string][] : []),
                     ['Database',      navDatabaseName || '—'],
                     ['Connection',    wantsToConnect ? 'Installer ready' : 'Set up later'],
                   ] as [string,string][]).map(([k, v]) => (
