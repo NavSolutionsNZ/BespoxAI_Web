@@ -47,7 +47,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           name:           signup.companyName,
           tunnelSubdomain: subdomain,
           bcInstance:     body.bcInstance ?? 'BC',
-          bcCompany:      body.bcCompany  ?? signup.companyName,
+          // Don't default to the portal org name — the BC/NAV company is a
+          // separate, often different value the customer sets during onboarding.
+          bcCompany:      body.bcCompany  ?? null,
           apiKey,
           country:        signup.country,
           tier:           'trial',
