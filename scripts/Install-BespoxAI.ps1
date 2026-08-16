@@ -39,7 +39,7 @@
     Password for the BC account (will not be echoed or logged).
 
 .PARAMETER BCPort
-    BC OData port. Default: 8048
+    BC OData port. Default: 7048
 
 .PARAMETER BCInstance
     BC server instance name. Default: BC
@@ -67,7 +67,7 @@ param(
     [Parameter(Mandatory)][string]  $ApiKey,
     [Parameter(Mandatory)][string]  $BCUsername,
     [Parameter(Mandatory)][string]  $BCPassword,
-    [int]    $BCPort      = 8048,
+    [int]    $BCPort      = 7048,
     [string] $BCInstance  = 'BC',
     [string] $BCCompany   = 'CRONUS International Ltd.',
     [int]    $AgentPort   = 9099,
@@ -89,7 +89,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.3'
+$AgentVersion  = '3.4'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -249,7 +249,7 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
 #>
 
-$Version    = '3.3'
+$Version    = '3.4'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -258,7 +258,7 @@ if (-not (Test-Path $ConfigPath)) {
 $Config     = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 $ListenPort    = if ($Config.listenPort) { $Config.listenPort } else { 9099 }
 $ApiKey        = $Config.apiKey
-$BCBase        = $Config.bcBaseUrl   # e.g. http://localhost:8048
+$BCBase        = $Config.bcBaseUrl   # e.g. http://localhost:7048
 $BCUser        = $Config.bcUsername
 $BCPass        = $Config.bcPassword
 $NavDbServer   = if ($Config.navDatabaseServer) { $Config.navDatabaseServer } else { 'localhost' }

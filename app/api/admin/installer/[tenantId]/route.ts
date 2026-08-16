@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     return NextResponse.json({ error: 'Tenant was not auto-provisioned — no tunnel ID stored.' }, { status: 400 })
 
   const body = await req.json().catch(() => ({}))
-  const { bcUsername = '', bcPassword = '', bcPort = 8048, agentPort = 8080 } = body
+  const { bcUsername = '', bcPassword = '', bcPort = 7048, agentPort = 9099 } = body
 
   if (!bcUsername) return NextResponse.json({ error: 'bcUsername is required' }, { status: 400 })
 
@@ -43,10 +43,13 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
     .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
     .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword}',`)
-    .replace('[int]    $BCPort      = 8048,',                 `[int]    $BCPort      = ${bcPort},`)
-    .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance}',`)
-    .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany}',`)
-    .replace('[int]    $AgentPort   = 8080,',                 `[int]    $AgentPort   = ${agentPort},`)
+    .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${bcPort},`)
+    .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
+    .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
+    // Was matching the stale literal '= 8080,' — the .ps1 template has used 9099
+    // for a while, so this replace() was silently a no-op and custom agentPort
+    // values passed to this endpoint were never actually injected. Fixed.
+    .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${agentPort},`)
 
   // Base64-encode the PS1
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')
@@ -69,7 +72,7 @@ echo.
 echo  ============================================================
 echo    BespoxAI Installer
 echo    Tenant: ${tenantName}
-echo    BC:     ${tenant.bcInstance} / ${tenant.bcCompany}
+echo    BC:     ${tenant.bcInstance || '(not set)'} / ${tenant.bcCompany || '(not set)'}
 echo  ============================================================
 echo.
 

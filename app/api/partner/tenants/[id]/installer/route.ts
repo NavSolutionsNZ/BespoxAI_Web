@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const body = await req.json().catch(() => ({}))
   const {
-    bcUsername, bcPassword, bcPort = 8048, agentPort = 9099,
+    bcUsername, bcPassword, bcPort = 7048, agentPort = 9099,
     bcInstance, bcCompany,
     navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',
     navManagementPort = 7045,
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       ...(bcInstance        ? { bcInstance }        : {}),
       ...(bcUsername        ? { bcUsername }         : {}),
       ...(bcCompany         ? { bcCompany }          : {}),
-      bcPort:            parseInt(String(bcPort),    10) || 8048,
+      bcPort:            parseInt(String(bcPort),    10) || 7048,
       agentPort:         parseInt(String(agentPort), 10) || 9099,
       ...(navDatabaseName   ? { navDatabaseName }   : {}),
       ...(navServerInstance ? { navServerInstance } : {}),
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
     .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
     .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword ?? ''}',`)
-    .replace('[int]    $BCPort      = 8048,',                 `[int]    $BCPort      = ${tenant.bcPort || 8048},`)
+    .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${tenant.bcPort || 7048},`)
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
     .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${tenant.agentPort || 9099},`)
@@ -167,7 +167,7 @@ echo.
 echo  ============================================================
 echo    ${agentBrandName} Agent Installer
 echo    Tenant: ${tenant.name}
-echo    BC:     ${bcInstance || tenant.bcInstance} / ${bcCompany || tenant.bcCompany}
+echo    BC:     ${bcInstance || tenant.bcInstance || '(not set)'} / ${bcCompany || tenant.bcCompany || '(not set)'}
 echo  ============================================================
 echo.
 net session >nul 2>&1

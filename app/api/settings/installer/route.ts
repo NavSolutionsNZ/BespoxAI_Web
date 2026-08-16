@@ -16,7 +16,7 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = '3.3'
+const AGENT_VERSION = '3.4'
 
 function generateRdpPassword(): string {
   const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -143,7 +143,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
       ...(bcInstance        ? { bcInstance }        : {}),
       ...(bcUsername        ? { bcUsername }         : {}),
       ...(bcCompany         ? { bcCompany }          : {}),
-      ...(bcPort            !== undefined ? { bcPort:    parseInt(String(bcPort),    10) || 8048 } : {}),
+      ...(bcPort            !== undefined ? { bcPort:    parseInt(String(bcPort),    10) || 7048 } : {}),
       ...(agentPort         !== undefined ? { agentPort: parseInt(String(agentPort), 10) || 9099 } : {}),
       ...(navDatabaseName   ? { navDatabaseName }   : {}),
       ...(navServerInstance ? { navServerInstance } : {}),
@@ -184,7 +184,7 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
     .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
     .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword ?? ''}',`)
-    .replace('[int]    $BCPort      = 8048,',                 `[int]    $BCPort      = ${tenant.bcPort || 8048},`)
+    .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${tenant.bcPort || 7048},`)
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
     .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${tenant.agentPort || 9099},`)
@@ -215,7 +215,7 @@ echo.
 echo  ============================================================
 echo    ${agentBrandName} Agent Installer
 echo    Tenant: ${tenant.name}
-echo    BC:     ${bcInstance || tenant.bcInstance} / ${bcCompany || tenant.bcCompany}
+echo    BC:     ${bcInstance || tenant.bcInstance || '(not set)'} / ${bcCompany || tenant.bcCompany || '(not set)'}
 echo  ============================================================
 echo.
 net session >nul 2>&1

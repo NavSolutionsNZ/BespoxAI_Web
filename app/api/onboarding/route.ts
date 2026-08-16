@@ -63,7 +63,7 @@ export async function GET() {
       navProduct:        tenant?.navProduct        ?? fromSignup?.navProduct ?? null,
       navVersion:        tenant?.navVersion        ?? fromSignup?.navVersion ?? null,
       lastCU:            tenant?.lastCU            ?? null,
-      bcPort:            tenant?.bcPort            ?? 8048,
+      bcPort:            tenant?.bcPort            ?? 7048,
       agentPort:         tenant?.agentPort         ?? 9099,
       bcInstance:        tenant?.bcInstance        ?? null,
       bcCompany:         tenant?.bcCompany         ?? null,
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const { persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
 
-  const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 8048))
+  const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 7048))
   const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 9099))
 
   await Promise.all([

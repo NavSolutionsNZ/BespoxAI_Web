@@ -123,7 +123,7 @@ export default function AddClientPage() {
       lastCU:             lastCURef.current?.value.trim() || null,
       bcInstance:         bcInstanceRef.current?.value.trim() || null,
       bcCompany:          bcCompanyRef.current?.value.trim() || null,
-      bcPort:             bcPortRef.current?.value ? parseInt(bcPortRef.current.value) : 8048,
+      bcPort:             bcPortRef.current?.value ? parseInt(bcPortRef.current.value) : 7048,
       agentPort:          agentPortRef.current?.value ? parseInt(agentPortRef.current.value) : 9099,
       bcUsername:         bcUsernameRef.current?.value.trim() || null,
       bcPassword:         bcPasswordRef.current?.value || null,
@@ -278,8 +278,8 @@ export default function AddClientPage() {
             </Field>
           </div>
           <div className="rb-grid-3" style={gridThree}>
-            <Field label="OData Port" hint="Default: 8048">
-              <input ref={bcPortRef} style={inputStyle} placeholder="8048" defaultValue="8048" />
+            <Field label="OData Port" hint="Default: 7048">
+              <input ref={bcPortRef} style={inputStyle} placeholder="7048" defaultValue="7048" />
             </Field>
             <Field label="Agent Port" hint="Default: 9099">
               <input ref={agentPortRef} style={inputStyle} placeholder="9099" defaultValue="9099" />
@@ -331,8 +331,8 @@ export default function AddClientPage() {
               </Field>
             </div>
             <div className="rb-grid-3" style={gridThree}>
-              <Field label="Test OData Port" hint="Default: 8048">
-                <input ref={testBcPortRef} style={inputStyle} placeholder="8048" />
+              <Field label="Test OData Port" hint="Default: 7048">
+                <input ref={testBcPortRef} style={inputStyle} placeholder="7048" />
               </Field>
               <Field label="Test Management Port" hint="Default: 7045">
                 <input ref={testNavMgmtPortRef} style={inputStyle} placeholder="7045" defaultValue="7045" />

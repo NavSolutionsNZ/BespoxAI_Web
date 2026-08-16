@@ -22,9 +22,9 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   if (!tenant.tunnelSubdomain) return NextResponse.json({ error: 'No tunnel configured — download the installer first' }, { status: 400 })
 
   const agentUrl   = 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com'
-  const bcPort     = tenant.bcPort     || 8048
+  const bcPort     = tenant.bcPort     || 7048
   const agentPort  = tenant.agentPort  || 9099
-  const bcInstance = tenant.bcInstance || 'BC'
+  const bcInstance = tenant.bcInstance || ''
   const bcCompany  = tenant.bcCompany  || ''
 
   const payload: Record<string, any> = {

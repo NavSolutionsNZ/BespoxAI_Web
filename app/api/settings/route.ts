@@ -23,7 +23,7 @@ const DEBUG_TENANT = {
     ItemLedgerEntry: true, BankAccount: true, GLAccount: true },
   tunnelId: 'debug-tunnel-id', createdAt: '2026-01-15T00:00:00.000Z',
   navProduct: 'BC', navVersion: 'Business Central 2024 Wave 2 (BC25)',
-  lastCU: 'CU2', bcPort: 8048, agentPort: 8080,
+  lastCU: 'CU2', bcPort: 7048, agentPort: 9099,
   navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '',
   testNavDatabaseServer: 'localhost', testNavDatabaseName: '', testNavServerInstance: '',
   testBcPort: 0, testBcInstance: '', testBcCompany: '', testNavManagementPort: 7045,
