@@ -137,11 +137,17 @@ export default function OnboardingPage() {
 
   // Redirect guards
   useEffect(() => {
+    // finish() already owns navigation once it's running — its own
+    // `update()` call flips onboardingDone, which would otherwise re-trigger
+    // this same effect and race its `/dashboard` redirect against finish()'s
+    // intended destination (e.g. "Open BC Installer" -> /settings?tab=installer
+    // was silently losing that race and landing on plain /dashboard instead).
+    if (saving) return
     if (status === 'loading') return
     if (!session) { router.replace('/login'); return }
     if (user?.onboardingDone) { router.replace('/dashboard'); return }
     if (user?.mustChangePassword) setStep(0)
-  }, [status, session, user?.onboardingDone, user?.mustChangePassword])
+  }, [status, session, user?.onboardingDone, user?.mustChangePassword, saving])
 
   // Fetch prefill data
   useEffect(() => {
