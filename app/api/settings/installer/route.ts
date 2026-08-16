@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}))
-  const { bcUsername, bcPassword, bcPort = 8048, agentPort = 9099, bcInstance, bcCompany,
-          navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',
+  const { bcUsername, bcPassword, bcPort, agentPort, bcInstance, bcCompany,
+          navDatabaseServer, navDatabaseName, navServerInstance,
           testNavDatabaseServer = '', testNavDatabaseName = '', testNavServerInstance = '',
           testBcInstance = '', testBcCompany = '', testBcPort = 0, testNavManagementPort = 7045 } = body
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
@@ -119,9 +119,10 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     const subdomain = (tenant.tunnelSubdomain || tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20))
     const hostname   = subdomain + '-agent.bespoxai.com'
     const tunnelName = 'bespoxai-' + subdomain
+    const ingressAgentPort = agentPort ?? tenant.agentPort ?? 9099
     try {
       const newTunnel = await createTunnel(tunnelName)
-      await configureTunnelIngress(newTunnel.id, hostname, 'http://localhost:' + agentPort)
+      await configureTunnelIngress(newTunnel.id, hostname, 'http://localhost:' + ingressAgentPort)
       await createDnsRecord(hostname, newTunnel.id)
       tenant = await (prisma as any).tenant.update({
         where: { id: tenantId },
@@ -133,18 +134,20 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   }
   // ── End auto-provision ────────────────────────────────────────────────────
 
-  // Persist production BC config from the installer form only
+  // Persist production BC config from the installer form only — only touch fields
+  // the request actually provided, so an incomplete/stale request body can't
+  // clobber previously-saved values (e.g. from onboarding) back to generic defaults.
   await (prisma as any).tenant.update({
     where: { id: tenantId },
     data: {
       ...(bcInstance        ? { bcInstance }        : {}),
       ...(bcUsername        ? { bcUsername }         : {}),
       ...(bcCompany         ? { bcCompany }          : {}),
-      bcPort:            parseInt(String(bcPort),    10) || 8048,
-      agentPort:         parseInt(String(agentPort), 10) || 9099,
+      ...(bcPort            !== undefined ? { bcPort:    parseInt(String(bcPort),    10) || 8048 } : {}),
+      ...(agentPort         !== undefined ? { agentPort: parseInt(String(agentPort), 10) || 9099 } : {}),
       ...(navDatabaseName   ? { navDatabaseName }   : {}),
       ...(navServerInstance ? { navServerInstance } : {}),
-      navDatabaseServer: navDatabaseServer || 'localhost',
+      ...(navDatabaseServer ? { navDatabaseServer } : {}),
     },
   })
   // Re-fetch to get latest tunnelId after possible update above
