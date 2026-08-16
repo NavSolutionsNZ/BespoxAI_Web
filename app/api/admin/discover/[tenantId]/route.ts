@@ -18,6 +18,9 @@ export async function GET(_req: NextRequest, { params }: { params: { tenantId: s
 
   const tenant = await prisma.tenant.findUnique({ where: { id: params.tenantId } })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+  // bcInstance is nullable with no fake default — fail clearly instead of
+  // building a URL with a literal "null" segment.
+  if (!tenant.bcInstance) return NextResponse.json({ error: 'BC Instance is not configured for this tenant yet' }, { status: 400 })
 
   const metaUrl = `https://${tenant.tunnelSubdomain}-agent.bespoxai.com/${tenant.bcInstance}/ODataV4/$metadata`
 

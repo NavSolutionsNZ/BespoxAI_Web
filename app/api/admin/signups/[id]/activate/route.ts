@@ -46,13 +46,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         data: {
           name:           signup.companyName,
           tunnelSubdomain: subdomain,
-          bcInstance:     body.bcInstance ?? 'BC',
-          // Don't default to the portal org name — the BC/NAV company is a
-          // separate, often different value the customer sets during onboarding.
-          // `bcCompany` is a required (non-nullable) column with its own schema
-          // default, so omit the key entirely when not provided rather than
-          // passing null — Prisma rejects an explicit null for a required field.
-          ...(body.bcCompany ? { bcCompany: body.bcCompany } : {}),
+          // bcInstance/bcCompany are nullable with no DB default — the real
+          // BC/NAV instance and company are values the customer sets during
+          // onboarding, not something to guess at activation time. Omit the
+          // key entirely when not provided so the column stays genuinely null.
+          ...(body.bcInstance ? { bcInstance: body.bcInstance } : {}),
+          ...(body.bcCompany  ? { bcCompany:  body.bcCompany  } : {}),
           apiKey,
           country:        signup.country,
           tier:           'trial',

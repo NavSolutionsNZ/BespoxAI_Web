@@ -12,7 +12,7 @@ import { DevPlanPanel } from '@/components/DevPlanPanel'
 
 interface Tenant {
   id: string; name: string; tunnelSubdomain: string
-  bcInstance: string; bcCompany: string; active: boolean
+  bcInstance: string | null; bcCompany: string | null; active: boolean
   tunnelId: string | null
   rdpPassword: string | null
   tier?: string; trialEndsAt?: string | null
@@ -194,7 +194,7 @@ function AdminPageInner() {
 
   // Installer download form
   const [installerTenantId, setInstallerTenantId] = useState<string | null>(null)
-  const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099' })
+  const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099' })
   const [installerLoading, setInstallerLoading]   = useState(false)
   const [installerError, setInstallerError]       = useState('')
 
@@ -299,7 +299,7 @@ function AdminPageInner() {
         body: JSON.stringify({
           bcUsername: installerForm.bcUsername,
           bcPassword: installerForm.bcPassword,
-          bcPort:     parseInt(installerForm.bcPort) || 8048,
+          bcPort:     parseInt(installerForm.bcPort) || 7048,
           agentPort:  parseInt(installerForm.agentPort) || 9099,
         }),
       })
@@ -321,7 +321,7 @@ function AdminPageInner() {
       document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 30_000)
       setInstallerTenantId(null)
-      setInstallerForm({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099' })
+      setInstallerForm({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099' })
     } catch (e: any) { setInstallerError(e.message) }
     setInstallerLoading(false)
   }

@@ -33,8 +33,8 @@ interface TenantRow {
   navProduct:  string | null
   navVersion:  string | null
   lastCU:      string | null
-  bcInstance:  string
-  bcCompany:   string
+  bcInstance:  string | null
+  bcCompany:   string | null
   bcPort:      number
   agentPort:   number
   country:     string
@@ -73,7 +73,7 @@ export function resolveBcVersion(
     navProduct:  string | null
     navVersion:  string | null
     lastCU?:     string | null
-    bcInstance?: string
+    bcInstance?: string | null
   },
   signupBcVersion?: string | null,
 ): string {
@@ -115,8 +115,9 @@ export function resolveBcVersion(
     return vMap[signupBcVersion] ?? signupBcVersion
   }
 
-  // Last resort — bcInstance gives some signal
-  if (tenant.bcInstance && tenant.bcInstance !== 'GWM_Dev') {
+  // Last resort — bcInstance gives some signal (bcInstance is nullable with
+  // no fake default now, so a plain truthy check is all that's needed)
+  if (tenant.bcInstance) {
     return `Business Central (instance: ${tenant.bcInstance} — version not confirmed)`
   }
 
@@ -206,7 +207,7 @@ export async function buildTenantContext(tenantId: string): Promise<string> {
     const bcVersion = resolveBcVersion(tenant)
     lines.push('## Customer BC Environment')
     lines.push(`Product: ${bcVersion}`)
-    if (tenant.bcCompany && tenant.bcCompany !== 'GWM') {
+    if (tenant.bcCompany) {
       lines.push(`BC Company: ${tenant.bcCompany}`)
     }
     lines.push(`Country: ${tenant.country}`)

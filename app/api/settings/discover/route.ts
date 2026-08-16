@@ -40,6 +40,7 @@ export async function POST() {
   const tenantId = (session.user as any).tenantId
   const tenant = await getTenantById(tenantId)
   if (!tenant) return NextResponse.json({ error: 'Tenant not configured' }, { status: 404 })
+  if (!tenant.bcInstance) return NextResponse.json({ error: 'BC Instance is not configured yet — set it in Settings first' }, { status: 400 })
 
   // Fetch OData $metadata — returns XML listing all published entity sets
   // NOTE: $metadata lives at the OData service root, NOT under Company(x)/

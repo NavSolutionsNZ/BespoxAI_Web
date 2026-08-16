@@ -12,8 +12,8 @@ model Tenant {
   id              String   @id @default(cuid())
   name            String                          // e.g. "GWM Dev"
   tunnelSubdomain String   @unique                // e.g. "gwmdev" → gwmdev-agent.bespoxai.com
-  bcInstance      String   @default("GWM_Dev")   // BC instance name in URL path
-  bcCompany       String   @default("GWM")        // BC company name for OData
+  bcInstance      String?                         // BC instance name in URL path — no fake default; genuinely unset until the customer sets it during onboarding
+  bcCompany       String?                         // BC company name for OData — no fake default; genuinely unset until the customer sets it during onboarding
   apiKey          String                          // X-BespoxAI-Key header value
   active          Boolean  @default(true)
   entityConfig    Json?
@@ -22,8 +22,8 @@ model Tenant {
   navProduct      String?                    // "BC" | "NAV" | "unsure"
   navVersion      String?                    // e.g. "Business Central 2024 Wave 2 (BC25)"
   lastCU          String?                    // e.g. "CU3" — free text
-  bcPort          Int      @default(8048)    // BC OData port (injected into installer)
-  agentPort       Int      @default(8080)    // BCAgent listening port (injected into installer)
+  bcPort          Int      @default(7048)    // BC OData port (injected into installer)
+  agentPort       Int      @default(9099)    // BCAgent listening port (injected into installer) — not BC-version dependent, purely the agent's own local listener
   navDatabaseServer   String?  @default("localhost") // NAV/BC14 SQL Server host (injected into installer v2.3+)
   navDatabaseName     String?                        // NAV/BC14 SQL database name
   bcUsername          String?                        // BC service account username (saved on installer download)

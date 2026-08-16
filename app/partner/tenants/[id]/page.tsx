@@ -232,7 +232,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bcUsername, bcPassword,
-          bcPort:            parseInt(refs.bcPort.current?.value            || '8048', 10),
+          bcPort:            parseInt(refs.bcPort.current?.value            || '7048', 10),
           agentPort:         parseInt(refs.agentPort.current?.value         || '9099', 10),
           bcInstance:        refs.bcInstance.current?.value                 || '',
           bcCompany:         refs.bcCompany.current?.value                  || '',
@@ -365,13 +365,15 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
               {lbl(erpLabel + ' Company')}
               <input ref={refs.bcCompany} style={inp} type="text" defaultValue={tenant.bcCompany || ''}
                 placeholder="e.g. CRONUS International Ltd." autoComplete="off" />
+              {hint('Must exactly match the BC/NAV company name as it appears in the OData URL — not a nickname.')}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
               {lbl('OData Port')}
-              <input ref={refs.bcPort} style={inp} type="number" defaultValue={tenant.bcPort || 8048}
-                placeholder="8048" autoComplete="off" />
+              <input ref={refs.bcPort} style={inp} type="number" defaultValue={tenant.bcPort || 7048}
+                placeholder="7048" autoComplete="off" />
+              {hint('Default 7048.')}
             </div>
             <div>
               {lbl('Agent Port')}

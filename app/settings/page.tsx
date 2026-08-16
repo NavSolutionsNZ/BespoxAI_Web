@@ -10,8 +10,8 @@ import { useBranding } from '@/app/branding-provider'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Tenant {
-  id: string; name: string; tunnelSubdomain: string; bcInstance: string
-  bcCompany: string; active: boolean; country: string; entityConfig: any
+  id: string; name: string; tunnelSubdomain: string; bcInstance: string | null
+  bcCompany: string | null; active: boolean; country: string; entityConfig: any
   tunnelId: string | null; createdAt: string
   navProduct: string | null; navVersion: string | null; lastCU: string | null
   bcPort: number; agentPort: number
@@ -160,7 +160,7 @@ function SettingsInner() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null)
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
-  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '8048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', navManagementPort: '7045', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
+  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', navManagementPort: '7045', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
   const hasLoaded = useRef(false)
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [instLoading,  setInstLoading]  = useState(false)
@@ -499,7 +499,7 @@ function SettingsInner() {
                   ['Last CU',             tenant?.lastCU],
                   [erpLabel + ' Instance',          tenant?.bcInstance],
                   [erpLabel + ' Company',           tenant?.bcCompany],
-                  ['BC OData Port',                 tenant?.bcPort ? String(tenant.bcPort) : '8048'],
+                  ['BC OData Port',                 tenant?.bcPort ? String(tenant.bcPort) : '7048'],
                   ['Agent Port',                    tenant?.agentPort ? String(tenant.agentPort) : '9099'],
                   ['NAV Database Server',           tenant?.navDatabaseServer],
                   ['NAV Database Name',             tenant?.navDatabaseName],
@@ -945,7 +945,7 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       navManagementPort: refs.navManagementPort.current?.value || '7045',
       bcInstance:        refs.bcInstance.current?.value        || '',
       bcCompany:         refs.bcCompany.current?.value         || '',
-      bcPort:            refs.bcPort.current?.value            || '8048',
+      bcPort:            refs.bcPort.current?.value            || '7048',
       agentPort:         refs.agentPort.current?.value         || '9099',
       bcUsername:        refs.bcUsername.current?.value        || '',
       bcPassword:        refs.bcPassword.current?.value        || '',
@@ -972,30 +972,42 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        <div>{lbl('Database Server')}<input ref={refs.navDatabaseServer} style={inp} defaultValue={initial.navDatabaseServer} placeholder="localhost" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-        <div>{lbl('Database Name')}<input ref={refs.navDatabaseName} style={inp} defaultValue={initial.navDatabaseName} placeholder="e.g. Dynamics NAV 2017" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('Database Server')}<input ref={refs.navDatabaseServer} style={inp} defaultValue={initial.navDatabaseServer} placeholder="localhost" title="The SQL Server instance hosting the NAV/BC database, e.g. SERVERNAME or SERVERNAME\SQLEXPRESS. Find it in SQL Server Management Studio's connection dialog." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('Database Name')}<input ref={refs.navDatabaseName} style={inp} defaultValue={initial.navDatabaseName} placeholder="e.g. Dynamics NAV 2017" title="The exact SQL database name. Find it in SQL Server Management Studio's Object Explorer, or the Server Instance Administration Tool under Database → Database Name." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        <div>{lbl('Server Instance')}<input ref={refs.navServerInstance} style={inp} defaultValue={initial.navServerInstance} placeholder="e.g. DynamicsNAV110" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-        <div>{lbl('BC Instance Name')}<input ref={refs.bcInstance} style={inp} defaultValue={initial.bcInstance} placeholder="e.g. BC" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-        <div>{lbl('NAV Management Port')}<input ref={refs.navManagementPort} style={inp} type="number" defaultValue={initial.navManagementPort} placeholder="7045" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('Server Instance')}<input ref={refs.navServerInstance} style={inp} defaultValue={initial.navServerInstance} placeholder="e.g. DynamicsNAV110" title="The NAV/BC Server (service) instance name, e.g. DynamicsNAV110 or BC200. Run Get-NAVServerInstance / Get-BCServerInstance in PowerShell to list it." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('BC Instance Name')}<input ref={refs.bcInstance} style={inp} defaultValue={initial.bcInstance} placeholder="e.g. BC" title="The instance name segment of your OData URL. Find it via the Server Instance Administration Tool, or Get-NAVServerInstance / Get-BCServerInstance in PowerShell." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>{lbl('NAV Management Port')}<input ref={refs.navManagementPort} style={inp} type="number" defaultValue={initial.navManagementPort} placeholder="7045" title="The server instance's management port, default 7045. Find it in the Server Instance Administration Tool under General → Management Services Port." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        <div>{lbl('BC Company Name')}<input ref={refs.bcCompany} style={inp} defaultValue={initial.bcCompany} placeholder="e.g. CRONUS International Ltd." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+        <div>
+          {lbl('BC Company Name')}
+          <input ref={refs.bcCompany} style={inp} defaultValue={initial.bcCompany} placeholder="e.g. CRONUS International Ltd." title="Must exactly match your BC/NAV company name (case-sensitive) as it appears in the OData URL — Company('Name') — or in the company selector inside BC/NAV." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Must exactly match your BC/NAV company name as it appears in the OData URL — not a nickname or display label.</p>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-          <div>{lbl('BC OData Port')}<input ref={refs.bcPort} style={inp} type="number" defaultValue={initial.bcPort} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
-          <div>{lbl('Agent Port')}<input ref={refs.agentPort} style={inp} type="number" defaultValue={initial.agentPort} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} /></div>
+          <div>
+            {lbl('BC OData Port')}
+            <input ref={refs.bcPort} style={inp} type="number" defaultValue={initial.bcPort} title="The OData service port. Find it in the Server Instance Administration Tool under General → OData Services Port, or in the OData URL itself." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+            <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Default: 7048</p>
+          </div>
+          <div>
+            {lbl('Agent Port')}
+            <input ref={refs.agentPort} style={inp} type="number" defaultValue={initial.agentPort} title="The port BCAgent listens on locally so the portal can reach it. Not related to BC/NAV configuration — only change this if the port is already in use on the server." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+            <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Default: 9099</p>
+          </div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>
           {lbl(erpLabel + ' Username')}
-          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\username" autoComplete="off" name="bc-username" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\username" autoComplete="off" name="bc-username" title="Windows account (DOMAIN\username) with OData read access to this company — usually a dedicated service account, not a personal login." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{'Windows / ' + erpLabel + ' service account with OData access.'}</p>
         </div>
         <div>
           {lbl(erpLabel + ' Password')}
-          <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} autoComplete="new-password" name="bc-password" onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <input ref={refs.bcPassword} style={inp} type="password" defaultValue={initial.bcPassword} autoComplete="new-password" name="bc-password" title="Never stored — used once to build the installer, then discarded." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
         </div>
       </div>

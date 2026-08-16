@@ -47,8 +47,8 @@ function mapTenant(tenant: {
   id: string
   name: string
   tunnelSubdomain: string
-  bcInstance: string
-  bcCompany: string
+  bcInstance: string | null
+  bcCompany: string | null
   apiKey: string
   entityConfig?: any
   navProduct?: string | null
@@ -61,8 +61,12 @@ function mapTenant(tenant: {
     tenantId: tenant.id,
     name: tenant.name,
     tunnelSubdomain: tenant.tunnelSubdomain,
-    bcInstance: tenant.bcInstance,
-    bcCompany: tenant.bcCompany,
+    // bcInstance/bcCompany are nullable (no fake DB default) — coalesce to ''
+    // here so every existing consumer of TenantConfig (URL building, etc.)
+    // keeps its non-null `string` contract instead of embedding the literal
+    // text "null" into a generated OData URL.
+    bcInstance: tenant.bcInstance ?? '',
+    bcCompany: tenant.bcCompany ?? '',
     apiKey: tenant.apiKey,
     agentBaseUrl: `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`,
     entityConfig: (tenant.entityConfig as Record<string, boolean> | null) ?? null,
@@ -70,7 +74,7 @@ function mapTenant(tenant: {
     navProduct: tenant.navProduct ?? null,
     navVersion: tenant.navVersion ?? null,
     lastCU:     tenant.lastCU ?? null,
-    bcPort:     tenant.bcPort ?? 8048,
+    bcPort:     tenant.bcPort ?? 7048,
     agentPort:  tenant.agentPort ?? 9099,
   }
 }

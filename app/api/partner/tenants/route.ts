@@ -73,10 +73,12 @@ export async function POST(req: NextRequest) {
       ...(navProduct        ? { navProduct }        : {}),
       ...(navVersion        ? { navVersion }        : {}),
       ...(lastCU            ? { lastCU }            : {}),
-      // Production environment
-      bcInstance:         bcInstance?.trim()  || 'BC',
-      bcCompany:          bcCompany?.trim()   || '',
-      bcPort:             parseInt(String(bcPort   ?? 8048), 10) || 8048,
+      // Production environment — bcInstance/bcCompany are nullable with no fake
+      // default (real per-customer values), so omit the key entirely when not
+      // provided rather than writing a placeholder like 'BC' that looks real.
+      ...(bcInstance?.trim() ? { bcInstance: bcInstance.trim() } : {}),
+      ...(bcCompany?.trim()  ? { bcCompany:  bcCompany.trim()  } : {}),
+      bcPort:             parseInt(String(bcPort   ?? 7048), 10) || 7048,
       agentPort:          parseInt(String(agentPort ?? 9099), 10) || 9099,
       ...(bcUsername         ? { bcUsername: bcUsername.trim() } : {}),
       ...(navDatabaseServer  ? { navDatabaseServer:  navDatabaseServer.trim()  } : {}),
