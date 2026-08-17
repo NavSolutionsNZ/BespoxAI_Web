@@ -170,7 +170,7 @@ echo    Tenant: ${tenant.name}
 echo    BC:     ${bcInstance || tenant.bcInstance || '(not set)'} / ${bcCompany || tenant.bcCompany || '(not set)'}
 echo  ============================================================
 echo.
-net session >nul 2>&1
+powershell -NoProfile -Command "if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 1 }"
 if %errorlevel% neq 0 (
     echo  Requesting Administrator privileges...
     powershell -NoProfile -Command "Start-Process -FilePath '%%~f0' -Verb RunAs"

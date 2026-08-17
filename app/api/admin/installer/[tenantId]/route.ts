@@ -76,8 +76,10 @@ echo    BC:     ${tenant.bcInstance || '(not set)'} / ${tenant.bcCompany || '(no
 echo  ============================================================
 echo.
 
-:: Check for Administrator rights
-net session >nul 2>&1
+:: Check for Administrator rights (token elevation, not net session -- that
+:: depends on the LanmanServer service, which is commonly disabled on lean
+:: Server Core / container images regardless of actual privilege level)
+powershell -NoProfile -Command "if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 1 }"
 if %errorlevel% neq 0 (
     echo  Requesting Administrator privileges...
     echo  Please click Yes on the UAC prompt.
