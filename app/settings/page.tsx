@@ -313,12 +313,17 @@ function SettingsInner() {
 
   async function downloadInstaller() {
     if (!instForm.bcUsername || !instForm.bcPassword) { toast$(erpLabel + ' username and password required', false); return }
+    if (instForm.bcAuthMode === 'Basic' && (!instForm.serviceAccountUser || !instForm.serviceAccountPassword)) { toast$('Service Account username and password required for Basic auth mode', false); return }
     setInstLoading(true)
     // Persist port values to tenant so they're remembered
     await saveSystemConfig({ bcPort: instForm.bcPort, agentPort: instForm.agentPort })
     try {
       const r = await fetch('/api/settings/installer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...instForm, ...testEnv, testBcUsername: instForm.testBcUsername, testBcPassword: instForm.testBcPassword }) })
-      if (!r.ok) { toast$('Generation failed', false); setInstLoading(false); return }
+      if (!r.ok) {
+        const errBody = await r.json().catch(() => null)
+        toast$(errBody?.error || 'Generation failed', false)
+        setInstLoading(false); return
+      }
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await r.blob()), download: 'Install-BespoxAI-v' + agentVersion + '.zip' })
       a.click(); URL.revokeObjectURL(a.href)
     } catch { toast$('Download failed', false) }
@@ -966,6 +971,10 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       bcPassword:        refs.bcPassword.current?.value        || '',
       bcAuthMode:        authMode,
       serviceAccountUser: refs.serviceAccountUser.current?.value || '',
+      // Never sent to onSave/PATCH (never stored server-side, same as
+      // bcPassword) — only carried into the parent's instForm client-side so
+      // the Download Installer button has it moments later in this session.
+      serviceAccountPassword: refs.serviceAccountPassword.current?.value || '',
     }
     await onSave({
       navDatabaseServer: vals.navDatabaseServer,
