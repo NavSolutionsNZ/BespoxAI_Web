@@ -32,11 +32,29 @@
     Get this from the BespoxAI admin portal when creating your tenant.
 
 .PARAMETER BCUsername
-    Windows or domain account for BC NTLM authentication.
-    Format: DOMAIN\username  or  .\localuser
+    In -BCAuthMode Windows (default): a Windows or domain account for BC NTLM
+    authentication, format DOMAIN\username or .\localuser.
+    In -BCAuthMode Basic: a BC/NAV application user (NavUserPassword credential
+    type) — no domain, e.g. "administrator". Not a Windows account.
 
 .PARAMETER BCPassword
-    Password for the BC account (will not be echoed or logged).
+    Password for the BCUsername account (will not be echoed or logged).
+
+.PARAMETER BCAuthMode
+    How the agent authenticates to BC OData. 'Windows' (default) uses NTLM via
+    the Windows account the agent runs as. 'Basic' sends BCUsername/BCPassword
+    as an HTTP Basic Authorization header instead — use this when BC's server
+    configuration has ServicesUseNTLMAuthentication set to false (common on
+    BC containers created with -auth NavUserPassword).
+
+.PARAMETER ServiceAccount
+    Required when -BCAuthMode is 'Basic'. The Windows account that runs the
+    BCAgent scheduled task — independent of BCUsername, since in Basic mode
+    BCUsername is a BC application user, not a Windows account. Ignored in
+    Windows mode (BCUsername is used for both).
+
+.PARAMETER ServiceAccountPassword
+    Required when -BCAuthMode is 'Basic'. Password for -ServiceAccount.
 
 .PARAMETER BCPort
     BC OData port. Default: 7048
@@ -67,6 +85,9 @@ param(
     [Parameter(Mandatory)][string]  $ApiKey,
     [Parameter(Mandatory)][string]  $BCUsername,
     [Parameter(Mandatory)][string]  $BCPassword,
+    [ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',
+    [string] $ServiceAccount         = '',
+    [string] $ServiceAccountPassword = '',
     [int]    $BCPort      = 7048,
     [string] $BCInstance  = 'BC',
     [string] $BCCompany   = 'CRONUS International Ltd.',
@@ -89,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.4'
+$AgentVersion  = '3.5'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -134,7 +155,9 @@ Write-Host "    BC Instance    : $BCInstance"
 Write-Host "    BC Company     : $BCCompany"
 Write-Host "    BC Port        : $BCPort"
 Write-Host "    Agent Port     : $AgentPort"
+Write-Host "    BC Auth Mode   : $BCAuthMode"
 Write-Host "    BC User        : $BCUsername"
+if ($BCAuthMode -eq 'Basic') { Write-Host "    Service Account: $ServiceAccount" }
 Write-Host ''
 Write-Host '  Test Environment' -ForegroundColor Cyan
 Write-Host "    DB Name        : $TestNavDatabaseName"
@@ -199,6 +222,14 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
 if (-not $isAdmin) { Write-Fail 'Must be run as Administrator' }
 Write-OK 'Running as Administrator'
 
+# Basic auth mode needs a real Windows account to run the scheduled task under,
+# since BCUsername/BCPassword are a BC application user in this mode, not a
+# Windows identity.
+if ($BCAuthMode -eq 'Basic' -and (-not $ServiceAccount -or -not $ServiceAccountPassword)) {
+    Write-Fail '-BCAuthMode Basic requires -ServiceAccount and -ServiceAccountPassword (the Windows account that runs the agent task).'
+}
+Write-OK "BC auth mode: $BCAuthMode"
+
 # BC OData reachable?
 if (-not (Test-Port -Port $BCPort)) {
     Write-Host "    ⚠ Cannot reach localhost:$BCPort — BC OData may not be running." -ForegroundColor Yellow
@@ -244,12 +275,14 @@ $AgentCode = @'
 #Requires -Version 5.1
 <#
   BCAgent v$AgentVersion — $BrandName local proxy for Business Central OData
-  Validates X-BespoxAI-Key, forwards requests to BC with NTLM auth.
+  Validates X-BespoxAI-Key, forwards requests to BC with NTLM or Basic auth.
   v2.1: Accept-Encoding fix. v2.2: POST body forwarding.
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
+  v3.5: Basic auth mode (NavUserPassword BC instances). /bespoxai/diagnose
+        connection checklist.
 #>
 
-$Version    = '3.4'
+$Version    = '3.5'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -261,6 +294,10 @@ $ApiKey        = $Config.apiKey
 $BCBase        = $Config.bcBaseUrl   # e.g. http://localhost:7048
 $BCUser        = $Config.bcUsername
 $BCPass        = $Config.bcPassword
+# Default 'Windows' so configs written by pre-3.5 installers (no bcAuthMode
+# field at all) keep their existing NTLM behavior unchanged.
+$AuthMode      = if ($Config.bcAuthMode) { $Config.bcAuthMode } else { 'Windows' }
+$BCCompanyName = $Config.bcCompany
 $NavDbServer   = if ($Config.navDatabaseServer) { $Config.navDatabaseServer } else { 'localhost' }
 $NavDbName     = $Config.navDatabaseName
 $NavServerInst       = $Config.navServerInstance
@@ -751,7 +788,10 @@ while ($Listener.IsListening) {
                 $cfgHash = @{}
                 $cfgObj.PSObject.Properties | ForEach-Object { $cfgHash[$_.Name] = $_.Value }
 
-                # Fields we allow the portal to update (no credentials)
+                # Fields we allow the portal to update (no credentials, no bcAuthMode --
+                # switching auth mode needs a real BC username/password for the new mode
+                # and, in Basic mode, a Windows service account for the scheduled task;
+                # none of that can be safely synced live, so it's installer-only).
                 $updatable = @('bcBaseUrl','bcInstance','bcCompany','bcPort','agentPort',
                                'navDatabaseServer','navDatabaseName','navServerInstance','navManagementPort',
                                'testNavDatabaseServer','testNavDatabaseName','testNavServerInstance',
@@ -802,6 +842,98 @@ while ($Listener.IsListening) {
             $res.Close(); continue
         }
 
+        # BCAgent-local: Connection diagnostics (v3.5) — walks the BC connection
+        # step by step so a failure shows exactly where it broke, instead of one
+        # opaque timeout. Read-only against BC; never writes.
+        if ($rawUrl -eq '/bespoxai/diagnose' -or $rawUrl -eq '/bespoxai/diagnose/') {
+            $incomingKey = $req.Headers['X-BespoxAI-Key']
+            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
+
+            $checks = New-Object System.Collections.ArrayList
+            $whoAmI = if ($AuthMode -eq 'Basic') { "BC user '$BCUser' (Basic auth)" } else { "$env:USERDOMAIN\$env:USERNAME (NTLM)" }
+
+            # Single GET against the OData company list -- its outcome (connection
+            # failure vs 401 vs 200) tells us where in the chain things broke,
+            # and on success also gives us the real company list to check against.
+            $probeUrl = $BCBase.TrimEnd('/') + '/ODataV4/Company'
+            $status = $null; $respBody = $null; $reachErr = $null
+            try {
+                $wr = [System.Net.HttpWebRequest]::Create($probeUrl)
+                $wr.Method  = 'GET'
+                $wr.Accept  = 'application/json'
+                $wr.Timeout = 10000
+                if ($AuthMode -eq 'Basic') {
+                    $basicToken = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("${BCUser}:${BCPass}"))
+                    $wr.Headers.Add('Authorization', "Basic $basicToken")
+                } else {
+                    $wr.UseDefaultCredentials = $true
+                }
+                try {
+                    $wres = $wr.GetResponse()
+                    $status = [int]$wres.StatusCode
+                    $s = $wres.GetResponseStream(); $ms = [System.IO.MemoryStream]::new(); $s.CopyTo($ms)
+                    $respBody = [System.Text.Encoding]::UTF8.GetString($ms.ToArray())
+                    $s.Close(); $wres.Close()
+                } catch [System.Net.WebException] {
+                    $errRes = $_.Exception.Response
+                    if ($errRes) {
+                        $status = [int]$errRes.StatusCode
+                        $errRes.Close()
+                    } else {
+                        $reachErr = $_.Exception.Message
+                    }
+                }
+            } catch {
+                $reachErr = $_.Exception.Message
+            }
+
+            $reachable = ($null -ne $status)
+            $checks.Add(@{
+                step  = 'reachable'
+                label = "OData service responding ($($BCBase.TrimEnd('/'))/ODataV4)"
+                ok    = $reachable
+                detail = if ($reachable) { "Reached BC — HTTP $status" } else { "No response from $probeUrl -- $reachErr. If BC runs on a different machine/container than this agent, 'localhost' will not reach it; use the actual hostname." }
+            }) | Out-Null
+
+            $authOk = $false
+            if ($reachable) {
+                $authOk = ($status -eq 200)
+                $authDetail =
+                    if ($authOk) { "Succeeded as $whoAmI" }
+                    elseif ($status -eq 401) { "401 Unauthorized as $whoAmI. " + $(if ($AuthMode -eq 'Windows') { "Either this Windows account lacks OData access, or BC is configured for NavUserPassword/Basic auth rather than Windows auth (check ServicesUseNTLMAuthentication) -- switch this agent's BC Auth Mode to Basic if so." } else { "Check the BC username/password are correct and that BC's ClientServicesCredentialType is actually NavUserPassword." }) }
+                    else { "Unexpected status $status" }
+                $checks.Add(@{ step = 'auth'; label = "Authenticated as $whoAmI"; ok = $authOk; detail = $authDetail }) | Out-Null
+            }
+
+            if ($authOk) {
+                $companyOk = $false; $companyDetail = ''
+                if (-not $BCCompanyName) {
+                    $companyDetail = 'No BC Company is set in Settings -- add it to complete this check.'
+                } else {
+                    try {
+                        $parsed = $respBody | ConvertFrom-Json
+                        $names  = @($parsed.value | ForEach-Object { $_.Name })
+                        $companyOk = $names -contains $BCCompanyName
+                        $companyDetail = if ($companyOk) { 'Company resolved' } else { "BC rejected company '$BCCompanyName'. Available companies: " + ($names -join ', ') + '. Check exact spelling/punctuation/case.' }
+                    } catch {
+                        $companyDetail = "Could not parse the company list from BC: $_"
+                    }
+                }
+                $checks.Add(@{ step = 'company'; label = "Company '$BCCompanyName' found"; ok = $companyOk; detail = $companyDetail }) | Out-Null
+            }
+
+            $checksArr = @($checks)
+            $overallOk = ($checksArr.Count -gt 0) -and (($checksArr | Where-Object { -not $_.ok }).Count -eq 0)
+
+            $respObj  = @{ ok = $overallOk; checkedAt = (Get-Date -Format 'o'); agentVersion = $Version; authMode = $AuthMode; bcBaseUrl = $BCBase; checks = $checksArr }
+            $respJson = $respObj | ConvertTo-Json -Depth 6 -Compress
+            $respBytes = [System.Text.Encoding]::UTF8.GetBytes($respJson)
+            $res.StatusCode = 200; $res.ContentType = 'application/json'
+            $res.ContentLength64 = $respBytes.Length
+            $res.OutputStream.Write($respBytes, 0, $respBytes.Length)
+            $res.Close(); continue
+        }
+
         # Validate API key
         $incomingKey = $req.Headers['X-BespoxAI-Key']
         if ($incomingKey -ne $ApiKey) {
@@ -815,11 +947,18 @@ while ($Listener.IsListening) {
         $targetUrl = $BCBase.TrimEnd('/') + $rawUrl
         Write-Log "→ $($req.HttpMethod) $targetUrl"
 
-        # Forward with NTLM via HttpWebRequest (WinHTTP-backed, reliable NTLM on Windows Server)
-        # HttpClient/.NET NTLM has known handshake issues with NAV/BC -- HttpWebRequest does not.
+        # Forward via HttpWebRequest (WinHTTP-backed, reliable NTLM on Windows Server --
+        # HttpClient/.NET NTLM has known handshake issues with NAV/BC, HttpWebRequest does not).
         $webReq = [System.Net.HttpWebRequest]::Create($targetUrl)
         $webReq.Method      = $req.HttpMethod
-        $webReq.UseDefaultCredentials = $true  # uses the BC user Windows token (process runs as BCUser)
+        if ($AuthMode -eq 'Basic') {
+            # BC configured for NavUserPassword (ServicesUseNTLMAuthentication=false) --
+            # send BCUser/BCPass as an HTTP Basic header instead of a Windows token.
+            $basicToken = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("${BCUser}:${BCPass}"))
+            $webReq.Headers.Add('Authorization', "Basic $basicToken")
+        } else {
+            $webReq.UseDefaultCredentials = $true  # uses the BC user Windows token (process runs as BCUser)
+        }
         $webReq.Accept      = 'application/json'
         $webReq.Headers.Add('Accept-Encoding', 'identity')
         $webReq.Timeout     = 60000
@@ -901,6 +1040,7 @@ $Config = [ordered]@{
     agentPort             = $AgentPort
     bcUsername            = $BCUsername
     bcPassword            = $BCPassword
+    bcAuthMode            = $BCAuthMode
     bcInstance            = $BCInstance
     bcCompany             = $BCCompany
     navDatabaseServer     = $NavDatabaseServer
@@ -1015,18 +1155,23 @@ Register-ScheduledTask `
     -Principal $Principal `
     -Force | Out-Null
 
-# Step 2: Switch to BC user account via schtasks.exe
+# Step 2: Switch to the task's Windows run-as account via schtasks.exe
 # Register-ScheduledTask -User/-Password fails to resolve domain accounts in some
 # elevated contexts. schtasks.exe handles domain SID resolution reliably.
-$stResult = & schtasks.exe /change /tn $TaskName /ru $BCUsername /rp $BCPassword 2>&1
+# In Windows auth mode, BCUsername IS the Windows account (does double duty for
+# NTLM auth too). In Basic auth mode, BCUsername is a BC application user, not
+# a Windows account, so a separate ServiceAccount is required instead.
+$taskUser = if ($BCAuthMode -eq 'Basic') { $ServiceAccount } else { $BCUsername }
+$taskPass = if ($BCAuthMode -eq 'Basic') { $ServiceAccountPassword } else { $BCPassword }
+$stResult = & schtasks.exe /change /tn $TaskName /ru $taskUser /rp $taskPass 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "    Warning: could not set task user ($stResult) -- running as SYSTEM" -ForegroundColor Yellow
     Write-Host "    $BrandName agent will use explicit credentials from agent.config.json instead" -ForegroundColor Yellow
 } else {
-    Write-OK "Task user set to $BCUsername"
+    Write-OK "Task user set to $taskUser"
 }
 
-Write-OK "Scheduled task '$TaskName' created (runs as $BCUsername at startup)"
+Write-OK "Scheduled task '$TaskName' created (runs as $taskUser at startup)"
 
 # ── Step 8: Start services ─────────────────────────────────────────────────────
 
