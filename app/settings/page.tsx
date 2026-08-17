@@ -268,7 +268,17 @@ function SettingsInner() {
 
   async function saveCountry() { setSaving(true); const r = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ country }) }); setSaving(false); toast$(r.ok ? 'Country updated' : 'Failed', r.ok) }
   async function saveSystemConfig(data: Record<string, any>) { const r = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); toast$(r.ok ? 'Saved' : 'Failed', r.ok) }
-  async function saveEntities() { setEntitySaving(true); const r = await fetch('/api/settings/entities', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entityConfig }) }); setEntitySaving(false); toast$(r.ok ? 'Saved' : 'Failed', r.ok) }
+  async function saveEntities() {
+    setEntitySaving(true)
+    try {
+      const r = await fetch('/api/settings/entities', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entityConfig }) })
+      toast$(r.ok ? 'Saved' : 'Failed', r.ok)
+    } catch {
+      toast$('Save failed — check your connection and try again', false)
+    } finally {
+      setEntitySaving(false)
+    }
+  }
 
   async function inviteUser() {
     if (!inviteForm.email) return
@@ -684,11 +694,16 @@ function SettingsInner() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={async () => {
                   setEntitySaving(true)
-                  const r = await fetch('/api/settings/discover', { method: 'POST' })
-                  const d = await r.json()
-                  if (r.ok) { setEntityConfig(d.entityConfig ?? {}); toast$(`Discovered ${d.discovered} entities, ${d.enabled} enabled`) }
-                  else toast$(d.error ?? 'Discovery failed', false)
-                  setEntitySaving(false)
+                  try {
+                    const r = await fetch('/api/settings/discover', { method: 'POST' })
+                    const d = await r.json().catch(() => ({ error: `Discovery timed out or returned an unexpected response (HTTP ${r.status}) — the BC server may still be starting its OData service; try again in a moment.` }))
+                    if (r.ok) { setEntityConfig(d.entityConfig ?? {}); toast$(`Discovered ${d.discovered} entities, ${d.enabled} enabled`) }
+                    else toast$(d.error ?? 'Discovery failed', false)
+                  } catch {
+                    toast$('Discovery failed — could not reach the server. Check your connection and try again.', false)
+                  } finally {
+                    setEntitySaving(false)
+                  }
                 }} disabled={entitySaving}
                   style={{ background: 'none', color: 'var(--forest)', border: '1px solid var(--forest)', borderRadius: 8, padding: '8px 16px', cursor: entitySaving ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, opacity: entitySaving ? 0.6 : 1 }}>
                   {entitySaving ? 'Working…' : '⟳ Discover from ' + erpLabel}
