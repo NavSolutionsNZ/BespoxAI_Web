@@ -207,6 +207,17 @@ Logged Session 22 (partner-portal walkthrough, white-label "Endeavour" test acco
 - **If tests surface issues:** PAT will be revoked after Session 23 — a new PAT is needed next session. All Session-23 code is deployed; fixes would be incremental on top.
 
 
+#### 0.5. **(S28) BC15+/AL object source — likely NOT solvable as designed; versioning strategy needs to change**
+**Status:** Parked pending a test extension. Confirmed important enough to flag prominently (Rich: "no point continuing to try to service customers on BC15+ at all if we can't offer any value").
+
+**What's confirmed:** `app/api/requirements/[id]/fetch-objects/route.ts` was routing ANY `navProduct==='BC'` tenant (any version) into the finsql/C/AL export path, which doesn't exist past BC14 (Microsoft dropped the Windows client/C/SIDE in BC 2019 release wave 2 — confirmed via Microsoft's own FAQ doc) — so BC15+ tenants (e.g. the BC22 Cronus test container) hard-failed with a confusing "finsql.exe not found" instead of reaching the (already-written, previously unreachable) metadata-only fallback. **Fixed this session** — routing is now keyed off `tenant.navVersion` via a new `isModernAL()` helper, so BC15+ correctly reaches the metadata-only path instead of erroring.
+
+**What's NOT fixed, and may not be fixable:** the metadata-only fallback gives extension names + published web services, not actual object source. Real AL source for an already-published third-party extension is gated by that extension's own `resourceExposurePolicy.allowDownloadingSource` in its `app.json` — set by whoever built it, defaulting to `false`. Microsoft's only documented override is an Azure Key Vault mechanism that's SaaS-tenant-only (doesn't apply to on-prem servers like our Docker/Hyper-V test containers). There's an older on-prem `Get-NavAppRuntimePackage -ShowMyCode $true` PowerShell parameter that predates this policy, but whether it still works against a policy-off app is **unverified — needs a real test extension, which we don't have yet.** Bottom line: for a third-party BC15+ extension we didn't build ourselves, there may be no legitimate technical path to its source at all. For extensions BespoxAI builds/migrates itself, this is moot (we'd keep source in our own git repo from day one).
+
+**Decision (Rich, this session):** don't chase this further right now. Refocus product direction: **primary/fully-supported target stays NAV and Business Central up to BC14 (C/AL, OData-capable)** as originally planned. BC15+/AL support is best-effort/metadata-only, offered as a sideline only if a real customer needs it — not a near-term build priority.
+
+**Follow-up still needed (not yet done):** customer-facing wording — website copy (`public/index.html`), onboarding/signup flow, and anywhere versioning/compatibility is described to prospects — may currently overpromise on BC15+ support and should be reviewed to set expectations correctly before this becomes a live-customer problem instead of a test-environment one. Needs its own pass, not bundled into this fix.
+
 #### 1. ~~AI-Generated Functional Spec — Make Collapsible~~ ✅ DONE (Session 18)
 **Status:** Complete. Spec panel is independently collapsible. 
 
@@ -248,6 +259,12 @@ Should be: `C:\BespoxAI\Deployments\{reqSlug}_{shortId}\{timestamp}_deploy\`
 
 #### 10. Dynamic Web Service Creation (CFO Assistant)
 Note: Also prerequisite for auto-fetching Last CU from BC instance (requires custom web service exposed in BC).
+
+**(S28) Design agreed, not yet built — waiting on Rich's page-ID map.** Confirmed via a real BC22 Cronus Web Services export that this is a genuine gap, not a discovery bug: none of `BC_ENTITIES`' catalogue entities (`Customer`, `Vendor`, `Item`, `SalesInvoice`, etc.) are published on a stock BC container except `SalesOrder` (coincidental name match) — "Discover from BC" correctly finds nothing because there's nothing to find yet.
+- **Where it runs:** BCAgent, via PowerShell — confirmed cmdlets are `Get-NAVWebService` (idempotency check) + `New-NAVWebService -ObjectType Page -ObjectId <id> -ServiceName <name> -Published $true` (module `Microsoft.BusinessCentral.Management`), not `Publish-NAVWebService` as first assumed.
+- **Trigger:** separate explicit "Provision Web Services" action, not folded into "Discover from BC" (that stays read-only).
+- **Blocked on:** the actual Page ID for each `BC_ENTITIES` catalogue entry. Several (`ItemLedgerEntry` with its VIN field, the `*Lines` combination pages) are clearly bespoke, not standard BC objects — no generic/public mapping exists or should be trusted. Rich is confirming exact IDs via Page Inspector (Ctrl+Alt+F1 in the BC web client) against the real BC22 instance.
+- Also fixed this session: `app/settings/page.tsx`'s Discover/Save buttons had no try/catch, so any failure (including a Vercel timeout) left them stuck on "Working…/Saving…" forever with no error shown — now wrapped in try/catch/finally.
 
 #### 11. Last CU — Auto-fetch from BC
 Currently manual field. BC doesn't expose CU version via standard OData.

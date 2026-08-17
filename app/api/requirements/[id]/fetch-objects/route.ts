@@ -4,12 +4,19 @@
  * Superadmin only. Calls the BCAgent /bespoxai/objects/export endpoint for the
  * requirement's tenant and streams the resulting zip directly to the browser.
  *
- * For NAV/BC14: BCAgent runs Export-NAVApplicationObject server-side and returns
- * a zip of the C/AL .txt output. No content stored here — client-side split picks
- * objects to save via POST /api/requirements/[id]/objects (JSON path).
+ * For NAV/BC≤14 (finsql still exists): BCAgent runs Export-NAVApplicationObject
+ * server-side and returns a zip of the C/AL .txt output. No content stored here —
+ * client-side split picks objects to save via POST /api/requirements/[id]/objects
+ * (JSON path). Routing is by tenant.navVersion (see isModernAL() below), not just
+ * navProduct==='BC' — plenty of real BC≤14 tenants have navProduct==='BC' too.
  *
- * For BC (AL, v15+): fetches extensions + web services metadata from the BC
- * Automation API and returns a formatted text zip.
+ * For confirmed BC15+ (navVersion parses to 15+): finsql.exe doesn't exist on
+ * these servers at all (Microsoft dropped the Windows client/C/SIDE in BC 2019
+ * release wave 2), so instead this fetches extensions + web services metadata
+ * from the BC Automation API and returns a formatted text zip — NOT real object
+ * source. Full AL source export is a parked TODO, see the comment on
+ * isModernAL() — it may not be legitimately possible for third-party extensions
+ * at all, not just unbuilt.
  *
  * Body: { objects: Array<{ type: string; id: number }> }
  *       type = "Table" | "Codeunit" | "Page" | "Report" | "XMLport" | "Query"
@@ -170,6 +177,39 @@ OBJECT Page 50300 Custom Approval List
 }
 `
 
+// BespoxAI's object-export pipeline (finsql/C/AL) only works on classic NAV and
+// Business Central up to BC14 — the last release to ship the Windows client /
+// C/SIDE (finsql.exe). BC15+ dropped it entirely in favour of AL extensions,
+// which BCAgent cannot export as readable source today (see TODO below) — this
+// helper detects that case so we route to the metadata-only fallback instead of
+// hard-failing on "finsql.exe not found", which is confusing on a BC15+ server
+// where finsql was never going to exist in the first place.
+//
+// TODO(AL source export — parked, not yet solvable): Modern AL extensions gate
+// source download behind `resourceExposurePolicy.allowDownloadingSource` in the
+// extension's OWN app.json, set by its original developer at build/publish time
+// — default is false, and there's no clean on-prem admin bypass we've confirmed
+// (the SaaS Key Vault override documented by Microsoft doesn't apply to on-prem
+// servers like this one; the older on-prem `Get-NavAppRuntimePackage -ShowMyCode`
+// cmdlet is unverified against a policy-off app — needs a real test extension,
+// which we don't have yet). Net effect: for third-party BC15+ extensions we
+// didn't build ourselves, there may be NO legitimate way to pull readable AL
+// source, ever — this could be a genuine product limitation, not a missing
+// feature. For extensions BespoxAI builds/migrates itself going forward this is
+// moot (source lives in our own git repo from day one). Until this is resolved,
+// BC15+ tenants only ever get the metadata-only export below (extensions +
+// published web services) — no object source. Customer-facing wording needs to
+// reflect this: full BespoxAI feasibility/dev-plan/coding-assistant support is
+// scoped to NAV and Business Central up to BC14 (C/AL, OData-capable); BC15+/AL
+// is best-effort/metadata-only until this is revisited.
+function isModernAL(navVersion: string | null): boolean {
+  if (!navVersion) return false
+  const m = navVersion.match(/\bBC\s*-?\s*(\d{2,3})\b/i) ?? navVersion.match(/\((?:BC)?\s*(\d{2,3})\)/i)
+  if (!m) return false
+  const majorVersion = parseInt(m[1], 10)
+  return Number.isFinite(majorVersion) && majorVersion >= 15
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -208,7 +248,7 @@ export async function POST(
     where:  { id: requirement.tenantId },
     select: {
       id: true, name: true, tunnelSubdomain: true, apiKey: true,
-      navProduct: true, navDatabaseName: true,
+      navProduct: true, navDatabaseName: true, navVersion: true,
     },
   })
   if (!tenant)
@@ -221,9 +261,15 @@ export async function POST(
 
   const agentBase = `https://${tenant.tunnelSubdomain}-agent.bespoxai.com`
 
-  // ── NAV / BC14 path ────────────────────────────────────────────────────────
-  // NAV, BC14 hybrid, and null (unset) all use C/AL — only 'BC' v15+ uses AL
-  if (tenant.navProduct === 'NAV' || tenant.navProduct === 'BC' || tenant.navProduct === null) {
+  // ── NAV / BC≤14 path ───────────────────────────────────────────────────────
+  // NAV, BC≤14, and unset/unparseable navVersion all use C/AL (finsql) — only a
+  // confirmed BC15+ navVersion routes to the AL metadata-only fallback below.
+  // Previously this branch caught EVERY navProduct==='BC' tenant regardless of
+  // version, making the AL path below unreachable — that's what made BC22 fail
+  // with a confusing "finsql.exe not found" instead of a clear "AL, metadata
+  // only" response. See the isModernAL() TODO above for why the AL path is
+  // metadata-only rather than a real object export.
+  if (tenant.navProduct === 'NAV' || tenant.navProduct === null || !isModernAL(tenant.navVersion)) {
     if (!objects || objects.length === 0)
       return NextResponse.json({ error: 'No objects specified' }, { status: 400 })
 
@@ -268,11 +314,21 @@ export async function POST(
     })
   }
 
-  // ── BC (AL, v15+) path — metadata only ────────────────────────────────────
+  // ── BC15+ path — metadata only, NOT object source (see isModernAL() TODO) ──
   const results: string[] = [
-    `BespoxAI — BC Metadata Export`,
+    `BespoxAI — BC Metadata Export (BC15+, AL)`,
     `Tenant: ${tenant.name}`,
+    `Detected version: ${tenant.navVersion ?? '(not set)'}`,
     `Exported: ${new Date().toISOString()}`,
+    ``,
+    `NOTE: This tenant is on Business Central 15+ (AL extensions), where BespoxAI`,
+    `cannot currently export readable object source the way it does for NAV/BC≤14`,
+    `(C/AL). Full source download for an already-published extension is gated by`,
+    `that extension's own "allowDownloadingSource" policy, set by its original`,
+    `developer — not something BespoxAI can turn on after the fact. What follows`,
+    `is metadata only: installed extensions and published web services, not`,
+    `object code. Feasibility checks, dev-plan generation, and the coding`,
+    `assistant will be working from this metadata alone for this tenant.`,
     ``,
     `${'='.repeat(60)}`,
     `INSTALLED EXTENSIONS`,
