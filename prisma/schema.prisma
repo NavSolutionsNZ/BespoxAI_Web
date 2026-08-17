@@ -27,6 +27,8 @@ model Tenant {
   navDatabaseServer   String?  @default("localhost") // NAV/BC14 SQL Server host (injected into installer v2.3+)
   navDatabaseName     String?                        // NAV/BC14 SQL database name
   bcUsername          String?                        // BC service account username (saved on installer download)
+  bcAuthMode          String?  @default("Windows")   // "Windows" (NTLM, default) | "Basic" (NavUserPassword) — how the agent authenticates to BC OData
+  serviceAccountUser  String?                        // Windows account that runs the BCAgent task in Basic auth mode (BCUsername is a BC app user there, not Windows) — not stored/used in Windows mode
   navServerInstance   String?                        // NAV server instance name (optional)
   navManagementPort   Int?     @default(7045)        // NAV server management port for production schema sync
   // ── Test environment (same server, different DB/port) ─────────────────────

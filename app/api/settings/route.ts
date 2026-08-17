@@ -24,6 +24,7 @@ const DEBUG_TENANT = {
   tunnelId: 'debug-tunnel-id', createdAt: '2026-01-15T00:00:00.000Z',
   navProduct: 'BC', navVersion: 'Business Central 2024 Wave 2 (BC25)',
   lastCU: 'CU2', bcPort: 7048, agentPort: 9099,
+  bcUsername: null, bcAuthMode: 'Windows', serviceAccountUser: null,
   navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '',
   testNavDatabaseServer: 'localhost', testNavDatabaseName: '', testNavServerInstance: '',
   testBcPort: 0, testBcInstance: '', testBcCompany: '', testNavManagementPort: 7045,
@@ -47,7 +48,8 @@ export async function GET() {
     where: { id: tenantId },
     select: {
       id: true, name: true, tunnelSubdomain: true, bcInstance: true, tier: true,
-      bcCompany: true, bcUsername: true, active: true, country: true, entityConfig: true,
+      bcCompany: true, bcUsername: true, bcAuthMode: true, serviceAccountUser: true,
+      active: true, country: true, entityConfig: true,
       tunnelId: true, createdAt: true,
       navProduct: true, navVersion: true, lastCU: true,
       bcPort: true, agentPort: true,
@@ -73,6 +75,7 @@ export async function PATCH(req: NextRequest) {
   const tenantId = (session.user as any).tenantId
   const body = await req.json().catch(() => ({}))
   const { country, bcPort, agentPort, navProduct, navVersion, lastCU, bcInstance, bcCompany, bcUsername,
+          bcAuthMode, serviceAccountUser,
           navDatabaseServer, navDatabaseName, navServerInstance, navManagementPort,
           testNavDatabaseServer, testNavDatabaseName, testNavServerInstance,
           testBcPort, testBcInstance, testBcCompany, testNavManagementPort,
@@ -90,6 +93,10 @@ export async function PATCH(req: NextRequest) {
   // bcPassword is deliberately NOT accepted here — never stored, only ever
   // embedded into a downloaded installer (see /api/settings/installer).
   if (bcUsername !== undefined) data.bcUsername = bcUsername || null
+  if (bcAuthMode !== undefined) { if (bcAuthMode !== 'Windows' && bcAuthMode !== 'Basic') return NextResponse.json({ error: 'Invalid bcAuthMode' }, { status: 400 }); data.bcAuthMode = bcAuthMode }
+  // serviceAccountPassword is deliberately NOT accepted here — same rule as
+  // bcPassword, never stored, only ever embedded into a downloaded installer.
+  if (serviceAccountUser !== undefined) data.serviceAccountUser = serviceAccountUser || null
   // NAV production DB
   if (navDatabaseServer !== undefined) data.navDatabaseServer = navDatabaseServer || 'localhost'
   if (navDatabaseName   !== undefined) data.navDatabaseName   = navDatabaseName   || null

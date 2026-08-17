@@ -19,6 +19,8 @@ interface Tenant {
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null; testNavServerInstance: string | null
   testBcPort: number | null; testBcInstance: string | null; testBcCompany: string | null; testAgentPort: number | null; testNavManagementPort: number | null
   bcUsername: string | null
+  bcAuthMode: string | null
+  serviceAccountUser: string | null
   tier: string | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
@@ -160,7 +162,7 @@ function SettingsInner() {
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null)
   const [country,      setCountry]      = useState('NZ')
   const [health,       setHealth]       = useState<{ status: 'checking' | 'ok' | 'error'; ms: number | null }>({ status: 'checking', ms: null })
-  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', navManagementPort: '7045', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
+  const [instForm,     setInstForm]     = useState({ bcUsername: '', bcPassword: '', bcAuthMode: 'Windows', serviceAccountUser: '', serviceAccountPassword: '', bcPort: '7048', agentPort: '9099', bcInstance: '', bcCompany: '', navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '', navManagementPort: '7045', testBcUsername: '', testBcPassword: '', testServerSeparate: false, testAgentUrl: '', testTunnelToken: '' })
   const hasLoaded = useRef(false)
   const [testEnv,      setTestEnv]      = useState({ testNavDatabaseServer: '', testNavDatabaseName: '', testNavServerInstance: '', testBcPort: '', testBcInstance: '', testBcCompany: '', testAgentPort: '' })
   const [instLoading,  setInstLoading]  = useState(false)
@@ -230,6 +232,8 @@ function SettingsInner() {
         if (t?.agentPort)           setInstForm(f => ({ ...f, agentPort:           String(t.agentPort)         }))
         if (t?.bcInstance)          setInstForm(f => ({ ...f, bcInstance:          t.bcInstance                }))
         if (t?.bcUsername)          setInstForm(f => ({ ...f, bcUsername:          t.bcUsername                }))
+        if (t?.bcAuthMode)          setInstForm(f => ({ ...f, bcAuthMode:          t.bcAuthMode                }))
+        if (t?.serviceAccountUser)  setInstForm(f => ({ ...f, serviceAccountUser:  t.serviceAccountUser        }))
         if (t?.navDatabaseServer)   setInstForm(f => ({ ...f, navDatabaseServer:   t.navDatabaseServer         }))
         if (t?.navDatabaseName)     setInstForm(f => ({ ...f, navDatabaseName:     t.navDatabaseName           }))
         if (t?.navServerInstance)   setInstForm(f => ({ ...f, navServerInstance:   t.navServerInstance         }))
@@ -914,8 +918,11 @@ function TestEnvForm({ initial, onSave, erpLabel = 'BC' }: {
   )
 }
 
+type DiagnoseCheck = { step: string; label: string; ok: boolean; detail: string }
+type DiagnoseResult = { ok: boolean; agentTooOld?: boolean; error?: string; checks?: DiagnoseCheck[] }
+
 function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
-  initial: { navDatabaseServer: string; navDatabaseName: string; navServerInstance: string; navManagementPort: string; bcInstance: string; bcCompany: string; bcPort: string; agentPort: string; bcUsername: string; bcPassword: string }
+  initial: { navDatabaseServer: string; navDatabaseName: string; navServerInstance: string; navManagementPort: string; bcInstance: string; bcCompany: string; bcPort: string; agentPort: string; bcUsername: string; bcPassword: string; bcAuthMode: string; serviceAccountUser: string; serviceAccountPassword: string }
   onSave:  (data: Record<string, any>) => Promise<void>
   onSaved: (vals: Record<string, string>) => void
   erpLabel?: string
@@ -932,9 +939,17 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
     agentPort:         useRef<HTMLInputElement>(null),
     bcUsername:        useRef<HTMLInputElement>(null),
     bcPassword:        useRef<HTMLInputElement>(null),
+    serviceAccountUser:     useRef<HTMLInputElement>(null),
+    serviceAccountPassword: useRef<HTMLInputElement>(null),
   }
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
+  // Drives which fields render (Basic mode needs a Service Account pair) —
+  // a select branching layout, not a data field re-render loop, so this is
+  // fine as controlled state alongside the refs+defaultValue text inputs.
+  const [authMode, setAuthMode] = useState(initial.bcAuthMode || 'Windows')
+  const [testing,  setTesting]  = useState(false)
+  const [testResult, setTestResult] = useState<DiagnoseResult | null>(null)
 
   async function handleSave() {
     setSaving(true)
@@ -949,6 +964,8 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       agentPort:         refs.agentPort.current?.value         || '9099',
       bcUsername:        refs.bcUsername.current?.value        || '',
       bcPassword:        refs.bcPassword.current?.value        || '',
+      bcAuthMode:        authMode,
+      serviceAccountUser: refs.serviceAccountUser.current?.value || '',
     }
     await onSave({
       navDatabaseServer: vals.navDatabaseServer,
@@ -959,15 +976,31 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       bcCompany:         vals.bcCompany,
       bcPort:            vals.bcPort,
       agentPort:         vals.agentPort,
-      // bcUsername is a real, non-secret DB column — save it like every
-      // other field here. bcPassword is deliberately excluded: it's never
-      // stored, only ever embedded into a downloaded installer.
+      // bcUsername/bcAuthMode/serviceAccountUser are real, non-secret DB
+      // columns — saved like every other field here. bcPassword and
+      // serviceAccountPassword are deliberately excluded: never stored,
+      // only ever embedded into a downloaded installer.
       bcUsername:        vals.bcUsername,
+      bcAuthMode:        vals.bcAuthMode,
+      serviceAccountUser: vals.serviceAccountUser,
     })
     onSaved(vals)
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function handleTestConnection() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const r = await fetch('/api/settings/diagnose-connection')
+      const d = await r.json()
+      setTestResult(d)
+    } catch {
+      setTestResult({ ok: false, error: 'Request failed — check your own connection and try again.' })
+    }
+    setTesting(false)
   }
 
   const inp: React.CSSProperties = { width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }
@@ -1005,9 +1038,19 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>
+          {lbl(erpLabel + ' Auth Mode')}
+          <select value={authMode} onChange={e => setAuthMode(e.target.value)} style={inp} title="Windows: NTLM using the account below (also runs the agent service). Basic: sends the account below as an HTTP username/password — use this when BC's ServicesUseNTLMAuthentication is set to false, e.g. containers created with -auth NavUserPassword.">
+            <option value="Windows">Windows (NTLM)</option>
+            <option value="Basic">Basic (NavUserPassword)</option>
+          </select>
+          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{'Most on-prem ' + erpLabel + ' installs use Windows. Pick Basic only if BC is configured for NavUserPassword auth.'}</p>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <div>
           {lbl(erpLabel + ' Username')}
-          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder="DOMAIN\username" autoComplete="off" name="bc-username" title="Windows account (DOMAIN\username) with OData read access to this company — usually a dedicated service account, not a personal login." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{'Windows / ' + erpLabel + ' service account with OData access.'}</p>
+          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder={authMode === 'Basic' ? 'e.g. administrator' : 'DOMAIN\\username'} autoComplete="off" name="bc-username" title={authMode === 'Basic' ? 'A BC/NAV application user (NavUserPassword credential type) — no domain, not a Windows account.' : 'Windows account (DOMAIN\\username) with OData read access to this company — usually a dedicated service account, not a personal login.'} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{authMode === 'Basic' ? ('BC application user with OData access — not a Windows account.') : ('Windows / ' + erpLabel + ' service account with OData access.')}</p>
         </div>
         <div>
           {lbl(erpLabel + ' Password')}
@@ -1015,12 +1058,49 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
           <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 4 }}>
+      {authMode === 'Basic' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 8, padding: 14 }}>
+          <div>
+            {lbl('Service Account')}
+            <input ref={refs.serviceAccountUser} style={inp} defaultValue={initial.serviceAccountUser} placeholder="DOMAIN\username or .\localuser" autoComplete="off" name="service-account" title={'The Windows account that runs the ' + erpLabel + ' Agent scheduled task. Required in Basic mode since the ' + erpLabel + ' Username above is a BC user, not a Windows identity.'} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+            <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows account that runs the agent service (separate from the BC login above).</p>
+          </div>
+          <div>
+            {lbl('Service Account Password')}
+            <input ref={refs.serviceAccountPassword} style={inp} type="password" defaultValue={initial.serviceAccountPassword} autoComplete="new-password" name="service-account-password" title="Never stored — used once to build the installer, then discarded." onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+            <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Never stored — embedded in installer only.</p>
+          </div>
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 4, flexWrap: 'wrap' as const }}>
         <button onClick={handleSave} disabled={saving} style={{ background: 'var(--forest)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
           {saving ? 'Saving…' : 'Save Production Environment'}
         </button>
-        {saved && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span>}
+        <button onClick={handleTestConnection} disabled={testing} style={{ background: 'transparent', color: 'var(--forest)', border: '1px solid var(--forest)', borderRadius: 8, padding: '8px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, cursor: testing ? 'default' : 'pointer', opacity: testing ? 0.7 : 1 }}>
+          {testing ? 'Testing…' : 'Test Connection'}
+        </button>
+        {saved ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--forest)', letterSpacing: '0.1em' }}>✓ Saved</span> : null}
       </div>
+      {testResult ? (
+        <div style={{ border: '1px solid var(--fog)', borderRadius: 10, padding: 16, background: 'var(--white)' }}>
+          {testResult.error ? (
+            <p style={{ fontSize: 12, color: '#A32D2D', margin: 0 }}>{testResult.error}</p>
+          ) : null}
+          {testResult.checks && testResult.checks.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+              {testResult.checks.map(c => (
+                <div key={c.step} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 14, lineHeight: '18px', color: c.ok ? 'var(--jade)' : '#A32D2D' }}>{c.ok ? '✓' : '✗'}</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)' }}>{c.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--slate)', marginTop: 2, lineHeight: 1.5 }}>{c.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

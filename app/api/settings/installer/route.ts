@@ -16,7 +16,7 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = '3.4'
+const AGENT_VERSION = '3.5'
 
 function generateRdpPassword(): string {
   const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -65,10 +65,17 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const { bcUsername, bcPassword, bcPort, agentPort, bcInstance, bcCompany,
+          bcAuthMode = 'Windows', serviceAccount, serviceAccountPassword,
           navDatabaseServer, navDatabaseName, navServerInstance,
           testNavDatabaseServer = '', testNavDatabaseName = '', testNavServerInstance = '',
           testBcInstance = '', testBcCompany = '', testBcPort = 0, testNavManagementPort = 7045 } = body
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
+  // Basic mode needs a real Windows account to run the scheduled task under,
+  // since bcUsername is a BC application user in that mode, not a Windows
+  // identity — same requirement the installer script itself enforces.
+  if (bcAuthMode === 'Basic' && (!serviceAccount || !serviceAccountPassword)) {
+    return NextResponse.json({ error: 'Basic auth mode requires a Service Account username and password (the Windows account that will run the agent).' }, { status: 400 })
+  }
 
   // ── DEBUG ── Generates a clearly-marked dummy installer zip
   if (DEBUG) {
@@ -143,6 +150,12 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
       ...(bcInstance        ? { bcInstance }        : {}),
       ...(bcUsername        ? { bcUsername }         : {}),
       ...(bcCompany         ? { bcCompany }          : {}),
+      ...(bcAuthMode        ? { bcAuthMode }          : {}),
+      // serviceAccountPassword is deliberately NOT persisted here — same rule
+      // as bcPassword: never stored, only ever embedded into a downloaded
+      // installer. serviceAccountUser is a real (non-secret) column so it
+      // pre-fills on the next installer download, same as bcUsername.
+      ...(serviceAccount    ? { serviceAccountUser: serviceAccount } : {}),
       ...(bcPort            !== undefined ? { bcPort:    parseInt(String(bcPort),    10) || 7048 } : {}),
       ...(agentPort         !== undefined ? { agentPort: parseInt(String(agentPort), 10) || 9099 } : {}),
       ...(navDatabaseName   ? { navDatabaseName }   : {}),
@@ -184,6 +197,9 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
     .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
     .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
     .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword ?? ''}',`)
+    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${bcAuthMode === 'Basic' ? 'Basic' : 'Windows'}',`)
+    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${serviceAccount ?? ''}',`)
+    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${serviceAccountPassword ?? ''}',`)
     .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${tenant.bcPort || 7048},`)
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
@@ -216,6 +232,7 @@ echo  ============================================================
 echo    ${agentBrandName} Agent Installer
 echo    Tenant: ${tenant.name}
 echo    BC:     ${bcInstance || tenant.bcInstance || '(not set)'} / ${bcCompany || tenant.bcCompany || '(not set)'}
+echo    Auth:   ${bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)'}
 echo  ============================================================
 echo.
 net session >nul 2>&1
