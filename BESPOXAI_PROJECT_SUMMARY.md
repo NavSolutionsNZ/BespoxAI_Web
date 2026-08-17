@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** August 9, 2026 (Session 27 — Marketing Launch)
+**Last Updated:** August 17, 2026 (Session 28 — BC Auth Mode mirrored to admin/partner)
 
 ---
 
@@ -46,6 +46,45 @@ git config user.email "claude@anthropic.com" && git config user.name "Claude"
 ```
 
 ---
+
+---
+
+## Session 28 Key Changes (August 17, 2026) — BC Auth Mode (Windows/Basic) + Connection Diagnostics, mirrored across all three installer paths
+
+**⚠️ Documentation gap flagged:** this doc was last updated for Session 27 (Aug 9, marketing launch). Between then and now, real commits landed for a required-company-email signup change (Aug 10) and a batch of onboarding/activation bug fixes (Aug 16) that were never written up here — see `git log` on `main` for that range if you need the detail; this entry does not attempt to reconstruct it. From here on treat this file (and `BESPOXAI_FILES_INVENTORY.md`) as the authoritative doc history again — earlier today a separate BC Auth Mode session used the Claude Project's own doc copies instead of committing to git, so those two files temporarily forked; this entry reconciles them back onto the real git history.
+
+**Goal (earlier today):** BCAgent originally only supported Windows/NTLM auth. Testing against a fresh Docker BC test container created with `-auth NavUserPassword` showed the agent couldn't authenticate at all — Business Central can be configured for **NavUserPassword ("Basic") auth**, a real supported deployment mode some customers also run, not just a test-container quirk. Built a full BC Auth Mode (Windows/Basic) + Service Account + connection-diagnostics feature, initially for the direct-customer path only.
+
+**Goal (this session):** the BC Auth Mode feature above had only been wired into the direct-customer path (`api/settings/installer`, `api/settings`, `app/settings/page.tsx`) — admin- and partner-generated installers were still Windows-auth-only. Mirrored it into both.
+
+**Design agreed before building** (per project instructions): read the actual current source for all three installer paths plus the reference diagnose route and both UIs, confirmed the exact scope of the gap, then confirmed two decisions with Rich before writing code:
+1. Admin's "Generate installer" modal only ever opened right after creating a brand-new tenant — no way to reopen it for an existing tenant. **Decision: add a per-tenant "Installer" button to the admin tenants table.**
+2. **Decision: admin's Test Connection button lives inside the Generate Installer modal**, matching how the direct-customer Settings page pairs installer generation and Test Connection on one screen.
+
+### 1. BC Auth Mode + Service Account + `/bespoxai/diagnose` — Agent bumped to v3.5 (direct-customer path, earlier today)
+- **Schema:** `Tenant.bcAuthMode String? @default("Windows")` (`"Windows"` | `"Basic"`), `Tenant.serviceAccountUser String?` (Windows account the BCAgent scheduled task runs as under Basic auth, since Basic auth carries no Windows identity for Task Scheduler). SQL applied:
+  ```sql
+  ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "bcAuthMode" TEXT DEFAULT 'Windows';
+  ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "serviceAccountUser" TEXT;
+  ```
+- **`Install-BespoxAI.ps1` → v3.5:** new `-BCAuthMode` (Windows/Basic), `-ServiceAccount`, `-ServiceAccountPassword` params; embedded BCAgent runtime branches its OData request between `UseDefaultCredentials = $true` (Windows/NTLM) and an `Authorization: Basic <base64>` header (Basic/NavUserPassword). Still `HttpWebRequest` in both branches (never `HttpClient`).
+- **New `/bespoxai/diagnose` agent endpoint:** single probe GET to `{bcBase}/ODataV4/Company` (auth-mode-aware), three sequential checks — reachable → authenticated → target company found (lists available companies on mismatch). `api/settings/diagnose-connection/route.ts` proxies it, tenant-admin-gated, special-cases HTTP 404 as "agent predates v3.5, please reinstall."
+- **Settings UI (`app/settings/page.tsx`):** BC Auth Mode select (local `useState`, UI-branching only — narrow exception to the refs-only rule, matching the `testServerSeparate` checkbox precedent) drives conditional Service Account fields; Test Connection button + green/red checklist panel.
+- Fixed along the way: Service Account password never reaching the installer download (missing from `ProdEnvForm.handleSave()`'s `vals` object); a `serviceAccount`/`serviceAccountUser` field-name mismatch in `api/settings/installer/route.ts` that was the real persistent cause of the same-looking 400; the `net session >nul 2>&1` elevation check false-negatiing inside containers/lean Server Core (replaced with `IsInRole` in all 4 generated-`.bat` surfaces).
+- Full walkthrough + Docker-container testing notes captured separately (Claude Project doc, not git) — ask Rich if you need the container-networking lessons (BCAgent must run inside the container via `Enter-BcContainer`, not from the Docker host reaching in over `localhost`; dual Cloudflare tunnel connectors if reinstalled without uninstalling first).
+
+### 2. Mirrored into admin + partner installer paths (this session)
+- `app/api/admin/installer/[tenantId]/route.ts` and `app/api/partner/tenants/[id]/installer/route.ts`: both now accept/validate/persist `bcAuthMode`/`serviceAccountUser`/`serviceAccountPassword` and inject them into the generated script via the same `.replace()` calls the direct-customer route uses (verified byte-for-byte against the actual `.ps1` template strings first). Partner route's local `AGENT_VERSION` const also bumped `'3.2'` → `'3.5'` (cosmetic staleness — the script it generates was already v3.5, only the filename/label constant was stale).
+- New `app/api/admin/tenants/[tenantId]/diagnose/route.ts` (superadmin-gated) and `app/api/partner/tenants/[id]/diagnose/route.ts` (partner-session-gated, any role, read-only) mirror `api/settings/diagnose-connection/route.ts`.
+- Admin (`app/admin/page.tsx`): new per-tenant "Installer" button in the tenants table (disabled when the tenant has no `tunnelId` yet) opens the existing `InstallerModal`, now reachable for any existing tenant, not just brand-new ones. `InstallerModal` gained the Auth Mode select + conditional Service Account fields + a Test Connection button/checklist.
+- Partner (`app/partner/tenants/[id]/page.tsx`): `Tenant` type extended with `bcAuthMode`/`serviceAccountUser` (the existing GET route already spreads the full tenant record — no API change needed to surface them). `BCAgentTab`'s Production Environment card gained the same Auth Mode select + conditional Service Account fields; `downloadInstaller()` sends the three new fields and validates Basic mode client-side; new Test Connection button + checklist panel alongside the existing Sync Config / Provision RDP / Download Installer actions.
+
+### Verification
+No local Next.js toolchain in this session (sparse checkout, no `node_modules`) — verified with `@babel/parser` (JSX+TypeScript plugins) that all 6 touched/new files parse without syntax errors, cross-checked every `.replace()` target string against the literal text in `scripts/Install-BespoxAI.ps1`, read the full diff of every file before committing. **Not yet manually tested end-to-end against a real Basic-auth container by Rich** — recommend the same validation the direct-customer path got (a Docker BC test container).
+
+### Known gap — now closed
+Admin- and partner-generated installers no longer force Windows-auth-only. Separately (pre-existing, not touched this session): `api/admin/installer/[tenantId]/route.ts` still requires a tenant to already have a `tunnelId` — it doesn't auto-provision one on first call the way the other two installer routes do. Noted in Files Inventory's Known Latent Traps if it needs picking up.
+
 
 ---
 

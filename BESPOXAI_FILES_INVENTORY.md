@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: August 9, 2026 (Session 27 — Marketing Launch)
+**Last Updated: August 17, 2026 (Session 28 — BC Auth Mode mirrored to admin/partner)
 
 ---
 
@@ -48,7 +48,7 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 - Live product at bespoxai.com is a full **Next.js application**
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
-- BCAgent v3.3 — PowerShell HttpListener service, full deployment workflow
+- BCAgent v3.5 — PowerShell HttpListener service, full deployment workflow. **(S28)** Supports Windows/NTLM (default) or Basic/NavUserPassword auth (`Tenant.bcAuthMode`); Basic mode requires a Windows `serviceAccountUser` for the scheduled task identity. `GET /bespoxai/diagnose` checks reachable → authenticated → target company found (agents <3.5 404 — reinstall needed).
 - C/AL export uses **finsql.exe directly** (not Export-NAVApplicationObject — removed in BC14)
 - finsql found via wildcard path search (BC14 paths first, then legacy NAV)
 - finsql writes ANSI/ASCII — read with Get-Content -Raw (not ReadAllBytes+Unicode decode)
@@ -59,7 +59,7 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 - NavModelTools.ps1 location: C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\140\RoleTailored Client\
 - GitHub per-customer repos — `lib/github.ts`, classic PAT stored as `GITHUB_CUSTOMER_REPOS_TOKEN`
 - Default agent port is **9099**
-- **Version bumped on every push** — two places: `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, `AGENT_VERSION` in installer/route.ts
+- **Version bumped on every push** — `$AgentVersion`/`$Version` in Install-BespoxAI.ps1, PLUS the `AGENT_VERSION` const in **each** of the three installer routes: `api/settings/installer/route.ts`, `api/admin/installer/[tenantId]/route.ts`, `api/partner/tenants/[id]/installer/route.ts` (all three generate the same script — **(S28)** partner route's const was found stale at `3.2` and corrected to `3.5`).
 - **(S23) Canonical partner domain = `partners.bespoxai.com`** (PLURAL — confirmed on Vercel project domains). Singular `partner.bespoxai.com` does NOT exist. Partner links use `PARTNER_PORTAL` env/const, NOT main `PORTAL`/bespoxai.com.
 - **(S23) Partner portal theme system:** semantic `--rb-*` CSS vars in `globals.css`, two scopes `[data-rb-theme="dark|light"]`. Surfaces set `data-rb-theme` on an ancestor; components ref only `--rb-*`. Partner default `dark` (= original look). Admin Dev Plan card forces `data-rb-theme="dark"`. To re-theme any new partner UI: use `var(--rb-*)`, never hardcode hex.
 - **(S23) Shared component pattern:** `components/DevPlanPanel.tsx` is theme-agnostic + role-flagged (`showPricing`). The template for future shared partner↔admin panels (feasibility/dev-notes/coding still duplicated).
@@ -130,7 +130,8 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | `api/requirements/[id]/assign/route.ts` | PATCH — admin reassign requirement to another developer. Sends notifyRequirementAssigned. |
 | `api/requirements/[id]/mark-unable/route.ts` | POST — developer marks requirement as unable to complete. Sends notifyAdminRequirementUnableToComplete. |
 | `api/settings/route.ts` | GET/PATCH tenant. Includes navManagementPort + testNavManagementPort. |
-| `api/settings/installer/route.ts` | GET returns `{ version: AGENT_VERSION }`. POST generates installer zip. Generates rdpPassword on first download. |
+| `api/settings/installer/route.ts` | GET returns `{ version: AGENT_VERSION }`. POST generates installer zip. Generates rdpPassword on first download. **(S28)** Accepts/validates/persists `bcAuthMode`/`serviceAccountUser`/`serviceAccountPassword`; injects into script via `.replace()`. |
+| `api/settings/diagnose-connection/route.ts` | **(S28)** GET — tenant-admin-gated proxy to the tenant's own BCAgent `/bespoxai/diagnose`. Reference implementation mirrored by the admin and partner diagnose routes below. 404 → `{agentTooOld:true}` (pre-v3.5 agent). |
 | `api/settings/sync-config/route.ts` | POST — reads all tenant fields from DB, POSTs to BCAgent /bespoxai/update-config. |
 | `api/settings/profile/route.ts` | GET/PATCH user firstName/lastName/preferredName |
 | `api/settings/profile/change-password/route.ts` | POST — change password. |
@@ -141,6 +142,8 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | `api/admin/provision-rdp/route.ts` | POST — adds CF RDP ingress + DNS for {subdomain}-rdp.bespoxai.com. Isolated from main tunnel flow. |
 | `api/admin/ai-config/route.ts` | GET/POST AI config |
 | `api/admin/users/[id]/route.ts` | PATCH + DELETE. |
+| `api/admin/installer/[tenantId]/route.ts` | POST generates installer zip for an existing tenant (own `AGENT_VERSION` const, kept in lockstep with the other two installer routes). Requires tenant to already have a `tunnelId` (does NOT auto-provision one — see Known Latent Traps). **(S28)** Accepts/validates/persists `bcAuthMode`/`serviceAccountUser`/`serviceAccountPassword`; injects into script. |
+| `api/admin/tenants/[tenantId]/diagnose/route.ts` | **(S28)** GET — superadmin-gated proxy to the tenant's BCAgent `/bespoxai/diagnose`. Mirrors `api/settings/diagnose-connection/route.ts`. |
 | `api/billing/create-checkout/route.ts` | Stripe subscription checkout |
 | `api/onboarding/route.ts` | GET/POST onboarding data. |
 | `api/signup/verify/route.ts` | Verifies token, fires notifyAdminsSignupVerified |
@@ -167,6 +170,8 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-approve/route.ts` | Partner UAT sign-off (S22) → uat_confirmed. notifyPartnerUatApproved. |
 | `api/partner/tenants/[id]/requirements/[reqId]/uat-reject/route.ts` | Partner UAT reject (S22) with AI scope-creep analysis (mirrors direct route). notifyPartnerUatRejected. |
 | `api/partner/tenants/route.ts` | List/create partner tenants. Select includes `tunnelId` (Bug 5 — connection pill). |
+| `api/partner/tenants/[id]/installer/route.ts` | POST generates installer zip for a partner-owned tenant (own `AGENT_VERSION` const). **(S28)** Accepts/validates/persists `bcAuthMode`/`serviceAccountUser`/`serviceAccountPassword`; injects into script. Const was stale at `3.2`, corrected to `3.5` this session (cosmetic — generated script was already current). |
+| `api/partner/tenants/[id]/diagnose/route.ts` | **(S28)** GET — partner-session-gated (any role, read-only) + `assertTenantBelongsToPartner`, proxies the tenant's BCAgent `/bespoxai/diagnose`. Mirrors `api/settings/diagnose-connection/route.ts`. |
 | `api/partner/tenants/[id]/users/route.ts` | **(S25)** GET/POST client-tenant users. POST = partner_admin invites a CLIENT login user (`tenant_admin`\|`user` only, never developer/partner), temp password, mustChangePassword, branded `notifyUserWelcome`. requirePartnerSession('partner_admin') + assertTenantBelongsToPartner. Client logs in at MAIN portal. |
 | `api/partner/tenants/[id]/users/[userId]/route.ts` | **(S25)** PATCH `enable`\|`disable`\|`resend`\|`reset` + DELETE. resend = new temp pw + branded email; reset = new temp pw, NO email, returns pw. Every action scoped to `{id, tenantId}` (can't touch other tenants' users); self-guard on disable/delete. |
 | `api/admin/ui-theme/route.ts` | **(S25)** GET/PATCH superadmin's `User.uiTheme` (`light`\|`dark`) for the admin portal theme toggle. |
@@ -197,7 +202,7 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 
 | File | Purpose |
 |------|---------|
-| `Install-BespoxAI.ps1` | BCAgent v3.3 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. |
+| `Install-BespoxAI.ps1` | BCAgent v3.5 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. **(S28)** `-BCAuthMode` (Windows\|Basic), `-ServiceAccount`, `-ServiceAccountPassword` params; embedded agent branches OData auth (UseDefaultCredentials vs `Authorization: Basic`); new `/bespoxai/diagnose` endpoint; admin-privilege check in generated `.bat` files switched from `net session` to `IsInRole` (false-negative fix inside containers/lean Server Core). |
 | `Uninstall-BespoxAI.ps1` | Full cleanup. |
 | `Uninstall-BespoxAI.bat` | Right-click Run as Administrator shim. |
 
@@ -274,12 +279,12 @@ unableToCompleteAt    DateTime?  -- nullable, set when developer marks unable
 
 ---
 
-## BCAgent v3.3 — Critical Implementation Notes
+## BCAgent v3.5 — Critical Implementation Notes
 
-### Version — THREE values, all must match, bump every push
-1. `$AgentVersion = '3.3'` in `Install-BespoxAI.ps1`
-2. `$Version = '3.3'` in `Install-BespoxAI.ps1`
-3. `const AGENT_VERSION = '3.3'` in `app/api/settings/installer/route.ts`
+### Version — FIVE values, all must match, bump every push
+1. `$AgentVersion = '3.5'` in `Install-BespoxAI.ps1`
+2. `$Version = '3.5'` in `Install-BespoxAI.ps1`
+3. `const AGENT_VERSION = '3.5'` in **each** of `app/api/settings/installer/route.ts`, `app/api/admin/installer/[tenantId]/route.ts`, `app/api/partner/tenants/[id]/installer/route.ts`
 
 ### RDP Support (Step 8 of installer)
 - Creates `BespoxAI-Support` local account (or updates password if exists)
@@ -343,7 +348,7 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't push changes without explicit confirmation from Rich
 - ❌ Don't assume timeout on deploy errors — check Vercel MCP logs first
 - ❌ Don't implement significant architectural changes without discussion first
-- ❌ Don't bump version in only one place — always ALL THREE: $AgentVersion + $Version in PS1 + AGENT_VERSION in installer/route.ts
+- ❌ Don't bump version in only one place — always ALL FIVE: $AgentVersion + $Version in PS1 + AGENT_VERSION in **each** of the three installer routes (settings, admin, partner)
 - ❌ Don't address users by full name — use preferredName ?? firstName only
 - ❌ Don't use router.replace for tab navigation — use router.push for history
 - ❌ Don't call `getServerSession` directly in new API routes once `lib/api-auth.ts` is rolled out — use its `requireUser` / `requireSuperadmin` / `requireSuperadminOrDeveloper` / `requireTenant` guards (see Roadmap H1). Until rollout, match the guard style of the nearest existing route.
@@ -351,6 +356,12 @@ On successful deploy to test → requirement status set to 'in_uat'
 ---
 
 ## ⚠️ Known Latent Traps (flagged, not yet fixed)
+
+### Admin installer route doesn't auto-provision a tunnel
+- **File:** `api/admin/installer/[tenantId]/route.ts`
+- **Issue:** Requires the tenant to already have a `tunnelId` before an installer can be generated. Unlike the direct-customer and partner installer routes, it does not create a Cloudflare tunnel on first call — admin has to provision one separately first, or the new per-tenant "Installer" button (added **(S28)**) stays disabled.
+- **Risk:** Low — the button is disabled with no `tunnelId`, so this fails safe (no crash), just a slightly confusing UX for admins provisioning a brand-new tenant out of order.
+- **Fix when picked up:** mirror the auto-provision-on-first-call behavior from the other two installer routes.
 
 ### Misnamed auth guard — `superadminGuard` allows developers too
 - **File:** `app/api/admin/requirements/route.ts` (line ~8)

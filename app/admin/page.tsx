@@ -194,7 +194,7 @@ function AdminPageInner() {
 
   // Installer download form
   const [installerTenantId, setInstallerTenantId] = useState<string | null>(null)
-  const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099' })
+  const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099', bcAuthMode: 'Windows', serviceAccountUser: '', serviceAccountPassword: '' })
   const [installerLoading, setInstallerLoading]   = useState(false)
   const [installerError, setInstallerError]       = useState('')
 
@@ -292,6 +292,11 @@ function AdminPageInner() {
 
   async function downloadInstaller(tenantId: string) {
     setInstallerLoading(true); setInstallerError('')
+    if (installerForm.bcAuthMode === 'Basic' && (!installerForm.serviceAccountUser || !installerForm.serviceAccountPassword)) {
+      setInstallerError('Basic auth mode requires a Service Account username and password')
+      setInstallerLoading(false)
+      return
+    }
     try {
       const res = await fetch(`/api/admin/installer/${tenantId}`, {
         method: 'POST',
@@ -301,6 +306,9 @@ function AdminPageInner() {
           bcPassword: installerForm.bcPassword,
           bcPort:     parseInt(installerForm.bcPort) || 7048,
           agentPort:  parseInt(installerForm.agentPort) || 9099,
+          bcAuthMode:             installerForm.bcAuthMode,
+          serviceAccountUser:     installerForm.serviceAccountUser,
+          serviceAccountPassword: installerForm.serviceAccountPassword,
         }),
       })
       if (!res.ok) {
@@ -321,7 +329,7 @@ function AdminPageInner() {
       document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 30_000)
       setInstallerTenantId(null)
-      setInstallerForm({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099' })
+      setInstallerForm({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099', bcAuthMode: 'Windows', serviceAccountUser: '', serviceAccountPassword: '' })
     } catch (e: any) { setInstallerError(e.message) }
     setInstallerLoading(false)
   }
@@ -697,6 +705,14 @@ function AdminPageInner() {
                         <td style={tdStyle}>
                           <button onClick={() => toggleTenant(t.id, t.active)} style={{ ...ghostBtn, color: t.active ? 'var(--rb-warning)' : 'var(--rb-success)' }}>
                             {t.active ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            onClick={() => { setInstallerTenantId(t.id); setInstallerError('') }}
+                            disabled={!t.tunnelId}
+                            title={!t.tunnelId ? 'No tunnel — this tenant was not auto-provisioned yet' : 'Generate/redownload the BCAgent installer for this tenant'}
+                            style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 8, opacity: !t.tunnelId ? 0.4 : 1 }}
+                          >
+                            Installer
                           </button>
                           <button
                             onClick={() => provisionRdp(t.id)}
@@ -1171,7 +1187,9 @@ function AdminPageInner() {
       {/* Installer download modal */}
       {installerTenantId && (
         <InstallerModal
+          tenantId={installerTenantId}
           tenantName={tenants.find(t => t.id === installerTenantId)?.name ?? newTenantResult?.name ?? ''}
+          hasTunnel={!!tenants.find(t => t.id === installerTenantId)?.tunnelId}
           loading={installerLoading}
           error={installerError}
           form={installerForm}
@@ -1186,18 +1204,34 @@ function AdminPageInner() {
 
 // ─── Installer modal ──────────────────────────────────────────────────────────
 
-function InstallerModal({ tenantName, loading, error, form, onChange, onDownload, onClose }: {
-  tenantName: string; loading: boolean; error: string
-  form: { bcUsername: string; bcPassword: string; bcPort: string; agentPort: string }
+function InstallerModal({ tenantId, tenantName, hasTunnel, loading, error, form, onChange, onDownload, onClose }: {
+  tenantId: string; tenantName: string; hasTunnel: boolean; loading: boolean; error: string
+  form: { bcUsername: string; bcPassword: string; bcPort: string; agentPort: string; bcAuthMode: string; serviceAccountUser: string; serviceAccountPassword: string }
   onChange: (f: any) => void; onDownload: () => void; onClose: () => void
 }) {
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<any>(null)
+
   const iStyle: React.CSSProperties = { width: '100%', background: 'var(--cream)', border: '1px solid var(--fog)', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }
   const lStyle: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--slate)', display: 'block', marginBottom: 6 }
   const bStyle: React.CSSProperties = { background: 'var(--forest)', color: 'var(--white)', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500 }
   const canDownload = !!form.bcUsername && !loading
+
+  async function handleTestConnection() {
+    setTesting(true); setTestResult(null)
+    try {
+      const r = await fetch(`/api/admin/tenants/${tenantId}/diagnose`)
+      const d = await r.json()
+      setTestResult(d)
+    } catch {
+      setTestResult({ ok: false, error: 'Request failed — check your own connection and try again.' })
+    }
+    setTesting(false)
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(4,14,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ background: 'var(--white)', borderRadius: 16, padding: '28px 32px', width: 480, maxWidth: '90vw', boxShadow: '0 8px 40px rgba(4,14,9,0.2)' }}>
+      <div style={{ background: 'var(--white)', borderRadius: 16, padding: '28px 32px', width: 480, maxWidth: '90vw', maxHeight: '86vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(4,14,9,0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--ink)', margin: 0 }}>Generate installer</h2>
@@ -1209,23 +1243,67 @@ function InstallerModal({ tenantName, loading, error, form, onChange, onDownload
           Enter the customer's BC credentials. These will be pre-filled in the installer — send the .bat file securely.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div><label style={lStyle}>BC Username (DOMAIN\user)</label><input style={iStyle} value={form.bcUsername} onChange={e => onChange({ ...form, bcUsername: e.target.value })} placeholder="CONTOSO\svc_bc" /></div>
+          <div>
+            <label style={lStyle}>BC Auth Mode</label>
+            <select style={iStyle} value={form.bcAuthMode} onChange={e => onChange({ ...form, bcAuthMode: e.target.value })} title="Windows: NTLM using the account below (also runs the agent service). Basic: sends the account below as an HTTP username/password — use this when BC's ServicesUseNTLMAuthentication is set to false, e.g. containers created with -auth NavUserPassword.">
+              <option value="Windows">Windows (NTLM)</option>
+              <option value="Basic">Basic (NavUserPassword)</option>
+            </select>
+          </div>
+          <div><label style={lStyle}>{form.bcAuthMode === 'Basic' ? 'BC Username' : 'BC Username (DOMAIN\\user)'}</label><input style={iStyle} value={form.bcUsername} onChange={e => onChange({ ...form, bcUsername: e.target.value })} placeholder={form.bcAuthMode === 'Basic' ? 'e.g. administrator' : 'CONTOSO\\svc_bc'} /></div>
           <div><label style={lStyle}>BC Password</label><input style={iStyle} type="password" value={form.bcPassword} onChange={e => onChange({ ...form, bcPassword: e.target.value })} placeholder="Password" /></div>
+          {form.bcAuthMode === 'Basic' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 8, padding: 14 }}>
+              <div>
+                <label style={lStyle}>Service Account (runs the agent)</label>
+                <input style={iStyle} value={form.serviceAccountUser} onChange={e => onChange({ ...form, serviceAccountUser: e.target.value })} placeholder="DOMAIN\username or .\localuser" />
+              </div>
+              <div>
+                <label style={lStyle}>Service Account Password</label>
+                <input style={iStyle} type="password" value={form.serviceAccountPassword} onChange={e => onChange({ ...form, serviceAccountPassword: e.target.value })} placeholder="Never stored — embedded in installer only" />
+              </div>
+            </div>
+          ) : null}
           <div style={{ display: 'flex', gap: 14 }}>
             <div style={{ flex: 1 }}><label style={lStyle}>BC OData Port</label><input style={iStyle} value={form.bcPort} onChange={e => onChange({ ...form, bcPort: e.target.value })} /></div>
             <div style={{ flex: 1 }}><label style={lStyle}>Agent Port</label><input style={iStyle} value={form.agentPort} onChange={e => onChange({ ...form, agentPort: e.target.value })} /></div>
           </div>
         </div>
         {error && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A32D2D', marginTop: 12 }}>{error}</p>}
-        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
           <button onClick={onDownload} disabled={!canDownload} style={{ ...bStyle, opacity: canDownload ? 1 : 0.6, cursor: canDownload ? 'pointer' : 'not-allowed' }}>
             {loading ? 'Generating…' : '↓ Download Installer (.bat)'}
           </button>
+          {hasTunnel ? (
+            <button onClick={handleTestConnection} disabled={testing} style={{ background: 'transparent', color: 'var(--forest)', border: '1px solid var(--forest)', borderRadius: 8, padding: '8px 16px', cursor: testing ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, opacity: testing ? 0.7 : 1 }}>
+              {testing ? 'Testing…' : 'Test Connection'}
+            </button>
+          ) : null}
           <button onClick={onClose} style={{ ...bStyle, background: 'var(--fog)', color: 'var(--ink)' }}>Cancel</button>
         </div>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--slate)', marginTop: 12, lineHeight: 1.6 }}>
           The .bat auto-elevates to Administrator. IT double-clicks it — no PowerShell knowledge needed.
         </p>
+        {testResult ? (
+          <div style={{ border: '1px solid var(--fog)', borderRadius: 10, padding: 14, background: 'var(--cream)', marginTop: 14 }}>
+            {testResult.error ? (
+              <p style={{ fontSize: 12, color: '#A32D2D', margin: 0 }}>{testResult.error}</p>
+            ) : null}
+            {testResult.checks && testResult.checks.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {testResult.checks.map((c: any) => (
+                  <div key={c.step} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 13, lineHeight: '17px', color: c.ok ? 'var(--jade)' : '#A32D2D' }}>{c.ok ? '✓' : '✗'}</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)' }}>{c.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--slate)', marginTop: 2, lineHeight: 1.5 }}>{c.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )

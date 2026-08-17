@@ -14,6 +14,7 @@ type Tenant = {
   tier: string; tunnelId: string | null; bcCompany: string | null
   bcInstance: string | null; agentPort: number; bcPort: number
   bcUsername: string | null
+  bcAuthMode: string | null; serviceAccountUser: string | null
   navDatabaseServer: string | null; navDatabaseName: string | null
   navServerInstance: string | null; navManagementPort: number | null
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null
@@ -197,6 +198,8 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
     agentPort:             React.useRef<HTMLInputElement>(null),
     bcUsername:            React.useRef<HTMLInputElement>(null),
     bcPassword:            React.useRef<HTMLInputElement>(null),
+    serviceAccountUser:     React.useRef<HTMLInputElement>(null),
+    serviceAccountPassword: React.useRef<HTMLInputElement>(null),
     testNavDatabaseName:   React.useRef<HTMLInputElement>(null),
     testNavServerInstance: React.useRef<HTMLInputElement>(null),
     testBcInstance:        React.useRef<HTMLInputElement>(null),
@@ -204,12 +207,19 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
     testNavManagementPort: React.useRef<HTMLInputElement>(null),
   }
 
+  // bcAuthMode is a purely UI-branching control (shows/hides Service Account
+  // fields) — local useState is fine here, matching the testSeparate checkbox
+  // precedent and the direct-customer Settings page's authMode select. The
+  // underlying values still go through refs read at submit time.
+  const [authMode,     setAuthMode]       = useState(tenant.bcAuthMode || 'Windows')
   const [testSeparate, setTestSeparate]   = useState(false)
   const [instLoading,  setInstLoading]    = useState(false)
   const [syncLoading,  setSyncLoading]    = useState(false)
   const [rdpLoading,   setRdpLoading]     = useState(false)
   const [agentVersion, setAgentVersion]   = useState<string | null>(null)
   const [feedback,     setFeedback]       = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [testing,      setTesting]        = useState(false)
+  const [testResult,   setTestResult]     = useState<any>(null)
 
   React.useEffect(() => {
     fetch('/api/partner/tenants/' + tenantId + '/installer')
@@ -224,7 +234,13 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
   async function downloadInstaller() {
     const bcUsername = refs.bcUsername.current?.value || ''
     const bcPassword = refs.bcPassword.current?.value || ''
+    const serviceAccountUser     = refs.serviceAccountUser.current?.value     || ''
+    const serviceAccountPassword = refs.serviceAccountPassword.current?.value || ''
     if (!bcUsername) { showFeedback('err', 'BC service account username is required'); return }
+    if (authMode === 'Basic' && (!serviceAccountUser || !serviceAccountPassword)) {
+      showFeedback('err', 'Basic auth mode requires a Service Account username and password')
+      return
+    }
     setInstLoading(true)
     try {
       const r = await fetch('/api/partner/tenants/' + tenantId + '/installer', {
@@ -232,6 +248,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bcUsername, bcPassword,
+          bcAuthMode: authMode, serviceAccountUser, serviceAccountPassword,
           bcPort:            parseInt(refs.bcPort.current?.value            || '7048', 10),
           agentPort:         parseInt(refs.agentPort.current?.value         || '9099', 10),
           bcInstance:        refs.bcInstance.current?.value                 || '',
@@ -284,6 +301,18 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
     }
   }
 
+  async function testConnection() {
+    setTesting(true); setTestResult(null)
+    try {
+      const r = await fetch('/api/partner/tenants/' + tenantId + '/diagnose')
+      const d = await r.json()
+      setTestResult(d)
+    } catch {
+      setTestResult({ ok: false, error: 'Request failed — check your own connection and try again.' })
+    }
+    setTesting(false)
+  }
+
   async function provisionRdp() {
     setRdpLoading(true)
     try {
@@ -323,12 +352,21 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
           {erpLabel + ' connection details. Instance, company and database fields are saved — credentials are embedded in the installer only and never stored.'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            {lbl(erpLabel + ' Auth Mode')}
+            <select value={authMode} onChange={e => setAuthMode(e.target.value)} style={inp}
+              title="Windows: NTLM using the account below (also runs the agent service). Basic: sends the account below as an HTTP username/password — use this when BC's ServicesUseNTLMAuthentication is set to false, e.g. containers created with -auth NavUserPassword.">
+              <option value="Windows">Windows (NTLM)</option>
+              <option value="Basic">Basic (NavUserPassword)</option>
+            </select>
+            {hint('Most on-prem ' + erpLabel + ' installs use Windows. Pick Basic only if BC is configured for NavUserPassword auth.')}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              {lbl('BC Service Account Username *')}
+              {lbl(authMode === 'Basic' ? 'BC Username *' : 'BC Service Account Username *')}
               <input ref={refs.bcUsername} style={inp} type="text" defaultValue={tenant.bcUsername || ''}
-                placeholder="e.g. DOMAIN\BCServiceUser" autoComplete="off" />
-              {hint('Windows account used to authenticate with BC OData.')}
+                placeholder={authMode === 'Basic' ? 'e.g. administrator' : 'e.g. DOMAIN\\BCServiceUser'} autoComplete="off" />
+              {hint(authMode === 'Basic' ? 'BC application user with OData access — not a Windows account.' : 'Windows account used to authenticate with BC OData.')}
             </div>
             <div>
               {lbl('BC Service Account Password *')}
@@ -336,6 +374,21 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
                 placeholder="Not stored — embedded in installer only" autoComplete="new-password" />
             </div>
           </div>
+          {authMode === 'Basic' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.25)', borderRadius: 8, padding: 14 }}>
+              <div>
+                {lbl('Service Account (runs the agent)')}
+                <input ref={refs.serviceAccountUser} style={inp} type="text" defaultValue={tenant.serviceAccountUser || ''}
+                  placeholder="DOMAIN\username or .\localuser" autoComplete="off" />
+                {hint('Windows account that runs the agent service — required in Basic mode since the BC Username above is a BC user, not a Windows identity.')}
+              </div>
+              <div>
+                {lbl('Service Account Password')}
+                <input ref={refs.serviceAccountPassword} style={inp} type="password" defaultValue=""
+                  placeholder="Never stored — embedded in installer only" autoComplete="new-password" />
+              </div>
+            </div>
+          ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
               {lbl('SQL Database Server')}
@@ -502,6 +555,19 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
           {erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}
         </p>
 
+        {/* Test Connection — only if tunnel exists */}
+        {hasTunnel ? (
+          <button onClick={testConnection} disabled={testing} style={{
+            width: '100%', background: 'transparent',
+            color: 'var(--rb-primary)', border: '1px solid var(--rb-primary)', borderRadius: 8, padding: '11px',
+            cursor: testing ? 'default' : 'pointer',
+            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+            opacity: testing ? 0.7 : 1,
+          }}>
+            {testing ? 'Testing…' : 'Test Connection'}
+          </button>
+        ) : null}
+
         {/* Feedback banner */}
         {feedback ? (
           <div style={{
@@ -511,6 +577,28 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
             color: feedback.type === 'ok' ? 'var(--rb-success)' : 'var(--rb-danger)',
           }}>
             {feedback.msg}
+          </div>
+        ) : null}
+
+        {/* Test Connection result checklist */}
+        {testResult ? (
+          <div style={{ border: '1px solid var(--rb-border-strong)', borderRadius: 10, padding: 16, background: 'var(--rb-surface)' }}>
+            {testResult.error ? (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-danger)', margin: 0 }}>{testResult.error}</p>
+            ) : null}
+            {testResult.checks && testResult.checks.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {testResult.checks.map((c: any) => (
+                  <div key={c.step} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 14, lineHeight: '18px', color: c.ok ? 'var(--rb-success)' : 'var(--rb-danger)' }}>{c.ok ? '✓' : '✗'}</span>
+                    <div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500, color: 'var(--rb-text)' }}>{c.label}</div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', marginTop: 2, lineHeight: 1.5 }}>{c.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

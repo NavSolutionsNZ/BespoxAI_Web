@@ -9,7 +9,7 @@ import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.2'
+const AGENT_VERSION = '3.5'
 
 function generateRdpPassword(): string {
   const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const {
     bcUsername, bcPassword, bcPort = 7048, agentPort = 9099,
     bcInstance, bcCompany,
+    bcAuthMode = 'Windows', serviceAccountUser, serviceAccountPassword,
     navDatabaseServer = 'localhost', navDatabaseName = '', navServerInstance = '',
     navManagementPort = 7045,
     testNavDatabaseServer = '', testNavDatabaseName = '', testNavServerInstance = '',
@@ -61,6 +62,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   } = body
 
   if (!bcUsername) return NextResponse.json({ error: 'BC username is required' }, { status: 400 })
+  // Basic mode needs a real Windows account to run the scheduled task under,
+  // since bcUsername is a BC application user in that mode, not a Windows
+  // identity — same rule enforced on the direct-customer installer route.
+  if (bcAuthMode === 'Basic' && (!serviceAccountUser || !serviceAccountPassword)) {
+    return NextResponse.json({ error: 'Basic auth mode requires a Service Account username and password (the Windows account that will run the agent).' }, { status: 400 })
+  }
 
   let tenant = await (prisma as any).tenant.findUnique({
     where: { id: params.id },
@@ -96,6 +103,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       ...(bcInstance        ? { bcInstance }        : {}),
       ...(bcUsername        ? { bcUsername }         : {}),
       ...(bcCompany         ? { bcCompany }          : {}),
+      ...(bcAuthMode        ? { bcAuthMode }          : {}),
+      // serviceAccountPassword is deliberately NOT persisted — same rule as
+      // bcPassword: never stored, only ever embedded into a downloaded
+      // installer. serviceAccountUser is a real (non-secret) column so it
+      // pre-fills on the next installer download, same as bcUsername.
+      ...(serviceAccountUser ? { serviceAccountUser } : {}),
       bcPort:            parseInt(String(bcPort),    10) || 7048,
       agentPort:         parseInt(String(agentPort), 10) || 9099,
       ...(navDatabaseName   ? { navDatabaseName }   : {}),
@@ -137,6 +150,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
     .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
     .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword ?? ''}',`)
+    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${bcAuthMode === 'Basic' ? 'Basic' : 'Windows'}',`)
+    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${serviceAccountUser ?? ''}',`)
+    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${serviceAccountPassword ?? ''}',`)
     .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${tenant.bcPort || 7048},`)
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
@@ -168,6 +184,7 @@ echo  ============================================================
 echo    ${agentBrandName} Agent Installer
 echo    Tenant: ${tenant.name}
 echo    BC:     ${bcInstance || tenant.bcInstance || '(not set)'} / ${bcCompany || tenant.bcCompany || '(not set)'}
+echo    Auth:   ${bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)'}
 echo  ============================================================
 echo.
 powershell -NoProfile -Command "if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 1 }"

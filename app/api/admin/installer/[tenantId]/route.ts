@@ -21,9 +21,29 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     return NextResponse.json({ error: 'Tenant was not auto-provisioned — no tunnel ID stored.' }, { status: 400 })
 
   const body = await req.json().catch(() => ({}))
-  const { bcUsername = '', bcPassword = '', bcPort = 7048, agentPort = 9099 } = body
+  const {
+    bcUsername = '', bcPassword = '', bcPort = 7048, agentPort = 9099,
+    bcAuthMode = 'Windows', serviceAccountUser = '', serviceAccountPassword = '',
+  } = body
 
   if (!bcUsername) return NextResponse.json({ error: 'bcUsername is required' }, { status: 400 })
+  // Basic mode needs a real Windows account to run the scheduled task under,
+  // since bcUsername is a BC application user in that mode, not a Windows
+  // identity — same rule enforced on the direct-customer installer route.
+  if (bcAuthMode === 'Basic' && (!serviceAccountUser || !serviceAccountPassword)) {
+    return NextResponse.json({ error: 'Basic auth mode requires a Service Account username and password (the Windows account that will run the agent).' }, { status: 400 })
+  }
+
+  // Persist bcAuthMode/serviceAccountUser same as the direct-customer route —
+  // these are real, non-secret columns so they pre-fill next time. The
+  // service account password is never persisted (same treatment as bcPassword).
+  await (prisma as any).tenant.update({
+    where: { id: params.tenantId },
+    data: {
+      ...(bcAuthMode         ? { bcAuthMode }         : {}),
+      ...(serviceAccountUser ? { serviceAccountUser } : {}),
+    },
+  })
 
   let tunnelToken: string
   try {
@@ -43,6 +63,9 @@ export async function POST(req: NextRequest, { params }: { params: { tenantId: s
     .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
     .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
     .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword}',`)
+    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${bcAuthMode === 'Basic' ? 'Basic' : 'Windows'}',`)
+    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${serviceAccountUser}',`)
+    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${serviceAccountPassword}',`)
     .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${bcPort},`)
     .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
     .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
@@ -73,6 +96,7 @@ echo  ============================================================
 echo    BespoxAI Installer
 echo    Tenant: ${tenantName}
 echo    BC:     ${tenant.bcInstance || '(not set)'} / ${tenant.bcCompany || '(not set)'}
+echo    Auth:   ${bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)'}
 echo  ============================================================
 echo.
 
@@ -139,5 +163,5 @@ exit /b %_exit%
 }
 
 export async function GET() {
-  return NextResponse.json({ message: 'POST with { bcUsername, bcPassword, bcPort?, agentPort? } to generate installer.' })
+  return NextResponse.json({ message: 'POST with { bcUsername, bcPassword, bcPort?, agentPort?, bcAuthMode?, serviceAccountUser?, serviceAccountPassword? } to generate installer.' })
 }
