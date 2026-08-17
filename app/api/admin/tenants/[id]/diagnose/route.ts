@@ -5,18 +5,18 @@ import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/admin/tenants/[tenantId]/diagnose
+// GET /api/admin/tenants/[id]/diagnose
 // Superadmin equivalent of api/settings/diagnose-connection — proxies the
 // target tenant's BCAgent GET /bespoxai/diagnose (agent v3.5+) so admin can
 // see exactly where a "can't connect" report breaks (reachable/auth/company)
 // without RDPing into the customer's server. Mirrors the direct-customer
 // route's response shape and 404 handling.
-export async function GET(_req: Request, { params }: { params: { tenantId: string } }) {
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const tenant = await prisma.tenant.findUnique({ where: { id: params.tenantId } })
+  const tenant = await prisma.tenant.findUnique({ where: { id: params.id } })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
   if (!tenant.tunnelSubdomain) {
     return NextResponse.json({ ok: false, error: 'No tunnel configured — generate the installer first.' })
