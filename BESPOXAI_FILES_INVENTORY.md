@@ -143,7 +143,7 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | `api/admin/ai-config/route.ts` | GET/POST AI config |
 | `api/admin/users/[id]/route.ts` | PATCH + DELETE. |
 | `api/admin/installer/[tenantId]/route.ts` | POST generates installer zip for an existing tenant (own `AGENT_VERSION` const, kept in lockstep with the other two installer routes). Requires tenant to already have a `tunnelId` (does NOT auto-provision one — see Known Latent Traps). **(S28)** Accepts/validates/persists `bcAuthMode`/`serviceAccountUser`/`serviceAccountPassword`; injects into script. |
-| `api/admin/tenants/[tenantId]/diagnose/route.ts` | **(S28)** GET — superadmin-gated proxy to the tenant's BCAgent `/bespoxai/diagnose`. Mirrors `api/settings/diagnose-connection/route.ts`. |
+| `api/admin/tenants/[id]/diagnose/route.ts` | **(S28)** GET — superadmin-gated proxy to the tenant's BCAgent `/bespoxai/diagnose`. Mirrors `api/settings/diagnose-connection/route.ts`. Originally created as `[tenantId]/diagnose`, which broke the Vercel build (Next.js disallows two different dynamic-segment names — `[tenantId]` vs the sibling `api/admin/tenants/[id]/route.ts`'s `[id]` — at the same path level); moved to `[id]` and re-deployed same day. |
 | `api/billing/create-checkout/route.ts` | Stripe subscription checkout |
 | `api/onboarding/route.ts` | GET/POST onboarding data. |
 | `api/signup/verify/route.ts` | Verifies token, fires notifyAdminsSignupVerified |
@@ -329,6 +329,7 @@ On successful deploy to test → requirement status set to 'in_uat'
 
 ## What NOT to Do
 
+- ❌ Don't name a dynamic route segment differently from its sibling at the same path level (e.g. `api/x/[tenantId]/...` next to an existing `api/x/[id]/...`) — Next.js's App Router build fails outright on this. **(S28)** Bit us for real: a new `api/admin/tenants/[tenantId]/diagnose` broke the Vercel build against the existing `api/admin/tenants/[id]/route.ts`. Always check for existing dynamic segments under the same parent before adding a new one.
 - ❌ Don't edit root `index.html` — edit `public/index.html`
 - ❌ Don't use `cmoqi33pu0000l3b0zusc5hgz` as the test tenant ID — that's GWM Dev
 - ❌ Don't run `prisma migrate` — use `db push` or raw SQL
