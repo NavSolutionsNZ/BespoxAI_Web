@@ -605,14 +605,14 @@ export default function OnboardingPage() {
                 </h1>
                 <p style={{ ...subtext, textAlign: 'center', maxWidth: 400, margin: '0 auto 24px' }}>
                   {wantsToConnect
-                    ? 'Your BC connection details are saved. Your IT team can now download and run the pre-configured installer.'
+                    ? "Your connection details are saved. We never store your BC username or password, so there's one step left — entering those on the next page to generate your installer."
                     : 'You can connect your system any time from Settings → BC Installer.'}
                 </p>
                 {wantsToConnect ? (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
                     <button onClick={() => finish('/settings?tab=installer')} disabled={saving}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--forest)', color: '#fff', borderRadius: 10, padding: '12px 24px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, border: 'none', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-                      {saving ? 'Setting up…' : 'Open BC Installer →'}
+                      {saving ? 'Setting up…' : 'Continue Setup →'}
                     </button>
                   </div>
                 ) : null}
