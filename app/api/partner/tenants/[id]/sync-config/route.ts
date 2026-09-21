@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 // POST /api/partner/tenants/[id]/sync-config
 // Reads the tenant's current settings from DB and pushes them to the live BCAgent.
 // Only non-credential fields are synced (bcPassword stays unchanged on the agent).
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

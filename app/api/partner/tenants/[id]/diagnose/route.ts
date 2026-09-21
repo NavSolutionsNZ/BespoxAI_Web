@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic'
 // diagnostic, so any partner session member may call it (matches the GET
 // tenant-detail route's access level, not the partner_admin-only installer
 // POST).
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

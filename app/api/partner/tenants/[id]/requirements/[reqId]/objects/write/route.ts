@@ -28,8 +28,9 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; reqId: string } }
+  props: { params: Promise<{ id: string; reqId: string }> }
 ) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

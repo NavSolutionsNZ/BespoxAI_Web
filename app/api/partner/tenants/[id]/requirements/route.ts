@@ -6,7 +6,8 @@ import { notifyPartnerNewRequirement } from '@/lib/notifications'
 export const dynamic = 'force-dynamic'
 
 // GET /api/partner/tenants/[id]/requirements
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -39,7 +40,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 // POST /api/partner/tenants/[id]/requirements — raise on behalf of tenant
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

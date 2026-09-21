@@ -32,10 +32,8 @@ async function getGitHubOwner(tokenOverride?: string | null): Promise<string> {
   return (data as any).login as string
 }
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

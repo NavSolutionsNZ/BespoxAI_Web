@@ -13,10 +13,8 @@ import { sendEmail }                 from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   const role    = (session?.user as any)?.role
   if (!session?.user || !['tenant_admin', 'superadmin'].includes(role))

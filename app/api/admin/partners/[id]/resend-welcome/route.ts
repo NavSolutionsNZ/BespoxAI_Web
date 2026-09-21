@@ -10,7 +10,8 @@ import crypto from 'crypto'
 // Generates a fresh temp password for the partner's admin user, re-hashes it,
 // and re-sends the welcome email. The original temp password is unrecoverable
 // (hashed at activation), so a new one is issued.
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if ((session?.user as any)?.role !== 'superadmin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

@@ -33,14 +33,16 @@ function generateRdpPassword(): string {
 }
 
 // GET /api/partner/tenants/[id]/installer — returns current agent version
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   return NextResponse.json({ version: AGENT_VERSION })
 }
 
 // POST /api/partner/tenants/[id]/installer — generate pre-configured BCAgent installer
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

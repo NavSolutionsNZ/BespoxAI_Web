@@ -14,7 +14,8 @@ const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
 // PATCH /api/settings/users/[id] — promote | demote | enable | disable | reset
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -57,7 +58,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/settings/users/[id]
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

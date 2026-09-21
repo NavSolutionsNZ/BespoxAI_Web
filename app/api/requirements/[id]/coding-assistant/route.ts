@@ -65,10 +65,8 @@ async function loadObjectsFromGitHub(
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   const role    = (session?.user as any)?.role
   if (!session?.user || !['superadmin', 'developer'].includes(role))

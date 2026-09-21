@@ -8,10 +8,8 @@ export const dynamic = 'force-dynamic'
 
 // PATCH /api/requirements/[id]/assign
 // Admin assigns requirement to a developer (or reassigns from one dev to another)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

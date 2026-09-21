@@ -4,10 +4,8 @@ import { prisma }                    from '@/lib/db'
 
 // PATCH /api/partner/users/[id] — change role (admin only)
 // [id] is the PartnerUser.id (not the User.id)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -46,10 +44,8 @@ export async function PATCH(
 }
 
 // DELETE /api/partner/users/[id] — remove team member (admin only)
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

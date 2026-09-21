@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-export async function GET(_req: Request, { params }: { params: { tenantId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if ((session?.user as any)?.role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

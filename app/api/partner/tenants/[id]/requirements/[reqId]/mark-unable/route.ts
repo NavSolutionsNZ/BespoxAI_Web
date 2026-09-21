@@ -9,7 +9,11 @@ export const dynamic = 'force-dynamic'
 // Partner-deliverer equivalent of the direct mark-unable. Any partner team member
 // (partner_admin or partner_developer) of this account can flag it; partner_admins
 // are notified. BespoxAI is NOT in the partner loop.
-export async function POST(_req: NextRequest, { params }: { params: { id: string; reqId: string } }) {
+export async function POST(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string; reqId: string }> }
+) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
 // POST /api/admin/signups/[id]/verify
 // Superadmin can manually mark a signup as verified (handles case where
 // the email link was clicked but the DB column name mismatch prevented the update)
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

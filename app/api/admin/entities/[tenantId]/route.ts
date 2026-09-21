@@ -6,7 +6,8 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 // GET /api/admin/entities/[tenantId] — return current entity config
-export async function GET(_req: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -22,7 +23,8 @@ export async function GET(_req: NextRequest, { params }: { params: { tenantId: s
 
 // PATCH /api/admin/entities/[tenantId] — toggle one entity on/off
 // Body: { entity: "Customer", enabled: false }
-export async function PATCH(req: NextRequest, { params }: { params: { tenantId: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

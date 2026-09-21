@@ -10,7 +10,8 @@ function isSuperadmin(session: any) {
 }
 
 // GET /api/admin/partners/[id]
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!isSuperadmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -30,7 +31,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // PATCH /api/admin/partners/[id] — update fees, revenue share, branding, active status
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!isSuperadmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

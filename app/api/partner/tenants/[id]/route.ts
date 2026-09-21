@@ -5,7 +5,8 @@ import { prisma } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 // GET /api/partner/tenants/[id] — single tenant detail for partner
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

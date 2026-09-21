@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
 // see exactly where a "can't connect" report breaks (reachable/auth/company)
 // without RDPing into the customer's server. Mirrors the direct-customer
 // route's response shape and 404 handling.
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

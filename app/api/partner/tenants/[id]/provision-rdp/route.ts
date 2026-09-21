@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 
 // POST /api/partner/tenants/[id]/provision-rdp
 // Partner admin only. Adds RDP ingress + DNS to the tenant's existing Cloudflare tunnel.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

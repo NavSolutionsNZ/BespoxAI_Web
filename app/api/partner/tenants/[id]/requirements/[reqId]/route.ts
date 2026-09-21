@@ -32,8 +32,9 @@ const REQ_INCLUDE = {
 // GET /api/partner/tenants/[id]/requirements/[reqId]
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string; reqId: string } }
+  props: { params: Promise<{ id: string; reqId: string }> }
 ) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -61,8 +62,9 @@ export async function GET(
 // Partners act on behalf of the tenant — same customer-side actions
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string; reqId: string } }
+  props: { params: Promise<{ id: string; reqId: string }> }
 ) {
+  const params = await props.params;
   const session = await requirePartnerSession()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

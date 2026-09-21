@@ -91,7 +91,7 @@ function resolveEntityName(tableName: string): string | null {
     }
   }
   // Fallback: strip spaces and try directly
-  return tableName.replace(/\s+/g, '')
+  return tableName.replace(/\s+/g, '');
 }
 
 const DEV_PLAN_SYSTEM = `You are a senior Microsoft Dynamics 365 Business Central / NAV developer and technical lead with 20+ years experience. You are writing an INTERNAL development plan — not for the customer.
@@ -187,10 +187,8 @@ function sanitizeDevPlanJSON(raw: string): string {
 }
 
 // POST /api/requirements/[id]/dev-plan — SUPERADMIN ONLY
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if ((session.user as any).role !== 'superadmin')
