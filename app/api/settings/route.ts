@@ -84,7 +84,19 @@ export async function PATCH(req: NextRequest) {
     if (!isNaN(p) && p >= 0 && p <= 65535) data.testNavManagementPort = p || 7045
   }
   if (testServerSeparate !== undefined) data.testServerSeparate = Boolean(testServerSeparate)
-  if (testAgentUrl       !== undefined) data.testAgentUrl       = testAgentUrl    || null
+  if (testAgentUrl       !== undefined) {
+    // The portal sends this tenant's API key to this URL when deploying to test,
+    // so it must be a BespoxAI tunnel hostname, never an arbitrary server.
+    if (testAgentUrl) {
+      let ok = false
+      try {
+        const u = new URL(String(testAgentUrl))
+        ok = u.protocol === 'https:' && u.hostname.endsWith('.bespoxai.com') && !u.username && !u.password
+      } catch { ok = false }
+      if (!ok) return NextResponse.json({ error: 'Test agent URL must be an https://….bespoxai.com tunnel address.' }, { status: 400 })
+    }
+    data.testAgentUrl = testAgentUrl || null
+  }
   if (testTunnelToken    !== undefined) data.testTunnelToken    = testTunnelToken  || null
   if (testAgentPort !== undefined) {
     const p = parseInt(testAgentPort, 10)

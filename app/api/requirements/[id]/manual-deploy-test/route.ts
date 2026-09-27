@@ -7,6 +7,7 @@
  * deployment note recording who deployed and when.
  */
 
+import { TEST_DEPLOY_STATUSES } from '@/lib/tenants'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
@@ -31,6 +32,8 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
   })
   if (!requirement)
     return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
+  if (!TEST_DEPLOY_STATUSES.includes(requirement.status))
+    return NextResponse.json({ error: 'Deploy to test is only possible once the deposit is paid and before UAT sign-off (current status: ' + requirement.status + ').' }, { status: 400 })
 
   const now      = new Date()
   const dateStr  = now.toLocaleDateString('en-NZ', { day: '2-digit', month: 'short', year: 'numeric' })

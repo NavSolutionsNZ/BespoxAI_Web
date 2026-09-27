@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from '@/lib/html-escape'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -62,30 +63,30 @@ export async function POST(req: NextRequest) {
 
   const partnerHtml = wrap(type === 'upgrade' ? `
     <p>Hi,</p>
-    <p><strong>${requesterName}</strong> from <strong>${tenantName}</strong> has requested a plan upgrade via the BespoxAI portal.</p>
+    <p><strong>${esc(requesterName)}</strong> from <strong>${esc(tenantName)}</strong> has requested a plan upgrade via the BespoxAI portal.</p>
     <p>They have reached their monthly AI token limit and would like to be upgraded to a higher plan.</p>
     <p>Please log in to the partner portal to review their account and update their plan.</p>
     <a href="${PORTAL}/partner/dashboard" style="display:inline-block;background:#0A5C46;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:600;margin:16px 0">
       View in Partner Portal →
     </a>
-    <p style="font-size:13px;color:#6b7b70">Tenant: ${tenantName} &nbsp;|&nbsp; Requested by: ${requesterName} &nbsp;|&nbsp; Email: ${user.email}</p>
+    <p style="font-size:13px;color:#6b7b70">Tenant: ${esc(tenantName)} &nbsp;|&nbsp; Requested by: ${esc(requesterName)} &nbsp;|&nbsp; Email: ${esc(user.email)}</p>
   ` : `
     <p>Hi,</p>
-    <p><strong>${requesterName}</strong> from <strong>${tenantName}</strong> has requested that their Business Central / NAV system connection be set up.</p>
+    <p><strong>${esc(requesterName)}</strong> from <strong>${esc(tenantName)}</strong> has requested that their Business Central / NAV system connection be set up.</p>
     <p>Please log in to the partner portal, navigate to the BCAgent tab for this client, and download and run the installer on their server.</p>
     <a href="${PORTAL}/partner/dashboard" style="display:inline-block;background:#0A5C46;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:600;margin:16px 0">
       View in Partner Portal →
     </a>
-    <p style="font-size:13px;color:#6b7b70">Tenant: ${tenantName} &nbsp;|&nbsp; Requested by: ${requesterName} &nbsp;|&nbsp; Email: ${user.email}</p>
+    <p style="font-size:13px;color:#6b7b70">Tenant: ${esc(tenantName)} &nbsp;|&nbsp; Requested by: ${esc(requesterName)} &nbsp;|&nbsp; Email: ${esc(user.email)}</p>
   `)
 
   const superadminHtml = wrap(`
     <p>Hi,</p>
     <p>A <strong>${type === 'upgrade' ? 'plan upgrade' : 'system connection'} request</strong> has been submitted by a partner-managed client.</p>
     <ul style="font-size:14px;line-height:2">
-      <li><strong>Tenant:</strong> ${tenantName}</li>
-      <li><strong>Partner:</strong> ${partnerName}</li>
-      <li><strong>Requested by:</strong> ${requesterName} (${user.email})</li>
+      <li><strong>Tenant:</strong> ${esc(tenantName)}</li>
+      <li><strong>Partner:</strong> ${esc(partnerName)}</li>
+      <li><strong>Requested by:</strong> ${esc(requesterName)} (${esc(user.email)})</li>
       <li><strong>Type:</strong> ${type === 'upgrade' ? 'Plan upgrade' : 'Connection setup'}</li>
     </ul>
     <p style="font-size:13px;color:#6b7b70">This is for your records. The partner has been notified directly.</p>

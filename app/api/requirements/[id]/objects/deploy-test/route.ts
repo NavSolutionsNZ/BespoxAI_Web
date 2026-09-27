@@ -10,6 +10,7 @@
  * maxDuration: 60s (Hobby). Bump to 300 on Vercel Pro for large object sets.
  */
 
+import { isBespoxTunnelUrl, TEST_DEPLOY_STATUSES } from '@/lib/tenants'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   })
   if (!requirement)
     return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
+  if (!TEST_DEPLOY_STATUSES.includes(requirement.status))
+    return NextResponse.json({ error: 'Deploy to test is only possible once the deposit is paid and before UAT sign-off (current status: ' + requirement.status + ').' }, { status: 400 })
 
   const { snapshotId } = await req.json().catch(() => ({})) as { snapshotId?: string }
   if (!snapshotId)
@@ -49,6 +52,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     }, { status: 400 })
 
   // Use separate test agent URL if configured, otherwise use production agent
+  if (tenant.testServerSeparate && tenant.testAgentUrl && !isBespoxTunnelUrl(tenant.testAgentUrl))
+    return NextResponse.json({ error: 'The test agent URL is not a BespoxAI tunnel address — update it in Settings.' }, { status: 400 })
+
   const agentBase = (tenant.testServerSeparate && tenant.testAgentUrl)
     ? tenant.testAgentUrl.replace(/\/$/, '')
     : 'https://' + tenant.tunnelSubdomain + '-agent.bespoxai.com'

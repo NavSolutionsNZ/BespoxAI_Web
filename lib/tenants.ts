@@ -95,3 +95,16 @@ export function buildODataUrl(
   const base = `${tenant.agentBaseUrl}/${tenant.bcInstance}/ODataV4/Company('${tenant.bcCompany}')/${entity}`
   return params ? `${base}?${params}` : base
 }
+
+/** True for https URLs on a BespoxAI tunnel hostname — the only places the
+ *  portal may send a tenant's agent API key. */
+export function isBespoxTunnelUrl(value: string | null | undefined): boolean {
+  if (!value) return false
+  try {
+    const u = new URL(value)
+    return u.protocol === 'https:' && u.hostname.endsWith('.bespoxai.com') && !u.username && !u.password
+  } catch { return false }
+}
+
+/** Requirement states from which a (re)deploy to the test environment is allowed. */
+export const TEST_DEPLOY_STATUSES = ['deposit_paid', 'in_development', 'in_uat', 'uat_rejected']

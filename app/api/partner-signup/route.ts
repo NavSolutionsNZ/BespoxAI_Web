@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from '@/lib/html-escape'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
           <span style="font-size:20px;font-weight:700;color:#F4EFE4">Bespox<span style="color:#C8952A">AI</span></span>
         </div>
         <div style="background:#f7f5f0;padding:28px 32px;border-radius:0 0 12px 12px;border:1px solid #e8e4dc;border-top:none;line-height:1.7;font-size:14px;color:#2a3a2e">
-          <p>Hi ${contactName},</p>
+          <p>Hi ${esc(contactName)},</p>
           <p>Thanks for applying to become a BespoxAI Partner. Please verify your email address to complete your application.</p>
           <p style="margin:20px 0">
             <a href="${verifyUrl}" style="background:#0A5C46;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">

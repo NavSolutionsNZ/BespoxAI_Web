@@ -17,6 +17,7 @@
  * maxDuration: 60s (Hobby). Bump to 300 on Vercel Pro for large object sets.
  */
 
+import { isBespoxTunnelUrl, TEST_DEPLOY_STATUSES } from '@/lib/tenants'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   requirePartnerSession,
@@ -56,6 +57,8 @@ export async function POST(
   })
   if (!requirement)
     return NextResponse.json({ error: 'Requirement not found' }, { status: 404 })
+  if (!TEST_DEPLOY_STATUSES.includes(requirement.status))
+    return NextResponse.json({ error: 'Deploy to test is only possible once the deposit is paid and before UAT sign-off (current status: ' + requirement.status + ').' }, { status: 400 })
 
   if (!partnerCanDeploy(session, requirement.assignedDeveloperId))
     return NextResponse.json({ error: 'Only the assigned developer or a partner admin can deploy.' }, { status: 403 })
@@ -75,6 +78,9 @@ export async function POST(
     return NextResponse.json({
       error: 'Test NAV database not configured for this client tenant.',
     }, { status: 400 })
+
+  if (tenant.testServerSeparate && tenant.testAgentUrl && !isBespoxTunnelUrl(tenant.testAgentUrl))
+    return NextResponse.json({ error: 'The test agent URL is not a BespoxAI tunnel address — update it in Settings.' }, { status: 400 })
 
   const agentBase = (tenant.testServerSeparate && tenant.testAgentUrl)
     ? tenant.testAgentUrl.replace(/\/$/, '')

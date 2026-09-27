@@ -5,6 +5,7 @@
  * the superadmin via email.
  */
 
+import { escapeHtml as esc } from '@/lib/html-escape'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
@@ -76,10 +77,10 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
       to:      admin.email,
       subject: `✓ UAT Approved — ${requirement.title}`,
       html: `
-        <p>Hi ${admin.name ?? 'there'},</p>
-        <p><strong>${customerName}</strong> at <strong>${tenantName}</strong> has signed off UAT for:</p>
+        <p>Hi ${esc(admin.name ?? 'there')},</p>
+        <p><strong>${esc(customerName)}</strong> at <strong>${esc(tenantName)}</strong> has signed off UAT for:</p>
         <blockquote style="border-left:3px solid #0A5C46;padding-left:12px;margin:12px 0">
-          <strong>${requirement.title}</strong>
+          <strong>${esc(requirement.title)}</strong>
         </blockquote>
         <p>Approved at: ${now.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>
         <p>The requirement is now ready for production deployment when you are.</p>

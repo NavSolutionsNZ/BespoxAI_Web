@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from '@/lib/html-escape'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -64,8 +65,8 @@ export async function POST(req: Request) {
             ['Notes',         notes || '—'],
           ].map(([label, value]) => `
             <tr style="border-bottom:1px solid #D6D9D4">
-              <td style="padding:10px 12px;font-weight:600;color:#3B5249;width:160px">${label}</td>
-              <td style="padding:10px 12px;color:#040E09">${value}</td>
+              <td style="padding:10px 12px;font-weight:600;color:#3B5249;width:160px">${esc(label)}</td>
+              <td style="padding:10px 12px;color:#040E09">${esc(value)}</td>
             </tr>
           `).join('')}
         </table>

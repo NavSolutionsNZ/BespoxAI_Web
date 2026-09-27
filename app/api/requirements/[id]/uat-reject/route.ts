@@ -15,6 +15,7 @@
  *   Sets uatRejectedAt, clears testDeployedAt, notifies superadmin.
  */
 
+import { escapeHtml as esc } from '@/lib/html-escape'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
@@ -175,12 +176,12 @@ Respond ONLY with valid JSON, no markdown:
       to:      admin.email,
       subject: `✕ UAT Rejected — ${requirement.title}`,
       html: `
-        <p>Hi ${admin.name ?? 'there'},</p>
-        <p><strong>${customerName}</strong> at <strong>${tenantName}</strong> has rejected UAT for:</p>
+        <p>Hi ${esc(admin.name ?? 'there')},</p>
+        <p><strong>${esc(customerName)}</strong> at <strong>${esc(tenantName)}</strong> has rejected UAT for:</p>
         <blockquote style="border-left:3px solid #A32D2D;padding-left:12px;margin:12px 0">
-          <strong>${requirement.title}</strong>
+          <strong>${esc(requirement.title)}</strong>
         </blockquote>
-        <p><strong>Reason:</strong> ${reason}</p>
+        <p><strong>Reason:</strong> ${esc(reason)}</p>
         ${confirm ? '<p><em>(Customer confirmed rejection after scope-creep check)</em></p>' : ''}
         <p>A new deployment cycle is required. The test deployment has been cleared.</p>
         <p style="margin-top:20px;font-size:12px;color:#888">BespoxAI — automated notification</p>

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     where:  { id: params.id },
     select: {
       id: true, title: true, tenantId: true, status: true,
-      prodApprovedAt: true, prodDeployedAt: true,
+      prodApprovedAt: true, prodDeployedAt: true, testDeploySnapshotId: true,
       tenant: { select: { name: true, tunnelSubdomain: true, apiKey: true } },
       user:   { select: { name: true, email: true } },
     },
@@ -46,6 +46,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   const { snapshotId } = await req.json().catch(() => ({})) as { snapshotId?: string }
   if (!snapshotId)
     return NextResponse.json({ error: 'snapshotId required' }, { status: 400 })
+  // Production gets exactly what the customer tested and signed off
+  if (snapshotId !== requirement.testDeploySnapshotId)
+    return NextResponse.json({ error: 'Only the snapshot deployed to test and approved in UAT can go to production.' }, { status: 400 })
 
   const tenant = requirement.tenant
   if (!tenant?.tunnelSubdomain)
