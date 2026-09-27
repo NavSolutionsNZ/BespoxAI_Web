@@ -13,6 +13,7 @@ import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
 import { addRdpIngress, createRdpDnsRecord } from '@/lib/cloudflare'
+import { RDP_PROVISIONING_ENABLED, RDP_PROVISIONING_DISABLED_MESSAGE } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user || (session.user as any).role !== 'superadmin')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  if (!RDP_PROVISIONING_ENABLED)
+    return NextResponse.json({ error: RDP_PROVISIONING_DISABLED_MESSAGE }, { status: 403 })
 
   const { tenantId } = await req.json().catch(() => ({}))
   if (!tenantId)

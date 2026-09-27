@@ -12,6 +12,14 @@ import { encryptWithKeyEnv, decryptWithKeyEnv, isEncryptedValue } from './crypto
 
 const KEY_ENV = 'RDP_PASSWORD_ENCRYPTION_KEY'
 
+// Interim kill switch (security item 2c). Provisioning publishes
+// {sub}-rdp.bespoxai.com -> rdp://localhost:3389 with no Cloudflare Access
+// policy, so anyone running `cloudflared access rdp` can reach the server.
+// Off until Access gating, Independent MFA and customer consent ship.
+export const RDP_PROVISIONING_ENABLED = false
+export const RDP_PROVISIONING_DISABLED_MESSAGE =
+  'RDP provisioning is temporarily disabled while access controls are being added.'
+
 export function generateRdpPassword(): string {
   const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
   const lower   = 'abcdefghjkmnpqrstuvwxyz'

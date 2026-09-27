@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePartnerSession, assertTenantBelongsToPartner } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
 import { addRdpIngress, createRdpDnsRecord } from '@/lib/cloudflare'
+import { RDP_PROVISIONING_ENABLED, RDP_PROVISIONING_DISABLED_MESSAGE } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,9 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
   const params = await props.params;
   const session = await requirePartnerSession('partner_admin')
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!RDP_PROVISIONING_ENABLED) {
+    return NextResponse.json({ error: RDP_PROVISIONING_DISABLED_MESSAGE }, { status: 403 })
+  }
 
   try {
     await assertTenantBelongsToPartner(params.id, session.partnerAccountId)
