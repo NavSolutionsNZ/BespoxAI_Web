@@ -464,3 +464,14 @@ model PartnerSignupRequest {
   activatedAt   DateTime?
   createdAt     DateTime  @default(now())
 }
+
+// Fixed-window rate-limit counters (lib/rate-limit.ts). One row per key, e.g.
+// 'login:email:alice@x.com'; updated with a single atomic upsert. Rows older
+// than a day are swept occasionally.
+model RateLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+
+  @@index([windowStart])
+}

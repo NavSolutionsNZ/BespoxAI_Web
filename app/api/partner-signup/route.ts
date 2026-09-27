@@ -7,6 +7,7 @@ import {
   COMPANY_EMAIL_REQUIRED_MESSAGE,
 } from '@/lib/email-domains'
 import crypto from 'crypto'
+import { RATE_LIMITS, clientIp, hitAndCheck, tooManyMessage } from '@/lib/rate-limit'
 
 const PORTAL = process.env.NEXTAUTH_URL ?? 'https://bespoxai.com'
 
@@ -32,6 +33,10 @@ function generateSlug(name: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Each request sends an email — limit per IP
+  if (await hitAndCheck('partner-signup:ip:' + clientIp(req.headers), RATE_LIMITS.signupIp))
+    return NextResponse.json({ error: tooManyMessage(RATE_LIMITS.signupIp.windowSec) }, { status: 429 })
+
   const body = await req.json().catch(() => ({}))
   const {
     companyName, contactName, email, phone, address,

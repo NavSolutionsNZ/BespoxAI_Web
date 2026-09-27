@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { RATE_LIMITS, clientIp, hitAndCheck, tooManyMessage } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  const { token, email, password } = await req.json()
+  if (await hitAndCheck('reset-submit:ip:' + clientIp(req.headers), RATE_LIMITS.resetSubmitIp))
+    return NextResponse.json({ error: tooManyMessage(RATE_LIMITS.resetSubmitIp.windowSec) }, { status: 429 })
+
+  const { token, email, password } = await req.json().catch(() => ({}))
   if (!token || !email || !password)
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   if (password.length < 8)

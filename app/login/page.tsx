@@ -42,7 +42,10 @@ function LoginForm() {
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
     
-    if (res?.error) {
+    if (res?.error === 'RateLimited') {
+      // Thrown by lib/auth.ts (LOGIN_RATE_LIMITED) after too many failed attempts
+      setError('Too many sign-in attempts. Please wait 15 minutes and try again, or reset your password.')
+    } else if (res?.error) {
       setError('Invalid email or password. Please try again.')
     } else if (res?.ok) {
       // Check user type to ensure they're using the correct portal

@@ -2,6 +2,15 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './db'
+import { RATE_LIMITS, clientIp, isLimited, hit, reset, tooManyMessage } from './rate-limit'
+
+// Compared against when the email is unknown or the account can't sign in, so
+// every failed attempt costs one bcrypt comparison and response time doesn't
+// reveal which emails have accounts. (Cost 12, matching stored hashes.)
+const DUMMY_HASH = '$2a$12$1EB1WG1bQCZ1o7WMio7nnuLDWu35hBAfCLK2ZGq0AXremEhEJwMb6'
+
+// Shown on the login page when sign-in is throttled (see app/login/page.tsx).
+export const LOGIN_RATE_LIMITED = 'RateLimited'
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
@@ -18,21 +27,39 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null
 
+        const email    = credentials.email.toLowerCase().trim()
+        const emailKey = 'login:email:' + email
+        const ipKey    = 'login:ip:' + clientIp((req as any)?.headers)
+
+        // Throttle before doing any work. Only failures are counted, so a
+        // user who signs in successfully is never slowed down.
+        if (await isLimited(emailKey, RATE_LIMITS.loginEmail) || await isLimited(ipKey, RATE_LIMITS.loginIp)) {
+          console.warn('[auth] sign-in throttled', emailKey, ipKey)
+          throw new Error(LOGIN_RATE_LIMITED)
+        }
+        const fail = async () => {
+          await Promise.all([hit(emailKey, RATE_LIMITS.loginEmail), hit(ipKey, RATE_LIMITS.loginIp)])
+          return null
+        }
+
         const user = await (prisma as any).user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
+          where: { email },
           include: { tenant: { select: { id: true, name: true, active: true, navProduct: true, tier: true, partnerAccountId: true } } },
         })
 
-        if (!user || !user.active) return null
+        // Always run one bcrypt comparison (see DUMMY_HASH)
+        const valid = await bcrypt.compare(credentials.password, user?.password || DUMMY_HASH)
+
+        if (!user || !user.active) return fail()
         // Partner users may not have an active direct tenant — check tenant only for non-partner users
         const partnerCheck = await (prisma as any).partnerUser.findFirst({ where: { userId: user.id } })
-        if (!partnerCheck && !user.tenant?.active) return null
+        if (!partnerCheck && !user.tenant?.active) return fail()
 
-        const valid = await bcrypt.compare(credentials.password, user.password)
-        if (!valid) return null
+        if (!valid) return fail()
+        await reset(emailKey)
 
         // Check if this user is also a PartnerUser
         const partnerUser = await (prisma as any).partnerUser.findFirst({

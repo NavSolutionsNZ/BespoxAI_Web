@@ -1,9 +1,12 @@
 /**
  * POST /api/settings/profile/change-password
  *
- * Changes the user's password. When clearMustChange=true (first-login flow),
- * also clears the mustChangePassword flag without requiring current password.
- * Otherwise validates current password first.
+ * Changes the user's password. The current password is required unless the
+ * account is flagged mustChangePassword (first sign-in with a temporary
+ * password, which the user has just typed to get here). clearMustChange=true
+ * only has that effect when the flag is actually set — otherwise anyone
+ * holding a signed-in session could set a new password without knowing the
+ * old one.
  *
  * Body: { currentPassword?, newPassword, clearMustChange? }
  */
@@ -13,6 +16,7 @@ import { getServerSession }          from 'next-auth'
 import { authOptions }               from '@/lib/auth'
 import { prisma }                    from '@/lib/db'
 import bcrypt                        from 'bcryptjs'
+import { RATE_LIMITS, isLimited, hit, reset, tooManyMessage } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,13 +40,20 @@ export async function POST(req: NextRequest) {
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  // If NOT a forced first-login change, require current password
-  if (!clearMustChange) {
+  // Skip the current-password check only for a genuine forced first-login change
+  const forcedChange = clearMustChange === true && user.mustChangePassword === true
+  if (!forcedChange) {
     if (!currentPassword)
       return NextResponse.json({ error: 'Current password is required.' }, { status: 400 })
+    const limitKey = 'change-pw:user:' + userId
+    if (await isLimited(limitKey, RATE_LIMITS.changePwUser))
+      return NextResponse.json({ error: tooManyMessage(RATE_LIMITS.changePwUser.windowSec) }, { status: 429 })
     const valid = await bcrypt.compare(currentPassword, user.password)
-    if (!valid)
+    if (!valid) {
+      await hit(limitKey, RATE_LIMITS.changePwUser)
       return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 })
+    }
+    await reset(limitKey)
   }
 
   const hashed = await bcrypt.hash(newPassword, 12)

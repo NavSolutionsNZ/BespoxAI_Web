@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { RATE_LIMITS, isLimited, hit, reset, tooManyMessage } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,8 +28,15 @@ export async function PATCH(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { password: true } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
+  const limitKey = 'change-pw:user:' + userId
+  if (await isLimited(limitKey, RATE_LIMITS.changePwUser))
+    return NextResponse.json({ error: tooManyMessage(RATE_LIMITS.changePwUser.windowSec) }, { status: 429 })
   const valid = await bcrypt.compare(currentPassword, user.password)
-  if (!valid) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
+  if (!valid) {
+    await hit(limitKey, RATE_LIMITS.changePwUser)
+    return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
+  }
+  await reset(limitKey)
 
   const hashed = await bcrypt.hash(newPassword, 12)
   await prisma.user.update({ where: { id: userId }, data: { password: hashed } })
