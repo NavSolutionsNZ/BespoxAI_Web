@@ -8,34 +8,11 @@ export const dynamic = 'force-dynamic'
 
 function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
-// ── DEBUG MODE ────────────────────────────────────────────────────────────────
-const DEBUG = process.env.SETTINGS_DEBUG === 'true'
-const DEBUG_ENTITIES: Record<string, boolean> = {
-  Customer: true, Vendor: true, Item: true,
-  SalesInvoice: true, SalesCrMemo: true, SalesOrder: true, SalesShipment: true,
-  PurchaseInvoice: true, PurchaseOrder: true,
-  GeneralLedgerEntry: true, GLAccount: true,
-  CustomerLedgerEntry: true, VendorLedgerEntry: true,
-  BankAccount: true, ItemLedgerEntry: true,
-  SalesInvoiceSalesLines: false, PurchaseInvoicePurchLines: false,
-  Employee: false, FixedAsset: false,
-}
-// ── END DEBUG ─────────────────────────────────────────────────────────────────
-
 // POST /api/settings/discover — query BC OData $metadata to find published entities
 export async function POST() {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  // ── DEBUG ──
-  if (DEBUG) return NextResponse.json({
-    ok: true, entityConfig: DEBUG_ENTITIES,
-    discovered: Object.keys(DEBUG_ENTITIES).length,
-    enabled: Object.values(DEBUG_ENTITIES).filter(Boolean).length,
-    _debug: true,
-  })
-  // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
   const tenant = await getTenantById(tenantId)

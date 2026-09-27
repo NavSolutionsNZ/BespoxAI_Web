@@ -7,10 +7,6 @@ export const dynamic = 'force-dynamic'
 
 function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
-// ── DEBUG MODE ────────────────────────────────────────────────────────────────
-const DEBUG = process.env.SETTINGS_DEBUG === 'true'
-// ── END DEBUG ─────────────────────────────────────────────────────────────────
-
 // PATCH /api/settings/entities — save entity config toggles
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -21,10 +17,6 @@ export async function PATCH(req: NextRequest) {
   const { entityConfig } = body
   if (!entityConfig || typeof entityConfig !== 'object')
     return NextResponse.json({ error: 'entityConfig object required' }, { status: 400 })
-
-  // ── DEBUG ──
-  if (DEBUG) return NextResponse.json({ ok: true, entityConfig, _debug: true })
-  // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
   await (prisma as any).tenant.update({ where: { id: tenantId }, data: { entityConfig } })

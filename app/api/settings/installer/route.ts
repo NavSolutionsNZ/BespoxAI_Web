@@ -12,10 +12,6 @@ export const dynamic = 'force-dynamic'
 
 function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
-// ── DEBUG MODE ────────────────────────────────────────────────────────────────
-const DEBUG = process.env.SETTINGS_DEBUG === 'true'
-// ── END DEBUG ─────────────────────────────────────────────────────────────────
-
 const AGENT_VERSION = '3.7'
 
 
@@ -54,38 +50,6 @@ export async function POST(req: NextRequest) {
   if (bcAuthMode === 'Basic' && (!serviceAccountUser || !serviceAccountPassword)) {
     return NextResponse.json({ error: 'Basic auth mode requires a Service Account username and password (the Windows account that will run the agent).' }, { status: 400 })
   }
-
-  // ── DEBUG ── Generates a clearly-marked dummy installer zip
-  if (DEBUG) {
-    const debugPs1 = `# ============================================================
-# BespoxAI BCAgent Installer — DEBUG MODE PREVIEW
-# This is NOT a real installer. Set SETTINGS_DEBUG=false to
-# generate a real installer with live credentials.
-# ============================================================
-#
-# Would be configured with:
-#   BC Username : ${bcUsername}
-#   BC Instance : ${bcInstance || '(from tenant)'}
-#   BC Company  : ${bcCompany || '(from tenant)'}
-#   BC Port     : ${bcPort}
-#   Agent Port  : ${agentPort}
-#   Tunnel Token: [fetched from Cloudflare at generation time]
-#   API Key     : [from tenant record]
-#
-Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
-`
-    const zip = new JSZip()
-    zip.file('Install-BespoxAI-DEBUG.ps1', debugPs1)
-    const buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
-    return new NextResponse(buf as unknown as BodyInit, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': 'attachment; filename="Install-BespoxAI-DEBUG.zip"',
-      },
-    })
-  }
-  // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
   let tenant = await (prisma as any).tenant.findUnique({

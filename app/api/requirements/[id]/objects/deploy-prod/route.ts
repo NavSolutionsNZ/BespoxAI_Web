@@ -47,28 +47,6 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (!snapshotId)
     return NextResponse.json({ error: 'snapshotId required' }, { status: 400 })
 
-  // ── DEBUG — simulate successful production deployment ─────────────────────
-  if (process.env.SETTINGS_DEBUG === 'true') {
-    const mockResults = [
-      { filename: 'Codeunit_80_Sales-Post.txt',            imported: true, compiled: true, error: '' },
-      { filename: 'Table_50100_Custom_Approval_Entry.txt', imported: true, compiled: true, error: '' },
-    ]
-    const now = new Date()
-    await (prisma as any).requirement.update({
-      where: { id: params.id },
-      data:  { prodDeployedAt: now, prodDeploySnapshotId: snapshotId },
-    })
-    notifyCustomerProdDeployed({
-      tenantId:      requirement.tenantId,
-      customerEmail: requirement.user.email,
-      customerName:  requirement.user.name ?? '',
-      title:         requirement.title,
-      tenantName:    requirement.tenant?.name ?? '',
-    }).catch(() => {})
-    return NextResponse.json({ success: true, results: mockResults, snapshotId, deployedAt: now.toISOString(), _debug: true })
-  }
-  // ── END DEBUG ─────────────────────────────────────────────────────────────
-
   const tenant = requirement.tenant
   if (!tenant?.tunnelSubdomain)
     return NextResponse.json({ error: 'Tenant tunnel not configured' }, { status: 400 })

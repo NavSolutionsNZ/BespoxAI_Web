@@ -9,29 +9,6 @@ function isTenantAdmin(role: string) {
   return role === 'tenant_admin' || role === 'superadmin'
 }
 
-// ── DEBUG MODE ────────────────────────────────────────────────────────────────
-// Set SETTINGS_DEBUG=true in .env.local to test without a live tenant.
-// Remove this block (and _debug fields) before going to production.
-const DEBUG = process.env.SETTINGS_DEBUG === 'true'
-const DEBUG_TENANT = {
-  id: 'debug-tenant-001', name: 'Demo Company Ltd',
-  tunnelSubdomain: 'demo', bcInstance: 'BC', bcCompany: 'Demo Company Ltd',
-  active: true, country: 'NZ',
-  entityConfig: { Customer: true, Vendor: true, Item: true, SalesInvoice: true,
-    PurchaseInvoice: true, GeneralLedgerEntry: true, CustomerLedgerEntry: true,
-    VendorLedgerEntry: true, SalesOrder: false, PurchaseOrder: false,
-    ItemLedgerEntry: true, BankAccount: true, GLAccount: true },
-  tunnelId: 'debug-tunnel-id', createdAt: '2026-01-15T00:00:00.000Z',
-  navProduct: 'BC', navVersion: 'Business Central 2024 Wave 2 (BC25)',
-  lastCU: 'CU2', bcPort: 7048, agentPort: 9099,
-  bcUsername: null, bcAuthMode: 'Windows', serviceAccountUser: null,
-  navDatabaseServer: 'localhost', navDatabaseName: '', navServerInstance: '',
-  testNavDatabaseServer: 'localhost', testNavDatabaseName: '', testNavServerInstance: '',
-  testBcPort: 0, testBcInstance: '', testBcCompany: '', testNavManagementPort: 7045,
-  _debug: true,
-}
-// ── END DEBUG ─────────────────────────────────────────────────────────────────
-
 // Shared by GET and PATCH so the two can't drift. Deliberately excludes apiKey
 // (the BCAgent credential) and rdpPassword — neither is read by the settings page.
 const SETTINGS_TENANT_SELECT = {
@@ -54,10 +31,6 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // ── DEBUG ──
-  if (DEBUG) return NextResponse.json({ tenant: DEBUG_TENANT })
-  // ── END DEBUG ──
-
   const tenantId = (session.user as any).tenantId
   const tenant = await prisma.tenant.findUnique({
     where:  { id: tenantId },
@@ -73,9 +46,6 @@ export async function PATCH(req: NextRequest) {
   if (!session?.user || !isTenantAdmin(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-
-  // ── DEBUG — allow PATCH to fall through to real DB save even in debug mode ──
-  // ── END DEBUG ──
 
   const tenantId = (session.user as any).tenantId
   const body = await req.json().catch(() => ({}))

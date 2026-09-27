@@ -64,52 +64,6 @@ export async function POST(
   if (!snapshotId)
     return NextResponse.json({ error: 'snapshotId required' }, { status: 400 })
 
-  // ── DEBUG — simulate successful test deployment, write real DB fields ──────
-  if (process.env.SETTINGS_DEBUG === 'true') {
-    const mockResults = [
-      { filename: 'Codeunit_80_Sales-Post.txt',            imported: true, compiled: true,  error: '' },
-      { filename: 'Table_50100_Custom_Approval_Entry.txt', imported: true, compiled: true,  error: '' },
-      { filename: 'Page_50300_Custom_Approval_List.txt',   imported: true, compiled: false,
-        error: 'NAV compilation skipped in debug mode' },
-    ]
-    const now = new Date()
-    const reqForNotify = await (prisma as any).requirement.findFirst({
-      where:  { id: params.reqId, tenantId: params.id },
-      select: { title: true, user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
-    })
-    await (prisma as any).requirement.update({
-      where: { id: params.reqId },
-      data:  {
-        status:               'in_uat',
-        testDeployedAt:       now,
-        testDeploySnapshotId: snapshotId,
-        uatApprovedAt:        null,
-        uatApprovedById:      null,
-        uatRejectedAt:        null,
-        uatRejectedById:      null,
-        uatRejectionReason:   null,
-        uatRejectionAnalysis: null,
-      },
-    })
-    if (reqForNotify) {
-      notifyCustomerReadyForUAT({
-        tenantId:      requirement.tenantId,
-        customerEmail: reqForNotify.user.email,
-        customerName:  reqForNotify.user.name ?? '',
-        title:         reqForNotify.title,
-        tenantName:    reqForNotify.tenant?.name ?? '',
-      }).catch(e => console.error('[partner deploy-test] notify UAT:', e))
-    }
-    return NextResponse.json({
-      success:    true,
-      results:    mockResults,
-      snapshotId,
-      deployedAt: now.toISOString(),
-      _debug:     true,
-    })
-  }
-  // ── END DEBUG ─────────────────────────────────────────────────────────────
-
   const tenant = await (prisma as any).tenant.findFirst({
     where:  { id: requirement.tenantId },
     select: { tunnelSubdomain: true, apiKey: true, testNavDatabaseName: true, testServerSeparate: true, testAgentUrl: true },
