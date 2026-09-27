@@ -207,7 +207,7 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form method="post" onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
               <label style={{
                 display: 'block', fontFamily: 'var(--font-mono)',
