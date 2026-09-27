@@ -12,8 +12,7 @@
 
 import { isBespoxTunnelUrl, TEST_DEPLOY_STATUSES } from '@/lib/tenants'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession }          from 'next-auth'
-import { authOptions }               from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma }                    from '@/lib/db'
 import { notifyCustomerReadyForUAT } from '@/lib/notifications'
 
@@ -22,9 +21,8 @@ export const maxDuration = 60  // bump to 300 on Vercel Pro
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  if (!session?.user || (session.user as any).role !== 'superadmin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const requirement = await (prisma as any).requirement.findUnique({
     where:  { id: params.id },

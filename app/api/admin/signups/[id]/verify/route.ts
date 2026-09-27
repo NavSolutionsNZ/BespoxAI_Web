@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -10,9 +9,8 @@ export const dynamic = 'force-dynamic'
 // the email link was clicked but the DB column name mismatch prevented the update)
 export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  if (!session?.user || (session.user as any).role !== 'superadmin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const signup = await prisma.signupRequest.findUnique({ where: { id: params.id } })
   if (!signup) return NextResponse.json({ error: 'Not found' }, { status: 404 })

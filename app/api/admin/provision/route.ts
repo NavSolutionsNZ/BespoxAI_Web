@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import { createTunnel, configureTunnelIngress, createDnsRecord } from '@/lib/cloudflare'
 import crypto from 'crypto'
@@ -18,9 +17,8 @@ export const dynamic = 'force-dynamic'
 //   5. Seed tenant in DB
 // Returns: tenant record (installer can then be downloaded via /api/admin/installer/[id])
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || (session.user as any).role !== 'superadmin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const body = await req.json().catch(() => ({}))
   const { name, tunnelSubdomain, bcInstance, bcCompany, agentPort = 9099, customerEmail, customerName } = body

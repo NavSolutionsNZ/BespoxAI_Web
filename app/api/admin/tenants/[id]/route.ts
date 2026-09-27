@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -8,9 +7,8 @@ export const dynamic = 'force-dynamic'
 // PATCH /api/admin/tenants/[id] — update tenant fields including tier
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  if (!session?.user || (session.user as any).role !== 'superadmin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const body = await req.json().catch(() => ({}))
   const { active, name, tier, trialEndsAt } = body

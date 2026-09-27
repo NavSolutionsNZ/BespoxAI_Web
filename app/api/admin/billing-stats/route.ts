@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 
@@ -53,10 +52,8 @@ function tierCounts(items: { priceId: string | null }[]) {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const now        = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())

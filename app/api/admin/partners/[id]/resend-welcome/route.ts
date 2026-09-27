@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import { notifyPartnerWelcome } from '@/lib/notifications'
 import bcrypt from 'bcryptjs'
@@ -12,10 +11,8 @@ import crypto from 'crypto'
 // (hashed at activation), so a new one is issued.
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  if ((session?.user as any)?.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const partner = await (prisma as any).partnerAccount.findUnique({
     where: { id: params.id },

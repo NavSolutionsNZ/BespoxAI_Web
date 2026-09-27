@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import { unstable_cache } from 'next/cache'
 
@@ -53,9 +52,8 @@ const getCachedStats = unstable_cache(
 
 // GET /api/admin/stats — query usage stats per tenant
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || (session.user as any).role !== 'superadmin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const stats = await getCachedStats()
   return NextResponse.json(stats)

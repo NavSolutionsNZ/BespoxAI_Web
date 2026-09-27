@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -13,9 +12,8 @@ export const dynamic = 'force-dynamic'
 // route's response shape and 404 handling.
 export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  if (!session?.user || (session.user as any).role !== 'superadmin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireSuperadmin()
+  if (session instanceof NextResponse) return session
 
   const tenant = await prisma.tenant.findUnique({ where: { id: params.id } })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
