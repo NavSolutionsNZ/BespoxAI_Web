@@ -2,7 +2,8 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './db'
-import { RATE_LIMITS, clientIp, isLimited, hit, reset, tooManyMessage } from './rate-limit'
+import { RATE_LIMITS, clientIp, isLimited, hit, reset } from './rate-limit'
+import { SESSION_IDLE_STANDARD, applySessionPolicy } from './session-policy'
 
 // Compared against when the email is unknown or the account can't sign in, so
 // every failed attempt costs one bcrypt comparison and response time doesn't
@@ -13,7 +14,9 @@ const DUMMY_HASH = '$2a$12$1EB1WG1bQCZ1o7WMio7nnuLDWu35hBAfCLK2ZGq0AXremEhEJwMb6
 export const LOGIN_RATE_LIMITED = 'RateLimited'
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: 'jwt' },
+  // Cookie lifetime = the longest idle timeout. Shorter per-role idle limits and
+  // the 7-day absolute limit are enforced in the jwt callback (lib/session-policy.ts).
+  session: { strategy: 'jwt', maxAge: SESSION_IDLE_STANDARD },
 
   pages: {
     signIn: '/login',
@@ -134,6 +137,10 @@ export const authOptions: NextAuthOptions = {
         token.partnerSlug      = (user as any).partnerSlug ?? null
         token.managedByPartner = (user as any).managedByPartner ?? false
       }
+      // Idle and absolute session limits — throws (and NextAuth signs the user
+      // out) when either has passed; otherwise records this as activity.
+      applySessionPolicy(token as any, !!user)
+
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
         const fresh = await (prisma as any).user.findUnique({

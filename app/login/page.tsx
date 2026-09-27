@@ -32,6 +32,9 @@ function LoginForm() {
     if (msg === 'wrong-portal') {
       setError('You tried to sign in to the wrong portal. Please enter your password.')
     }
+    if (msg === 'idle') {
+      setError('You were signed out after a period of inactivity. Please sign in again.')
+    }
   }, [searchParams])
 
   async function handleSubmit(e: FormEvent) {
