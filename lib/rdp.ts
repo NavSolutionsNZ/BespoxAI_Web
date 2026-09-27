@@ -71,14 +71,18 @@ export function decryptRdpPassword(stored: string): string {
 // Consent changes are recorded in the same log as evidence of the customer's decision:
 //   'consent_granted' / 'consent_withdrawn'
 // RDP lifecycle and every sign-in decision from the Access live check:
-//   'provisioned' / 'deprovisioned' / 'connect_allowed' / 'connect_denied'
+//   'provisioned' / 'deprovisioned' / 'access_check_allowed' / 'access_check_denied'
+// An access check runs when someone asks Cloudflare for a sign-in code — before
+// they have proved they own the mailbox — so 'allowed' means the portal would
+// let that email in, not that a connection was made. (Rows before this change
+// used 'connect_allowed' / 'connect_denied' for the same event.)
 // Callers await this *before* returning the password, so if the audit write
 // fails the password is not disclosed.
 export type RdpAccessAction =
   | 'reveal' | 'installer_download'
   | 'consent_granted' | 'consent_withdrawn'
   | 'provisioned' | 'deprovisioned'
-  | 'connect_allowed' | 'connect_denied'
+  | 'access_check_allowed' | 'access_check_denied'
 
 export async function logRdpAccess(entry: {
   tenantId:  string

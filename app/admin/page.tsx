@@ -170,7 +170,7 @@ function AdminPageInner() {
   const [provisionMode, setProvisionMode]         = useState(true)   // true = auto-provision, false = manual
   const [provisionSteps, setProvisionSteps]       = useState<string[]>([])
   const [rdpLoading, setRdpLoading]               = useState<string | null>(null)  // tenantId currently provisioning
-  const [rdpError, setRdpError]                   = useState<Record<string, string>>({})
+  const [rdpMsg, setRdpMsg]                       = useState<Record<string, { type: 'ok' | 'err'; msg: string }>>({})
   const [rdpCopied, setRdpCopied]                 = useState<string | null>(null)  // tenantId just copied
 
   // New user form
@@ -432,33 +432,44 @@ function AdminPageInner() {
   }
 
   async function provisionRdp(tenantId: string) {
-    setRdpLoading(tenantId); setRdpError(e => ({ ...e, [tenantId]: '' }))
+    setRdpLoading(tenantId); clearRdpMsg(tenantId)
     try {
       const res  = await fetch('/api/admin/provision-rdp', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId }),
       })
-      const data = await res.json()
-      if (!res.ok) setRdpError(e => ({ ...e, [tenantId]: data.error || 'Provision failed' }))
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) showRdpMsg(tenantId, 'err', data.error || 'Provision failed')
+      else showRdpMsg(tenantId, 'ok', 'RDP live behind Access: ' + data.rdpHostname)
     } catch (err: any) {
-      setRdpError(e => ({ ...e, [tenantId]: err.message || 'Network error' }))
+      showRdpMsg(tenantId, 'err', err.message || 'Network error')
     } finally {
       setRdpLoading(null)
     }
   }
 
+  // RDP row messages: shown under the row's buttons. Errors stay until the next
+  // RDP action on that row; successes clear after 6s.
+  function clearRdpMsg(tenantId: string) {
+    setRdpMsg(m => { const n = { ...m }; delete n[tenantId]; return n })
+  }
+  function showRdpMsg(tenantId: string, type: 'ok' | 'err', msg: string) {
+    setRdpMsg(m => ({ ...m, [tenantId]: { type, msg } }))
+    if (type === 'ok') setTimeout(() => setRdpMsg(m => (m[tenantId]?.msg === msg ? (() => { const n = { ...m }; delete n[tenantId]; return n })() : m)), 6000)
+  }
+
   // The password is never in the tenant list; each copy is a logged reveal.
   async function copyRdpPassword(tenantId: string) {
-    setRdpError(e => ({ ...e, [tenantId]: '' }))
+    clearRdpMsg(tenantId)
     try {
       const res  = await fetch('/api/admin/tenants/' + tenantId + '/rdp-password', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) { setRdpError(e => ({ ...e, [tenantId]: data.error || 'Reveal failed' })); return }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { showRdpMsg(tenantId, 'err', data.error || 'Reveal failed'); return }
       await navigator.clipboard.writeText(data.password)
       setRdpCopied(tenantId)
       setTimeout(() => setRdpCopied(c => (c === tenantId ? null : c)), 2000)
     } catch (err: any) {
-      setRdpError(e => ({ ...e, [tenantId]: err.message || 'Copy failed' }))
+      showRdpMsg(tenantId, 'err', err.message || 'Copy failed')
     }
   }
 
@@ -745,7 +756,11 @@ function AdminPageInner() {
                               style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 4, fontSize: 12 }}
                             >{rdpCopied === t.id ? '✓' : '⧉'}</button>
                           ) : null}
-                          {rdpError[t.id] ? <span title={rdpError[t.id]} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginLeft: 6 }}>✗</span> : null}
+                          {rdpMsg[t.id] ? (
+                            <div role={rdpMsg[t.id].type === 'err' ? 'alert' : 'status'} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.4, marginTop: 6, whiteSpace: 'normal', color: rdpMsg[t.id].type === 'err' ? '#A32D2D' : '#0A5C46' }}>
+                              {(rdpMsg[t.id].type === 'err' ? '✗ ' : '✓ ') + rdpMsg[t.id].msg}
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     ))}

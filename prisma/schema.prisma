@@ -299,7 +299,7 @@ model RdpAccessLog {
   tenantId  String
   userId    String
   userEmail String
-  action    String   // reveal | installer_download | consent_granted | consent_withdrawn | provisioned | deprovisioned | connect_allowed | connect_denied
+  action    String   // reveal | installer_download | consent_granted | consent_withdrawn | provisioned | deprovisioned | access_check_allowed | access_check_denied (older rows: connect_allowed | connect_denied)
   createdAt DateTime @default(now())
 
   @@index([tenantId, createdAt])

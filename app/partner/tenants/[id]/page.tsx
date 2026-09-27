@@ -222,6 +222,7 @@ function FieldError({ msg }: { msg: string }) {
 // ── Remote support (RDP) panel ───────────────────────────────────────────────
 
 const RDP_LOCAL_PORT = 13389   // local port for `cloudflared access rdp` (3389 is often in use)
+const ACCESS_MFA_ENROL_URL = 'https://bespoxai.cloudflareaccess.com/AddMfaDevice'
 
 function CodeLine({ text }: { text: string }) {
   return (
@@ -306,15 +307,22 @@ function RdpPanel({ tenant, canProvision, rdpLoading, onProvision }: {
             Remote support active
           </div>
           <div>
-            <p style={muted}>1. One-time setup on your PC — install cloudflared:</p>
+            <p style={muted}>
+              {'1. One-time setup — register an authenticator app for your portal email at '}
+              <a href={ACCESS_MFA_ENROL_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--rb-accent)' }}>bespoxai.cloudflareaccess.com/AddMfaDevice</a>
+              {' (sign in with the emailed code, then choose Authenticator application).'}
+            </p>
+          </div>
+          <div>
+            <p style={muted}>2. One-time setup on your PC — install cloudflared, then open a new terminal:</p>
             <CodeLine text="winget install --id Cloudflare.cloudflared" />
           </div>
           <div>
-            <p style={muted}>2. Start the connection. A browser opens: sign in with your portal email (a code is emailed to you), then your authenticator app.</p>
+            <p style={muted}>3. Start the connection and leave it running. When you connect in the next step, a browser opens: sign in with your portal email (a code is emailed to you), then your authenticator code.</p>
             <CodeLine text={'cloudflared access rdp --hostname ' + host + ' --url rdp://localhost:' + RDP_LOCAL_PORT} />
           </div>
           <div>
-            <p style={muted}>{'3. Open Remote Desktop to localhost:' + RDP_LOCAL_PORT + ' and sign in as:'}</p>
+            <p style={muted}>{'4. Open Remote Desktop to localhost:' + RDP_LOCAL_PORT + ' and sign in as:'}</p>
             <CodeLine text={'.\\' + supportUser} />
           </div>
           {tenant.rdpHasPassword ? (

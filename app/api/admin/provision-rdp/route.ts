@@ -6,8 +6,8 @@
  * route and DNS record to the tenant's tunnel. Requires customer consent.
  * See lib/rdp-access.ts.
  *
- * Not gated by RDP_PROVISIONING_ENABLED: that switch holds back the partner
- * button until superadmins have verified the flow end to end.
+ * Not gated by RDP_PROVISIONING_ENABLED: that switch only controls partner
+ * provisioning, so superadmins can still provision if it is turned off.
  */
 
 import { NextRequest, NextResponse } from 'next/server'

@@ -6,7 +6,9 @@
 // requires an External Evaluation, so at every sign-in Cloudflare asks
 // /api/rdp/access-check/{tenantId} whether this email may connect, and
 // canConnectRdp() answers from the database. Nothing is copied into Cloudflare
-// that could drift, and every attempt is written to RdpAccessLog.
+// that could drift, and every check is written to RdpAccessLog. Cloudflare runs
+// the check before it emails a sign-in code, so people who aren't allowed never
+// receive one.
 
 import crypto from 'crypto'
 import { prisma } from './db'

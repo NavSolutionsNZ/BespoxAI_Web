@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ tenantId
         tenantId:  params.tenantId,
         userId:    decision.userId,
         userEmail: email,
-        action:    decision.allowed ? 'connect_allowed' : 'connect_denied',
+        action:    decision.allowed ? 'access_check_allowed' : 'access_check_denied',
       })
       if (!decision.allowed) console.warn('[rdp-access-check] denied', params.tenantId, email, decision.reason)
     } else {
