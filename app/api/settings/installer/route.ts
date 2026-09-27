@@ -16,7 +16,7 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = '3.6'
+const AGENT_VERSION = '3.7'
 
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant

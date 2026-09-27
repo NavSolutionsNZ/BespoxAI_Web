@@ -91,9 +91,14 @@ Domains: `bespoxai.com` (main portal), `partners.bespoxai.com` (partner portal â
 
 ### BCAgent
 - Edit `scripts/Install-BespoxAI.ps1` only â€” it contains the embedded agent code.
-- **Bump the version in all three places** on every push: `$AgentVersion` and
-  `$Version` in the PS1, and `AGENT_VERSION` in
-  `app/api/settings/installer/route.ts`.
+- **Bump the version in all four places** on every push: `$AgentVersion` and
+  `$Version` in the PS1, and `AGENT_VERSION` in both
+  `app/api/settings/installer/route.ts` and
+  `app/api/partner/tenants/[id]/installer/route.ts`.
+- The agent only answers requests from the same machine (the Cloudflare tunnel
+  connects via localhost) and checks the API key once, before any route, with
+  `Test-ApiKey` (case-sensitive, constant-time). Don't add per-route key checks
+  or compare keys with `-eq`.
 - Default agent port is **9099** (not 8080).
 - BCAgent runs as the BC user account, never as SYSTEM.
 - Use `HttpWebRequest`, not `HttpClient` (WinHTTP-backed NTLM).

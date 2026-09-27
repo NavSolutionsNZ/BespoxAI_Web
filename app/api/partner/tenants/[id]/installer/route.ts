@@ -9,7 +9,7 @@ import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.6'
+const AGENT_VERSION = '3.7'
 
 
 // GET /api/partner/tenants/[id]/installer — returns current agent version

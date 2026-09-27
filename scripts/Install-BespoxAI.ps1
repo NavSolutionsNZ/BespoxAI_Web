@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.6'
+$AgentVersion  = '3.7'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -280,9 +280,12 @@ $AgentCode = @'
   v2.3: /bespoxai/objects/export — NAV C/AL object export.
   v3.5: Basic auth mode (NavUserPassword BC instances). /bespoxai/diagnose
         connection checklist.
+  v3.7: Only answers requests from this machine (the Cloudflare tunnel connects
+        via localhost); anything from the network gets 403. One API key check
+        for every route, case-sensitive and constant-time.
 #>
 
-$Version    = '3.6'
+$Version    = '3.7'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -334,6 +337,37 @@ function Read-RequestBody {
     return [System.Text.Encoding]::UTF8.GetString($bodyBytes, 0, $offset)
 }
 
+# Requests must come from this machine. cloudflared runs here and connects to
+# http://localhost:<port>, so the tunnel is always loopback; anything arriving
+# from the LAN is refused before the API key is even looked at. (HttpListener's
+# '+' prefix binds every interface, and a 'localhost' prefix would only filter
+# on the Host header, so the source address is checked here instead.)
+function Test-LoopbackRequest {
+    param($req)
+    $ep = $req.RemoteEndPoint
+    if (-not $ep) { return $false }
+    $addr = $ep.Address
+    if ([System.Net.IPAddress]::IsLoopback($addr)) { return $true }
+    $s = $addr.ToString()
+    return ($s -like '::ffff:127.*')   # IPv4-mapped loopback
+}
+
+# Compare the X-BespoxAI-Key header with the configured key. PowerShell's -eq is
+# case-insensitive and stops at the first differing character; this compares
+# SHA-256 digests byte by byte, case-sensitively, in constant time.
+function Test-ApiKey {
+    param([string]$candidate)
+    if ([string]::IsNullOrEmpty($candidate) -or [string]::IsNullOrEmpty($ApiKey)) { return $false }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $a = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($candidate))
+        $b = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes([string]$ApiKey))
+    } finally { $sha.Dispose() }
+    $diff = 0
+    for ($i = 0; $i -lt $a.Length; $i++) { $diff = $diff -bor ($a[$i] -bxor $b[$i]) }
+    return ($diff -eq 0)
+}
+
 # HTTP listener
 $Listener = [System.Net.HttpListener]::new()
 $Listener.Prefixes.Add("http://+:$ListenPort/")
@@ -363,11 +397,20 @@ while ($Listener.IsListening) {
     try {
         $rawUrl = $req.RawUrl
 
-        # Health check — requires valid API key so dashboard shows red on config mismatch
+        # Only this machine (the Cloudflare tunnel) may talk to the agent
+        if (-not (Test-LoopbackRequest $req)) {
+            Write-Log "403 Forbidden — request from $($req.RemoteEndPoint) is not from this machine"
+            $res.StatusCode = 403
+            $res.Close()
+            continue
+        }
+
+        $keyOk = Test-ApiKey $req.Headers['X-BespoxAI-Key']
+
+        # Health check — reports 401 on a bad key so the dashboard shows red on config mismatch
         if ($rawUrl -eq '/health' -or $rawUrl -eq '/health/') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            $statusCode  = if ($incomingKey -eq $ApiKey) { 200 } else { 401 }
-            $statusMsg   = if ($incomingKey -eq $ApiKey) { 'ok' } else { 'unauthorized' }
+            $statusCode  = if ($keyOk) { 200 } else { 401 }
+            $statusMsg   = if ($keyOk) { 'ok' } else { 'unauthorized' }
             $body = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"$statusMsg`",`"version`":`"$Version`"}")
             $res.StatusCode = $statusCode
             $res.ContentType = 'application/json'
@@ -377,10 +420,16 @@ while ($Listener.IsListening) {
             continue
         }
 
+        # Every other route needs the API key
+        if (-not $keyOk) {
+            Write-Log "401 Unauthorized — bad or missing API key from $($req.RemoteEndPoint)"
+            $res.StatusCode = 401
+            $res.Close()
+            continue
+        }
+
         # BCAgent-local: Write deployment files to server (v2.4)
         if ($rawUrl -like '/bespoxai/objects/write*' -and $req.HttpMethod -eq 'POST') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $bodyLen   = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
@@ -428,8 +477,6 @@ while ($Listener.IsListening) {
 
         # BCAgent-local: Deploy from folder to test or production (v2.4)
         if ($rawUrl -like '/bespoxai/objects/deploy*' -and $req.HttpMethod -eq 'POST') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $bodyLen   = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
@@ -558,8 +605,6 @@ while ($Listener.IsListening) {
 
         # BCAgent-local: List regression/deployment snapshots (v2.4)
         if ($rawUrl -like '/bespoxai/objects/snapshots*' -and $req.HttpMethod -eq 'GET') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $result = @{ regression = @(); deployments = @() }
                 foreach ($tree in @(@{key='regression';path="C:\$BrandName\Regression"}, @{key='deployments';path="C:\$BrandName\Deployments"})) {
@@ -592,8 +637,6 @@ while ($Listener.IsListening) {
 
         # BCAgent-local: Cleanup snapshots (v2.4)
         if ($rawUrl -like '/bespoxai/objects/cleanup*' -and $req.HttpMethod -eq 'POST') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $bodyLen = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
@@ -623,8 +666,6 @@ while ($Listener.IsListening) {
 
         # BCAgent-local: NAV object export endpoint (v2.3→v2.4 + regression save)
         if ($rawUrl -like '/bespoxai/objects/export*' -and $req.HttpMethod -eq 'POST') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $bodyLen   = $req.ContentLength64
                 $bodyBytes = New-Object byte[] $bodyLen
@@ -777,8 +818,6 @@ while ($Listener.IsListening) {
 
         # BCAgent-local: Sync config from portal (v2.4)
         if ($rawUrl -like '/bespoxai/update-config*' -and $req.HttpMethod -eq 'POST') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
             try {
                 $bodyStr = Read-RequestBody $req
                 $newCfg  = $bodyStr | ConvertFrom-Json
@@ -846,8 +885,6 @@ while ($Listener.IsListening) {
         # step by step so a failure shows exactly where it broke, instead of one
         # opaque timeout. Read-only against BC; never writes.
         if ($rawUrl -eq '/bespoxai/diagnose' -or $rawUrl -eq '/bespoxai/diagnose/') {
-            $incomingKey = $req.Headers['X-BespoxAI-Key']
-            if ($incomingKey -ne $ApiKey) { $res.StatusCode = 401; $res.Close(); continue }
 
             $checks = New-Object System.Collections.ArrayList
             $whoAmI = if ($AuthMode -eq 'Basic') { "BC user '$BCUser' (Basic auth)" } else { "$env:USERDOMAIN\$env:USERNAME (NTLM)" }
@@ -932,15 +969,6 @@ while ($Listener.IsListening) {
             $res.ContentLength64 = $respBytes.Length
             $res.OutputStream.Write($respBytes, 0, $respBytes.Length)
             $res.Close(); continue
-        }
-
-        # Validate API key
-        $incomingKey = $req.Headers['X-BespoxAI-Key']
-        if ($incomingKey -ne $ApiKey) {
-            Write-Log "401 Unauthorized — bad or missing API key from $($req.RemoteEndPoint)"
-            $res.StatusCode = 401
-            $res.Close()
-            continue
         }
 
         # Build target URL
