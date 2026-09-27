@@ -108,26 +108,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:
 .perp-tag{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;padding:.4rem .7rem;border:1px solid rgba(244,239,228,.15);border-radius:6px;color:rgba(244,239,228,.7)}
 @media(max-width:900px){.perp-grid{grid-template-columns:1fr;gap:2rem}}
 
-/* PROBLEM */
-.prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(244,239,228,.07);border-radius:12px;overflow:hidden;margin-top:3rem}
-.prob-card{background:var(--ink);padding:2rem;position:relative;overflow:hidden}
-.prob-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--forest),transparent)}
-.pnum{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;color:rgba(26,146,114,.35);line-height:1;margin-bottom:1rem}
-.ptitle{font-size:14px;font-weight:500;color:var(--cream);margin-bottom:.75rem}
-.pdesc{font-size:13px;color:rgba(244,239,228,.7);line-height:1.7}
-.pstat{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(244,239,228,.06)}
-
-/* COMPARISON */
-.comp-box{background:rgba(244,239,228,.025);border:1px solid rgba(244,239,228,.07);border-radius:14px;padding:2.5rem;margin-top:3rem}
-.comp-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--cream);margin-bottom:1.5rem}
-.cr{display:flex;padding:.7rem 0;border-bottom:1px solid rgba(244,239,228,.05);font-size:13px;align-items:center}
-.cr:last-child{border-bottom:none}
-.cf{flex:1.5;color:rgba(244,239,228,.75)}
-.cb{flex:1;color:var(--jade);font-weight:500}
-.cc{flex:1;color:rgba(244,239,228,.65)}
-.ch{flex:1;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,239,228,.65)}
-.ch.bx{color:var(--jade)}
-
 /* PRODUCTS */
 .prod-sec{background:rgba(244,239,228,.015);padding:7rem 3rem}
 .prod-list{display:flex;flex-direction:column;gap:1px;background:rgba(244,239,228,.07);border-radius:14px;overflow:hidden;margin-top:3.5rem}
@@ -181,22 +161,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:
 .dw-ibox{flex:1;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.08);border-radius:8px;padding:.6rem 1rem;font-size:13px;color:rgba(244,239,228,.65);font-family:'DM Sans',sans-serif}
 .dw-send{background:var(--forest);width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0}
 
-/* ROI */
-.roi-wrap{background:var(--forest);color:var(--cream)}
-.roi-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;margin-top:3rem}
-.roi-nums{display:flex;flex-direction:column;gap:1.5rem}
-.roi-row{display:flex;justify-content:space-between;align-items:center;padding-bottom:1.5rem;border-bottom:1px solid rgba(244,239,228,.12)}
-.roi-row:last-child{border-bottom:none;padding-bottom:0}
-.roi-label{font-size:13px;color:rgba(244,239,228,.7)}
-.roi-val{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--cream)}
-.roi-r-desc{color:rgba(244,239,228,.7);font-size:14px;line-height:1.8}
-.roi-hl{margin-top:2rem;padding:1.5rem;background:rgba(244,239,228,.09);border-radius:12px}
-.roi-hl-l{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,239,228,.65);margin-bottom:.75rem}
-.roi-hl-v{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:var(--cream)}
-.roi-hl-s{font-size:13px;color:rgba(244,239,228,.65);margin-top:.5rem}
-.roi-cta{margin-top:1.5rem;display:inline-block;background:rgba(244,239,228,.12);color:var(--cream);border:1px solid rgba(244,239,228,.2);padding:.9rem 1.8rem;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
-.roi-cta:hover{background:rgba(244,239,228,.2)}
-
 /* TESTIMONIALS */
 .testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3rem}
 .testi-card{background:rgba(244,239,228,.03);border:1px solid rgba(244,239,228,.07);border-radius:12px;padding:1.75rem}
@@ -231,31 +195,13 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
 .fr a:hover{color:rgba(244,239,228,.75)}
 .fc{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,228,.65)}
 
-/* ANIMS */
-/* PAIN-POINT TABS */
-.pp-tabs{padding:5rem 3rem 0}
-.pp-inner{max-width:1100px;margin:0 auto}
-.pp-label{display:block;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--jade);margin-bottom:1.5rem;text-align:center}
-.pp-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:2rem;justify-content:center}
-.pp-button{background:transparent;border:1px solid rgba(244,239,228,.15);border-radius:8px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(244,239,228,.7);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:8px}
-.pp-button:hover{background:rgba(26,146,114,.12);border-color:rgba(26,146,114,.3);color:var(--cream)}
-.pp-button.active{background:var(--jade);border-color:var(--jade);color:var(--ink);font-weight:500}
-.pp-content{display:none;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.08);border-radius:12px;padding:2.5rem;animation:fadeUp .3s ease}
-.pp-content.visible{display:block}
-.pp-content h3{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;color:var(--cream);margin-bottom:1.25rem;letter-spacing:-.01em}
-.pp-content p{font-size:14px;line-height:1.8;color:rgba(244,239,228,.75);margin-bottom:1.25rem}
-.pp-content p:last-of-type{margin-bottom:1.75rem}
-.pp-cta{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream);background:var(--forest);border:1px solid rgba(26,146,114,.4);padding:11px 18px;border-radius:8px;cursor:pointer;transition:all .2s}
-.pp-cta:hover{background:var(--jade);color:var(--ink);border-color:var(--jade)}
-
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
 @media(max-width:900px){
-  .hero-body,.roi-grid{grid-template-columns:1fr}
+  .hero-body{grid-template-columns:1fr}
   .hero-title{font-size:52px}
-  .prob-grid,.testi-grid{grid-template-columns:1fr}
+  .testi-grid{grid-template-columns:1fr}
   .sec{padding:4rem 1.5rem}
   .prod-item{grid-template-columns:1fr}
   .prod-price{text-align:left}
@@ -273,121 +219,76 @@ footer{padding:2.5rem 3rem;border-top:1px solid rgba(244,239,228,.06);display:fl
 .flow-grid{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:0;align-items:start;margin-top:3.5rem}
 .flow-step{background:var(--white);border:1px solid var(--fog);border-radius:14px;padding:2rem}
 .flow-num{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;line-height:1;color:var(--forest);opacity:.3;margin-bottom:.75rem}
-.flow-icon{font-size:28px;margin-bottom:.75rem}
 .flow-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--ink);margin-bottom:.75rem}
 .flow-desc{font-size:13px;color:var(--slate);line-height:1.75}
-.flow-get{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--fog);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest)}
-.flow-arrow{display:flex;align-items:center;justify-content:center;padding:0 1rem;padding-top:5.5rem;color:var(--jade);font-size:22px;opacity:.45}
-
-/* PARTNER FLEX */
-.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:3rem}
-.pf-card{border-radius:14px;padding:2rem}
-.pf-card.take{background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.1)}
-.pf-card.go{background:rgba(26,146,114,.08);border:1px solid rgba(26,146,114,.22)}
-.pf-badge{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:1.25rem}
-.pf-badge.take{background:rgba(244,239,228,.08);color:rgba(244,239,228,.65)}
-.pf-badge.go{background:rgba(26,146,114,.18);color:var(--jade)}
-.pf-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--cream);margin-bottom:.75rem}
-.pf-desc{font-size:13px;color:rgba(244,239,228,.7);line-height:1.75;margin-bottom:1.5rem}
-.pf-list{list-style:none;display:flex;flex-direction:column;gap:.65rem}
-.pf-list li{font-size:12px;color:rgba(244,239,228,.65);display:flex;gap:8px;align-items:flex-start;line-height:1.55}
-.pf-list li::before{content:'→';color:var(--jade);flex-shrink:0}
-.pf-list.go li::before{content:'✓'}
-
-/* PIPELINE STAGES */
-.pipe-vis{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(4,14,9,.12);border-radius:12px;overflow:hidden;margin-top:3rem}
-.pipe-stage{background:var(--white);padding:1.5rem 1rem;text-align:center}
-.pipe-stage-num{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.14em;color:rgba(4,14,9,.3);margin-bottom:.5rem}
-.pipe-stage-icon{font-size:20px;margin-bottom:.5rem}
-.pipe-stage-name{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--ink);margin-bottom:.4rem}
-.pipe-stage-desc{font-size:12px;color:var(--slate);line-height:1.5}
-.pipe-stage.active-stage{background:rgba(10,92,70,.07);border-top:2px solid var(--forest)}
-.pipe-stage.active-stage .pipe-stage-name{color:var(--forest)}
-
-
-/* CONNECTED INTELLIGENCE */
-.ci-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:start;margin-top:3rem}
-.ci-items{display:flex;flex-direction:column;gap:1px;background:rgba(244,239,228,.07);border-radius:12px;overflow:hidden;align-self:start}
-.ci-item{background:var(--ink);padding:1.25rem 1.5rem;display:flex;gap:1rem;align-items:flex-start}
-.ci-icon{font-size:18px;flex-shrink:0;margin-top:2px}
-.ci-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);margin-bottom:.35rem}
-.ci-text{font-size:12px;color:rgba(244,239,228,.65);line-height:1.6}
-.own-panel{margin-top:3rem;background:rgba(244,239,228,.04);border:1px solid rgba(244,239,228,.09);border-radius:12px;padding:2rem 2.5rem;display:grid;grid-template-columns:auto 1fr;gap:2rem;align-items:start}
-.own-icon{font-size:28px;margin-top:4px}
-.own-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:var(--cream);margin-bottom:1rem}
-.own-list{display:flex;flex-direction:column;gap:.6rem}
-.own-list li{font-size:12px;color:rgba(244,239,228,.7);display:flex;gap:8px;align-items:flex-start;line-height:1.55}
-.own-list li::before{content:'✓';color:var(--jade);flex-shrink:0;font-size:12px}
-@media(max-width:900px){
-  .ci-grid{grid-template-columns:1fr}
-  .own-panel{grid-template-columns:1fr}
-  .own-icon{display:none}
-}
+.flow-arrow{display:flex;align-items:center;justify-content:center;padding:0 1rem;padding-top:3.5rem;color:var(--jade);font-size:22px;opacity:.45}
 
 /* STARTER PILL */
 .p-starter{background:rgba(200,149,42,.15);color:var(--gold)}
 
-/* KNOW BEFORE YOU COMMIT panel */
-.kbc-wrap{background:var(--forest);border-radius:16px;padding:2.5rem 3rem;display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-top:4rem}
-.kbc-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:rgba(244,239,228,.65);margin-bottom:1rem}
-.kbc-title{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;line-height:1.1;color:var(--cream);margin-bottom:1rem}
-.kbc-desc{font-size:14px;color:rgba(244,239,228,.75);line-height:1.8}
-.kbc-list{list-style:none;display:flex;flex-direction:column;gap:.85rem;margin-top:.5rem}
-.kbc-list li{font-size:13px;color:rgba(244,239,228,.8);display:flex;gap:10px;align-items:flex-start;line-height:1.6}
-.kbc-list li::before{content:'→';color:var(--amber);flex-shrink:0;margin-top:1px}
-
-/* MIGRATION ANALYSER CALLOUT */
-.mig-callout{margin-top:2.5rem;background:var(--ink);border:1px solid rgba(244,239,228,.1);border-radius:12px;padding:2rem 2.5rem;display:grid;grid-template-columns:1.6fr 1fr;gap:2.5rem;align-items:center}
-.mig-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:.6rem}
-.mig-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--cream);margin-bottom:.75rem}
-.mig-desc{font-size:12px;color:rgba(244,239,228,.65);line-height:1.7}
-.mig-phases{display:flex;flex-direction:column;gap:.5rem}
-.mig-phase{background:rgba(244,239,228,.05);border:1px solid rgba(244,239,228,.1);border-radius:8px;padding:.85rem 1.1rem}
-.mig-phase-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,228,.65);margin-bottom:.3rem}
-.mig-phase-text{font-size:12px;color:rgba(244,239,228,.75)}
-
-
-@media(max-width:900px){
-  .kbc-wrap{grid-template-columns:1fr;padding:2rem}
-  .mig-callout{grid-template-columns:1fr}
-}
 @media(max-width:900px){
   .flow-grid{grid-template-columns:1fr;gap:1.25rem}
   .flow-arrow{display:none}
-  .pf-grid{grid-template-columns:1fr}
-  .pipe-vis{grid-template-columns:1fr 1fr}
 }
 
 /* links styled as buttons; anchor offsets under the fixed nav */
-a.btn-ns,a.btn-np,a.btn-p,a.btn-g,a.pp-cta,a.roi-cta,.nav-logo{text-decoration:none}
+a.btn-ns,a.btn-np,a.btn-p,a.btn-g,.nav-logo{text-decoration:none}
 a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 [id^="sec-"]{scroll-margin-top:72px}
 /* legible decorative numbers and labels on light backgrounds */
-.pnum{color:rgba(26,146,114,.85)}
 .flow-num{opacity:.75}
 .sec-label{color:var(--forest)}.sec-label::before{background:var(--forest)}
 .dark-section .sec-label{color:var(--jade)}
 .dark-section .sec-label::before{background:var(--jade)}
 .sec-label.light{color:rgba(244,239,228,.8)}
 .sec-label.light::before{background:rgba(244,239,228,.6)}
-.pipe-stage-num{color:var(--slate)}
 .dw-note a{text-decoration:underline}
+.testi-wrap{border-top:1px solid rgba(244,239,228,.07)}
 /* comfortable tap targets for footer links */
 .fr a{padding:.6rem .15rem;display:inline-block}
 /* text on the forest-green panels needs more opacity than on ink */
-.kbc-label,.kbc-desc,.roi-label,.roi-r-desc,.roi-hl-l,.roi-hl-s{color:rgba(244,239,228,.88)}
-.pf-badge.go,.p-free,.ch.bx,.cb,.trace{color:#3FBF98}
+.p-free,.trace{color:#3FBF98}
 .trace{opacity:1}
 /* SECURITY */
 #sec-security{border-top:1px solid rgba(244,239,228,.07)}
 .trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(244,239,228,.08);border-radius:14px;overflow:hidden;margin-top:3rem}
 .trust-card{background:var(--ink);padding:2rem}
-.trust-icon{font-size:22px;margin-bottom:.9rem}
 .trust-title{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:400;color:var(--cream);margin-bottom:.6rem;line-height:1.2}
 .trust-desc{font-size:13.5px;color:rgba(244,239,228,.75);line-height:1.75}
 .trust-foot{margin-top:2rem;font-size:13.5px;color:rgba(244,239,228,.7);line-height:1.7}
 .trust-foot a{color:var(--jade)}
 @media(max-width:900px){.trust-grid{grid-template-columns:1fr}}
+/* PRODUCTS (use cases) */
+.uc-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:1.5rem;margin-top:3rem}
+.uc-card{background:var(--white);border:1px solid var(--fog);border-radius:16px;padding:2.25rem;display:flex;flex-direction:column}
+.uc-main{background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.uc-for{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--forest);margin-bottom:.75rem}
+.uc-main .uc-for{color:var(--amber)}
+.uc-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1.1;margin-bottom:1rem;color:var(--ink)}
+.uc-main .uc-title{color:var(--cream)}
+.uc-desc{font-size:14.5px;line-height:1.8;color:var(--slate);margin-bottom:1.25rem}
+.uc-main .uc-desc{color:rgba(244,239,228,.8)}
+.uc-list{list-style:none;display:flex;flex-direction:column;gap:.55rem;margin-bottom:1.75rem}
+.uc-list li{font-size:13.5px;color:var(--slate);display:flex;gap:8px;line-height:1.55}
+.uc-main .uc-list li{color:rgba(244,239,228,.8)}
+.uc-list li::before{content:'✓';color:var(--forest);flex-shrink:0}
+.uc-main .uc-list li::before{color:#3FBF98}
+.uc-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-top:1.25rem;border-top:1px solid var(--fog)}
+.uc-main .uc-foot{border-top-color:rgba(244,239,228,.12)}
+.uc-price{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--ink)}
+.uc-price small{font-size:15px;color:var(--slate)}
+.uc-main .uc-price{color:var(--cream)}.uc-main .uc-price small{color:rgba(244,239,228,.7)}
+.uc-foot a{font-size:14px;font-weight:500;color:var(--forest);text-decoration:none;padding:.5rem 0}
+.uc-main .uc-foot a{color:#3FBF98}
+@media(max-width:900px){.uc-grid{grid-template-columns:1fr}}
+.build-note{margin-top:1.75rem;font-size:14px;color:var(--slate)}
+.build-note a{color:var(--forest);font-weight:500}
+.prod-feature{box-shadow:inset 3px 0 0 var(--amber)}
+.p-for{background:rgba(232,168,56,.16);color:var(--amber)}
+.sec-tight{padding-top:5rem;padding-bottom:5rem}
+.sec-tight .trust-grid{grid-template-columns:repeat(4,1fr);margin-top:2rem}
+@media(max-width:900px){.sec-tight .trust-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.sec-tight .trust-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -399,11 +300,10 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
     <span style="display:inline-flex;align-items:baseline;gap:0"><span class="nl-text">Bespox</span><span class="nl-ai">AI</span></span>
   </a>
   <ul class="nav-links">
-    <li><a href="#sec-how">How it Works</a></li>
-    <li><a href="#sec-partner">Your Partner</a></li>
-    <li><a href="#sec-security">Security</a></li>
+    <li><a href="#sec-demo">CFO Assistant</a></li>
+    <li><a href="#sec-build">Development</a></li>
     <li><a href="#sec-pricing">Pricing</a></li>
-    <li><a href="#sec-demo">Demo</a></li>
+    <li><a href="#sec-security">Security</a></li>
     <li><a href="/faq">FAQ</a></li>
     <li><a href="/about">About</a></li>
   </ul>
@@ -418,21 +318,21 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 <section class="hero">
   <div class="hero-bg"><div class="hg1"></div><div class="hg2"></div><div class="hgrid"></div></div>
   <div class="hero-in">
-    <div class="eyebrow"><div class="ey-line"></div><div class="ey-text">AI &middot; Feasibility &middot; Customisation &middot; Development &middot; NAV &amp; BC</div></div>
-    <h1 class="hero-title">Your NAV &amp; BC.<br><em>One portal.</em><br>Complete control.</h1>
+    <div class="eyebrow"><div class="ey-line"></div><div class="ey-text">CFO Assistant &middot; Feasibility &middot; Development &middot; NAV &amp; BC</div></div>
+    <h1 class="hero-title">Someone has to serve the ERP<br><em>Microsoft left behind.</em></h1>
     <div class="hero-body">
       <div>
-        <p class="hero-desc">BespoxAI manages your entire NAV and BC relationship from one place. Know whether an idea is viable before booking a consultant. Scope customisations with professionally generated specs. Receive a fixed-price quote and track development to completion. Already have a partner? Take the spec to them or let us build it.</p>
+        <p class="hero-desc">Microsoft&rsquo;s roadmap moved on. Your business didn&rsquo;t. BespoxAI brings modern AI to Dynamics NAV and Business Central on-premises &mdash; starting with the CFO Assistant: ask your system a question in plain English and get the answer from your live data, in any browser. No reports to build. No migration required.</p>
         <div class="hero-actions">
           <a class="btn-p" href="/signup">Start for Free</a>
-          <a class="btn-g" href="#sec-how">See how it works</a>
+          <a class="btn-g" href="#sec-demo">Try the CFO Assistant demo</a>
         </div>
       </div>
       <div>
         <div class="hero-stats">
+          <div class="h-stat"><div class="sv"><span>0</span></div><div class="sl">Reports to build &mdash; just ask</div></div>
+          <div class="h-stat"><div class="sv"><span>0</span></div><div class="sl">Changes to your data &mdash; answers are read-only</div></div>
           <div class="h-stat"><div class="sv"><span>0</span></div><div class="sl">Inbound ports opened &mdash; outbound-only tunnel</div></div>
-          <div class="h-stat"><div class="sv"><span>100</span>%</div><div class="sl">Fixed-price development</div></div>
-          <div class="h-stat"><div class="sv"><span>2</span></div><div class="sl">Invoices per build &mdash; deposit &amp; balance</div></div>
           <div class="h-stat"><div class="sv"><span>2009</span>+</div><div class="sl">NAV versions &mdash; plus BC on-premises</div></div>
         </div>
         <div class="hero-badge"><div class="bdot"></div><div class="badge-text"><strong>Works where Copilot doesn&rsquo;t</strong>NAV 2009&ndash;2018 &middot; BC on-premises &middot; ISV Embed</div></div>
@@ -444,7 +344,7 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 <!-- MARQUEE -->
 <div class="mq-wrap"><div class="mq-track">
   <span class="mq-item"><span class="mq-dot"></span>Feasibility Analysis</span>
-  <span class="mq-item"><span class="mq-dot"></span>CFO AI Assistant</span>
+  <span class="mq-item"><span class="mq-dot"></span>CFO Assistant</span>
   <span class="mq-item"><span class="mq-dot"></span>Fixed-Price Development</span>
   <span class="mq-item"><span class="mq-dot"></span>Requirement Scoping</span>
   <span class="mq-item"><span class="mq-dot"></span>Project Pipeline</span>
@@ -453,7 +353,7 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
   <span class="mq-item"><span class="mq-dot"></span>Bring Your Own Partner</span>
   <span class="mq-item"><span class="mq-dot"></span>Zero Open Ports</span>
   <span class="mq-item"><span class="mq-dot"></span>Feasibility Analysis</span>
-  <span class="mq-item"><span class="mq-dot"></span>CFO AI Assistant</span>
+  <span class="mq-item"><span class="mq-dot"></span>CFO Assistant</span>
   <span class="mq-item"><span class="mq-dot"></span>Fixed-Price Development</span>
   <span class="mq-item"><span class="mq-dot"></span>Requirement Scoping</span>
   <span class="mq-item"><span class="mq-dot"></span>Project Pipeline</span>
@@ -462,6 +362,120 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
   <span class="mq-item"><span class="mq-dot"></span>Bring Your Own Partner</span>
   <span class="mq-item"><span class="mq-dot"></span>Zero Open Ports</span>
 </div></div>
+
+<!-- PRODUCTS -->
+<div class="sec" style="background:var(--cream)" id="sec-products">
+<div class="sec-in">
+  <div class="sec-label">Two ways to use BespoxAI</div>
+  <h2 class="sec-h">Use one. Or both.<br><em>Pay only for what you use.</em></h2>
+  <div class="uc-grid">
+    <div class="uc-card uc-main">
+      <div class="uc-for">For finance teams</div>
+      <h3 class="uc-title">CFO Assistant</h3>
+      <p class="uc-desc">Ask about debtors, suppliers, sales, purchasing, stock and the general ledger in plain English. Answers come back as figures, tables and charts, straight from your live NAV or BC data &mdash; no report requests, no exports to Excel, no waiting on IT.</p>
+      <ul class="uc-list">
+        <li>Any browser, any device &mdash; no NAV client needed</li>
+        <li>Follow-up questions remember the conversation</li>
+        <li>Read-only: it never changes your data</li>
+      </ul>
+      <div class="uc-foot"><span class="uc-price">$299<small>/mo</small></span><a href="#sec-demo">See it answer &darr;</a></div>
+    </div>
+    <div class="uc-card">
+      <div class="uc-for">For when you need something changed</div>
+      <h3 class="uc-title">Feasibility &amp; Development</h3>
+      <p class="uc-desc">Identified a customisation your business needs? Find out in minutes whether it&rsquo;s achievable in your version and roughly what it will cost, get a spec any developer can build from, and a fixed-price quote if you&rsquo;d like us to build it.</p>
+      <ul class="uc-list">
+        <li>Grounded in your own objects and customisations</li>
+        <li>Take the spec to your own partner if you prefer</li>
+        <li>Fixed price, and nothing goes live until you approve it</li>
+      </ul>
+      <div class="uc-foot"><span class="uc-price">Free<small> to start</small></span><a href="#sec-build">How it works &darr;</a></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- DEMO -->
+<div class="dark-section sec" id="sec-demo">
+<div class="sec-in">
+  <div class="sec-label light">CFO Assistant</div>
+  <h2 class="sec-h light">Ask it something.<br><em>Go on.</em></h2>
+  <p class="sec-sub">A fictional company, Meridian Engineering Ltd, running Dynamics NAV 2017. Click a question or type your own &mdash; each answer shows which part of NAV it came from.</p>
+  <div class="demo-window">
+    <div class="dw-header">
+      <div class="dw-htitle">CFO Assistant &mdash; Meridian Engineering Ltd &middot; Dynamics NAV 2017</div>
+      <div class="dw-live"><div class="dw-ldot"></div>CONNECTED &middot; READ-ONLY</div>
+    </div>
+    <div class="dw-body" id="dw-body" tabindex="0" role="log" aria-live="polite" aria-label="Demo conversation">
+      <div class="chat-msg"><div class="av av-ai"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div><div class="bubble bai">Good morning. I&rsquo;m connected to <span class="hl">Meridian Engineering Ltd</span> with read-only access. Ask me about customers, suppliers, sales, purchasing, stock or the general ledger.</div></div>
+    </div>
+    <div class="dw-input-wrap">
+      <div class="dw-row">
+        <input class="dw-input" id="dw-input" placeholder="Ask anything about Meridian&rsquo;s finances or system&hellip;" onkeydown="if(event.key==='Enter')demoSend()"/>
+        <button class="dw-send" onclick="demoSend()" aria-label="Send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4EFE4" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+      <div class="dw-sug" id="dw-sug">
+        <button class="dw-sug-btn" onclick="demoAsk('debtors')">Who owes us the most?</button>
+        <button class="dw-sug-btn" onclick="demoAsk('suppliers')">What do we owe suppliers?</button>
+        <button class="dw-sug-btn" onclick="demoAsk('orders')">Open sales orders over $10k</button>
+        <button class="dw-sug-btn" onclick="demoAsk('stock')">Where is our stock value tied up?</button>
+      </div>
+    </div>
+  </div>
+  <div class="dw-note">Scripted demonstration with fictional data &mdash; the live product answers from <em>your</em> environment. <a href="/signup" style="color:var(--jade)">Start free &rarr;</a></div>
+</div>
+</div>
+
+<script>
+var DEMO_QA = {
+  debtors: {q:"Who owes us the most?",
+    t:"&rarr; Customer &middot; Balance (LCY) &middot; Credit Limit (LCY) &middot; sorted by balance",
+    a:"Meridian has <span class='hl'>$184,210</span> outstanding across 23 customers. The five largest balances:<br><br><span class='hl'>Hartwell Construction</span> &mdash; $31,450, and <span class='hl'>at 96% of their credit limit</span><br><span class='hl'>Pacific Marine Services</span> &mdash; $22,800<br><span class='hl'>Southern Aggregates</span> &mdash; $18,300<br><span class='hl'>Douglas &amp; Fry Ltd</span> &mdash; $11,960<br><span class='hl'>Kauri Coast Engineering</span> &mdash; $9,740<br><br>Together they&rsquo;re 51% of the ledger. Hartwell is the one to watch &mdash; another order will take them over their limit."},
+  suppliers: {q:"What do we owe suppliers?",
+    t:"&rarr; Vendor &middot; Balance (LCY) &middot; Purchases (LCY) &middot; filter Balance > 0",
+    a:"You owe <span class='hl'>$96,420</span> to 14 suppliers. The biggest:<br><br><span class='hl'>Steelcorp NZ</span> &mdash; $38,100 (your largest supplier this year at $412k purchases)<br><span class='hl'>Hydraulic Parts Direct</span> &mdash; $17,650<br><span class='hl'>Freightways Logistics</span> &mdash; $9,880<br><br>The remaining eleven total $30,790, none over $6,000."},
+  orders: {q:"Open sales orders over $10k",
+    t:"&rarr; Sales Order &middot; Sales Order Lines &middot; summed by order &middot; filter > 10,000",
+    a:"Six open orders are over $10k, worth <span class='hl'>$142,600</span> together:<br><br><span class='hl'>SO-10482</span> Hartwell Construction &mdash; $38,900, shipping 14 Aug<br><span class='hl'>SO-10477</span> Pacific Marine Services &mdash; $27,250, shipping 9 Aug<br><span class='hl'>SO-10490</span> Southern Aggregates &mdash; $24,100, released<br><br>&hellip;plus three between $10k and $20k. Note Hartwell&rsquo;s order would take them past their credit limit when invoiced."},
+  stock: {q:"Where is our stock value tied up?",
+    t:"&rarr; Item &middot; Inventory &times; Unit Cost &middot; grouped by item group",
+    a:"Inventory on hand is valued at <span class='hl'>$612,300</span> at unit cost:<br><br><span class='hl'>Hydraulic assemblies</span> &mdash; $241,000 (39%)<br><span class='hl'>Fabricated steel</span> &mdash; $176,500 (29%)<br><span class='hl'>Consumables &amp; fixings</span> &mdash; $58,200 (10%)<br><br>Twelve items worth $44,800 are marked blocked but still hold stock &mdash; worth a look before stocktake."}
+};
+var DEMO_KEYS = [
+  [/debtor|owe us|owes|receivab|customer|credit/i,'debtors'],
+  [/supplier|vendor|creditor|payab|we owe/i,'suppliers'],
+  [/order|pipeline|backlog/i,'orders'],
+  [/stock|inventory|item|warehouse/i,'stock']
+];
+var demoBusy=false;
+function demoAsk(key){ if(demoBusy)return; demoRun(DEMO_QA[key].q, key); }
+function demoSend(){
+  if(demoBusy)return;
+  var inp=document.getElementById('dw-input'); var v=inp.value.trim(); if(!v)return; inp.value='';
+  var key=null; for(var i=0;i<DEMO_KEYS.length;i++){ if(DEMO_KEYS[i][0].test(v)){ key=DEMO_KEYS[i][1]; break; } }
+  demoRun(v, key);
+}
+function demoRun(q, key){
+  demoBusy=true;
+  var body=document.getElementById('dw-body');
+  body.insertAdjacentHTML('beforeend','<div class="chat-msg user"><div class="av av-user">SM</div><div class="bubble buser"></div></div>');
+  body.lastElementChild.querySelector('.bubble').textContent=q;
+  body.scrollTop=body.scrollHeight;
+  var aiAv='<div class="av av-ai"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div>';
+  body.insertAdjacentHTML('beforeend','<div class="chat-msg" id="dw-typing">'+aiAv+'<div class="bubble bai typing"><span></span><span></span><span></span></div></div>');
+  body.scrollTop=body.scrollHeight;
+  setTimeout(function(){
+    var typ=document.getElementById('dw-typing'); if(typ)typ.remove();
+    var trace, ans;
+    if(key){ trace=DEMO_QA[key].t; ans=DEMO_QA[key].a; }
+    else { trace="&rarr; Demo environment &middot; scripted responses only";
+      ans="Good question &mdash; in the live product I&rsquo;d query Meridian&rsquo;s environment and answer it. This demo is scripted, so I only know four questions. Try one of the suggestions below, or <span class='hl'><a href=\"/signup\" style=\"color:inherit\">start free</a></span> and ask me anything."; }
+    body.insertAdjacentHTML('beforeend','<div class="chat-msg">'+aiAv+'<div class="bubble bai"><span class="trace">'+trace+'</span>'+ans+'</div></div>');
+    body.scrollTop=body.scrollHeight;
+    demoBusy=false;
+  }, 900+Math.random()*500);
+}
+</script>
 
 <!-- PERPETUAL LICENSING -->
 <div class="sec" style="background:var(--cream)" id="sec-perpetual">
@@ -486,316 +500,34 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 </div>
 </div>
 
-<!-- PROBLEM -->
-<div class="dark-section">
-<div class="sec">
+<!-- BUILD -->
+<div class="sec" style="background:var(--parchment)" id="sec-build">
 <div class="sec-in">
-  <div class="sec-label">The problem</div>
-  <h2 class="sec-h light">Your NAV &amp; BC services are fragmented.<br><em>Slow, expensive, and hard to hold accountable.</em></h2>
-  <p class="sec-sub">Whether it&rsquo;s getting answers from your data, testing whether an idea is even viable, or managing a development build, NAV and BC businesses are patching together too many relationships with too little visibility.</p>
-  <div class="prob-grid">
-    <div class="prob-card">
-      <div class="pnum">01</div>
-      <div class="ptitle">Answers that take days</div>
-      <div class="pdesc">Non-standard financial questions require IT involvement, custom reports, or manual Excel work. Finance teams routinely wait days for answers that should take seconds.</div>
-      <div class="pstat">Days lost to manual reporting, every month</div>
-    </div>
-    <div class="prob-card">
-      <div class="pnum">02</div>
-      <div class="ptitle">Ideas that die in a calendar</div>
-      <div class="pdesc">Testing whether a customisation is viable means booking a discovery session with your partner. That session takes weeks to schedule, costs consultant time, and often ends with the idea being out of budget or technically constrained. Most businesses never find out what was actually possible.</div>
-      <div class="pstat">Weeks of delay to learn an idea won&rsquo;t work</div>
-    </div>
-    <div class="prob-card">
-      <div class="pnum">03</div>
-      <div class="ptitle">Engagement bottlenecks</div>
-      <div class="pdesc">Scoping takes weeks. Quotes are vague. Change requests arrive mid-build. Most NAV and BC customisations cost far more than they should because the brief was never clearly defined from the start.</div>
-      <div class="pstat">Budget overruns are the industry norm</div>
-    </div>
-  </div>
-  <div class="comp-box">
-    <div class="comp-title">BespoxAI vs the traditional engagement model</div>
-    <div class="cr"><div class="cf"></div><div class="ch bx">BespoxAI</div><div class="ch">The traditional model</div></div>
-    <div class="cr"><div class="cf">Feasibility and cost indication</div><div class="cb">&check; In minutes, before you commit</div><div class="cc">&cross; Discovery session, weeks away</div></div>
-    <div class="cr"><div class="cf">Answers from live NAV/BC data</div><div class="cb">&check; Instant, any question</div><div class="cc">&cross; Custom reports, days of waiting</div></div>
-    <div class="cr"><div class="cf">Professionally generated requirement specs</div><div class="cb">&check; In minutes</div><div class="cc">&cross; Weeks of back-and-forth</div></div>
-    <div class="cr"><div class="cf">Fixed-price development quotes</div><div class="cb">&check; Always, quoted from the spec</div><div class="cc">&cross; Estimates only, change requests common</div></div>
-    <div class="cr"><div class="cf">Pipeline visibility into your project</div><div class="cb">&check; Real-time in your portal</div><div class="cc">&cross; Email updates at best</div></div>
-    <div class="cr"><div class="cf">Take your spec to any developer</div><div class="cb">&check; Fully open, your choice</div><div class="cc">&cross; Rarely portable in practice</div></div>
-    <div class="cr"><div class="cf">Identifies when development isn&rsquo;t needed</div><div class="cb">&check; Flagged during feasibility</div><div class="cc">&cross; No mechanism to tell you</div></div>
-  </div>
-</div>
-</div>
-</div>
-
-<!-- PAIN-POINT TABS -->
-<div class="dark-section">
-<div class="pp-tabs">
-<div class="pp-inner">
-  <span class="pp-label">What's your main challenge?</span>
-  <div class="pp-buttons">
-    <button class="pp-button active" onclick="ppTab(event,'speed')">⏱&nbsp; Speed</button>
-    <button class="pp-button" onclick="ppTab(event,'partnership')">👥&nbsp; Partnership</button>
-    <button class="pp-button" onclick="ppTab(event,'transparency')">📋&nbsp; Transparency</button>
-    <button class="pp-button" onclick="ppTab(event,'unsure')">❓&nbsp; Not sure</button>
-  </div>
-
-  <div id="pp-speed" class="pp-content visible">
-    <h3>You need an answer—now, not in weeks</h3>
-    <p>You have a modification idea. You contact your existing partner. They book you in—three weeks from now. The consultation happens. Discovery, questions, drafting a Functional Requirements Document. Days or weeks. Then the estimate. Weeks more. Thousands of dollars in hidden consulting costs before you even know the price.</p>
-    <p>With BespoxAI, you start generating that document today. Minutes. Our AI, grounded in an index of your NAV or BC version and its objects, walks you through the requirements in real time. You refine it yourself. Then you request a senior developer review. They ask clarifying questions, you finalize the spec, and you get a transparent quote. Scope locked. No surprises.</p>
-    <a class="pp-cta" href="/signup">Get started →</a>
-  </div>
-
-  <div id="pp-partnership" class="pp-content">
-    <h3>Your partner is great—just overbooked</h3>
-    <p>We're not here to replace your partner. We exist because they're busy—and they should be. When you have a modification or enhancement that needs exploring, your partner is often focused on larger deliverables, bigger customers, and pipeline priorities. That's not a failure of theirs; it's reality. But your idea deserves exploration without a three-month lag.</p>
-    <p>BespoxAI handles the rapid discovery and specification phase. You work with our AI and senior developers to define requirements clearly, get a transparent estimate, and prove concept validity—all in days, not months. Then you can confidently take that specification to your partner, negotiate scope, or decide whether to build internally.</p>
-    <a class="pp-cta" href="/signup">Explore with us →</a>
-  </div>
-
-  <div id="pp-transparency" class="pp-content">
-    <h3>Hidden costs and unclear scope—not anymore</h3>
-    <p>A simple modification request to your partner becomes a multi-step cost center: consultant time for discovery, developer time for estimation, project management overhead—all baked into a final quote you can't unpack. You pay for the entire process, whether the idea is worth pursuing or not.</p>
-    <p>With BespoxAI, you see exactly what you're building before you commit. Our AI generates your Functional Requirements Document in minutes, you refine it yourself at no cost, then a senior developer reviews it and gives you a clear, itemized quote. No hidden consulting fees. Scope is locked. You decide with full visibility.</p>
-    <a class="pp-cta" href="/signup">See the difference →</a>
-  </div>
-
-  <div id="pp-unsure" class="pp-content">
-    <h3>Let's figure out what matters to you</h3>
-    <p>The three pain points above cover most challenges for NAV and BC deployments. But your situation might be different. Tell us what's on your mind—what's holding you back from exploring modifications or enhancements to your system right now?</p>
-    <p>We're here to listen and help you move forward.</p>
-    <a class="pp-cta" href="mailto:Admin@bespoxai.com">Start a conversation →</a>
-  </div>
-</div>
-</div>
-</div>
-
-<!-- HOW IT WORKS -->
-<div class="sec" style="background:var(--cream)" id="sec-how">
-<div class="sec-in">
-  <div class="sec-label">How it works</div>
-  <h2 class="sec-h">Three steps.<br><em>One BC portal.</em></h2>
-  <p style="font-size:15px;color:var(--slate);line-height:1.8;max-width:560px">Every NAV and BC service, from a quick question to a fully tracked development build, managed in one place.</p>
+  <div class="sec-label">Feasibility &amp; development</div>
+  <h2 class="sec-h">Identified a customisation?<br><em>Know before you commit.</em></h2>
+  <p style="font-size:15px;color:var(--slate);line-height:1.8;max-width:600px">Changing a customised NAV system usually starts with weeks of discovery before you learn the price. BespoxAI gets you an answer first.</p>
   <div class="flow-grid">
     <div class="flow-step">
       <div class="flow-num">01</div>
-      <div class="flow-icon">&#x1F4AC;</div>
-      <div class="flow-title">Ask</div>
-      <p class="flow-desc">Get answers from your live NAV or BC system in seconds, from any browser, without opening the client. Ask anything about your finances in plain English. Multi-turn conversation memory included.</p>
-      <div class="flow-get">Instant answers &middot; Live data &middot; Any device</div>
+      <div class="flow-title">Check it&rsquo;s feasible</div>
+      <p class="flow-desc">Describe the change you need. BespoxAI checks it against your version and your existing customisations, flags constraints, and gives a cost range &mdash; or tells you the CFO Assistant can already answer it.</p>
     </div>
     <div class="flow-arrow">&rarr;</div>
     <div class="flow-step">
       <div class="flow-num">02</div>
-      <div class="flow-icon">&#x1F4CB;</div>
-      <div class="flow-title">Scope</div>
-      <p class="flow-desc">Describe a customisation idea and BespoxAI assesses feasibility, flags technical constraints, and gives you a cost and time indication before you involve anyone. If the requirement is a financial report or data query, BespoxAI will flag whether the CFO Assistant can answer it directly — saving you the cost of a development engagement entirely. If it needs building, a full professional specification is generated and ready for any developer to quote against.</p>
-      <div class="flow-get">Feasibility first &middot; Cost indication &middot; Professional spec</div>
+      <div class="flow-title">Get a proper spec</div>
+      <p class="flow-desc">Refine it into a professional specification any NAV or BC developer can quote and build from &mdash; your partner or ours.</p>
     </div>
     <div class="flow-arrow">&rarr;</div>
     <div class="flow-step">
       <div class="flow-num">03</div>
-      <div class="flow-icon">&#x1F3D7;</div>
-      <div class="flow-title">Build</div>
-      <p class="flow-desc">Before any quote is issued, a senior NAV/BC developer reviews the spec. Accept the fixed-price quote and pay a deposit to begin. The finished work lands in your test environment first &mdash; you try it, then approve go-live yourself. Balance on delivery. No scope creep. No surprise invoices.</p>
-      <div class="flow-get">Senior dev reviewed &middot; Fixed price &middot; You approve go-live</div>
+      <div class="flow-title">Build at a fixed price</div>
+      <p class="flow-desc">If you&rsquo;d like us to build it, a senior developer reviews the spec and quotes a fixed price. You test it in your test environment and approve go-live yourself.</p>
     </div>
   </div>
 
-  <!-- KNOW BEFORE YOU COMMIT -->
-  <div class="kbc-wrap">
-    <div>
-      <div class="kbc-label">Know before you commit</div>
-      <div class="kbc-title">Find out if it&rsquo;s viable<br>before booking a consultant.</div>
-      <p class="kbc-desc">Most NAV and BC development ideas never get properly evaluated. A discovery session with your partner takes weeks to schedule, costs consultant time, and often ends with the idea being out of budget or technically constrained. BespoxAI gives you that answer in minutes, at a fraction of the cost.</p>
-    </div>
-    <div>
-      <ul class="kbc-list">
-        <li>Describe your idea and BespoxAI assesses whether it is technically achievable in your NAV or BC version</li>
-        <li>Get a cost range and time estimate before involving your partner or ours</li>
-        <li>Reshape the scope early if the first pass is over budget</li>
-        <li>Arrive at any developer conversation already informed, with a professional spec in hand</li>
-        <li>Typical customisations from $2&ndash;5k NZD, deposits from $400</li>
-        <li>If your idea is a financial report or data query, BespoxAI may be able to answer it right now without any development cost</li>
-      </ul>
-    </div>
-  </div>
+  <p class="build-note">Are you a NAV or BC partner? <a href="https://partners.bespoxai.com">White-label BespoxAI</a> for your own customers.</p>
 </div>
-</div>
-
-<!-- PARTNER FLEX -->
-<div class="dark-section sec" id="sec-partner">
-<div class="sec-in">
-  <div class="sec-label light">Already have a NAV or BC partner?</div>
-  <h2 class="sec-h light">Keep them. <em>Arrive better prepared.</em><br>Either way, you&rsquo;re in control.</h2>
-  <p class="sec-sub">BespoxAI is deliberately open. Use the tools and take the spec document to any developer. Or let our team build it at a fixed price. You&rsquo;re never locked in and the pipeline is always yours.</p>
-  <div class="pf-grid">
-    <div class="pf-card take">
-      <div class="pf-badge take">Option A</div>
-      <div class="pf-title">Take the spec to your partner</div>
-      <p class="pf-desc">Get a professionally scoped requirement document from BespoxAI, structured and detailed enough for any NAV or BC developer to quote and build against.</p>
-      <ul class="pf-list">
-        <li>BespoxAI-generated spec in minutes, not weeks</li>
-        <li>Full context of your NAV or BC version and existing customisations</li>
-        <li>Developer-ready document you can hand to anyone</li>
-        <li>Compare your partner&rsquo;s quote with ours before deciding</li>
-      </ul>
-    </div>
-    <div class="pf-card go">
-      <div class="pf-badge go">Option B &mdash; Let us build it</div>
-      <div class="pf-title">Fixed-price development from BespoxAI</div>
-      <p class="pf-desc">Our NAV and BC developers quote directly from your scoped requirement. Accept the quote, pay a deposit, and track every stage in your portal pipeline.</p>
-      <ul class="pf-list go">
-        <li>Fixed price agreed before work begins. No changes.</li>
-        <li>Deposit to start, balance on delivery</li>
-        <li>Full pipeline visibility from scoping to completion</li>
-        <li>Executive plan customers receive 10% off all development</li>
-        <li>Every spec is reviewed by a senior NAV/BC developer before a quote is issued</li>
-      </ul>
-    </div>
-  </div>
-  <div style="margin-top:2.5rem;text-align:center;font-size:13.5px;color:rgba(244,239,228,.65)">Are you a NAV or BC partner? BespoxAI works <em>with</em> the channel &mdash; white-label the platform for your own customers. <a href="https://partners.bespoxai.com" style="color:var(--jade);text-decoration:none;font-weight:500">Partner program &rarr;</a></div>
-</div>
-</div>
-
-<!-- PIPELINE VISUAL -->
-<div class="sec" style="background:var(--parchment)">
-<div class="sec-in">
-  <div class="sec-label">Your development pipeline</div>
-  <h2 class="sec-h">Every project tracked.<br><em>Nothing hidden.</em></h2>
-  <p style="font-size:15px;color:var(--slate);line-height:1.8;max-width:560px">From the moment a requirement is created to the day it goes live, every stage is visible in your portal. You always know where things stand.</p>
-  <div class="pipe-vis">
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">01</div>
-      <div class="pipe-stage-icon">&#x270F;&#xFE0F;</div>
-      <div class="pipe-stage-name">Scoping</div>
-      <div class="pipe-stage-desc">Requirement described, BespoxAI spec generated</div>
-    </div>
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">02</div>
-      <div class="pipe-stage-icon">&#x1F4B0;</div>
-      <div class="pipe-stage-name">Quoted</div>
-      <div class="pipe-stage-desc">Senior developer reviewed. Fixed price issued, awaiting your decision</div>
-    </div>
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">03</div>
-      <div class="pipe-stage-icon">&#x2699;&#xFE0F;</div>
-      <div class="pipe-stage-name">In development</div>
-      <div class="pipe-stage-desc">Deposit paid, work underway, progress visible</div>
-    </div>
-    <div class="pipe-stage active-stage">
-      <div class="pipe-stage-num">04</div>
-      <div class="pipe-stage-icon">&#x1F9EA;</div>
-      <div class="pipe-stage-name">Your testing</div>
-      <div class="pipe-stage-desc">Deployed to your test environment. You approve it or send it back</div>
-    </div>
-    <div class="pipe-stage">
-      <div class="pipe-stage-num">05</div>
-      <div class="pipe-stage-icon">&#x1F3AF;</div>
-      <div class="pipe-stage-name">Live</div>
-      <div class="pipe-stage-desc">You approve go-live, the tested build goes to production, balance collected</div>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- CONNECTED INTELLIGENCE -->
-<div class="dark-section sec">
-<div class="sec-in">
-  <div class="sec-label light">Connected intelligence</div>
-  <h2 class="sec-h light">The longer you&rsquo;re connected,<br><em>the smarter BespoxAI gets.</em></h2>
-  <div class="ci-grid">
-    <div>
-      <p style="font-size:14px;color:rgba(244,239,228,.72);line-height:1.85;margin-bottom:2rem">When your NAV or BC is connected to BespoxAI, it builds a profile of your system over time. That profile is applied automatically to every feasibility assessment, every requirement spec, every development quote, and every interaction. The result is less discovery time, faster delivery, and lower cost on every engagement.</p>
-      <p style="font-size:14px;color:rgba(244,239,228,.72);line-height:1.85;margin-bottom:2rem">Most NAV and BC development projects start with a partner who knows nothing about your environment. They discover your existing objects mid-build, find conflicts they didn&rsquo;t expect, and issue change requests. BespoxAI starts every engagement from a position of knowledge. Your profile means feasibility checks are accurate, specs are built around your actual codebase, and quotes reflect reality from day one.</p>
-      <p style="font-size:14px;color:rgba(244,239,228,.72);line-height:1.85">The more requirements you scope and the more work you track, the more history BespoxAI has to draw on. Patterns emerge. Costs come down. Timelines tighten. Over time, BespoxAI becomes an institutional record of your NAV or BC environment that no partner relationship can replicate.</p>
-    </div>
-    <div class="ci-items" style="align-self:start">
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F4BB;</div>
-        <div>
-          <div class="ci-label">Your NAV/BC version &amp; configuration</div>
-          <div class="ci-text">Every feasibility check and spec references the right objects, APIs, and patterns for your exact version. No generic assumptions.</div>
-        </div>
-      </div>
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F9E9;</div>
-        <div>
-          <div class="ci-label">Your existing customisations</div>
-          <div class="ci-text">BespoxAI builds around what&rsquo;s already there, avoiding conflicts and reusing existing logic where possible.</div>
-        </div>
-      </div>
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F4DA;</div>
-        <div>
-          <div class="ci-label">Your full requirement history</div>
-          <div class="ci-text">Every scoped requirement adds context. Future feasibility checks and specs benefit from decisions already made in your environment.</div>
-        </div>
-      </div>
-      <div class="ci-item">
-        <div class="ci-icon">&#x1F4CA;</div>
-        <div>
-          <div class="ci-label">Your development pipeline</div>
-          <div class="ci-text">Costs, timelines, and outcomes feed back into how BespoxAI assesses and quotes future work for your system.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="own-panel">
-    <div class="own-icon">&#x1F513;</div>
-    <div>
-      <div class="own-title">Your data. Always yours.</div>
-      <ul class="own-list">
-        <li>Your specs, requirements, and full history stay in your portal, visible to your team</li>
-        <li>If you ever leave BespoxAI, everything comes with you, structured, complete, and nothing left behind</li>
-        <li>A full documented record of every feasibility check, spec, and development outcome makes internal audits straightforward</li>
-        <li>The knowledge you build in BespoxAI belongs to you, regardless of what you decide later</li>
-      </ul>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- SECURITY -->
-<div class="dark-section sec" id="sec-security">
-<div class="sec-in">
-  <div class="sec-label">Security</div>
-  <h2 class="sec-h light">Your ERP runs your business.<br><em>We treat access to it that way.</em></h2>
-  <p class="sec-sub">BespoxAI has to reach your system to be useful. This is exactly how that access works &mdash; and what keeps it in your hands.</p>
-  <div class="trust-grid">
-    <div class="trust-card">
-      <div class="trust-icon">&#x1F6AA;</div>
-      <h3 class="trust-title">No open ports</h3>
-      <p class="trust-desc">The BespoxAI Agent connects out to us through an encrypted Cloudflare tunnel. No inbound firewall rules, no VPN, and nothing on your network exposed to the internet.</p>
-    </div>
-    <div class="trust-card">
-      <div class="trust-icon">&#x1F5A5;&#xFE0F;</div>
-      <h3 class="trust-title">An agent that stays in its lane</h3>
-      <p class="trust-desc">The agent runs on your server under the Windows account you choose &mdash; never as SYSTEM. It only answers requests arriving through its own tunnel, and each one must carry a key unique to your environment.</p>
-    </div>
-    <div class="trust-card">
-      <div class="trust-icon">&#x1F441;&#xFE0F;</div>
-      <h3 class="trust-title">Answers only read</h3>
-      <p class="trust-desc">The CFO Assistant reads your data to answer a question. It never posts, edits or deletes anything, and it can only see what the BC user you set up is permitted to see.</p>
-    </div>
-    <div class="trust-card">
-      <div class="trust-icon">&#x2705;</div>
-      <h3 class="trust-title">Nothing goes live without you</h3>
-      <p class="trust-desc">Development goes to your test environment first. Production follows only after your administrator signs off testing and approves go-live &mdash; and only the exact build you tested can be deployed.</p>
-    </div>
-    <div class="trust-card">
-      <div class="trust-icon">&#x1F511;</div>
-      <h3 class="trust-title">Remote support by consent</h3>
-      <p class="trust-desc">Remote desktop access for our developers stays off until your administrator turns it on, and can be turned off at any time. Every connection needs a one-time code and a second factor, is limited to the BespoxAI developers working on your account, and is logged.</p>
-    </div>
-    <div class="trust-card">
-      <div class="trust-icon">&#x1F6E1;&#xFE0F;</div>
-      <h3 class="trust-title">A portal built for finance</h3>
-      <p class="trust-desc">Only your administrators can approve quotes, make payments, change connection settings or approve go-live. Repeated failed sign-ins are blocked, and idle sessions sign out automatically.</p>
-    </div>
-  </div>
-  <p class="trust-foot">Have a security questionnaire to get through? Send it to <a href="mailto:Admin@bespoxai.com">Admin@bespoxai.com</a> and a developer will answer it. More detail in the <a href="/faq">FAQ</a>.</p>
 </div>
 </div>
 
@@ -803,8 +535,8 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 <div class="prod-sec" id="sec-pricing">
 <div class="sec-in" id="sec-services">
   <div class="sec-label">Pricing</div>
-  <h2 class="sec-h">Start free.<br><em>Pay only for what you need.</em></h2>
-  <p style="font-size:14px;color:var(--slate);line-height:1.8;max-width:560px;margin-bottom:0">Five tiers built around how you actually use NAV and BC. The principle is simple: <strong style="color:var(--ink);font-weight:500">AI involvement is covered by your subscription. Human involvement is quoted.</strong> Feasibility assessments and AI requirements building are included in your plan &mdash; senior developer evaluation and fixed-price builds are quoted upfront, with a deposit to commence and the balance on delivery.</p>
+  <h2 class="sec-h">Start free.<br><em>Pay only for what you use.</em></h2>
+  <p style="font-size:14px;color:var(--slate);line-height:1.8;max-width:600px;margin-bottom:0">Pick the plan that matches how you use NAV and BC. Finance teams usually want the <strong style="color:var(--ink);font-weight:500">CFO Assistant</strong>; if you&rsquo;re scoping changes, start with Feasibility &amp; Scoping. AI work is covered by your plan &mdash; developer time is always quoted upfront.</p>
 
   <!-- FOUNDING 10 -->
   <div style="margin:2rem 0 0;border:1px solid var(--amber);border-radius:12px;padding:1.5rem 1.75rem;background:rgba(255,176,32,.05)">
@@ -824,7 +556,7 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
     <div class="prod-item">
       <div>
         <div class="prod-name">&#x1F9EA; Evaluate BespoxAI <span class="pill p-free">Free</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">Get a feel for the platform with no credit card and no commitment. Run 5 free feasibility checks on any customisation idea &mdash; BespoxAI will tell you whether it needs development, whether the CFO Assistant can handle it directly, and what it might cost. Checks are version-aware out of the box &mdash; upgrade to a paid plan to install the BespoxAI Agent and ground results in your actual objects and customisations. Generate one free AI specification to evaluate the output quality firsthand.</p>
+        <p class="prod-desc" style="margin-top:.75rem">Get a feel for the platform with no credit card and no commitment. Run 5 free feasibility checks on any customisation you&rsquo;re considering &mdash; BespoxAI will tell you whether it needs development, whether the CFO Assistant can handle it directly, and what it might cost. Checks are version-aware out of the box &mdash; upgrade to a paid plan to install the BespoxAI Agent and ground results in your actual objects and customisations. Generate one free AI specification to evaluate the output quality firsthand.</p>
       </div>
       <div class="prod-desc">5 feasibility checks<br>1 free AI specification<br>No credit card needed</div>
       <div><div class="prod-price">Free</div><div class="prod-pl">No cost &middot; no commitment</div></div>
@@ -833,15 +565,15 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
     <div class="prod-item">
       <div>
         <div class="prod-name">&#x1F4CB; Feasibility &amp; Scoping <span class="pill p-starter">Starter</span></div>
-        <p class="prod-desc" style="margin-top:.75rem">Unlimited AI specification generation and full feasibility output across all your requirements. Know whether your idea is technically achievable, get a cost and time indication, and generate a professional spec ready for any developer to quote against &mdash; all before spending anything on development. With the BespoxAI Agent installed, every check is grounded in your actual objects and customisations &mdash; not generic NAV advice. No CFO Assistant.</p>
+        <p class="prod-desc" style="margin-top:.75rem">Unlimited AI specification generation and full feasibility output across all your requirements. Know whether a customisation is technically achievable, get a cost and time indication, and generate a professional spec ready for any developer to quote against &mdash; all before spending anything on development. With the BespoxAI Agent installed, every check is grounded in your actual objects and customisations &mdash; not generic NAV advice. No CFO Assistant.</p>
       </div>
       <div class="prod-desc">Unlimited spec generation<br>Full feasibility output with cost range<br>Development pipeline</div>
       <div><div class="prod-price">$59<span style="font-size:15px;color:rgba(244,239,228,.65)">/mo</span></div><div class="prod-pl">Month-to-month &middot; excl. GST</div><div class="prod-tokens">&#x2756; 50,000 AI tokens / mo</div></div>
     </div>
 
-    <div class="prod-item">
+    <div class="prod-item prod-feature">
       <div>
-        <div class="prod-name">&#x1F4AC; CFO Assistant <span class="pill p-start">Assistant</span></div>
+        <div class="prod-name">&#x1F4AC; CFO Assistant <span class="pill p-start">Assistant</span><span class="pill p-for">For finance teams</span></div>
         <p class="prod-desc" style="margin-top:.75rem">Ask anything about your finances in plain English and get answers from your live NAV or BC data in seconds, from any browser, without opening the client. Multi-turn conversation memory and query history included. Read-only &mdash; it never changes your data.</p>
       </div>
       <div class="prod-desc">Standalone portal at bespoxai.com<br>Secure sign-in &middot; your own permissions<br>Multi-turn memory</div>
@@ -871,115 +603,23 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 </div>
 </div>
 
-<!-- DEMO -->
-<div class="dark-section sec" id="sec-demo">
+<!-- SECURITY -->
+<div class="dark-section sec sec-tight" id="sec-security">
 <div class="sec-in">
-  <div class="sec-label light">Live demo</div>
-  <h2 class="sec-h light">Ask it something.<br><em>Go on.</em></h2>
-  <p class="sec-sub">This is the CFO Assistant connected to Meridian Engineering Ltd &mdash; a fictional company running Dynamics NAV 2017. Click a question or type your own, and watch where each answer comes from.</p>
-  <div class="demo-window">
-    <div class="dw-header">
-      <div class="dw-htitle">CFO Assistant &mdash; Meridian Engineering Ltd &middot; Dynamics NAV 2017</div>
-      <div class="dw-live"><div class="dw-ldot"></div>CONNECTED &middot; READ-ONLY</div>
-    </div>
-    <div class="dw-body" id="dw-body" tabindex="0" role="log" aria-live="polite" aria-label="Demo conversation">
-      <div class="chat-msg"><div class="av av-ai"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div><div class="bubble bai">Good morning. I&rsquo;m connected to <span class="hl">Meridian Engineering Ltd</span> with read-only access, and I&rsquo;ve indexed all 412 objects in this environment &mdash; including its customisations. Ask me anything about the business.</div></div>
-    </div>
-    <div class="dw-input-wrap">
-      <div class="dw-row">
-        <input class="dw-input" id="dw-input" placeholder="Ask anything about Meridian&rsquo;s finances or system&hellip;" onkeydown="if(event.key==='Enter')demoSend()"/>
-        <button class="dw-send" onclick="demoSend()" aria-label="Send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4EFE4" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-      </div>
-      <div class="dw-sug" id="dw-sug">
-        <button class="dw-sug-btn" onclick="demoAsk('debtors')">Show me overdue debtors</button>
-        <button class="dw-sug-btn" onclick="demoAsk('budget')">Budget vs actual this month</button>
-        <button class="dw-sug-btn" onclick="demoAsk('cash')">Forecast cash for the next 4 weeks</button>
-        <button class="dw-sug-btn" onclick="demoAsk('custom')">What customisations are on sales posting?</button>
-      </div>
-    </div>
+  <div class="sec-label">Security</div>
+  <h2 class="sec-h light">Your ERP runs your business.<br><em>We treat access to it that way.</em></h2>
+  <div class="trust-grid">
+    <div class="trust-card"><h3 class="trust-title">No open ports</h3><p class="trust-desc">An outbound-only encrypted tunnel. Nothing on your network is exposed.</p></div>
+    <div class="trust-card"><h3 class="trust-title">Read-only answers</h3><p class="trust-desc">The CFO Assistant never changes your data, and only sees what its BC user may.</p></div>
+    <div class="trust-card"><h3 class="trust-title">Your sign-off</h3><p class="trust-desc">No development reaches production until you&rsquo;ve tested it and approved go-live.</p></div>
+    <div class="trust-card"><h3 class="trust-title">Access by consent</h3><p class="trust-desc">Remote support is off unless you turn it on &mdash; with MFA and every connection logged.</p></div>
   </div>
-  <div class="dw-note">Scripted demonstration with fictional data &mdash; the live product answers from <em>your</em> environment. <a href="/signup" style="color:var(--jade)">Start free &rarr;</a></div>
-</div>
-</div>
-
-<script>
-var DEMO_QA = {
-  debtors: {q:"Show me overdue debtors",
-    t:"&rarr; Table 21 Cust. Ledger Entry &middot; Table 18 Customer &middot; FILTER Open=Yes, Due Date < TODAY",
-    a:"You have <span class='hl'>$84,210</span> overdue across 7 customers. The three that matter:<br><br><span class='hl'>Hartwell Construction</span> &mdash; $31,450, 47 days overdue, and now <span class='hl'>at 96% of credit limit</span><br><span class='hl'>Pacific Marine Services</span> &mdash; $22,800, 33 days overdue (historically pays at ~40 days)<br><span class='hl'>Douglas &amp; Fry Ltd</span> &mdash; $11,960, 61 days overdue &mdash; oldest item, worth a call today<br><br>The remaining four total $18,000 and are under 14 days past due. Want a statement run for any of these?"},
-  budget: {q:"Budget vs actual this month",
-    t:"&rarr; Table 96 G/L Budget Entry &middot; Table 17 G/L Entry &middot; Dimension DEPT &middot; CALCSUMS",
-    a:"July actuals against the FY26 budget:<br><br><span class='hl'>Revenue:</span> $412,300 vs $390,000 budget &mdash; <span class='hl'>5.7% ahead</span><br><span class='hl'>Cost of Sales:</span> $228,900 vs $214,500 &mdash; 6.7% over, tracking the revenue overrun<br><span class='hl'>Operating Expenses:</span> $96,400 vs $101,200 &mdash; 4.7% under, mostly unfilled vacancy in DEPT&middot;WORKSHOP<br><br>Net result <span class='hl'>$87,000 vs $74,300 budgeted</span>. The only line moving the wrong way independently is freight &mdash; 18% over budget for a second straight month."},
-  cash: {q:"Forecast cash for the next 4 weeks",
-    t:"&rarr; Table 21 Cust. Ledger Entry &middot; Table 25 Vendor Ledger Entry &middot; Due Date &middot; payment history weighting",
-    a:"Starting from today&rsquo;s <span class='hl'>$399,640</span>, weighted by each customer&rsquo;s actual payment behaviour rather than raw due dates:<br><br>Week 1: +$61k in / &minus;$48k out &rarr; <span class='hl'>$412k</span><br>Week 2: +$38k / &minus;$72k (incl. GST payment) &rarr; <span class='hl'>$378k</span><br>Week 3: +$95k / &minus;$41k &rarr; <span class='hl'>$432k</span><br>Week 4: +$44k / &minus;$59k &rarr; <span class='hl'>$417k</span><br><br>Lowest point is week 2 at $378k &mdash; comfortable, but note $54k of week-3 inflow assumes Hartwell pays on their usual 47-day pattern. If they slip further, week 3 lands at $378k instead."},
-  custom: {q:"What customisations are on sales posting?",
-    t:"&rarr; Object index &middot; Codeunit 80 Sales-Post &middot; Codeunit 50021 &middot; Table 36 Sales Header",
-    a:"Codeunit 80 carries <span class='hl'>two customisations</span> in this environment:<br><br><span class='hl'>Margin guard (2019)</span> &mdash; blocks release of any sales order below a floor margin held per item category on Table 36 field 50010. Added after the FY19 discounting issue, by the look of the commit trail.<br><br><span class='hl'>eDocs export hook</span> &mdash; posting calls Codeunit 50021 to queue the invoice for electronic delivery; failures land in a retry queue rather than blocking the post.<br><br>Both survive in the object index with full call trees &mdash; so any developer quoting work on sales posting sees them <em>before</em> they estimate, not after they break something."},
-  margin: {q:"Gross margin by product line",
-    t:"&rarr; Table 5802 Value Entry &middot; Table 32 Item Ledger Entry &middot; Item Category rollup",
-    a:"July gross margin vs the same month last year:<br><br><span class='hl'>Engineering Services:</span> 58.2% (up from 52.1%) &mdash; rate increases holding<br><span class='hl'>Equipment Sales:</span> 23.4% (down from 29.8%) &mdash; supplier cost increases not yet passed through<br><span class='hl'>Maintenance Contracts:</span> 41.1% (down from 44.6%) &mdash; unrecovered materials worth investigating<br><br>Blended: <span class='hl'>44.9%</span> against 42.3% prior year. Equipment is the line to fix &mdash; want the supplier-level cost breakdown?"}
-};
-var DEMO_KEYS = [
-  [/debtor|overdue|receivab|owe|aged/i,'debtors'],
-  [/budget|actual|variance/i,'budget'],
-  [/cash|forecast|flow|liquidity/i,'cash'],
-  [/customis|customiz|codeunit|posting|object|modif/i,'custom'],
-  [/margin|profit|product line|gp/i,'margin']
-];
-var demoBusy=false;
-function demoAsk(key){ if(demoBusy)return; demoRun(DEMO_QA[key].q, key); }
-function demoSend(){
-  if(demoBusy)return;
-  var inp=document.getElementById('dw-input'); var v=inp.value.trim(); if(!v)return; inp.value='';
-  var key=null; for(var i=0;i<DEMO_KEYS.length;i++){ if(DEMO_KEYS[i][0].test(v)){ key=DEMO_KEYS[i][1]; break; } }
-  demoRun(v, key);
-}
-function demoRun(q, key){
-  demoBusy=true;
-  var body=document.getElementById('dw-body');
-  body.insertAdjacentHTML('beforeend','<div class="chat-msg user"><div class="av av-user">SM</div><div class="bubble buser"></div></div>');
-  body.lastElementChild.querySelector('.bubble').textContent=q;
-  body.scrollTop=body.scrollHeight;
-  var aiAv='<div class="av av-ai"><svg width="14" height="14" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3.5"/></svg></div>';
-  body.insertAdjacentHTML('beforeend','<div class="chat-msg" id="dw-typing">'+aiAv+'<div class="bubble bai typing"><span></span><span></span><span></span></div></div>');
-  body.scrollTop=body.scrollHeight;
-  setTimeout(function(){
-    var typ=document.getElementById('dw-typing'); if(typ)typ.remove();
-    var trace, ans;
-    if(key){ trace=DEMO_QA[key].t; ans=DEMO_QA[key].a; }
-    else { trace="&rarr; Demo environment &middot; scripted responses only";
-      ans="Good question &mdash; in the live product I&rsquo;d query Meridian&rsquo;s environment and answer it. This demo is scripted, so I only know a handful of topics. Try one of the suggestions below, or <span class='hl'><a href=\"/signup\" style=\"color:inherit\">start free</a></span> and ask me anything."; }
-    body.insertAdjacentHTML('beforeend','<div class="chat-msg">'+aiAv+'<div class="bubble bai"><span class="trace">'+trace+'</span>'+ans+'</div></div>');
-    body.scrollTop=body.scrollHeight;
-    demoBusy=false;
-  }, 900+Math.random()*500);
-}
-</script>
-
-<!-- ROI -->
-<div class="roi-wrap sec">
-<div class="sec-in">
-  <div class="sec-label light">Return on investment</div>
-  <h2 class="sec-h light">What could year one<br><em>look like?</em></h2>
-  <div class="roi-grid">
-    <div class="roi-nums">
-      <div class="roi-row"><div class="roi-label">Hours a finance user can lose to manual reporting monthly</div><div class="roi-val">40+</div></div>
-      <div class="roi-row"><div class="roi-label">Modelled reduction in customisation project cost</div><div class="roi-val">35&ndash;50%</div></div>
-      <div class="roi-row"><div class="roi-label">Feasibility checks on every paid plan</div><div class="roi-val">Unlimited</div></div>
-      <div class="roi-row"><div class="roi-label">Modelled first-year ROI</div><div class="roi-val">4&ndash;8&times;</div></div>
-    </div>
-    <div>
-      <p class="roi-r-desc">The scenario: a mid-market NAV site with three finance users, modelled on reporting time savings alone, before a single customisation is built. Your numbers will differ &mdash; start free and test your own ideas. What isn&rsquo;t a model: fixed-price development means no scope creep and no surprise invoices, on every build.</p>
-      <div class="roi-hl"><div class="roi-hl-l">Modelled first-year outcome</div><div class="roi-hl-v">$51&ndash;125k</div><div class="roi-hl-s">in time savings, working capital improvement, and avoided development overruns &mdash; illustrative, not a promise</div></div>
-      <a class="roi-cta" href="/signup">Start free &mdash; see your numbers &rarr;</a>
-    </div>
-  </div>
+  <p class="trust-foot">The detail, for your IT team: <a href="/faq">security FAQ</a> &middot; questionnaires to <a href="mailto:Admin@bespoxai.com">Admin@bespoxai.com</a></p>
 </div>
 </div>
 
 <!-- TESTIMONIALS -->
-<div class="dark-section">
+<div class="dark-section testi-wrap">
 <div class="sec">
 <div class="sec-in">
   <div class="sec-label">Founding customers</div>
@@ -998,10 +638,10 @@ function demoRun(q, key){
   <div class="cta-bg"></div>
   <div class="cta-in">
     <div class="cta-title">One portal.<br><em>All of NAV &amp; BC.</em></div>
-    <p class="cta-sub">Start free. Run 5 free feasibility checks, generate your first spec, and see exactly what BespoxAI would scope before you spend a dollar. No credit card. No commitment.</p>
+    <p class="cta-sub">No credit card. No commitment. Ask your own system a question, or check a customisation before anyone quotes it.</p>
     <div class="cta-acts">
       <a class="btn-lg btn-forest" href="/signup">Get started free</a>
-      <a class="btn-lg btn-outline" href="#sec-how">See how it works</a>
+      <a class="btn-lg btn-outline" href="#sec-demo">Try the demo</a>
     </div>
     <div class="cta-note">Free to start &middot; No credit card &middot; NAV 2009&ndash;2018 &middot; BC on-premises</div>
   </div>
@@ -1017,12 +657,6 @@ function demoRun(q, key){
 
 
 <script>
-function ppTab(event, tabId) {
-  document.querySelectorAll('.pp-button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.pp-content').forEach(c => c.classList.remove('visible'));
-  event.target.closest('.pp-button').classList.add('active');
-  document.getElementById('pp-' + tabId).classList.add('visible');
-}
 
 </script>
 <script type="application/ld+json">
