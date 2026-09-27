@@ -4,6 +4,7 @@ import { prisma } from './db'
 
 export type PartnerSession = {
   userId:           string
+  email:            string
   partnerAccountId: string
   partnerRole:      string
   partnerSlug:      string
@@ -23,6 +24,7 @@ export async function requirePartnerSession(
   if (minRole === 'partner_admin' && user.partnerRole !== 'partner_admin') return null
   return {
     userId:           user.id,
+    email:            user.email ?? '',
     partnerAccountId: user.partnerAccountId,
     partnerRole:      user.partnerRole,
     partnerSlug:      user.partnerSlug,

@@ -38,5 +38,6 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     },
   })
 
-  return NextResponse.json({ tenant })
+  const { apiKey, rdpPassword, ...safe } = tenant as any
+  return NextResponse.json({ tenant: { ...safe, hasRdpPassword: !!rdpPassword } })
 }

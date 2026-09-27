@@ -5,32 +5,12 @@ import { createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken }
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
-import crypto from 'crypto'
+import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
 const AGENT_VERSION = '3.5'
 
-function generateRdpPassword(): string {
-  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-  const lower   = 'abcdefghjkmnpqrstuvwxyz'
-  const digits  = '23456789'
-  const symbols = '!@#$'
-  const all     = upper + lower + digits + symbols
-  const bytes   = crypto.randomBytes(12)
-  const pwd = [
-    upper[bytes[0]  % upper.length],
-    lower[bytes[1]  % lower.length],
-    digits[bytes[2] % digits.length],
-    symbols[bytes[3] % symbols.length],
-    ...Array.from(bytes.slice(4)).map(b => all[b % all.length]),
-  ]
-  for (let i = pwd.length - 1; i > 0; i--) {
-    const j = crypto.randomBytes(1)[0] % (i + 1);
-    [pwd[i], pwd[j]] = [pwd[j], pwd[i]]
-  }
-  return pwd.join('')
-}
 
 // GET /api/partner/tenants/[id]/installer — returns current agent version
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -123,12 +103,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (!freshTenant) return NextResponse.json({ error: 'Tenant not found after provisioning' }, { status: 404 })
   tenant = freshTenant
 
-  // Generate RDP password on first download
-  let rdpPassword = tenant.rdpPassword as string | null
-  if (!rdpPassword) {
-    rdpPassword = generateRdpPassword()
-    await (prisma as any).tenant.update({ where: { id: params.id }, data: { rdpPassword } })
-  }
+  // Support-account password: stored encrypted; the plaintext only exists in this installer.
+  const rdpPassword = await getOrCreateRdpPassword(params.id, tenant.rdpPassword)
 
   let tunnelToken: string
   try {
@@ -212,6 +188,14 @@ exit /b %_exit%
   const zip = new JSZip()
   zip.file(`Install-BespoxAI-v${AGENT_VERSION}-${tenantSlug}.bat`, bat)
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+
+  // The installer carries the support-account password in plaintext, so record who downloaded it.
+  await logRdpAccess({
+    tenantId:  params.id,
+    userId:    session.userId,
+    userEmail: session.email,
+    action:    'installer_download',
+  })
 
   return new NextResponse(zipBuffer as unknown as BodyInit, {
     status: 200,

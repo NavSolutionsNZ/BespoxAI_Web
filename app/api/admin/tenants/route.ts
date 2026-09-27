@@ -15,7 +15,7 @@ function adminGuard(session: any) {
 
 const getCachedTenants = unstable_cache(
   async () => {
-    return await (prisma as any).tenant.findMany({
+    const tenants = await (prisma as any).tenant.findMany({
       orderBy: { createdAt: 'asc' },
       include: {
         _count: { select: { users: true, queryLogs: true, requirements: true } },
@@ -23,6 +23,9 @@ const getCachedTenants = unstable_cache(
         partnerAccount: { select: { id: true, name: true, slug: true } },
       },
     })
+    // Strip secrets before they reach the data cache or the browser. The RDP
+    // password is fetched on demand via POST /api/admin/tenants/[id]/rdp-password.
+    return tenants.map(({ apiKey, rdpPassword, ...t }: any) => ({ ...t, hasRdpPassword: !!rdpPassword }))
   },
   ['admin-tenants'],
   { revalidate: 60 }

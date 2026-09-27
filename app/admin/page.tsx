@@ -14,7 +14,7 @@ interface Tenant {
   id: string; name: string; tunnelSubdomain: string
   bcInstance: string | null; bcCompany: string | null; active: boolean
   tunnelId: string | null
-  rdpPassword: string | null
+  hasRdpPassword: boolean
   tier?: string; trialEndsAt?: string | null
   createdAt: string
   _count: { users: number; queryLogs: number }
@@ -446,6 +446,19 @@ function AdminPageInner() {
     }
   }
 
+  // The password is never in the tenant list; each copy is a logged reveal.
+  async function copyRdpPassword(tenantId: string) {
+    setRdpError(e => ({ ...e, [tenantId]: '' }))
+    try {
+      const res  = await fetch('/api/admin/tenants/' + tenantId + '/rdp-password', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setRdpError(e => ({ ...e, [tenantId]: data.error || 'Reveal failed' })); return }
+      await navigator.clipboard.writeText(data.password)
+    } catch (err: any) {
+      setRdpError(e => ({ ...e, [tenantId]: err.message || 'Copy failed' }))
+    }
+  }
+
   async function createUser() {
     setSaving(true); setError('')
     const res  = await fetch('/api/admin/users', {
@@ -722,14 +735,14 @@ function AdminPageInner() {
                           >
                             {rdpLoading === t.id ? '⟳' : 'RDP'}{' — '}{t.name}
                           </button>
-                          {t.rdpPassword ? (
+                          {t.hasRdpPassword ? (
                             <button
-                              onClick={() => navigator.clipboard.writeText(t.rdpPassword!)}
-                              title="Copy RDP password"
+                              onClick={() => copyRdpPassword(t.id)}
+                              title="Copy RDP password (logged)"
                               style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 4, fontSize: 12 }}
                             >⧉</button>
                           ) : null}
-                          {rdpError[t.id] ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginLeft: 6 }}>✗</span> : null}
+                          {rdpError[t.id] ? <span title={rdpError[t.id]} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginLeft: 6 }}>✗</span> : null}
                         </td>
                       </tr>
                     ))}

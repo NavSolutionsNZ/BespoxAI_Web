@@ -39,7 +39,7 @@ model Tenant {
   testBcInstance         String?                     // test BC instance name
   testBcCompany          String?                     // test BC company name
   testNavManagementPort  Int?      @default(7045)    // NAV server management port for schema sync
-  rdpPassword            String?                     // BespoxAI-Support account password (baked into installer)
+  rdpPassword            String?                     // BespoxAI-Support account password — AES-256-GCM encrypted (lib/rdp.ts, RDP_PASSWORD_ENCRYPTION_KEY); baked into installer
   connectionRequestedAt      DateTime?               // Set when client requests connection setup; cleared on tunnel provision
   connectionRequestedToEmail String?                 // Partner email the request was sent to
   upgradeRequestedAt         DateTime?               // Set when client requests plan upgrade
@@ -284,6 +284,20 @@ model MigrationEnquiry {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
+}
+
+// Append-only audit of every disclosure of a tenant's RDP support-account
+// password (lib/rdp.ts logRdpAccess). No foreign keys on purpose: audit rows
+// must outlive the tenant or user they refer to.
+model RdpAccessLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  userEmail String
+  action    String   // reveal | installer_download
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
 }
 
 model TenantObjectFile {

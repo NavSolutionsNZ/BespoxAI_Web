@@ -6,7 +6,7 @@ import { createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken }
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
-import crypto from 'crypto'
+import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,28 +18,6 @@ const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 
 const AGENT_VERSION = '3.5'
 
-function generateRdpPassword(): string {
-  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-  const lower   = 'abcdefghjkmnpqrstuvwxyz'
-  const digits  = '23456789'
-  const symbols = '!@#$'
-  const all     = upper + lower + digits + symbols
-  const bytes   = crypto.randomBytes(12)
-  // Guarantee complexity: 1 upper, 1 lower, 1 digit, 1 symbol + 8 random
-  const pwd = [
-    upper[bytes[0]  % upper.length],
-    lower[bytes[1]  % lower.length],
-    digits[bytes[2] % digits.length],
-    symbols[bytes[3] % symbols.length],
-    ...Array.from(bytes.slice(4)).map(b => all[b % all.length]),
-  ]
-  // Fisher-Yates shuffle
-  for (let i = pwd.length - 1; i > 0; i--) {
-    const j = crypto.randomBytes(1)[0] % (i + 1);
-    [pwd[i], pwd[j]] = [pwd[j], pwd[i]]
-  }
-  return pwd.join('')
-}
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant
 export async function GET() {
@@ -168,12 +146,8 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   if (!freshTenant) return NextResponse.json({ error: 'Tenant not found after provisioning' }, { status: 404 })
   tenant = freshTenant
 
-  // Generate RDP support account password if not already set — stored so admin can retrieve it
-  let rdpPassword = (tenant as any).rdpPassword as string | null
-  if (!rdpPassword) {
-    rdpPassword = generateRdpPassword()
-    await prisma.tenant.update({ where: { id: tenantId }, data: { rdpPassword } as any })
-  }
+  // Support-account password: stored encrypted; the plaintext only exists in this installer.
+  const rdpPassword = await getOrCreateRdpPassword(tenantId, (tenant as any).rdpPassword)
 
   let tunnelToken: string
   try {
@@ -258,6 +232,14 @@ exit /b %_exit%
   const zip = new JSZip()
   zip.file(`Install-BespoxAI-v${AGENT_VERSION}-${tenantSlug}.bat`, bat)
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+
+  // The installer carries the support-account password in plaintext, so record who downloaded it.
+  await logRdpAccess({
+    tenantId,
+    userId:    (session.user as any).id,
+    userEmail: session.user.email ?? '',
+    action:    'installer_download',
+  })
 
   return new NextResponse(zipBuffer as unknown as BodyInit, {
     status: 200,
