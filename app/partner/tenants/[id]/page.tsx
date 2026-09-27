@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams, usePathname } from 'next/navigat
 import { useSession } from 'next-auth/react'
 import { useBranding } from '@/app/branding-provider'
 import { DevPlanPanel } from '@/components/DevPlanPanel'
+import { RDP_PROVISIONING_ENABLED } from '@/lib/rdp-flags'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -178,6 +179,44 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+// ── Action feedback ──────────────────────────────────────────────────────────
+
+type FeedbackAction = 'install' | 'sync' | 'rdp'
+type Feedback = { action: FeedbackAction; type: 'ok' | 'err'; msg: string }
+
+// Shown directly under the button that produced it, and scrolled into view so
+// it is never off screen. Errors stay until dismissed or the next action.
+function ActionFeedback({ feedback, onDismiss }: { feedback: Feedback; onDismiss: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [feedback])
+  const ok = feedback.type === 'ok'
+  return (
+    <div ref={ref} role={ok ? 'status' : 'alert'} style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '10px 16px', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 13,
+      background: ok ? 'rgba(35,134,54,0.15)' : 'rgba(163,45,45,0.15)',
+      border: '1px solid ' + (ok ? 'rgba(63,185,80,0.3)' : 'rgba(163,45,45,0.4)'),
+      color: ok ? 'var(--rb-success)' : 'var(--rb-danger)',
+    }}>
+      <span style={{ flex: 1 }}>{feedback.msg}</span>
+      {ok ? null : (
+        <button onClick={onDismiss} aria-label="Dismiss" style={{
+          background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer',
+          fontSize: 16, lineHeight: '18px', padding: 0,
+        }}>×</button>
+      )}
+    </div>
+  )
+}
+
+function FieldError({ msg }: { msg: string }) {
+  return (
+    <p role="alert" style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-danger)', marginTop: 6 }}>{msg}</p>
+  )
+}
+
 // ── BCAgent Tab ──────────────────────────────────────────────────────────────
 
 function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelProvisioned: () => void }) {
@@ -216,7 +255,9 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
   const [syncLoading,  setSyncLoading]    = useState(false)
   const [rdpLoading,   setRdpLoading]     = useState(false)
   const [agentVersion, setAgentVersion]   = useState<string | null>(null)
-  const [feedback,     setFeedback]       = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [feedback,     setFeedback]       = useState<Feedback | null>(null)
+  const [fieldErr,     setFieldErr]       = useState<{ field: 'bcUsername' | 'serviceAccount'; msg: string } | null>(null)
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [testing,      setTesting]        = useState(false)
   const [testResult,   setTestResult]     = useState<any>(null)
 
@@ -225,19 +266,37 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
       .then(r => r.json()).then(d => { if (d.version) setAgentVersion(d.version) }).catch(() => {})
   }, [tenantId])
 
-  function showFeedback(type: 'ok' | 'err', msg: string) {
-    setFeedback({ type, msg })
-    setTimeout(() => setFeedback(null), 4000)
+  // Success messages fade after 4s; errors persist until dismissed or replaced.
+  function showFeedback(action: FeedbackAction, type: 'ok' | 'err', msg: string) {
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current)
+    feedbackTimer.current = null
+    setFeedback({ action, type, msg })
+    if (type === 'ok') feedbackTimer.current = setTimeout(() => setFeedback(null), 4000)
   }
+
+  function dismissFeedback() {
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current)
+    feedbackTimer.current = null
+    setFeedback(null)
+  }
+
+  useEffect(() => () => { if (feedbackTimer.current) clearTimeout(feedbackTimer.current) }, [])
 
   async function downloadInstaller() {
     const bcUsername = refs.bcUsername.current?.value || ''
     const bcPassword = refs.bcPassword.current?.value || ''
     const serviceAccountUser     = refs.serviceAccountUser.current?.value     || ''
     const serviceAccountPassword = refs.serviceAccountPassword.current?.value || ''
-    if (!bcUsername) { showFeedback('err', 'BC service account username is required'); return }
+    setFieldErr(null)
+    dismissFeedback()
+    if (!bcUsername) {
+      setFieldErr({ field: 'bcUsername', msg: 'BC service account username is required' })
+      refs.bcUsername.current?.focus()
+      return
+    }
     if (authMode === 'Basic' && (!serviceAccountUser || !serviceAccountPassword)) {
-      showFeedback('err', 'Basic auth mode requires a Service Account username and password')
+      setFieldErr({ field: 'serviceAccount', msg: 'Basic auth mode requires a Service Account username and password' })
+      ;(serviceAccountUser ? refs.serviceAccountPassword : refs.serviceAccountUser).current?.focus()
       return
     }
     setInstLoading(true)
@@ -266,7 +325,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
       })
       if (!r.ok) {
         const j = await r.json().catch(() => ({}))
-        showFeedback('err', j.error || 'Failed to generate installer')
+        showFeedback('install', 'err', j.error || 'Failed to generate installer')
         return
       }
       const blob = await r.blob()
@@ -278,23 +337,24 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
       a.href = url; a.download = filename; a.click()
       URL.revokeObjectURL(url)
       if (!hasTunnel) onTunnelProvisioned()
-      showFeedback('ok', 'Installer downloaded — tunnel provisioned if this was the first download')
+      showFeedback('install', 'ok', 'Installer downloaded — tunnel provisioned if this was the first download')
     } catch (e: any) {
-      showFeedback('err', e.message || 'Download failed')
+      showFeedback('install', 'err', e.message || 'Download failed')
     } finally {
       setInstLoading(false)
     }
   }
 
   async function syncConfig() {
+    dismissFeedback()
     setSyncLoading(true)
     try {
       const r = await fetch('/api/partner/tenants/' + tenantId + '/sync-config', { method: 'POST' })
       const j = await r.json().catch(() => ({}))
-      if (r.ok) showFeedback('ok', 'Config synced to agent successfully')
-      else showFeedback('err', j.error || 'Sync failed')
+      if (r.ok) showFeedback('sync', 'ok', 'Config synced to agent successfully')
+      else showFeedback('sync', 'err', j.error || 'Sync failed')
     } catch (e: any) {
-      showFeedback('err', e.message || 'Sync failed')
+      showFeedback('sync', 'err', e.message || 'Sync failed')
     } finally {
       setSyncLoading(false)
     }
@@ -313,14 +373,15 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
   }
 
   async function provisionRdp() {
+    dismissFeedback()
     setRdpLoading(true)
     try {
       const r = await fetch('/api/partner/tenants/' + tenantId + '/provision-rdp', { method: 'POST' })
       const j = await r.json().catch(() => ({}))
-      if (r.ok) showFeedback('ok', 'RDP provisioned: ' + j.rdpHostname)
-      else showFeedback('err', j.error || 'RDP provisioning failed')
+      if (r.ok) showFeedback('rdp', 'ok', 'RDP provisioned: ' + j.rdpHostname)
+      else showFeedback('rdp', 'err', j.error || 'RDP provisioning failed')
     } catch (e: any) {
-      showFeedback('err', e.message || 'RDP provisioning failed')
+      showFeedback('rdp', 'err', e.message || 'RDP provisioning failed')
     } finally {
       setRdpLoading(false)
     }
@@ -366,6 +427,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
               <input ref={refs.bcUsername} style={inp} type="text" defaultValue={tenant.bcUsername || ''}
                 placeholder={authMode === 'Basic' ? 'e.g. administrator' : 'e.g. DOMAIN\\BCServiceUser'} autoComplete="off" />
               {hint(authMode === 'Basic' ? 'BC application user with OData access — not a Windows account.' : 'Windows account used to authenticate with BC OData.')}
+              {fieldErr && fieldErr.field === 'bcUsername' ? <FieldError msg={fieldErr.msg} /> : null}
             </div>
             <div>
               {lbl('BC Service Account Password *')}
@@ -385,6 +447,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
                 {lbl('Service Account Password')}
                 <input ref={refs.serviceAccountPassword} style={inp} type="password" defaultValue=""
                   placeholder="Never stored — embedded in installer only" autoComplete="new-password" />
+                {fieldErr && fieldErr.field === 'serviceAccount' ? <FieldError msg={fieldErr.msg} /> : null}
               </div>
             </div>
           ) : null}
@@ -521,14 +584,15 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
             Pushes current settings to the running agent immediately — no reinstall needed. Credentials stay unchanged on the server.
           </p>
         ) : null}
+        {feedback && feedback.action === 'sync' ? <ActionFeedback feedback={feedback} onDismiss={dismissFeedback} /> : null}
 
         {/* Provision RDP — only if tunnel exists */}
         {hasTunnel ? (
-          <button onClick={provisionRdp} disabled={rdpLoading} style={{
-            width: '100%', background: rdpLoading ? 'var(--rb-border)' : 'var(--rb-surface)',
-            color: rdpLoading ? 'var(--rb-text-muted)' : 'var(--rb-text)',
+          <button onClick={provisionRdp} disabled={rdpLoading || !RDP_PROVISIONING_ENABLED} style={{
+            width: '100%', background: (rdpLoading || !RDP_PROVISIONING_ENABLED) ? 'var(--rb-border)' : 'var(--rb-surface)',
+            color: (rdpLoading || !RDP_PROVISIONING_ENABLED) ? 'var(--rb-text-muted)' : 'var(--rb-text)',
             border: '1px solid var(--rb-border-strong)', borderRadius: 8, padding: '11px',
-            cursor: rdpLoading ? 'default' : 'pointer',
+            cursor: (rdpLoading || !RDP_PROVISIONING_ENABLED) ? 'not-allowed' : 'pointer',
             fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
           }}>
             {rdpLoading ? 'Provisioning…' : '⧉ Provision RDP Access'}
@@ -536,9 +600,12 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         ) : null}
         {hasTunnel ? (
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
-            {'Adds remote desktop access via ' + (tenant.tunnelSubdomain || '') + '-rdp.bespoxai.com — run once after installer.'}
+            {RDP_PROVISIONING_ENABLED
+              ? 'Adds remote desktop access via ' + (tenant.tunnelSubdomain || '') + '-rdp.bespoxai.com — run once after installer.'
+              : 'Temporarily unavailable while access controls are being added.'}
           </p>
         ) : null}
+        {feedback && feedback.action === 'rdp' ? <ActionFeedback feedback={feedback} onDismiss={dismissFeedback} /> : null}
 
         {/* Download installer */}
         <button onClick={downloadInstaller} disabled={instLoading} style={{
@@ -553,6 +620,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4 }}>
           {erpLabel + ' credentials are embedded in the installer and never stored by BespoxAI.'}
         </p>
+        {feedback && feedback.action === 'install' ? <ActionFeedback feedback={feedback} onDismiss={dismissFeedback} /> : null}
 
         {/* Test Connection — only if tunnel exists */}
         {hasTunnel ? (
@@ -565,18 +633,6 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
           }}>
             {testing ? 'Testing…' : 'Test Connection'}
           </button>
-        ) : null}
-
-        {/* Feedback banner */}
-        {feedback ? (
-          <div style={{
-            padding: '10px 16px', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 13,
-            background: feedback.type === 'ok' ? 'rgba(35,134,54,0.15)' : 'rgba(163,45,45,0.15)',
-            border: '1px solid ' + (feedback.type === 'ok' ? 'rgba(63,185,80,0.3)' : 'rgba(163,45,45,0.4)'),
-            color: feedback.type === 'ok' ? 'var(--rb-success)' : 'var(--rb-danger)',
-          }}>
-            {feedback.msg}
-          </div>
         ) : null}
 
         {/* Test Connection result checklist */}
