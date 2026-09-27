@@ -44,6 +44,7 @@ const SETTINGS_TENANT_SELECT = {
   navDatabaseServer: true, navDatabaseName: true, navServerInstance: true, navManagementPort: true,
   testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true,
   testBcPort: true, testBcInstance: true, testBcCompany: true, testNavManagementPort: true,
+  rdpConsentAt: true,
 } as const
 
 export async function GET() {

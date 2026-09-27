@@ -18,9 +18,12 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
 
   const tenant = await (prisma as any).tenant.findFirst({
     where:  { id: params.id },
-    select: { id: true, rdpPassword: true },
+    select: { id: true, rdpPassword: true, rdpConsentAt: true },
   })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+  if (!tenant.rdpConsentAt) {
+    return NextResponse.json({ error: 'The customer has not consented to remote support access' }, { status: 403 })
+  }
   if (!tenant.rdpPassword || !isEncryptedValue(tenant.rdpPassword)) {
     return NextResponse.json({ error: 'No RDP password stored for this tenant' }, { status: 404 })
   }

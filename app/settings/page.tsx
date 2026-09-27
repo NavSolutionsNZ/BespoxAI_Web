@@ -22,6 +22,7 @@ interface Tenant {
   bcAuthMode: string | null
   serviceAccountUser: string | null
   tier: string | null
+  rdpConsentAt?: string | null
   _debug?: boolean // ── DEBUG: remove when SETTINGS_DEBUG env var is removed ──
 }
 interface TenantUser {
@@ -145,6 +146,48 @@ function FieldInput({ label, field, type, placeholder, obj, set }: any) {
         style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', border: '1px solid var(--fog)', borderRadius: 8, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
         onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
     </div>
+  )
+}
+
+// Remote support (RDP) consent — the customer's decision. Only their tenant admin
+// can change it; everyone else sees the current state.
+function RdpConsentCard({ consentAt, canChange, onChanged }: { consentAt: string | null | undefined; canChange: boolean; onChanged: (v: string | null) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [err,  setErr]  = useState('')
+  const granted = !!consentAt
+  async function change(next: boolean) {
+    setBusy(true); setErr('')
+    try {
+      const r = await fetch('/api/settings/rdp-consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ granted: next }) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setErr(d.error || 'Could not update remote support access'); return }
+      onChanged(d.rdpConsentAt ?? null)
+    } catch {
+      setErr('Network error — please try again')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Card>
+      <Label>Remote Support Access (RDP)</Label>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--slate)', marginBottom: 14, lineHeight: 1.65 }}>
+        Lets your support team connect to your server by Remote Desktop to troubleshoot. When allowed, the installer creates a local administrator support account on the server. Connections require sign-in and multi-factor authentication, and every access is logged.
+      </p>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: granted ? 'var(--forest)' : 'var(--ink)', marginBottom: 16, lineHeight: 1.6 }}>
+        {granted
+          ? 'Allowed since ' + new Date(consentAt as string).toLocaleDateString() + '. The support account is created the next time the installer runs. Withdrawing removes remote access, and the account is removed the next time the installer runs.'
+          : 'Not allowed. No support account is created on your server.'}
+      </p>
+      {canChange ? (
+        <Btn onClick={() => change(!granted)} disabled={busy}>
+          {busy ? 'Saving…' : granted ? 'Withdraw remote support access' : 'Allow remote support access'}
+        </Btn>
+      ) : (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', margin: 0 }}>Only your organisation's administrator can change this.</p>
+      )}
+      {err ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A32D2D', marginTop: 10 }}>{err}</p> : null}
+    </Card>
   )
 }
 
@@ -616,6 +659,11 @@ function SettingsInner() {
                 <Btn onClick={saveCountry} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
               </div>
             </Card>
+            <RdpConsentCard
+              consentAt={tenant?.rdpConsentAt}
+              canChange={role === 'tenant_admin'}
+              onChanged={v => setTenant(t => (t ? { ...t, rdpConsentAt: v } : t))}
+            />
           </>}
 
           {/* Users */}

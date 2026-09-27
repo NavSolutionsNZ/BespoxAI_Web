@@ -73,9 +73,11 @@ export function decryptRdpPassword(stored: string): string {
 // Every path that gives a person the plaintext password is recorded:
 //   'reveal'             — superadmin reveal endpoint
 //   'installer_download' — the password is embedded in the downloaded installer script
+// Consent changes are recorded in the same log as evidence of the customer's decision:
+//   'consent_granted' / 'consent_withdrawn'
 // Callers await this *before* returning the password, so if the audit write
 // fails the password is not disclosed.
-export type RdpAccessAction = 'reveal' | 'installer_download'
+export type RdpAccessAction = 'reveal' | 'installer_download' | 'consent_granted' | 'consent_withdrawn'
 
 export async function logRdpAccess(entry: {
   tenantId:  string
@@ -87,3 +89,41 @@ export async function logRdpAccess(entry: {
 }
 
 export { isEncryptedValue }
+
+/**
+ * Record the customer's decision on remote support access. Only a customer's
+ * tenant admin may call this path — callers must enforce that.
+ *
+ * Granting stamps who and when. Withdrawing clears consent and the stored
+ * password, so nothing can be revealed and the next installer run removes the
+ * support account from the server. The change and its audit row are written in
+ * one transaction. Returns the resulting rdpConsentAt (null when withdrawn).
+ */
+export async function setRdpConsent(args: {
+  tenantId:  string
+  userId:    string
+  userEmail: string
+  granted:   boolean
+}): Promise<Date | null> {
+  const { tenantId, userId, userEmail, granted } = args
+  const current = await (prisma as any).tenant.findFirst({
+    where:  { id: tenantId },
+    select: { rdpConsentAt: true },
+  })
+  if (!current) throw new Error('Tenant not found')
+  if (!!current.rdpConsentAt === granted) return current.rdpConsentAt ?? null   // no change, no log
+
+  const rdpConsentAt = granted ? new Date() : null
+  await (prisma as any).$transaction([
+    (prisma as any).tenant.update({
+      where: { id: tenantId },
+      data:  granted
+        ? { rdpConsentAt, rdpConsentByUserId: userId }
+        : { rdpConsentAt: null, rdpConsentByUserId: null, rdpPassword: null },
+    }),
+    (prisma as any).rdpAccessLog.create({
+      data: { tenantId, userId, userEmail, action: granted ? 'consent_granted' : 'consent_withdrawn' },
+    }),
+  ])
+  return rdpConsentAt
+}

@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.5'
+$AgentVersion  = '3.6'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -282,7 +282,7 @@ $AgentCode = @'
         connection checklist.
 #>
 
-$Version    = '3.5'
+$Version    = '3.6'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -1245,13 +1245,28 @@ if ($SupportAccountPassword -ne '') {
     Add-LocalGroupMember -Group 'Administrators' -Member $SupportUser -ErrorAction SilentlyContinue
     Write-OK 'Added to Administrators group'
 
-    # Enable RDP on this machine
+    # Enable RDP on this machine. Windows Firewall is deliberately NOT changed:
+    # remote support arrives over the Cloudflare tunnel via localhost, so opening
+    # the firewall would only expose 3389 to the customer's own network.
     Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
         -Name 'fDenyTSConnections' -Value 0 -ErrorAction SilentlyContinue
-    Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue
-    Write-OK 'RDP enabled (port 3389)'
+    Write-OK 'RDP enabled (Windows Firewall rules left unchanged)'
 } else {
-    Write-Host '    Skipped — no support account password provided' -ForegroundColor Yellow
+    # No consent to remote support: make sure no support account is left behind
+    # from an earlier install. RDP and firewall settings are deliberately left
+    # alone — the customer's own IT may rely on them.
+    $SupportUser  = "$BrandName-Support"
+    $existingUser = Get-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue
+    if ($existingUser) {
+        Remove-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue
+        if (Get-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue) {
+            Write-Host "    Could not remove $SupportUser -- please delete it manually" -ForegroundColor Yellow
+        } else {
+            Write-OK "$SupportUser account removed (remote support not authorised)"
+        }
+    } else {
+        Write-OK 'Remote support not authorised -- no support account created'
+    }
 }
 
 # ── Done ───────────────────────────────────────────────────────────────────────

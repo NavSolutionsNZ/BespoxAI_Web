@@ -12,12 +12,20 @@
       2. Stop + uninstall cloudflared Windows service
       3. Kill any orphaned BCAgent PowerShell processes
       4. Release port 9099 (or custom) if still held
-      5. Remove C:\BespoxAI directory tree (preserves Deployments/Regression
+      5. Remove the <Brand>-Support remote support account (a local
+         Administrator the installer creates when the customer consented to RDP)
+      6. Remove C:\<Brand> directory tree (preserves Deployments/Regression
          by default -- pass -RemoveData to wipe everything)
 
 .PARAMETER AgentPort
     Port the agent was listening on. Default: 9099
     Used to find and kill any process still holding the port.
+
+.PARAMETER BrandName
+    Brand the agent was installed under. Default: BespoxAI. White-label
+    installs use the partner's agent brand name, which determines the install
+    folder (C:\<Brand>), the task (<Brand>-BCAgent) and the support account
+    (<Brand>-Support).
 
 .PARAMETER RemoveData
     Switch. If specified, also removes C:\BespoxAI\Deployments and
@@ -33,6 +41,10 @@
     .\Uninstall-BespoxAI.ps1 -RemoveData
 
 .EXAMPLE
+    # White-label install under a partner brand
+    .\Uninstall-BespoxAI.ps1 -BrandName Endeavour
+
+.EXAMPLE
     # Agent was on a custom port
     .\Uninstall-BespoxAI.ps1 -AgentPort 8081
 #>
@@ -40,14 +52,16 @@
 [CmdletBinding()]
 param(
     [int]    $AgentPort  = 9099,
+    [string] $BrandName  = 'BespoxAI',
     [switch] $RemoveData
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Continue'
 
-$InstallRoot    = 'C:\BespoxAI'
-$TaskName       = 'BespoxAI-BCAgent'
+$InstallRoot    = "C:\$BrandName"
+$TaskName       = "$BrandName-BCAgent"
+$SupportUser    = "$BrandName-Support"
 $CloudflaredExe = "$InstallRoot\Cloudflared\cloudflared.exe"
 
 function Write-Step { param($msg) Write-Host "`n  -> $msg" -ForegroundColor Cyan }
@@ -190,9 +204,26 @@ try {
     Write-Warn "Could not check port $AgentPort : $_"
 }
 
-# -- Step 5: Remove C:\BespoxAI directory -------------------------------------
+# -- Step 5: Remove the remote support account --------------------------------
+# RDP and firewall settings are deliberately left alone: the customer's own IT
+# may rely on them.
 
-Write-Step 'Removing BespoxAI files'
+Write-Step "Removing remote support account $SupportUser"
+
+if (Get-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue) {
+    Remove-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue
+    if (Get-LocalUser -Name $SupportUser -ErrorAction SilentlyContinue) {
+        Write-Warn "Could not remove $SupportUser -- please delete it manually"
+    } else {
+        Write-OK "$SupportUser account removed"
+    }
+} else {
+    Write-Warn "$SupportUser account not found -- skipping"
+}
+
+# -- Step 6: Remove install directory -----------------------------------------
+
+Write-Step "Removing $BrandName files"
 
 if (-not (Test-Path $InstallRoot)) {
     Write-Warn "$InstallRoot not found -- nothing to remove"
@@ -224,7 +255,7 @@ if (-not (Test-Path $InstallRoot)) {
     }
 }
 
-# -- Step 6: Final port verification ------------------------------------------
+# -- Step 7: Final port verification ------------------------------------------
 
 Write-Step 'Final port verification'
 
@@ -243,7 +274,8 @@ Write-Host '    Cleanup Complete'                          -ForegroundColor Gree
 Write-Host '  ============================================' -ForegroundColor Green
 Write-Host ''
 Write-Host '  Removed:' -ForegroundColor White
-Write-Host "    - Scheduled task  : BespoxAI-BCAgent"
+Write-Host "    - Scheduled task  : $TaskName"
+Write-Host "    - Support account : $SupportUser"
 Write-Host "    - Windows service : cloudflared"
 Write-Host "    - BCAgent files   : $InstallRoot\Agent, \Cloudflared, \Logs"
 if ($RemoveData) {

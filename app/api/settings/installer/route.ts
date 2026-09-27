@@ -16,7 +16,7 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 const DEBUG = process.env.SETTINGS_DEBUG === 'true'
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = '3.5'
+const AGENT_VERSION = '3.6'
 
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant
@@ -146,8 +146,11 @@ Write-Host "DEBUG INSTALLER — not real" -ForegroundColor Yellow
   if (!freshTenant) return NextResponse.json({ error: 'Tenant not found after provisioning' }, { status: 404 })
   tenant = freshTenant
 
-  // Support-account password: stored encrypted; the plaintext only exists in this installer.
-  const rdpPassword = await getOrCreateRdpPassword(tenantId, (tenant as any).rdpPassword)
+  // The support account is only created when the customer has consented to remote
+  // support. Without consent the installer gets an empty password, which also makes
+  // it remove any support account an earlier install created.
+  const rdpConsented = !!(tenant as any).rdpConsentAt
+  const rdpPassword  = rdpConsented ? await getOrCreateRdpPassword(tenantId, (tenant as any).rdpPassword) : ''
 
   let tunnelToken: string
   try {
@@ -234,7 +237,7 @@ exit /b %_exit%
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 
   // The installer carries the support-account password in plaintext, so record who downloaded it.
-  await logRdpAccess({
+  if (rdpConsented) await logRdpAccess({
     tenantId,
     userId:    (session.user as any).id,
     userEmail: session.user.email ?? '',

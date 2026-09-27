@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { setRdpConsent } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
   const tenantId = (session.user as any).tenantId as string
 
   const body = await req.json().catch(() => ({}))
-  const { persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance } = body
+  const { persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU, bcPort, agentPort, wantsToConnect, bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance, rdpConsent } = body
 
   const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 7048))
   const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 9099))
@@ -112,6 +113,11 @@ export async function POST(req: NextRequest) {
       },
     }),
   ])
+
+  // Remote support consent is the customer's decision: only their tenant admin can grant it.
+  if (rdpConsent === true && (session.user as any).role === 'tenant_admin') {
+    await setRdpConsent({ tenantId, userId, userEmail: session.user.email ?? '', granted: true })
+  }
 
   return NextResponse.json({ ok: true, wantsToConnect: !!wantsToConnect })
 }

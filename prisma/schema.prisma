@@ -39,7 +39,9 @@ model Tenant {
   testBcInstance         String?                     // test BC instance name
   testBcCompany          String?                     // test BC company name
   testNavManagementPort  Int?      @default(7045)    // NAV server management port for schema sync
-  rdpPassword            String?                     // BespoxAI-Support account password — AES-256-GCM encrypted (lib/rdp.ts, RDP_PASSWORD_ENCRYPTION_KEY); baked into installer
+  rdpPassword            String?                     // BespoxAI-Support account password — AES-256-GCM encrypted (lib/rdp.ts, RDP_PASSWORD_ENCRYPTION_KEY); baked into installer only when rdpConsentAt is set
+  rdpConsentAt           DateTime?                   // Customer's tenant_admin consented to remote support (RDP); null = not consented (no support account)
+  rdpConsentByUserId     String?                     // User who granted rdpConsentAt
   connectionRequestedAt      DateTime?               // Set when client requests connection setup; cleared on tunnel provision
   connectionRequestedToEmail String?                 // Partner email the request was sent to
   upgradeRequestedAt         DateTime?               // Set when client requests plan upgrade
@@ -294,7 +296,7 @@ model RdpAccessLog {
   tenantId  String
   userId    String
   userEmail String
-  action    String   // reveal | installer_download
+  action    String   // reveal | installer_download | consent_granted | consent_withdrawn
   createdAt DateTime @default(now())
 
   @@index([tenantId, createdAt])

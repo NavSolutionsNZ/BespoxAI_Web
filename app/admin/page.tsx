@@ -171,6 +171,7 @@ function AdminPageInner() {
   const [provisionSteps, setProvisionSteps]       = useState<string[]>([])
   const [rdpLoading, setRdpLoading]               = useState<string | null>(null)  // tenantId currently provisioning
   const [rdpError, setRdpError]                   = useState<Record<string, string>>({})
+  const [rdpCopied, setRdpCopied]                 = useState<string | null>(null)  // tenantId just copied
 
   // New user form
   const [showNewUser, setShowNewUser]             = useState(false)
@@ -454,6 +455,8 @@ function AdminPageInner() {
       const data = await res.json()
       if (!res.ok) { setRdpError(e => ({ ...e, [tenantId]: data.error || 'Reveal failed' })); return }
       await navigator.clipboard.writeText(data.password)
+      setRdpCopied(tenantId)
+      setTimeout(() => setRdpCopied(c => (c === tenantId ? null : c)), 2000)
     } catch (err: any) {
       setRdpError(e => ({ ...e, [tenantId]: err.message || 'Copy failed' }))
     }
@@ -740,7 +743,7 @@ function AdminPageInner() {
                               onClick={() => copyRdpPassword(t.id)}
                               title="Copy RDP password (logged)"
                               style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 4, fontSize: 12 }}
-                            >⧉</button>
+                            >{rdpCopied === t.id ? '✓' : '⧉'}</button>
                           ) : null}
                           {rdpError[t.id] ? <span title={rdpError[t.id]} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#A32D2D', marginLeft: 6 }}>✗</span> : null}
                         </td>

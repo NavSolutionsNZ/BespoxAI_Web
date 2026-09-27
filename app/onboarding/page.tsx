@@ -122,6 +122,7 @@ export default function OnboardingPage() {
 
   // Step 3
   const [wantsToConnect, setWantsToConnect] = useState<boolean | null>(null)
+  const [rdpConsentChecked, setRdpConsentChecked] = useState(false)
 
   // Step 4
   const [bcPort,    setBcPort]    = useState('7048')
@@ -241,7 +242,7 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ persona, firstName, lastName, preferredName, navProduct, navVersion, lastCU,
           bcPort: parseInt(bcPort, 10) || 7048, agentPort: parseInt(agentPort, 10) || 9099, wantsToConnect,
-          bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance }),
+          bcInstance, bcCompany, navDatabaseServer, navDatabaseName, navServerInstance, rdpConsent: rdpConsentChecked }),
       })
       if (!res.ok) throw new Error()
       await update()
@@ -587,6 +588,16 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                 </div>
+
+                {user?.role === 'tenant_admin' ? (
+                  <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '16px 20px', marginBottom: 24, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={rdpConsentChecked} onChange={e => setRdpConsentChecked(e.target.checked)} style={{ marginTop: 3 }} />
+                    <span>
+                      <span style={{ display: 'block', fontSize: 13, color: 'var(--ink)', fontWeight: 500, marginBottom: 4 }}>Allow remote support access (RDP)</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--slate)', lineHeight: 1.55 }}>Lets your support team connect to your server by Remote Desktop to troubleshoot. The installer then creates a local administrator support account. Connections require sign-in and multi-factor authentication, every access is logged, and you can withdraw this at any time in Settings.</span>
+                    </span>
+                  </label>
+                ) : null}
 
                 {error && <p style={errStyle}>{error}</p>}
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

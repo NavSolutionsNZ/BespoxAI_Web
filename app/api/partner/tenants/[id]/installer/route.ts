@@ -9,7 +9,7 @@ import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.5'
+const AGENT_VERSION = '3.6'
 
 
 // GET /api/partner/tenants/[id]/installer — returns current agent version
@@ -103,8 +103,11 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (!freshTenant) return NextResponse.json({ error: 'Tenant not found after provisioning' }, { status: 404 })
   tenant = freshTenant
 
-  // Support-account password: stored encrypted; the plaintext only exists in this installer.
-  const rdpPassword = await getOrCreateRdpPassword(params.id, tenant.rdpPassword)
+  // The support account is only created when the customer has consented to remote
+  // support. Without consent the installer gets an empty password, which also makes
+  // it remove any support account an earlier install created.
+  const rdpConsented = !!(tenant as any).rdpConsentAt
+  const rdpPassword  = rdpConsented ? await getOrCreateRdpPassword(params.id, tenant.rdpPassword) : ''
 
   let tunnelToken: string
   try {
@@ -190,7 +193,7 @@ exit /b %_exit%
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 
   // The installer carries the support-account password in plaintext, so record who downloaded it.
-  await logRdpAccess({
+  if (rdpConsented) await logRdpAccess({
     tenantId:  params.id,
     userId:    session.userId,
     userEmail: session.email,
