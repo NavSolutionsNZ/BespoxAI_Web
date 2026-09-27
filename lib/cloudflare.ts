@@ -104,3 +104,91 @@ export async function createRdpDnsRecord(hostname: string, tunnelId: string) {
     }),
   })
 }
+
+// Remove a DNS record by exact hostname (no-op if none exists).
+export async function deleteDnsRecordByName(hostname: string) {
+  const records = await cfFetch(`/zones/${ZONE_ID}/dns_records?name=${encodeURIComponent(hostname)}`)
+  for (const r of (records as any[]) || []) {
+    await cfFetch(`/zones/${ZONE_ID}/dns_records/${r.id}`, { method: 'DELETE' })
+  }
+}
+
+// ── Cloudflare Access (RDP gating) ─────────────────────────────────────────────
+// The API token needs Account → "Access: Apps and Policies" Edit and
+// "Access: Organizations, Identity Providers, and Groups" Read.
+
+let authDomainCache: string | null = null
+let otpIdpCache: string | null = null
+
+// Zero Trust team domain, e.g. "bespoxai.cloudflareaccess.com". Used to fetch
+// the keys that sign Access's External Evaluation requests.
+export async function getAccessAuthDomain(): Promise<string> {
+  if (process.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN) return process.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN
+  if (authDomainCache) return authDomainCache
+  const org = await cfFetch(`/accounts/${ACCOUNT_ID}/access/organizations`)
+  if (!org?.auth_domain) throw new Error('Could not read the Zero Trust team domain')
+  authDomainCache = org.auth_domain as string
+  return authDomainCache
+}
+
+// The account's One-time PIN login method. RDP apps allow this method only.
+export async function getOneTimePinIdpId(): Promise<string> {
+  if (otpIdpCache) return otpIdpCache
+  const idps = await cfFetch(`/accounts/${ACCOUNT_ID}/access/identity_providers`)
+  const otp = ((idps as any[]) || []).find(i => i.type === 'onetimepin')
+  if (!otp) throw new Error('One-time PIN login method is not set up in Cloudflare Zero Trust')
+  otpIdpCache = otp.id as string
+  return otpIdpCache
+}
+
+// Create the reusable Allow policy for one tenant's RDP app: anyone who signs
+// in, provided the portal's live check (External Evaluation) approves them.
+export async function createRdpAccessPolicy(name: string, evaluateUrl: string, keysUrl: string): Promise<{ id: string }> {
+  return cfFetch(`/accounts/${ACCOUNT_ID}/access/policies`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      decision: 'allow',
+      include:  [{ everyone: {} }],
+      require:  [{ external_evaluation: { evaluate_url: evaluateUrl, keys_url: keysUrl } }],
+    }),
+  })
+}
+
+// Create the self-hosted Access app in front of {sub}-rdp.bespoxai.com:
+// One-time PIN sign-in, then an Independent MFA authenticator, 8h sessions.
+export async function createRdpAccessApp(args: {
+  name: string; hostname: string; policyId: string; otpIdpId: string
+}): Promise<{ id: string; aud: string }> {
+  return cfFetch(`/accounts/${ACCOUNT_ID}/access/apps`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name:                      args.name,
+      type:                      'self_hosted',
+      domain:                    args.hostname,
+      session_duration:          '8h',
+      allowed_idps:              [args.otpIdpId],
+      auto_redirect_to_identity: true,
+      app_launcher_visible:      false,
+      mfa_config: {
+        mfa_disabled:           false,
+        allowed_authenticators: ['totp', 'biometrics', 'security_key'],
+        session_duration:       '8h',
+      },
+      policies: [{ id: args.policyId, precedence: 1 }],
+    }),
+  })
+}
+
+export async function getAccessApp(appId: string): Promise<any | null> {
+  try { return await cfFetch(`/accounts/${ACCOUNT_ID}/access/apps/${appId}`) }
+  catch { return null }
+}
+
+export async function deleteAccessApp(appId: string) {
+  return cfFetch(`/accounts/${ACCOUNT_ID}/access/apps/${appId}`, { method: 'DELETE' })
+}
+
+export async function deleteAccessPolicy(policyId: string) {
+  return cfFetch(`/accounts/${ACCOUNT_ID}/access/policies/${policyId}`, { method: 'DELETE' })
+}

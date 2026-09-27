@@ -17,6 +17,7 @@ const PARTNER_TENANT_SELECT = {
   navDatabaseServer: true, navDatabaseName: true, navServerInstance: true, navManagementPort: true,
   testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true, testNavManagementPort: true,
   testBcInstance: true, testBcCompany: true, testBcPort: true,
+  rdpConsentAt: true, rdpProvisionedAt: true,
   createdAt: true,
 } as const
 
@@ -34,13 +35,25 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
     if (!tenantRaw) throw new Error('Not found')
     const tenant = tenantRaw
 
+    // RDP panel: whether a support password exists (never the value) and the
+    // support account's name, which follows the installer's brand naming.
+    const rdpRow = await (prisma as any).tenant.findFirst({
+      where:  { id: params.id },
+      select: { rdpPassword: true, partnerAccount: { select: { isWhiteLabel: true, agentBrandName: true } } },
+    })
+    const brand = (rdpRow?.partnerAccount?.isWhiteLabel && rdpRow?.partnerAccount?.agentBrandName)
+      ? rdpRow.partnerAccount.agentBrandName
+      : 'BespoxAI'
+    const rdpHasPassword = !!rdpRow?.rdpPassword
+    const rdpSupportUser = brand + '-Support'
+
     const users = await (prisma as any).user.findMany({
       where:   { tenantId: params.id, active: true },
       select:  { id: true, name: true, firstName: true, email: true, role: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     })
 
-    return NextResponse.json({ ...tenant, users })
+    return NextResponse.json({ ...tenant, rdpHasPassword, rdpSupportUser, users })
   } catch {
     return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
   }

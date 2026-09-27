@@ -70,9 +70,15 @@ export function decryptRdpPassword(stored: string): string {
 //   'installer_download' — the password is embedded in the downloaded installer script
 // Consent changes are recorded in the same log as evidence of the customer's decision:
 //   'consent_granted' / 'consent_withdrawn'
+// RDP lifecycle and every sign-in decision from the Access live check:
+//   'provisioned' / 'deprovisioned' / 'connect_allowed' / 'connect_denied'
 // Callers await this *before* returning the password, so if the audit write
 // fails the password is not disclosed.
-export type RdpAccessAction = 'reveal' | 'installer_download' | 'consent_granted' | 'consent_withdrawn'
+export type RdpAccessAction =
+  | 'reveal' | 'installer_download'
+  | 'consent_granted' | 'consent_withdrawn'
+  | 'provisioned' | 'deprovisioned'
+  | 'connect_allowed' | 'connect_denied'
 
 export async function logRdpAccess(entry: {
   tenantId:  string

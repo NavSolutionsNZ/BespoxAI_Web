@@ -21,6 +21,8 @@ type Tenant = {
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null
   testNavServerInstance: string | null; testNavManagementPort: number | null
   testBcInstance: string | null; testBcCompany: string | null; testBcPort: number | null
+  rdpConsentAt?: string | null; rdpProvisionedAt?: string | null
+  rdpHasPassword?: boolean; rdpSupportUser?: string
   createdAt: string
   users: TenantUser[]
 }
@@ -217,12 +219,142 @@ function FieldError({ msg }: { msg: string }) {
   )
 }
 
+// ── Remote support (RDP) panel ───────────────────────────────────────────────
+
+const RDP_LOCAL_PORT = 13389   // local port for `cloudflared access rdp` (3389 is often in use)
+
+function CodeLine({ text }: { text: string }) {
+  return (
+    <code style={{
+      display: 'block', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rb-text)',
+      background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6,
+      padding: '7px 10px', margin: '4px 0 0', wordBreak: 'break-all',
+    }}>{text}</code>
+  )
+}
+
+// Shows where RDP stands for this client and what the viewer can do about it:
+// no consent → nothing to do; consented → a partner admin can provision;
+// provisioned → connection steps and a logged password reveal.
+function RdpPanel({ tenant, canProvision, rdpLoading, onProvision }: {
+  tenant: Tenant; canProvision: boolean; rdpLoading: boolean; onProvision: () => void
+}) {
+  const [pwd,       setPwd]       = useState<string | null>(null)
+  const [pwdErr,    setPwdErr]    = useState('')
+  const [revealing, setRevealing] = useState(false)
+  const [copied,    setCopied]    = useState(false)
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current) }, [])
+
+  const consented   = !!tenant.rdpConsentAt
+  const provisioned = !!tenant.rdpProvisionedAt
+  const host        = (tenant.tunnelSubdomain || '') + '-rdp.bespoxai.com'
+  const supportUser = tenant.rdpSupportUser || 'BespoxAI-Support'
+
+  async function reveal() {
+    setRevealing(true); setPwdErr(''); setCopied(false)
+    try {
+      const r = await fetch('/api/partner/tenants/' + tenant.id + '/rdp-password', { method: 'POST' })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setPwdErr(j.error || 'Could not reveal the password'); return }
+      setPwd(j.password)
+      if (hideTimer.current) clearTimeout(hideTimer.current)
+      hideTimer.current = setTimeout(() => setPwd(null), 60000)
+    } catch (e: any) {
+      setPwdErr(e.message || 'Could not reveal the password')
+    } finally {
+      setRevealing(false)
+    }
+  }
+
+  async function copyPwd() {
+    if (!pwd) return
+    try { await navigator.clipboard.writeText(pwd); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {}
+  }
+
+  const canClick = canProvision && consented && RDP_PROVISIONING_ENABLED && !rdpLoading
+  let hintText = ''
+  if (!consented)                    hintText = 'The customer has not allowed remote support access. Their administrator can turn it on in Settings → Overview.'
+  else if (!RDP_PROVISIONING_ENABLED) hintText = 'Temporarily unavailable while access controls are being added.'
+  else if (!canProvision)             hintText = provisioned ? '' : 'A partner admin can provision remote desktop access for this client.'
+  else if (provisioned)               hintText = 'Re-runs provisioning — safe to repeat if the connection stops working.'
+  else                                hintText = 'Puts ' + host + ' behind sign-in and multi-factor authentication, then publishes it.'
+
+  const muted: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', lineHeight: 1.55, margin: 0 }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {(canProvision || !provisioned) ? (
+        <button onClick={onProvision} disabled={!canClick} style={{
+          width: '100%', background: canClick ? 'var(--rb-surface)' : 'var(--rb-border)',
+          color: canClick ? 'var(--rb-text)' : 'var(--rb-text-muted)',
+          border: '1px solid var(--rb-border-strong)', borderRadius: 8, padding: '11px',
+          cursor: canClick ? 'pointer' : 'not-allowed',
+          fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+        }}>
+          {rdpLoading ? 'Provisioning…' : (provisioned ? '⧉ Re-provision RDP Access' : '⧉ Provision RDP Access')}
+        </button>
+      ) : null}
+      {hintText ? (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>{hintText}</p>
+      ) : null}
+
+      {provisioned && consented ? (
+        <div style={{ border: '1px solid var(--rb-border-strong)', borderRadius: 10, padding: 16, background: 'var(--rb-surface)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--rb-success)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Remote support active
+          </div>
+          <div>
+            <p style={muted}>1. One-time setup on your PC — install cloudflared:</p>
+            <CodeLine text="winget install --id Cloudflare.cloudflared" />
+          </div>
+          <div>
+            <p style={muted}>2. Start the connection. A browser opens: sign in with your portal email (a code is emailed to you), then your authenticator app.</p>
+            <CodeLine text={'cloudflared access rdp --hostname ' + host + ' --url rdp://localhost:' + RDP_LOCAL_PORT} />
+          </div>
+          <div>
+            <p style={muted}>{'3. Open Remote Desktop to localhost:' + RDP_LOCAL_PORT + ' and sign in as:'}</p>
+            <CodeLine text={'.\\' + supportUser} />
+          </div>
+          {tenant.rdpHasPassword ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {pwd ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <code style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--rb-text)', background: 'var(--rb-inset)', border: '1px solid var(--rb-border)', borderRadius: 6, padding: '7px 10px' }}>{pwd}</code>
+                  <button onClick={copyPwd} style={{ background: 'transparent', border: '1px solid var(--rb-border-strong)', borderRadius: 6, color: 'var(--rb-text)', padding: '7px 12px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12 }}>
+                    {copied ? '✓ Copied' : 'Copy'}
+                  </button>
+                </div>
+              ) : (
+                <button onClick={reveal} disabled={revealing} style={{
+                  alignSelf: 'flex-start', background: 'transparent', border: '1px solid var(--rb-border-strong)', borderRadius: 6,
+                  color: 'var(--rb-text)', padding: '7px 12px', cursor: revealing ? 'default' : 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: 12,
+                }}>
+                  {revealing ? 'Revealing…' : 'Reveal support password'}
+                </button>
+              )}
+              <p style={{ ...muted, fontSize: 11 }}>Every reveal and every connection is logged. The password hides again after 60 seconds.</p>
+              {pwdErr ? <p role="alert" style={{ ...muted, color: 'var(--rb-danger)' }}>{pwdErr}</p> : null}
+            </div>
+          ) : (
+            <p style={muted}>No support password yet — run the latest installer on the server so the support account is created.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 // ── BCAgent Tab ──────────────────────────────────────────────────────────────
 
 function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelProvisioned: () => void }) {
   const tenantId = tenant.id
   const hasTunnel = !!tenant.tunnelId
   const erpLabel  = tenant.navProduct === 'NAV' ? 'NAV' : 'BC'
+  const { data: agentSess } = useSession()
+  const isPartnerAdmin = (agentSess?.user as any)?.partnerRole === 'partner_admin'
 
   // Form state — refs pattern (no controlled inputs)
   const refs = {
@@ -378,7 +510,10 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
     try {
       const r = await fetch('/api/partner/tenants/' + tenantId + '/provision-rdp', { method: 'POST' })
       const j = await r.json().catch(() => ({}))
-      if (r.ok) showFeedback('rdp', 'ok', 'RDP provisioned: ' + j.rdpHostname)
+      if (r.ok) {
+        showFeedback('rdp', 'ok', 'RDP provisioned: ' + j.rdpHostname)
+        onTunnelProvisioned()   // refetches the tenant so the panel shows the active state
+      }
       else showFeedback('rdp', 'err', j.error || 'RDP provisioning failed')
     } catch (e: any) {
       showFeedback('rdp', 'err', e.message || 'RDP provisioning failed')
@@ -586,24 +721,9 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
         ) : null}
         {feedback && feedback.action === 'sync' ? <ActionFeedback feedback={feedback} onDismiss={dismissFeedback} /> : null}
 
-        {/* Provision RDP — only if tunnel exists */}
+        {/* Remote support (RDP) — only if tunnel exists */}
         {hasTunnel ? (
-          <button onClick={provisionRdp} disabled={rdpLoading || !RDP_PROVISIONING_ENABLED} style={{
-            width: '100%', background: (rdpLoading || !RDP_PROVISIONING_ENABLED) ? 'var(--rb-border)' : 'var(--rb-surface)',
-            color: (rdpLoading || !RDP_PROVISIONING_ENABLED) ? 'var(--rb-text-muted)' : 'var(--rb-text)',
-            border: '1px solid var(--rb-border-strong)', borderRadius: 8, padding: '11px',
-            cursor: (rdpLoading || !RDP_PROVISIONING_ENABLED) ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
-          }}>
-            {rdpLoading ? 'Provisioning…' : '⧉ Provision RDP Access'}
-          </button>
-        ) : null}
-        {hasTunnel ? (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--rb-text-muted)', textAlign: 'center', marginTop: -4, lineHeight: 1.5 }}>
-            {RDP_PROVISIONING_ENABLED
-              ? 'Adds remote desktop access via ' + (tenant.tunnelSubdomain || '') + '-rdp.bespoxai.com — run once after installer.'
-              : 'Temporarily unavailable while access controls are being added.'}
-          </p>
+          <RdpPanel tenant={tenant} canProvision={isPartnerAdmin} rdpLoading={rdpLoading} onProvision={provisionRdp} />
         ) : null}
         {feedback && feedback.action === 'rdp' ? <ActionFeedback feedback={feedback} onDismiss={dismissFeedback} /> : null}
 
