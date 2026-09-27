@@ -13,7 +13,7 @@
       3. Installs BCAgent v2.4 (local NTLM proxy + NAV export/import + deployment workflow)
       4. Writes agent.config.json with your credentials
       5. Installs cloudflared as a Windows service (auto-start)
-      6. Installs BCAgent as a scheduled task (auto-start, runs as SYSTEM)
+      6. Installs BCAgent as a scheduled task (auto-start, runs as the BC/service account -- never SYSTEM)
       7. Starts both services and verifies connectivity
 
     Prerequisites:
@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.7'
+$AgentVersion  = '3.8'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -283,9 +283,11 @@ $AgentCode = @'
   v3.7: Only answers requests from this machine (the Cloudflare tunnel connects
         via localhost); anything from the network gets 403. One API key check
         for every route, case-sensitive and constant-time.
+  v3.8: Installer refuses to leave the agent running as SYSTEM if the run-as
+        account can't be set (previously it warned and carried on).
 #>
 
-$Version    = '3.7'
+$Version    = '3.8'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -1191,13 +1193,23 @@ Register-ScheduledTask `
 # a Windows account, so a separate ServiceAccount is required instead.
 $taskUser = if ($BCAuthMode -eq 'Basic') { $ServiceAccount } else { $BCUsername }
 $taskPass = if ($BCAuthMode -eq 'Basic') { $ServiceAccountPassword } else { $BCPassword }
+# The agent must never be left running as SYSTEM: it answers requests from the
+# tunnel, and as SYSTEM it would have full control of this server (and in
+# Windows mode would authenticate to BC as the computer account). If the
+# run-as account can't be set, remove the task and stop with a clear error.
+$ErrorActionPreference = 'Continue'   # schtasks writes to stderr on failure; handle it below
 $stResult = & schtasks.exe /change /tn $TaskName /ru $taskUser /rp $taskPass 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "    Warning: could not set task user ($stResult) -- running as SYSTEM" -ForegroundColor Yellow
-    Write-Host "    $BrandName agent will use explicit credentials from agent.config.json instead" -ForegroundColor Yellow
-} else {
-    Write-OK "Task user set to $taskUser"
+$stExit   = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+$runAs = $null
+if ($stExit -eq 0) { $runAs = (Get-ScheduledTask -TaskName $TaskName).Principal.UserId }
+if ($stExit -ne 0 -or -not $runAs -or $runAs -match '^(NT AUTHORITY\\)?SYSTEM$|^S-1-5-18$') {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+    Write-Host "    Could not set the agent to run as '$taskUser': $stResult" -ForegroundColor Red
+    Write-Host "    Check the account (DOMAIN\user, or .\user for a local account) and its password, then run the installer again." -ForegroundColor Red
+    Write-Fail "$BrandName agent was not installed -- it will not run as SYSTEM"
 }
+Write-OK "Task user set to $runAs"
 
 Write-OK "Scheduled task '$TaskName' created (runs as $taskUser at startup)"
 
