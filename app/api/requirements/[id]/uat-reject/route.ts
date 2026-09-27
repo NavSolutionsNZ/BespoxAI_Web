@@ -52,6 +52,11 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
   if (!requirement)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Customers may only act on their own tenant's requirements
+  const sessUser = session.user as any
+  if (role !== 'superadmin' && (sessUser.partnerAccountId || requirement.tenantId !== sessUser.tenantId))
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!requirement.testDeployedAt)
     return NextResponse.json({ error: 'No test deployment to reject' }, { status: 400 })
 

@@ -54,6 +54,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       data:  { status: 'submitted', reviewBypassed: true, reviewSubmittedAt: now },
       include: { user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
     })
+    if (user.role !== 'superadmin' && updated) delete (updated as any).devPlan
     return NextResponse.json({ submitted: true, requirement: updated })
   }
 
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       data:  { status: 'submitted', reviewSubmittedAt: now },
       include: { user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
     })
+    if (user.role !== 'superadmin' && updated) delete (updated as any).devPlan
     return NextResponse.json({ submitted: true, requirement: updated })
   }
 
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       data:  { status: 'submitted', reviewIncluded: true, reviewSubmittedAt: now },
       include: { user: { select: { name: true, email: true } }, tenant: { select: { name: true } } },
     })
+    if (user.role !== 'superadmin' && updated) delete (updated as any).devPlan
     return NextResponse.json({ submitted: true, requirement: updated })
   }
 

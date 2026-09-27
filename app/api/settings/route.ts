@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-
-function isTenantAdmin(role: string) {
-  return role === 'tenant_admin' || role === 'superadmin'
-}
 
 // Shared by GET and PATCH so the two can't drift. Deliberately excludes apiKey
 // (the BCAgent credential) and rdpPassword — neither is read by the settings page.
@@ -25,11 +20,8 @@ const SETTINGS_TENANT_SELECT = {
 } as const
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const tenantId = (session.user as any).tenantId
   const tenant = await prisma.tenant.findUnique({
@@ -41,11 +33,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const tenantId = (session.user as any).tenantId
   const body = await req.json().catch(() => ({}))

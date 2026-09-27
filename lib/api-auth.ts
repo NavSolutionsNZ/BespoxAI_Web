@@ -22,6 +22,8 @@ import type { Session } from 'next-auth'
  *   - requireSuperadminOrDeveloper -> 403 unless role in {superadmin,developer}
  *                                     (was: superadminGuard in admin/requirements)
  *   - requireTenant      -> 401 if not logged in or no tenantId
+ *   - requireTenantAdmin -> 403 unless a customer tenant_admin (or superadmin)
+ *                           with a real tenantId, and not a partner session
  */
 
 const UNAUTHORIZED = () =>
@@ -64,4 +66,20 @@ export async function requireTenant(): Promise<Session | NextResponse> {
   const session = await getServerSession(authOptions)
   if (!session?.user || !(session.user as any).tenantId) return UNAUTHORIZED()
   return session
+}
+
+/**
+ * Customer tenant administrator acting on their own tenant (403 otherwise).
+ *
+ * Requires a real tenantId: Prisma treats `where: { tenantId: undefined }` as
+ * "no filter", so a session without one would otherwise see every tenant's
+ * rows. Partner sessions are refused — a partner user's token keeps the role
+ * of their underlying user account but has no customer tenant.
+ */
+export async function requireTenantAdmin(): Promise<Session | NextResponse> {
+  const session = await getServerSession(authOptions)
+  const u = session?.user as any
+  if (!u || !u.tenantId || u.partnerAccountId) return FORBIDDEN()
+  if (u.role !== 'tenant_admin' && u.role !== 'superadmin') return FORBIDDEN()
+  return session as Session
 }

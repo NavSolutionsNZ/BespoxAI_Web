@@ -92,6 +92,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (!requirement)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Developers work only on requirements assigned to them (as in /api/admin/requirements)
+  if (role === 'developer' && requirement.assignedDeveloperId !== (session.user as any).id)
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   if (!requirement.githubBranch || !requirement.tenant?.githubRepo)
     return NextResponse.json({ error: 'No GitHub branch linked to this requirement. Fetch and save objects first.' }, { status: 400 })
 

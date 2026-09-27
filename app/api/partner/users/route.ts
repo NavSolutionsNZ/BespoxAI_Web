@@ -66,22 +66,15 @@ export async function POST(req: NextRequest) {
   })
 
   if (existing) {
-    // Already a user — check if already on this partner account
-    const alreadyMember = await (prisma as any).partnerUser.findUnique({
-      where: { partnerAccountId_userId: { partnerAccountId: session.partnerAccountId, userId: existing.id } },
-    })
-    if (alreadyMember) {
-      return NextResponse.json({ error: 'This person is already a team member' }, { status: 409 })
-    }
-    // Add existing user to partner account
-    await (prisma as any).partnerUser.create({
-      data: {
-        partnerAccountId: session.partnerAccountId,
-        userId:           existing.id,
-        role,
-      },
-    })
-    return NextResponse.json({ ok: true, existing: true })
+    // Never attach an existing account. Linking made the account a member of
+    // this partner with no consent from its owner, which also stripped a
+    // customer user of their tenant at next sign-in (partner sessions carry no
+    // tenantId) and could be pointed at any account, including BespoxAI staff.
+    // Moving an existing person onto a partner team is a BespoxAI admin task.
+    return NextResponse.json(
+      { error: 'An account with this email already exists. Contact BespoxAI support to add it to your team.' },
+      { status: 409 },
+    )
   }
 
   // New user — generate temp password

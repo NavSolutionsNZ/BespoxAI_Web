@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
-
 // PATCH /api/settings/users/[id] — promote | demote | enable | disable | reset
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const body = await req.json().catch(() => ({}))
   const action = body.action as string
@@ -49,9 +45,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 // DELETE /api/settings/users/[id]
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const tenantId = (session.user as any).tenantId
   const selfId   = (session.user as any).id

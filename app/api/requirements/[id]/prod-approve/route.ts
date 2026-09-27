@@ -35,6 +35,11 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
   if (!requirement)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Customers may only act on their own tenant's requirements
+  const sessUser = session.user as any
+  if (role !== 'superadmin' && (sessUser.partnerAccountId || requirement.tenantId !== sessUser.tenantId))
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   if (!requirement.prodApprovalSentAt)
     return NextResponse.json({ error: 'No go-live document has been sent yet' }, { status: 400 })
 

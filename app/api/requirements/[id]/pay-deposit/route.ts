@@ -78,10 +78,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: user.email, name: requirement.tenant?.name ?? '',
-      metadata: { tenantId: user.tenantId },
+      metadata: { tenantId: requirement.tenantId },
     })
     customerId = customer.id
-    await (prisma as any).tenant.update({ where: { id: user.tenantId }, data: { stripeCustomerId: customerId } })
+    await (prisma as any).tenant.update({ where: { id: requirement.tenantId }, data: { stripeCustomerId: customerId } })
   }
 
   const origin = req.headers.get('origin') ?? 'https://bespoxai.com'
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     customer: customerId, mode: 'payment', line_items: lineItems,
     success_url: `${origin}/dashboard?view=customisations&deposit=paid`,
     cancel_url:  `${origin}/dashboard?view=customisations`,
-    metadata: { paymentType: 'requirement_deposit', requirementId, tenantId: user.tenantId },
+    metadata: { paymentType: 'requirement_deposit', requirementId, tenantId: requirement.tenantId },
   })
 
   return NextResponse.json({

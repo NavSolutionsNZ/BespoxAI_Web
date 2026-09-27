@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import { createTunnel, configureTunnelIngress, createDnsRecord, getTunnelToken } from '@/lib/cloudflare'
 import { readFileSync } from 'fs'
@@ -9,8 +8,6 @@ import JSZip from 'jszip'
 import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
 
 export const dynamic = 'force-dynamic'
-
-function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
 const AGENT_VERSION = '3.7'
 
@@ -21,9 +18,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   // ── Agent is a paid-tier feature — free tier cannot generate the installer ──
   {

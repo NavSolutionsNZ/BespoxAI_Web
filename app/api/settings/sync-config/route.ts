@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-
-function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
 // POST /api/settings/sync-config
 // Reads the tenant's current settings from DB and pushes them to the live BCAgent.
 // Only non-credential fields are synced (bcPassword stays unchanged on the agent).
 export async function POST() {
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const tenantId = (session.user as any).tenantId
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })

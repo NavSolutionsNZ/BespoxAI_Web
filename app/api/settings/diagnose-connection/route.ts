@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { getTenantById } from '@/lib/tenants'
 
 export const dynamic = 'force-dynamic'
-
-function isTenantAdmin(role: string) { return role === 'tenant_admin' || role === 'superadmin' }
 
 // GET /api/settings/diagnose-connection
 // Calls the tenant's BCAgent /bespoxai/diagnose endpoint (agent v3.5+) and
@@ -14,11 +11,8 @@ function isTenantAdmin(role: string) { return role === 'tenant_admin' || role ==
 // tunnel — this walks the actual BC connection (reachability, auth, company)
 // so a failure shows exactly where it broke instead of one opaque timeout.
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session?.user || !isTenantAdmin(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const tenantId = (session.user as any).tenantId
   if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 })

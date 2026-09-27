@@ -122,6 +122,13 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (user.role !== 'superadmin' && req_data.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // The spec is what gets quoted and later checked at UAT, so customers can only
+  // (re)generate it before a quote is accepted — same states the UI offers.
+  const specEditable = ['draft', 'needs_clarification', 'quote_rejected'].includes(req_data.status)
+    || (req_data.status === 'submitted' && !!req_data.parentId)
+  if (user.role !== 'superadmin' && !specEditable)
+    return NextResponse.json({ error: 'The specification can no longer be changed at this stage' }, { status: 400 })
+
   // Token limit check — skip for superadmin
   if (user.role !== 'superadmin') {
     const tokenStatus = await checkTokenLimit(req_data.tenantId)
@@ -375,6 +382,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     },
   })
 
+  if (user.role !== 'superadmin' && updated) delete (updated as any).devPlan
   return NextResponse.json({
     requirement: updated,
     spec:        specWithMeta,

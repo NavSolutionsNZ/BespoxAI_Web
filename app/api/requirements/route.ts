@@ -17,7 +17,7 @@ const getCachedRequirements = unstable_cache(
   async (tenantId: string | null, skip: number, take: number, isSuperadmin: boolean) => {
     const [requirements, total] = await Promise.all([
       prisma.requirement.findMany({
-        where: isSuperadmin ? {} : { tenantId: tenantId || undefined },
+        where: isSuperadmin ? {} : { tenantId: tenantId as string },
         orderBy: { createdAt: 'desc' },
         skip,
         take,
@@ -32,7 +32,7 @@ const getCachedRequirements = unstable_cache(
         },
       }),
       prisma.requirement.count({
-        where: isSuperadmin ? {} : { tenantId: tenantId || undefined },
+        where: isSuperadmin ? {} : { tenantId: tenantId as string },
       }),
     ])
 
@@ -52,6 +52,13 @@ export async function GET(req: NextRequest) {
 
   const user = session!.user as any
   const isSuperadmin = user.role === 'superadmin'
+
+  // Everyone except superadmins must have a customer tenant. Without one the
+  // query below would run with tenantId undefined, which Prisma treats as "no
+  // filter" — every tenant's requirements. (Partner users use the partner
+  // routes; developers use /api/admin/requirements.)
+  if (!isSuperadmin && (!user.tenantId || user.partnerAccountId))
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Parse pagination params
   const url = new URL(req.url)

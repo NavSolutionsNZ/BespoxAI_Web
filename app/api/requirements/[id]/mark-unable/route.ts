@@ -40,7 +40,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         { status: 403 }
       )
     }
-    const isAssignedDev = requirement.assignedDeveloperId === user.id
+    // assignedDeveloperId defaults to the customer who created the requirement,
+    // so the role must be checked too — customers never mark unable.
+    const isAssignedDev = user.role === 'developer' && requirement.assignedDeveloperId === user.id
     const isSuperadmin = user.role === 'superadmin'
 
     if (!isAssignedDev && !isSuperadmin) {
