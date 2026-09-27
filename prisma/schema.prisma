@@ -423,6 +423,7 @@ model PartnerAccount {
   githubOrg            String?
   githubToken          String?       // AES-256-GCM encrypted, never exposed in API responses
   fromEmail            String?       // white-label from address e.g. support@partnerco.com
+  fromEmailVerifiedAt  DateTime?     // set when the From address is confirmed via emailed link (lib/partner-from-email.ts) or by a superadmin; unverified addresses are not used
 
   isActive             Boolean       @default(true)
   createdAt            DateTime      @default(now())

@@ -19,6 +19,7 @@ type PartnerAccount = {
   agentBrandName: string | null
   isWhiteLabel: boolean
   fromEmail: string | null
+  fromEmailVerifiedAt?: string | null
   githubOrg: string | null
   githubToken: string | null
   stripeSubscriptionId: string | null
@@ -166,7 +167,9 @@ export default function PartnerSettings() {
       const data = await res.json()
       if (!res.ok) { feedback(section, data.error ?? 'Save failed'); return }
       setAccount(prev => prev ? { ...prev, ...data } : data)
-      feedback(section, 'Saved')
+      feedback(section, data.fromEmailPending
+        ? 'Saved. We sent a confirmation link to ' + data.fromEmailPending + ' — the address is used once it is confirmed.'
+        : 'Saved')
     } catch { feedback(section, 'Network error') }
     finally { setSavingSection(null) }
   }
@@ -444,7 +447,9 @@ export default function PartnerSettings() {
                   defaultValue={account.fromEmail}
                   placeholder="support@yourcompany.com"
                   type="email"
-                  hint="Client-facing emails will show this as the sender."
+                  hint={account.fromEmail && !account.fromEmailVerifiedAt
+                    ? 'Not confirmed yet — emails use the default sender until the link sent to this address is clicked.'
+                    : 'Client-facing emails will show this as the sender once the address is confirmed.'}
                 />
               </div>
               <div style={{ background: 'rgba(200,149,42,0.08)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-warning)' }}>

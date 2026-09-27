@@ -83,6 +83,12 @@ export async function PATCH(
   const { status, title, description, bcArea, priority, customerAnswers, quoteRejectionReason } = body
   const updateData: any = {}
 
+  // Quotes and payment status are commercial decisions — partner admin only
+  const commercial = body.quote !== undefined
+    || ['quoted', 'deposit_required', 'quote_rejected', 'deposit_paid', 'fully_paid'].includes(status)
+  if (commercial && session.partnerRole !== 'partner_admin')
+    return NextResponse.json({ error: 'Only a partner admin can change quotes or payment status.' }, { status: 403 })
+
   // Developer assignment — partner_admin only; assignee must be a member of THIS partner account.
   if (body.assignedDeveloperId !== undefined) {
     if (session.partnerRole !== 'partner_admin')

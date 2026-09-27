@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePartnerSession } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
 import { revalidateTag } from 'next/cache'
+import { isAllowedFromEmail, requestFromEmailVerification } from '@/lib/partner-from-email'
 
 // GET /api/partner/account — return own PartnerAccount details + stats
 export async function GET(req: NextRequest) {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     select: {
       id: true, name: true, slug: true, contactName: true, phone: true, address: true,
       gstNumber: true, billingEmail: true, brandName: true, logoUrl: true,
-      agentBrandName: true, isWhiteLabel: true, fromEmail: true, githubOrg: true,
+      agentBrandName: true, isWhiteLabel: true, fromEmail: true, fromEmailVerifiedAt: true, githubOrg: true,
       githubToken: true, stripeCustomerId: true, stripeSubscriptionId: true,
       subscriptionStatus: true, subscriptionTier: true, partnerTheme: true, createdAt: true, updatedAt: true,
       _count: { select: { tenants: true, users: true } },
@@ -22,10 +23,12 @@ export async function GET(req: NextRequest) {
 
   if (!partner) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Never expose the encrypted token
+  // Never expose the encrypted token; billing identifiers are for partner admins
+  const isAdmin = session.partnerRole === 'partner_admin'
   return NextResponse.json({
     ...partner,
     githubToken: partner.githubToken ? '••••••••' : null,
+    ...(isAdmin ? {} : { stripeCustomerId: null, stripeSubscriptionId: null, gstNumber: null }),
   })
 }
 
@@ -58,6 +61,27 @@ export async function PATCH(req: NextRequest) {
     if (!branded && !acct?.isWhiteLabel) delete data.isWhiteLabel
   }
 
+  // From address: never set directly. A new address gets a confirmation link;
+  // it's used only after someone with access to that mailbox clicks it.
+  let fromEmailPending: string | null = null
+  if ('fromEmail' in data) {
+    const requested = String(data.fromEmail ?? '').trim().toLowerCase()
+    delete data.fromEmail
+    const current = await (prisma as any).partnerAccount.findUnique({
+      where:  { id: session.partnerAccountId },
+      select: { name: true, fromEmail: true, fromEmailVerifiedAt: true },
+    })
+    if (!requested) {
+      data.fromEmail = null
+      data.fromEmailVerifiedAt = null
+    } else if (!(requested === current?.fromEmail && current?.fromEmailVerifiedAt)) {
+      if (!isAllowedFromEmail(requested))
+        return NextResponse.json({ error: 'Use an address on your own company domain.' }, { status: 400 })
+      await requestFromEmailVerification(session.partnerAccountId, current?.name ?? 'Your partner account', requested)
+      fromEmailPending = requested
+    }
+  }
+
   // GitHub token — encrypt if a new non-placeholder value provided
   if ('githubToken' in body && body.githubToken && body.githubToken !== '••••••••') {
     const { encryptToken } = await import('@/lib/crypto')
@@ -72,5 +96,5 @@ export async function PATCH(req: NextRequest) {
   // Branding may have changed — bust the cached /api/branding response
   revalidateTag('branding')
 
-  return NextResponse.json({ ...partner, githubToken: partner.githubToken ? '••••••••' : null })
+  return NextResponse.json({ ...partner, githubToken: partner.githubToken ? '••••••••' : null, fromEmailPending })
 }

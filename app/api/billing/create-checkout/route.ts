@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
+import { getPlanByPriceId } from '@/lib/stripe-prices'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Subscription changes are the tenant admin's decision
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse)
+    return NextResponse.json({ error: "Only your organisation's administrator can change billing or make payments." }, { status: 403 })
 
   const user = session.user as any
   const tenantId = user.tenantId
@@ -16,6 +18,8 @@ export async function POST(req: NextRequest) {
 
   const { priceId } = await req.json()
   if (!priceId) return NextResponse.json({ error: 'priceId required' }, { status: 400 })
+  // Only BespoxAI plan prices — anything else would be treated as 'free' by the webhook
+  if (!getPlanByPriceId(priceId)) return NextResponse.json({ error: 'Unknown plan' }, { status: 400 })
 
   const tenant = await (prisma as any).tenant.findUnique({ where: { id: tenantId } })
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })

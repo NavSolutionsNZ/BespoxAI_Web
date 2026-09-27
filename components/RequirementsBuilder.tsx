@@ -231,6 +231,8 @@ function CardToggleBtn({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
 export default function RequirementsBuilder({ userRole, userId, tenantId, tenantTier='free', bcConnected=false, erpLabel='BC', paymentSuccess, onPaymentSuccessDismiss }:Props) {
   const isSuperadmin = userRole === 'superadmin'
   const isDeveloper = userRole === 'developer'
+  // Quote decisions and payments are the customer's tenant admin only (server-enforced too)
+  const isCustomerAdmin = userRole === 'tenant_admin'
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -1989,7 +1991,7 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, tenant
                     </div>
                   ) : (
                     <>
-                      <button onClick={()=>patch(req.id,{status:'submitted'})} disabled={actLoading} style={pBTN}>Submit for Review →</button>
+                      <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',margin:0,alignSelf:'center'}}>Generate the specification above to submit this for senior review.</p>
                       <button onClick={()=>deleteReq(req.id)} style={{...sBTN,color:'#A32D2D'}}>Delete Draft</button>
                     </>
                   )}
@@ -2003,7 +2005,10 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, tenant
                     </p>
                   </div>
                 )}
-                {!isSuperadmin&&req.status==='quoted'&&<>
+                {!isSuperadmin&&!isCustomerAdmin&&['quoted','deposit_required','complete_pending_payment'].includes(req.status)&&(
+                  <p style={{fontFamily:'var(--font-body)',fontSize:12,color:'var(--slate)',margin:0,alignSelf:'center'}}>Your organisation's administrator approves quotes and makes payments.</p>
+                )}
+                {isCustomerAdmin&&req.status==='quoted'&&<>
                   <button onClick={()=>openDepositModal(req)} style={{...pBTN,background:'#085040'}}>{requiresDeposit(req.tenant.paymentTermsKey) ? '✓ Accept Quote & Proceed' : '✓ Accept & Begin Development'}</button>
                   <button onClick={()=>{setShowRQ(true)}} style={{background:'rgba(163,45,45,0.08)',border:'1px solid rgba(163,45,45,0.2)',color:'#A32D2D',borderRadius:8,padding:'9px 16px',cursor:'pointer',fontFamily:'var(--font-body)',fontSize:13}}>
                     ✕ Reject Quote
@@ -2025,12 +2030,12 @@ export default function RequirementsBuilder({ userRole, userId, tenantId, tenant
                 {isSuperadmin&&req.status==='quote_rejected'&&(
                   <button onClick={()=>{setShowQF(true);setShowSB(false)}} disabled={actLoading} style={pBTN}>$ Revise Quote</button>
                 )}
-                {!isSuperadmin&&req.status==='deposit_required'&&(
+                {isCustomerAdmin&&req.status==='deposit_required'&&(
                   <button onClick={()=>openDepositModal(req)} style={{...pBTN,background:'#085040'}}>
                     💳 Pay Deposit Now
                   </button>
                 )}
-                {!isSuperadmin&&req.status==='complete_pending_payment'&&(
+                {isCustomerAdmin&&req.status==='complete_pending_payment'&&(
                   <button onClick={()=>openBalanceModal(req)} style={{...pBTN,background:'#7A5200'}}>
                     💳 {isMonthlyBilling(req.tenant.paymentTermsKey) ? 'View Payment Details' : 'Pay Balance Now'}
                   </button>

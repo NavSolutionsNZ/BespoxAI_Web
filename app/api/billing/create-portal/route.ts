@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // The Stripe portal can cancel the plan and change payment details — admin only
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse)
+    return NextResponse.json({ error: "Only your organisation's administrator can change billing or make payments." }, { status: 403 })
 
   const tenantId = (session.user as any).tenantId
   if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 })

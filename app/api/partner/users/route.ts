@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
   const partner = await (prisma as any).partnerAccount.findUnique({
     where:  { id: session.partnerAccountId },
-    select: { name: true, isWhiteLabel: true, brandName: true, fromEmail: true },
+    select: { name: true, isWhiteLabel: true, brandName: true, fromEmail: true, fromEmailVerifiedAt: true },
   })
 
   const user = await (prisma as any).user.create({
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       partnerName:  partner?.name ?? 'your partner account',
       role,
       tempPassword,
-      fromEmail:    (partner?.isWhiteLabel && partner?.fromEmail) ? partner.fromEmail : null,
+      fromEmail:    (partner?.isWhiteLabel && partner?.fromEmail && partner?.fromEmailVerifiedAt) ? partner.fromEmail : null,
     })
   } catch (e) {
     console.error('[partner/users] welcome email failed:', e)

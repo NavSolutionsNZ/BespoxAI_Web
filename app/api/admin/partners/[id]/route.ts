@@ -59,6 +59,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
       }
     }
   }
+  // A From address set by a BespoxAI superadmin counts as verified
+  if ('fromEmail' in data) data.fromEmailVerifiedAt = data.fromEmail ? new Date() : null
 
   const partner = await (prisma as any).partnerAccount.update({
     where: { id: params.id },

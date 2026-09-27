@@ -35,6 +35,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (user.role !== 'superadmin' && requirement.tenantId !== user.tenantId)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin')
+    return NextResponse.json({ error: "Only your organisation's administrator can change billing or make payments." }, { status: 403 })
   if (requirement.status !== 'complete_pending_payment')
     return NextResponse.json({ error: 'Requirement is not awaiting balance payment' }, { status: 400 })
   if (!requirement.quote)

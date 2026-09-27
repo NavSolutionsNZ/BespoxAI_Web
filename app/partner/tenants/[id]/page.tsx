@@ -1811,7 +1811,9 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
                   <button onClick={handleMoveToReview} disabled={saving} style={btnSecondary}>Move to Review</button>
                 ) : null}
                 <button onClick={() => setShowQuestionForm(!showQuestionForm)} style={btnSecondary}>Send Back with Questions</button>
-                <button onClick={() => setShowQuoteForm(!showQuoteForm)} style={btnPrimary}>Issue Quote</button>
+                {isPartnerAdmin ? (
+                  <button onClick={() => setShowQuoteForm(!showQuoteForm)} style={btnPrimary}>Issue Quote</button>
+                ) : null}
               </div>
               {showQuestionForm ? (
                 <div style={{ marginTop: 14 }}>
@@ -1841,7 +1843,9 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           {req.status === 'deposit_required' ? (
             <div>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Client has accepted the quote. Mark the deposit as received to begin development.</p>
-              <button onClick={handleMarkDepositPaid} disabled={saving} style={btnPrimary}>Mark Deposit Paid</button>
+              {isPartnerAdmin ? (
+                <button onClick={handleMarkDepositPaid} disabled={saving} style={btnPrimary}>Mark Deposit Paid</button>
+              ) : <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>A partner admin handles quotes and payments.</p>}
             </div>
           ) : null}
 
@@ -1893,7 +1897,9 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
           {req.status === 'complete_pending_payment' ? (
             <div>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--rb-text-muted)', margin: '0 0 14px' }}>Work complete. Mark the balance as paid once the client has settled the final invoice.</p>
-              <button onClick={handleMarkBalancePaid} disabled={saving} style={btnPrimary}>Mark Balance Paid</button>
+              {isPartnerAdmin ? (
+                <button onClick={handleMarkBalancePaid} disabled={saving} style={btnPrimary}>Mark Balance Paid</button>
+              ) : <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>A partner admin handles quotes and payments.</p>}
             </div>
           ) : null}
         </Card>
@@ -2017,7 +2023,7 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
               {'$' + parseFloat(req.quote).toLocaleString('en-NZ', { minimumFractionDigits: 2 }) + ' NZD'}
             </div>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--rb-text-muted)', margin: 0 }}>plus GST · 20% deposit on acceptance</p>
-            {req.status === 'quoted' ? (
+            {req.status === 'quoted' && isPartnerAdmin ? (
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <button onClick={handleApproveQuote} disabled={saving} style={btnPrimary}>Accept Quote</button>
                 <button onClick={() => setShowRejectForm(true)} style={btnDanger}>Reject Quote</button>

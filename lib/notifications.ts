@@ -536,12 +536,13 @@ export async function getPartnerFromEmail(tenantId: string): Promise<string | nu
       where:  { id: tenantId },
       select: {
         partnerAccount: {
-          select: { isWhiteLabel: true, fromEmail: true },
+          select: { isWhiteLabel: true, fromEmail: true, fromEmailVerifiedAt: true },
         },
       },
     })
     const p = tenant?.partnerAccount
-    if (p?.isWhiteLabel && p?.fromEmail) return p.fromEmail as string
+    // Only an address someone has confirmed they control (lib/partner-from-email.ts)
+    if (p?.isWhiteLabel && p?.fromEmail && p?.fromEmailVerifiedAt) return p.fromEmail as string
     return null
   } catch {
     return null

@@ -103,12 +103,12 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     // Customer
     const { status, title, description, bcArea, priority, customerAnswers, quoteRejectionReason } = body
 
-    // A top-level draft that already has a spec must go through
-    // /submit-for-review (senior review fee or plan allowance) — the UI only
-    // offers this free submit for addenda and spec-less drafts.
-    if (status === 'submitted' && existing.status === 'draft' && !existing.parentId && existing.aiSpec
+    // A top-level draft reaches review only through /submit-for-review (senior
+    // review fee or plan allowance), which also requires a generated spec.
+    // Addenda are submitted here, free.
+    if (status === 'submitted' && existing.status === 'draft' && !existing.parentId
         && !existing.reviewPaidAt && !existing.reviewIncluded && !existing.reviewBypassed) {
-      return NextResponse.json({ error: 'Submit this requirement for senior review first' }, { status: 400 })
+      return NextResponse.json({ error: 'Generate the specification, then submit it for senior review.' }, { status: 400 })
     }
 
     // Submit: also record customer answers against the open admin Q&A round
@@ -128,6 +128,12 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
           updateData.adminQALog = JSON.stringify(log)
         }
       }
+    }
+
+    // Accepting or rejecting a quote commits the organisation — tenant admin only
+    if ((status === 'deposit_required' || status === 'quote_rejected') && existing.status === 'quoted'
+        && user.role !== 'tenant_admin') {
+      return NextResponse.json({ error: "Only your organisation's administrator can approve or reject quotes." }, { status: 403 })
     }
 
     // Approve quote → deposit_required
