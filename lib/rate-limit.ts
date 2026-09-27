@@ -26,6 +26,8 @@ export const RATE_LIMITS = {
   changePwUser:   { limit: 10, windowSec: 15 * 60 },
   // Signup requests (each sends an email)
   signupIp:       { limit: 5,  windowSec: 60 * 60 },
+  // CSP violation reports (logging only)
+  cspReportIp:    { limit: 100, windowSec: 60 * 60 },
 } satisfies Record<string, RateLimitRule>
 
 /** Client IP as seen by Vercel's edge (which overwrites x-forwarded-for). */

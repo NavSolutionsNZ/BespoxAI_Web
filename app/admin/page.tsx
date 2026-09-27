@@ -146,14 +146,6 @@ function AdminPageInner() {
     setTabState(t)
   }, [searchParams])
 
-  // Load JSZip for client-side NAV object zip handling
-  useEffect(() => {
-    if (!(window as any).JSZip) {
-      const s = document.createElement('script')
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
-      document.head.appendChild(s)
-    }
-  }, [])
   const [signups, setSignups]   = useState<any[]>([])
   const [signupsLoaded, setSignupsLoaded] = useState(false)
   const [signupsError, setSignupsError]   = useState<string | null>(null)
@@ -2283,8 +2275,8 @@ function AdminRequirementsTab({ autoSelectReqId, onAutoSelectDone }: { autoSelec
 
       // Client-side unzip + C/AL split
       const blob = await res.blob()
-      const JSZip = (window as any).JSZip
-      if (!JSZip) throw new Error('JSZip not loaded — refresh and try again')
+      // Bundled jszip (already a dependency), loaded on demand — not from a CDN
+      const { default: JSZip } = await import('jszip')
       const zip = await JSZip.loadAsync(blob)
       const txtFiles = Object.keys(zip.files).filter((n: string) => n.endsWith('.txt'))
       if (!txtFiles.length) throw new Error('No .txt in zip response')
