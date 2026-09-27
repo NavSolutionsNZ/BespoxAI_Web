@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic'
  * Creates or updates partner subscription for upgrading to branded plan
  */
 export async function POST(req: NextRequest) {
-  const session = await requirePartnerSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Changing the partner's subscription is an admin action
+  const session = await requirePartnerSession('partner_admin')
+  if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { priceId } = body

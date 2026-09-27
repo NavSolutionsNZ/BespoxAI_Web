@@ -6,6 +6,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
 import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
+import { psq, batText } from '@/lib/installer-escape'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,29 +131,29 @@ export async function POST(req: NextRequest) {
   catch { return NextResponse.json({ error: 'Installer template not found' }, { status: 500 }) }
 
   const configured = script
-    .replace('[Parameter(Mandatory)][string]  $TunnelToken,', `[string] $TunnelToken = '${tunnelToken}',`)
-    .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
-    .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
-    .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword ?? ''}',`)
-    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${bcAuthMode === 'Basic' ? 'Basic' : 'Windows'}',`)
-    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${serviceAccountUser ?? ''}',`)
-    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${serviceAccountPassword ?? ''}',`)
+    .replace('[Parameter(Mandatory)][string]  $TunnelToken,', `[string] $TunnelToken = '${psq(tunnelToken)}',`)
+    .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${psq(tenant.apiKey)}',`)
+    .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${psq(bcUsername)}',`)
+    .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${psq(bcPassword ?? '')}',`)
+    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${psq(bcAuthMode === 'Basic' ? 'Basic' : 'Windows')}',`)
+    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${psq(serviceAccountUser ?? '')}',`)
+    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${psq(serviceAccountPassword ?? '')}',`)
     .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${tenant.bcPort || 7048},`)
-    .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
-    .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
+    .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${psq(tenant.bcInstance || '')}',`)
+    .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${psq(tenant.bcCompany || '')}',`)
     .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${tenant.agentPort || 9099},`)
-    .replace("[string] $NavDatabaseServer = 'localhost',",    `[string] $NavDatabaseServer = '${tenant.navDatabaseServer || 'localhost'}',`)
-    .replace("[string] $NavDatabaseName   = '',",             `[string] $NavDatabaseName   = '${tenant.navDatabaseName || ''}',`)
-    .replace("[string] $NavServerInstance    = '',",          `[string] $NavServerInstance    = '${tenant.navServerInstance || ''}',`)
+    .replace("[string] $NavDatabaseServer = 'localhost',",    `[string] $NavDatabaseServer = '${psq(tenant.navDatabaseServer || 'localhost')}',`)
+    .replace("[string] $NavDatabaseName   = '',",             `[string] $NavDatabaseName   = '${psq(tenant.navDatabaseName || '')}',`)
+    .replace("[string] $NavServerInstance    = '',",          `[string] $NavServerInstance    = '${psq(tenant.navServerInstance || '')}',`)
     .replace('[int]    $NavManagementPort    = 7045,',        `[int]    $NavManagementPort    = ${(tenant as any).navManagementPort || 7045},`)
-    .replace("[string] $TestNavDatabaseServer = '',",         `[string] $TestNavDatabaseServer = '${tenant.testNavDatabaseServer || ''}',`)
-    .replace("[string] $TestNavDatabaseName   = '',",         `[string] $TestNavDatabaseName   = '${tenant.testNavDatabaseName || ''}',`)
-    .replace("[string] $TestNavServerInstance = '',",         `[string] $TestNavServerInstance = '${tenant.testNavServerInstance || ''}',`)
-    .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${tenant.testBcInstance || ''}',`)
-    .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${tenant.testBcCompany || ''}',`)
+    .replace("[string] $TestNavDatabaseServer = '',",         `[string] $TestNavDatabaseServer = '${psq(tenant.testNavDatabaseServer || '')}',`)
+    .replace("[string] $TestNavDatabaseName   = '',",         `[string] $TestNavDatabaseName   = '${psq(tenant.testNavDatabaseName || '')}',`)
+    .replace("[string] $TestNavServerInstance = '',",         `[string] $TestNavServerInstance = '${psq(tenant.testNavServerInstance || '')}',`)
+    .replace("[string] $TestBcInstance        = '',",         `[string] $TestBcInstance        = '${psq(tenant.testBcInstance || '')}',`)
+    .replace("[string] $TestBcCompany         = '',",         `[string] $TestBcCompany         = '${psq(tenant.testBcCompany || '')}',`)
     .replace('[int]    $TestNavManagementPort  = 7045',       `[int]    $TestNavManagementPort  = ${(tenant as any).testNavManagementPort || 7045}`)
-    .replace("[string] $SupportAccountPassword = \'\'"  ,         `[string] $SupportAccountPassword = '${rdpPassword}'`)
-    .replace("[string] $BrandName = 'BespoxAI'",             `[string] $BrandName = '${agentBrandName}'`)
+    .replace("[string] $SupportAccountPassword = \'\'"  ,         `[string] $SupportAccountPassword = '${psq(rdpPassword)}'`)
+    .replace("[string] $BrandName = 'BespoxAI'",             `[string] $BrandName = '${psq(agentBrandName)}'`)
 
   // Base64 + BAT wrapper (same pattern as admin installer)
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')
@@ -162,14 +163,14 @@ export async function POST(req: NextRequest) {
 
   const bat = `@echo off
 setlocal EnableDelayedExpansion
-title ${agentBrandName} Installer ^| ${tenant.name}
+title ${batText(agentBrandName)} Installer ^| ${batText(tenant.name)}
 color 0A
 echo.
 echo  ============================================================
-echo    ${agentBrandName} Agent Installer
-echo    Tenant: ${tenant.name}
-echo    BC:     ${bcInstance || tenant.bcInstance || '(not set)'} / ${bcCompany || tenant.bcCompany || '(not set)'}
-echo    Auth:   ${bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)'}
+echo    ${batText(agentBrandName)} Agent Installer
+echo    Tenant: ${batText(tenant.name)}
+echo    BC:     ${batText(bcInstance || tenant.bcInstance || '(not set)')} / ${batText(bcCompany || tenant.bcCompany || '(not set)')}
+echo    Auth:   ${batText(bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)')}
 echo  ============================================================
 echo.
 powershell -NoProfile -Command "if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 1 }"

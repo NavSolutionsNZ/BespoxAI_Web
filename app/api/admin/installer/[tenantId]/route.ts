@@ -6,6 +6,7 @@ import { getTunnelToken } from '@/lib/cloudflare'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
+import { psq, batText } from '@/lib/installer-escape'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,20 +61,20 @@ export async function POST(req: NextRequest, props: { params: Promise<{ tenantId
 
   // Inject all credentials and settings
   const configured = script
-    .replace('[Parameter(Mandatory)][string]  $TunnelToken,', `[string] $TunnelToken = '${tunnelToken}',`)
-    .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${tenant.apiKey}',`)
-    .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${bcUsername}',`)
-    .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${bcPassword}',`)
-    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${bcAuthMode === 'Basic' ? 'Basic' : 'Windows'}',`)
-    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${serviceAccountUser}',`)
-    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${serviceAccountPassword}',`)
-    .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${bcPort},`)
-    .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${tenant.bcInstance || ''}',`)
-    .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${tenant.bcCompany || ''}',`)
+    .replace('[Parameter(Mandatory)][string]  $TunnelToken,', `[string] $TunnelToken = '${psq(tunnelToken)}',`)
+    .replace('[Parameter(Mandatory)][string]  $ApiKey,',      `[string] $ApiKey = '${psq(tenant.apiKey)}',`)
+    .replace('[Parameter(Mandatory)][string]  $BCUsername,',  `[string] $BCUsername = '${psq(bcUsername)}',`)
+    .replace('[Parameter(Mandatory)][string]  $BCPassword,',  `[string] $BCPassword = '${psq(bcPassword)}',`)
+    .replace("[ValidateSet('Windows','Basic')][string] $BCAuthMode = 'Windows',", `[ValidateSet('Windows','Basic')][string] $BCAuthMode = '${psq(bcAuthMode === 'Basic' ? 'Basic' : 'Windows')}',`)
+    .replace("[string] $ServiceAccount         = '',",        `[string] $ServiceAccount         = '${psq(serviceAccountUser)}',`)
+    .replace("[string] $ServiceAccountPassword = '',",        `[string] $ServiceAccountPassword = '${psq(serviceAccountPassword)}',`)
+    .replace('[int]    $BCPort      = 7048,',                 `[int]    $BCPort      = ${parseInt(String(bcPort), 10) || 7048},`)
+    .replace("[string] $BCInstance  = 'BC',",                 `[string] $BCInstance  = '${psq(tenant.bcInstance || '')}',`)
+    .replace("[string] $BCCompany   = 'CRONUS International Ltd.',", `[string] $BCCompany   = '${psq(tenant.bcCompany || '')}',`)
     // Was matching the stale literal '= 8080,' — the .ps1 template has used 9099
     // for a while, so this replace() was silently a no-op and custom agentPort
     // values passed to this endpoint were never actually injected. Fixed.
-    .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${agentPort},`)
+    .replace('[int]    $AgentPort   = 9099,',                 `[int]    $AgentPort   = ${parseInt(String(agentPort), 10) || 9099},`)
 
   // Base64-encode the PS1
   const b64 = Buffer.from(configured, 'utf-8').toString('base64')
@@ -89,15 +90,15 @@ export async function POST(req: NextRequest, props: { params: Promise<{ tenantId
 
   const bat = `@echo off
 setlocal EnableDelayedExpansion
-title BespoxAI Installer ^| ${tenantName}
+title BespoxAI Installer ^| ${batText(tenantName)}
 color 0A
 
 echo.
 echo  ============================================================
 echo    BespoxAI Installer
-echo    Tenant: ${tenantName}
-echo    BC:     ${tenant.bcInstance || '(not set)'} / ${tenant.bcCompany || '(not set)'}
-echo    Auth:   ${bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)'}
+echo    Tenant: ${batText(tenantName)}
+echo    BC:     ${batText(tenant.bcInstance || '(not set)')} / ${batText(tenant.bcCompany || '(not set)')}
+echo    Auth:   ${batText(bcAuthMode === 'Basic' ? 'Basic (NavUserPassword)' : 'Windows (NTLM)')}
 echo  ============================================================
 echo.
 

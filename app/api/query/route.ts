@@ -384,6 +384,14 @@ For time-series / "by month" / "over last N months" / trend questions:
     if (plan.secondParams) plan.secondParams = setTop(plan.secondParams, 2000)
   }
 
+  // The tenant admin can switch entities off (Settings → Data Entities); the
+  // planner's choice must respect that, whatever the question asked for.
+  const entityCfg = (tenant as any).entityConfig as Record<string, boolean> | null | undefined
+  const entityAllowed = (e?: string) => !!e && /^[A-Za-z0-9_]+$/.test(e) && !(entityCfg && entityCfg[e] === false)
+  if (!entityAllowed(plan.entity) || (plan.secondEntity && !entityAllowed(plan.secondEntity))) {
+    return NextResponse.json({ error: 'That data is not available for this company.', step: 'planner' }, { status: 400 })
+  }
+
   const odataUrl = buildODataUrl(tenant, plan.entity, plan.params)
 
   let bcData: any

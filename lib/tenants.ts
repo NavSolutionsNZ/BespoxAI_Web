@@ -88,6 +88,10 @@ export function buildODataUrl(
   entity: string,
   params?: string,
 ): string {
+  // The entity name often comes from the AI query planner (i.e. indirectly from
+  // user text). Only a bare name is allowed, so the URL can't be steered to
+  // other BCAgent paths such as '../../bespoxai/...'.
+  if (!/^[A-Za-z0-9_]+$/.test(entity)) throw new Error('Invalid OData entity name')
   const base = `${tenant.agentBaseUrl}/${tenant.bcInstance}/ODataV4/Company('${tenant.bcCompany}')/${entity}`
   return params ? `${base}?${params}` : base
 }

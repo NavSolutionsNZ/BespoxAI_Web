@@ -89,6 +89,14 @@ export async function POST(req: NextRequest) {
   const safeBcPort    = Math.max(1, Math.min(65535, parseInt(bcPort,    10) || 7048))
   const safeAgentPort = Math.max(1, Math.min(65535, parseInt(agentPort, 10) || 9099))
 
+  // Tenant configuration (BC/NAV connection details) is written only by the
+  // tenant's admin, and only during their own first onboarding. Afterwards it
+  // is changed in Settings, which is admin-only. Other users' onboarding only
+  // updates their own profile.
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { onboardingDone: true } })
+  const role = (session.user as any).role
+  const mayConfigureTenant = !!tenantId && !me?.onboardingDone && (role === 'tenant_admin' || role === 'superadmin')
+
   await Promise.all([
     prisma.user.update({ where: { id: userId }, data: {
         persona: persona ?? null,
@@ -98,7 +106,7 @@ export async function POST(req: NextRequest) {
         ...(preferredName ? { preferredName: preferredName.trim() } : {}),
         name: [firstName, lastName].filter(Boolean).join(' ').trim() || null,
       } }),
-    (prisma as any).tenant.update({
+    mayConfigureTenant ? (prisma as any).tenant.update({
       where: { id: tenantId },
       data: {
         ...(navProduct        !== undefined && { navProduct }),
@@ -109,9 +117,10 @@ export async function POST(req: NextRequest) {
         ...(navDatabaseServer ? { navDatabaseServer } : {}),
         ...(navDatabaseName   ? { navDatabaseName }   : {}),
         ...(navServerInstance ? { navServerInstance } : {}),
-        bcPort: safeBcPort, agentPort: safeAgentPort,
+        ...(bcPort    !== undefined ? { bcPort:    safeBcPort }    : {}),
+        ...(agentPort !== undefined ? { agentPort: safeAgentPort } : {}),
       },
-    }),
+    }) : Promise.resolve(),
   ])
 
   // Remote support consent is the customer's decision: only their tenant admin can grant it.

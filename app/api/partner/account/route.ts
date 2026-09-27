@@ -46,6 +46,18 @@ export async function PATCH(req: NextRequest) {
     if (key in body) data[key] = body[key]
   }
 
+  // White-label is a paid feature (branded plan). Partners may switch it off at
+  // any time, but only switch it on while the branded plan is active — the
+  // Stripe webhook sets it on subscription; this stops a free enable.
+  if (data.isWhiteLabel === true) {
+    const acct = await (prisma as any).partnerAccount.findUnique({
+      where:  { id: session.partnerAccountId },
+      select: { subscriptionTier: true, subscriptionStatus: true, isWhiteLabel: true },
+    })
+    const branded = acct?.subscriptionTier === 'branded' && ['active', 'trialing'].includes(acct?.subscriptionStatus ?? '')
+    if (!branded && !acct?.isWhiteLabel) delete data.isWhiteLabel
+  }
+
   // GitHub token — encrypt if a new non-placeholder value provided
   if ('githubToken' in body && body.githubToken && body.githubToken !== '••••••••') {
     const { encryptToken } = await import('@/lib/crypto')

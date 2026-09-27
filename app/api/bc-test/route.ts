@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireTenantAdmin } from '@/lib/api-auth'
 import { getTenantById } from '@/lib/tenants'
 
 export const dynamic = 'force-dynamic'
@@ -8,15 +7,20 @@ export const dynamic = 'force-dynamic'
 // GET /api/bc-test?entity=Customer
 // Tests a BC OData entity and returns raw response or error
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Raw OData access bypasses the entity toggles, so it's for tenant admins only
+  const session = await requireTenantAdmin()
+  if (session instanceof NextResponse) return session
 
   const tenant = await getTenantById((session.user as any).tenantId)
   if (!tenant) return NextResponse.json({ error: 'No tenant' }, { status: 404 })
 
   const { searchParams } = new URL(req.url)
   const entity = searchParams.get('entity') ?? '$metadata'
-  const top = searchParams.get('top') ?? '2'
+  const top = Math.max(1, Math.min(50, parseInt(searchParams.get('top') ?? '2', 10) || 2))
+  // An entity name only — no path segments, so the request can't be steered
+  // to other BCAgent endpoints (e.g. '../../bespoxai/...')
+  if (entity !== '$metadata' && !/^[A-Za-z0-9_]+$/.test(entity))
+    return NextResponse.json({ error: 'Invalid entity name' }, { status: 400 })
 
   const url = entity === '$metadata'
     ? `${tenant.agentBaseUrl}/${tenant.bcInstance}/ODataV4/$metadata`

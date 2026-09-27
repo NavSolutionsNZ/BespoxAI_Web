@@ -13,6 +13,9 @@ const DUMMY_HASH = '$2a$12$1EB1WG1bQCZ1o7WMio7nnuLDWu35hBAfCLK2ZGq0AXremEhEJwMb6
 // Shown on the login page when sign-in is throttled (see app/login/page.tsx).
 export const LOGIN_RATE_LIMITED = 'RateLimited'
 
+// How often a signed-in session re-reads the account (active, role, partner membership)
+const ACCOUNT_RECHECK_SEC = 5 * 60
+
 export const authOptions: NextAuthOptions = {
   // Cookie lifetime = the longest idle timeout. Shorter per-role idle limits and
   // the 7-day absolute limit are enforced in the jwt callback (lib/session-policy.ts).
@@ -140,6 +143,32 @@ export const authOptions: NextAuthOptions = {
       // Idle and absolute session limits — throws (and NextAuth signs the user
       // out) when either has passed; otherwise records this as activity.
       applySessionPolicy(token as any, !!user)
+
+      // Re-check the account every few minutes so that disabling a user,
+      // changing their role or removing them from a partner team takes effect
+      // within minutes instead of lasting until the token expires.
+      if (!user && token.sub) {
+        const nowSec = Math.floor(Date.now() / 1000)
+        if (typeof token.checkedAt !== 'number' || nowSec - (token.checkedAt as number) > ACCOUNT_RECHECK_SEC) {
+          const acct = await (prisma as any).user.findUnique({
+            where:  { id: token.sub },
+            select: { active: true, role: true },
+          })
+          if (!acct || !acct.active) throw new Error('SessionRevoked')
+          token.role = acct.role
+          if (token.partnerAccountId) {
+            const membership = await (prisma as any).partnerUser.findFirst({
+              where:  { userId: token.sub, partnerAccountId: token.partnerAccountId as string },
+              select: { role: true, partnerAccount: { select: { isActive: true } } },
+            })
+            if (!membership || !membership.partnerAccount?.isActive) throw new Error('SessionRevoked')
+            token.partnerRole = membership.role
+          }
+          token.checkedAt = nowSec
+        }
+      } else if (user) {
+        token.checkedAt = Math.floor(Date.now() / 1000)
+      }
 
       // On session update() call — re-read from DB so onboardingDone refreshes
       if (trigger === 'update' && token.sub) {
