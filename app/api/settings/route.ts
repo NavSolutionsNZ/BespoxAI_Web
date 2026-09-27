@@ -32,6 +32,20 @@ const DEBUG_TENANT = {
 }
 // ── END DEBUG ─────────────────────────────────────────────────────────────────
 
+// Shared by GET and PATCH so the two can't drift. Deliberately excludes apiKey
+// (the BCAgent credential) and rdpPassword — neither is read by the settings page.
+const SETTINGS_TENANT_SELECT = {
+  id: true, name: true, tunnelSubdomain: true, bcInstance: true, tier: true,
+  bcCompany: true, bcUsername: true, bcAuthMode: true, serviceAccountUser: true,
+  active: true, country: true, entityConfig: true,
+  tunnelId: true, createdAt: true,
+  navProduct: true, navVersion: true, lastCU: true,
+  bcPort: true, agentPort: true,
+  navDatabaseServer: true, navDatabaseName: true, navServerInstance: true, navManagementPort: true,
+  testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true,
+  testBcPort: true, testBcInstance: true, testBcCompany: true, testNavManagementPort: true,
+} as const
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
@@ -45,18 +59,8 @@ export async function GET() {
 
   const tenantId = (session.user as any).tenantId
   const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: {
-      id: true, name: true, tunnelSubdomain: true, bcInstance: true, tier: true,
-      bcCompany: true, bcUsername: true, bcAuthMode: true, serviceAccountUser: true,
-      active: true, country: true, entityConfig: true,
-      tunnelId: true, createdAt: true,
-      navProduct: true, navVersion: true, lastCU: true,
-      bcPort: true, agentPort: true,
-      navDatabaseServer: true, navDatabaseName: true, navServerInstance: true, navManagementPort: true,
-      testNavDatabaseServer: true, testNavDatabaseName: true, testNavServerInstance: true,
-      testBcPort: true, testBcInstance: true, testBcCompany: true, testNavManagementPort: true,
-    },
+    where:  { id: tenantId },
+    select: SETTINGS_TENANT_SELECT,
   })
   if (!tenant) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ tenant })
@@ -128,6 +132,6 @@ export async function PATCH(req: NextRequest) {
   }
   if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
-  const tenant = await (prisma as any).tenant.update({ where: { id: tenantId }, data })
+  const tenant = await (prisma as any).tenant.update({ where: { id: tenantId }, data, select: SETTINGS_TENANT_SELECT })
   return NextResponse.json({ tenant })
 }

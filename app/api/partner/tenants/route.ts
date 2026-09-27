@@ -94,6 +94,9 @@ export async function POST(req: NextRequest) {
       ...(testBcPort            ? { testBcPort:  parseInt(String(testBcPort),  10)      } : {}),
       testNavManagementPort: parseInt(String(testNavManagementPort ?? 7045), 10) || 7045,
     },
+    // The new-client page only reads `id`. Never return the generated apiKey
+    // to the partner — it's delivered to the server via the installer instead.
+    select: { id: true, name: true, tunnelSubdomain: true },
   })
 
   return NextResponse.json(tenant, { status: 201 })

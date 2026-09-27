@@ -20,7 +20,6 @@ type Tenant = {
   testNavDatabaseServer: string | null; testNavDatabaseName: string | null
   testNavServerInstance: string | null; testNavManagementPort: number | null
   testBcInstance: string | null; testBcCompany: string | null; testBcPort: number | null
-  rdpPassword: string | null
   createdAt: string
   users: TenantUser[]
 }
