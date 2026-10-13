@@ -1,7 +1,7 @@
 import type { TenantConfig } from '@/lib/tenants'
 import { BC_SERVICES, dateFilterExpr, optKey, type BcServiceKey } from '../bc-services'
 import { AGING_BUCKETS, agingBucket } from '../registry'
-import { monthBuckets, resolveCompare, resolvePeriod, ymd } from '../periods'
+import { CALENDAR_YEAR, monthBuckets, resolveCompare, resolvePeriod, ymd, type FiscalCalendar } from '../periods'
 import {
   MetricSourceError,
   type MetricParams, type MetricProvenance, type MetricResult, type ResolvedPeriod,
@@ -138,8 +138,9 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
       const prov = (method: string, period?: ResolvedPeriod, comparePeriod?: ResolvedPeriod): MetricProvenance => ({
         source: 'flowfilter', method, calls: c.calls, period, comparePeriod,
         asOf: new Date().toISOString(), rowsRead: c.rowsRead, truncated: c.truncated,
+        fiscalYear: period && (period.key === 'ytd' || period.key === 'last_year') ? sctx.fiscal.source : undefined,
       })
-      const period = resolvePeriod(params.period ?? 'this_month', today, sctx.fiscalYearStartMonth)
+      const period = resolvePeriod(params.period ?? 'this_month', today, sctx.fiscal)
       const compare = resolveCompare(period, params.compare ?? 'none')
 
       switch (metricId) {
@@ -228,6 +229,39 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
       throw new MetricSourceError('not_supported', 'Metric ' + metricId + ' is not implemented by the FlowFilter source.')
     },
   }
+}
+
+// ─── Fiscal years ────────────────────────────────────────────────────────────
+
+const FISCAL_TTL_MS = 6 * 60 * 60 * 1000
+const fiscalCache = new Map<string, { at: number; value: FiscalCalendar }>()
+
+/**
+ * The company's fiscal-year start dates: Accounting Periods with New Fiscal
+ * Year = Yes. Never throws — if the page isn't published or readable, the
+ * calendar year is used and provenance says so. Cached per tenant+company.
+ */
+export async function loadFiscalCalendar(tenant: TenantConfig, deps: { fetcher: JsonFetcher; buildUrl: UrlBuilder }): Promise<FiscalCalendar> {
+  const key = tenant.tenantId + '|' + tenant.bcCompany
+  const hit = fiscalCache.get(key)
+  if (hit && Date.now() - hit.at < FISCAL_TTL_MS) return hit.value
+
+  let value: FiscalCalendar = CALENDAR_YEAR
+  try {
+    const c: Ctx = { tenant, fetcher: deps.fetcher, buildUrl: deps.buildUrl, calls: [], rowsRead: 0, truncated: false }
+    const rows = await readService(c, 'accountingPeriods', { filter: 'New_Fiscal_Year eq true' })
+    const starts = rows
+      .filter(r => r.New_Fiscal_Year === true || optKey(r.New_Fiscal_Year) === 'true' || optKey(r.New_Fiscal_Year) === 'yes')
+      .map(r => String(r.Starting_Date ?? '').slice(0, 10))
+      .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s) && s > '0001-01-01')
+    if (starts.length) value = { starts, source: 'nav' }
+  } catch {
+    // Not published / not reachable yet → calendar year. Don't cache failures for long.
+    fiscalCache.set(key, { at: Date.now() - FISCAL_TTL_MS + 10 * 60 * 1000, value })
+    return value
+  }
+  fiscalCache.set(key, { at: Date.now(), value })
+  return value
 }
 
 /** Production fetcher: goes through the tenant's BespoxAI Agent tunnel. */

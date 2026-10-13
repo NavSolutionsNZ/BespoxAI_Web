@@ -3,10 +3,19 @@ import type { PeriodKey, CompareKey, ResolvedPeriod } from './types'
 /**
  * Deterministic period maths — the AI never calculates dates for dashboards.
  *
- * Note: YTD / last_year are CALENDAR-year for now. NAV fiscal years come from
- * the Accounting Period table; reading that per tenant is a later slice
- * (fiscalYearStartMonth is the hook — 1 = January).
+ * YTD / last_year follow the tenant's fiscal years when known: the Starting
+ * Dates of NAV Accounting Periods flagged New Fiscal Year (see
+ * sources/fiscal-years.ts). Without them, the calendar year is used.
+ * Months and quarters are always calendar.
  */
+
+/** Fiscal-year start dates (YYYY-MM-DD) from NAV, any order. Empty = calendar year. */
+export interface FiscalCalendar {
+  starts: string[]
+  source: 'nav' | 'calendar'
+}
+
+export const CALENDAR_YEAR: FiscalCalendar = { starts: [], source: 'calendar' }
 
 const pad = (n: number) => (n < 10 ? '0' + n : String(n))
 const ymd = (d: Date) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
@@ -14,13 +23,22 @@ const lastDayOf = (y: number, m: number) => new Date(y, m + 1, 0) // m is 0-base
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function fyStart(today: Date, fyStartMonth: number): Date {
-  const m0 = fyStartMonth - 1
-  const y = today.getMonth() >= m0 ? today.getFullYear() : today.getFullYear() - 1
-  return new Date(y, m0, 1)
+/** Start of the current and previous fiscal year — from NAV dates when they cover today, else calendar. */
+function fyBounds(today: Date, fc: FiscalCalendar): { cur: Date; prev: Date } {
+  const t = ymd(today)
+  const starts = Array.from(new Set(fc.starts.map(s => s.slice(0, 10)))).sort()
+  let i = -1
+  for (let k = 0; k < starts.length; k++) if (starts[k] <= t) i = k
+  if (i >= 0) {
+    const cur = new Date(starts[i] + 'T00:00:00')
+    // No earlier year recorded in NAV: assume the previous year was a full 12 months.
+    const prev = i > 0 ? new Date(starts[i - 1] + 'T00:00:00') : new Date(cur.getFullYear() - 1, cur.getMonth(), cur.getDate())
+    return { cur, prev }
+  }
+  return { cur: new Date(today.getFullYear(), 0, 1), prev: new Date(today.getFullYear() - 1, 0, 1) }
 }
 
-export function resolvePeriod(key: PeriodKey, today: Date = new Date(), fiscalYearStartMonth = 1): ResolvedPeriod {
+export function resolvePeriod(key: PeriodKey, today: Date = new Date(), fiscal: FiscalCalendar = CALENDAR_YEAR): ResolvedPeriod {
   const y = today.getFullYear()
   const m = today.getMonth()
   const q = Math.floor(m / 3)
@@ -40,14 +58,13 @@ export function resolvePeriod(key: PeriodKey, today: Date = new Date(), fiscalYe
       return { key, label: 'Q' + (lq + 1) + ' ' + d.getFullYear(), from: ymd(d), to: ymd(lastDayOf(d.getFullYear(), d.getMonth() + 2)) }
     }
     case 'ytd': {
-      const s = fyStart(today, fiscalYearStartMonth)
-      return { key, label: 'YTD', from: ymd(s), to: ymd(today) }
+      const { cur } = fyBounds(today, fiscal)
+      return { key, label: 'YTD', from: ymd(cur), to: ymd(today) }
     }
     case 'last_year': {
-      const s = fyStart(today, fiscalYearStartMonth)
-      const ps = new Date(s.getFullYear() - 1, s.getMonth(), 1)
-      const pe = new Date(s.getFullYear(), s.getMonth(), 0)
-      return { key, label: 'Last year', from: ymd(ps), to: ymd(pe) }
+      const { cur, prev } = fyBounds(today, fiscal)
+      const end = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - 1)
+      return { key, label: 'Last year', from: ymd(prev), to: ymd(end) }
     }
     case 'last_12_months': {
       const s = new Date(y, m - 11, 1)

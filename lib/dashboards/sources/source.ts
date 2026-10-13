@@ -1,8 +1,9 @@
 import type { MetricParams, MetricResult } from '../types'
+import type { FiscalCalendar } from '../periods'
 
 export interface SourceContext {
   today: Date
-  fiscalYearStartMonth: number
+  fiscal: FiscalCalendar
 }
 
 /** A way of producing registry metrics. Implementations must cover every metric ID. */

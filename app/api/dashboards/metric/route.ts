@@ -7,7 +7,8 @@ import { METRICS } from '@/lib/dashboards/registry'
 import { BC_SERVICES } from '@/lib/dashboards/bc-services'
 import { fetchMetric, tenantToday } from '@/lib/dashboards/executor'
 import { mockSource } from '@/lib/dashboards/sources/mock'
-import { agentFetcher, createFlowFilterSource } from '@/lib/dashboards/sources/flowfilter'
+import { agentFetcher, createFlowFilterSource, loadFiscalCalendar } from '@/lib/dashboards/sources/flowfilter'
+import { effectiveParams } from '@/lib/dashboards/validate'
 import { MetricSourceError } from '@/lib/dashboards/types'
 
 export const dynamic = 'force-dynamic'
@@ -60,8 +61,12 @@ export async function POST(req: NextRequest) {
     const tenant = await getTenantById(tenantId)
     if (!tenant) return NextResponse.json({ error: 'Tenant not configured' }, { status: 404 })
 
-    const src = createFlowFilterSource(tenant, { fetcher: agentFetcher(tenant), buildUrl: buildODataUrl })
-    const result = await fetchMetric(src, metricId, body.params, { today: tenantToday(tenant.country) })
+    const deps = { fetcher: agentFetcher(tenant), buildUrl: buildODataUrl }
+    // Fiscal years only matter for YTD / last-year figures — skip the extra call otherwise.
+    const period = effectiveParams(metricId, body.params).period
+    const fiscal = period === 'ytd' || period === 'last_year' ? await loadFiscalCalendar(tenant, deps) : undefined
+    const src = createFlowFilterSource(tenant, deps)
+    const result = await fetchMetric(src, metricId, body.params, { today: tenantToday(tenant.country), fiscal })
     return NextResponse.json({ result })
   } catch (e: any) {
     if (e instanceof MetricSourceError) {

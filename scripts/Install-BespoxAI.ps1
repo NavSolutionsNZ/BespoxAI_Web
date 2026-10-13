@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.9'
+$AgentVersion  = '3.10'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -287,7 +287,7 @@ $AgentCode = @'
         account can't be set (previously it warned and carried on).
 #>
 
-$Version    = '3.9'
+$Version    = '3.10'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -1214,7 +1214,8 @@ Write-OK "Task user set to $runAs"
 Write-OK "Scheduled task '$TaskName' created (runs as $taskUser at startup)"
 
 # ── Step 7b: Publish dashboard web services ────────────────────────────────────
-# The CFO dashboards read standard pages via FlowFilters. Publishes each one as a
+# The CFO dashboards read standard pages via FlowFilters (and Accounting
+# Periods for each company's fiscal years). Publishes each one as a
 # page web service if it isn't already. Non-fatal: on failure the installer
 # carries on and prints the manual steps.
 # MUST match lib/dashboards/bc-services.ts (scripts/test-dashboards.ts checks this).
@@ -1226,7 +1227,8 @@ $DashboardServices = @(
     @{ Name = 'BespoxAI_BankAccounts';      PageId = 371; Page = 'Bank Account List' },
     @{ Name = 'BespoxAI_CustLedgerEntries'; PageId = 25;  Page = 'Customer Ledger Entries' },
     @{ Name = 'BespoxAI_VendLedgerEntries'; PageId = 29;  Page = 'Vendor Ledger Entries' },
-    @{ Name = 'BespoxAI_Customers';         PageId = 22;  Page = 'Customer List' }
+    @{ Name = 'BespoxAI_Customers';         PageId = 22;  Page = 'Customer List' },
+    @{ Name = 'BespoxAI_AccountingPeriods'; PageId = 100; Page = 'Accounting Periods' }
 )
 
 $wsInstance = if ($NavServerInstance) { $NavServerInstance } else { $BCInstance }

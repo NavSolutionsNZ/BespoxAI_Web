@@ -47,6 +47,8 @@ export interface MetricProvenance {
   rowsRead: number
   /** True when a row cap was hit — the figure may be incomplete. */
   truncated: boolean
+  /** For YTD / last-year figures: where the fiscal year came from. */
+  fiscalYear?: 'nav' | 'calendar'
 }
 
 export interface ScalarValue { value: number; compareValue?: number }

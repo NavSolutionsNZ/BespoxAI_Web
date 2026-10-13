@@ -2,6 +2,7 @@ import { METRICS } from './registry'
 import { effectiveParams, validateParams } from './validate'
 import type { MetricParams, MetricResult } from './types'
 import type { MetricSource } from './sources/source'
+import { CALENDAR_YEAR, type FiscalCalendar } from './periods'
 
 /** Tenant country → IANA zone, so "today" and month boundaries match the customer's books. */
 const COUNTRY_TZ: Record<string, string> = {
@@ -21,7 +22,7 @@ export async function fetchMetric(
   source: MetricSource,
   metricId: string,
   params: MetricParams | undefined,
-  opts: { today: Date; fiscalYearStartMonth?: number },
+  opts: { today: Date; fiscal?: FiscalCalendar },
 ): Promise<MetricResult> {
   if (!METRICS[metricId]) throw new Error('Unknown metric ' + metricId)
   const errs = validateParams(metricId, params)
@@ -29,6 +30,6 @@ export async function fetchMetric(
   if (!source.implements(metricId)) throw new Error(source.name + ' source does not implement ' + metricId)
   return source.fetch(metricId, effectiveParams(metricId, params), {
     today: opts.today,
-    fiscalYearStartMonth: opts.fiscalYearStartMonth ?? 1,
+    fiscal: opts.fiscal ?? CALENDAR_YEAR,
   })
 }

@@ -44,6 +44,11 @@ export const BC_SERVICES = {
     fields: ['Entry_No', 'Vendor_No', 'Due_Date', 'Remaining_Amt_LCY', 'Open'],
     usesDateFilter: false, verified: false,
   },
+  accountingPeriods: {
+    serviceName: 'BespoxAI_AccountingPeriods', pageId: 100, pageName: 'Accounting Periods',
+    fields: ['Starting_Date', 'New_Fiscal_Year'],
+    usesDateFilter: false, verified: false,
+  },
   customers: {
     serviceName: 'BespoxAI_Customers', pageId: 22, pageName: 'Customer List',
     fields: ['No', 'Name', 'Sales_LCY'],

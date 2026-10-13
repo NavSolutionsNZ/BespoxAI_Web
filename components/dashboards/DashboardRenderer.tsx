@@ -158,6 +158,9 @@ function Provenance({ result }: { result: MetricResult }) {
       <div style={{ fontSize: 12, color: 'var(--ink)', marginBottom: 6 }}>{p.method}</div>
       {p.period ? <div style={line}>{'Period: ' + p.period.from + ' to ' + p.period.to}</div> : null}
       {p.comparePeriod ? <div style={line}>{'Compared with: ' + p.comparePeriod.from + ' to ' + p.comparePeriod.to}</div> : null}
+      {p.fiscalYear ? (
+        <div style={line}>{p.fiscalYear === 'nav' ? 'Fiscal year: from NAV Accounting Periods' : 'Fiscal year: calendar year (NAV Accounting Periods not available)'}</div>
+      ) : null}
       <div style={line}>{'Read ' + new Date(p.asOf).toLocaleString('en-NZ') + ' · ' + p.rowsRead + ' rows · source: ' + p.source}</div>
       {p.truncated ? <div style={{ ...line, color: RED }}>Row limit reached — figure may be incomplete.</div> : null}
       {p.calls.map((c, i) => (

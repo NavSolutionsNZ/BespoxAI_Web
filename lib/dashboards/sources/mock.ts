@@ -30,7 +30,7 @@ export const mockSource: MetricSource = {
   name: 'mock',
   implements: id => id in METRICS,
   async fetch(metricId: string, params: MetricParams, ctx: SourceContext): Promise<MetricResult> {
-    const period = resolvePeriod(params.period ?? 'this_month', ctx.today, ctx.fiscalYearStartMonth)
+    const period = resolvePeriod(params.period ?? 'this_month', ctx.today, ctx.fiscal)
     const compare = resolveCompare(period, params.compare ?? 'none')
     const provenance = {
       source: 'mock' as const,

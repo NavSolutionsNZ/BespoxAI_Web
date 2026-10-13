@@ -9,7 +9,7 @@ import { validateSpec } from '../lib/dashboards/validate'
 import { resolvePeriod, resolveCompare, monthBuckets } from '../lib/dashboards/periods'
 import { fetchMetric, tenantToday } from '../lib/dashboards/executor'
 import { mockSource } from '../lib/dashboards/sources/mock'
-import { createFlowFilterSource as createFF, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
+import { createFlowFilterSource as createFF, loadFiscalCalendar, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
 import { MetricSourceError } from '../lib/dashboards/types'
 import { optKey, BC_SERVICES } from '../lib/dashboards/bc-services'
 import { applyAiReply, buildSystemPrompt, describeLayout } from '../lib/dashboards/ai-edit'
@@ -84,10 +84,20 @@ async function main() {
     const jan = new Date(2026, 0, 5)
     assert.deepEqual([resolvePeriod('last_quarter', jan).from, resolvePeriod('last_quarter', jan).to], ['2025-10-01', '2025-12-31'])
   })
-  await test('fiscal year start month moves YTD', () => {
-    assert.equal(resolvePeriod('ytd', today, 1).from, '2026-01-01')
-    assert.equal(resolvePeriod('ytd', today, 4).from, '2026-04-01')
-    assert.equal(resolvePeriod('ytd', new Date(2026, 1, 1), 4).from, '2025-04-01')
+  await test('YTD / last year follow NAV fiscal-year starts', () => {
+    const april = { starts: ['2024-04-01', '2025-04-01', '2026-04-01', '2027-04-01'], source: 'nav' as const }
+    assert.equal(resolvePeriod('ytd', today).from, '2026-01-01')                       // no NAV data → calendar
+    assert.equal(resolvePeriod('ytd', today, april).from, '2026-04-01')
+    assert.deepEqual([resolvePeriod('last_year', today, april).from, resolvePeriod('last_year', today, april).to], ['2025-04-01', '2026-03-31'])
+    assert.equal(resolvePeriod('ytd', new Date(2026, 1, 1), april).from, '2025-04-01')
+    // Short first year after incorporation: last year is the real (short) year, not 12 months
+    const short = { starts: ['2025-10-01', '2026-04-01'], source: 'nav' as const }
+    assert.deepEqual([resolvePeriod('last_year', today, short).from, resolvePeriod('last_year', today, short).to], ['2025-10-01', '2026-03-31'])
+    // Only the current year set up in NAV: previous year assumed 12 months
+    const one = { starts: ['2026-04-01'], source: 'nav' as const }
+    assert.equal(resolvePeriod('last_year', today, one).from, '2025-04-01')
+    // NAV periods all in the future → calendar
+    assert.equal(resolvePeriod('ytd', today, { starts: ['2030-01-01'], source: 'nav' }).from, '2026-01-01')
   })
   await test('prior period for whole months; prior year', () => {
     const p = resolvePeriod('this_month', new Date(2026, 2, 10)) // March
@@ -200,6 +210,29 @@ async function main() {
     const r = await fetchMetric(createFlowFilterSource(tenant, fakeFetcher(() => ({ body: { value: rows } }))), 'top_customers', { period: 'ytd', top: 2 }, opts)
     assert.deepEqual(r.breakdown!.rows.map(x => x.label), ['B', 'C3'])
   })
+  await test('fiscal calendar loads from Accounting Periods; falls back to calendar on 404', async () => {
+    const f = fakeFetcher(() => ({ body: { value: [
+      { Starting_Date: '2025-04-01', New_Fiscal_Year: true },
+      { Starting_Date: '2026-04-01', New_Fiscal_Year: true },
+    ] } }))
+    const fc = await loadFiscalCalendar({ ...tenant, tenantId: 'fy1' }, { fetcher: f, buildUrl })
+    assert.deepEqual(fc, { starts: ['2025-04-01', '2026-04-01'], source: 'nav' })
+    assert.ok(decodeURIComponent(f.urls[0]).includes('/BespoxAI_AccountingPeriods?') && decodeURIComponent(f.urls[0]).includes('New_Fiscal_Year eq true'))
+    await loadFiscalCalendar({ ...tenant, tenantId: 'fy1' }, { fetcher: f, buildUrl })
+    assert.equal(f.urls.length, 1, 'second call should be cached')
+    const missing = await loadFiscalCalendar({ ...tenant, tenantId: 'fy2' }, { fetcher: fakeFetcher(() => ({ status: 404 })), buildUrl })
+    assert.deepEqual(missing, { starts: [], source: 'calendar' })
+  })
+  await test('YTD provenance says where the fiscal year came from', async () => {
+    const f = fakeFetcher(() => ({ body: { value: [{ No: 'C1', Name: 'A', Sales_LCY: 5 }] } }))
+    const r = await fetchMetric(createFlowFilterSource(tenant, f), 'top_customers', { period: 'ytd' },
+      { today, fiscal: { starts: ['2026-04-01'], source: 'nav' } })
+    assert.equal(r.provenance.fiscalYear, 'nav')
+    assert.ok(decodeURIComponent(f.urls[0]).includes('Date_Filter ge 2026-04-01'))
+    const m = await fetchMetric(createFlowFilterSource(tenant, f), 'pl_revenue', { period: 'this_month' }, opts).catch(() => null)
+    assert.ok(!m || m.provenance.fiscalYear === undefined)
+  })
+
   console.log('Editor')
   await test('edits keep the default pack valid and never mutate it', () => {
     const before = JSON.stringify(DEFAULT_CFO_PACK)
