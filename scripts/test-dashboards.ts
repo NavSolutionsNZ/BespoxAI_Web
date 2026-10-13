@@ -12,6 +12,7 @@ import { mockSource } from '../lib/dashboards/sources/mock'
 import { createFlowFilterSource as createFF, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
 import { MetricSourceError } from '../lib/dashboards/types'
 import { optKey, BC_SERVICES } from '../lib/dashboards/bc-services'
+import { addSection, addWidget, moveWidget, removeSection, removeWidget, renameSection, tidy, updateWidget } from '../lib/dashboards/edit'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TenantConfig } from '../lib/tenants'
@@ -198,11 +199,42 @@ async function main() {
     const r = await fetchMetric(createFlowFilterSource(tenant, fakeFetcher(() => ({ body: { value: rows } }))), 'top_customers', { period: 'ytd', top: 2 }, opts)
     assert.deepEqual(r.breakdown!.rows.map(x => x.label), ['B', 'C3'])
   })
+  console.log('Editor')
+  await test('edits keep the default pack valid and never mutate it', () => {
+    const before = JSON.stringify(DEFAULT_CFO_PACK)
+    let s = addWidget(DEFAULT_CFO_PACK, 'pl', 'pl_revenue')            // duplicate metric → fresh id
+    s = updateWidget(s, 'pl-rev', { title: 'Revenue', params: { period: 'ytd' }, width: 6 })
+    s = moveWidget(s, 'pl-rev', 1)
+    s = moveWidget(s, 'pl-rev', -1)
+    s = removeWidget(s, 'cash-acc')
+    s = addSection(s, 'Watch list')
+    s = addWidget(s, 'watch-list', 'top_customers')
+    s = renameSection(s, 'sales', 'Sales & customers')
+    s = removeSection(s, 'arap')
+    s = addSection(s, 'Empty one')
+    s = tidy(s)
+    assert.equal(JSON.stringify(DEFAULT_CFO_PACK), before)
+    const r = validateSpec(s)
+    assert.ok(r.ok, JSON.stringify(r))
+    const ids = s.sections.flatMap(x => x.widgets.map(w => w.id))
+    assert.equal(new Set(ids).size, ids.length)
+    const rev = s.sections[0].widgets.find(w => w.id === 'pl-rev')!
+    assert.deepEqual(rev.params, { period: 'ytd', compare: 'prior_period' })  // patch merges params
+    assert.equal(s.sections[0].widgets[0].id, 'pl-rev')                    // moved back to the top
+    assert.ok(!s.sections.some(x => x.title === 'Empty one'))
+  })
+  await test('every metric gets a widget the validator accepts', () => {
+    let s: any = { version: 1, name: 'All', sections: [{ id: 'all', title: 'All', widgets: [] }] }
+    for (const id of Object.keys(METRICS)) s = addWidget(s, 'all', id)
+    const r = validateSpec(s)
+    assert.ok(r.ok, JSON.stringify(r))
+  })
+
   console.log('Installer')
   await test('installer publishes exactly the BC_SERVICES pages', () => {
     const ps1 = readFileSync(join(__dirname, 'Install-BespoxAI.ps1'), 'utf8')
     const block = ps1.split('$DashboardServices = @(')[1]?.split(')\n')[0] ?? ''
-    const found = [...block.matchAll(/Name = '([A-Za-z_]+)';\s*PageId = (\d+)/g)].map(m => m[1] + ':' + m[2]).sort()
+    const found = Array.from(block.matchAll(/Name = '([A-Za-z_]+)';\s*PageId = (\d+)/g)).map(m => m[1] + ':' + m[2]).sort()
     const expected = Object.values(BC_SERVICES).map(s => s.serviceName + ':' + s.pageId).sort()
     assert.deepEqual(found, expected)
   })

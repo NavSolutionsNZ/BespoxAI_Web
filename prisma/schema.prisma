@@ -76,6 +76,7 @@ model Tenant {
   migrationEnquiries  MigrationEnquiry[]
   objectFiles         TenantObjectFile[]
   aiUsageLogs         AiUsageLog[]
+  dashboards          Dashboard[]
 
   @@index([createdAt])
   @@index([partnerAccountId])
@@ -108,6 +109,7 @@ model User {
   migrationEnquiries MigrationEnquiry[]
   uploadedObjects    TenantObjectFile[]
   partnerUsers       PartnerUser[]
+  dashboards         Dashboard[]
 
   @@index([createdAt])
 }
@@ -475,4 +477,24 @@ model RateLimit {
   windowStart DateTime
 
   @@index([windowStart])
+}
+
+// CFO dashboards — user copies of the system default pack (lib/dashboards/default-pack.ts).
+// The default itself lives in code; a row exists only once a user saves a dashboard.
+// Created SQL-first (Oct 2026). Partial indexes (shared, one home per user) exist in the DB only.
+model Dashboard {
+  id               String   @id @default(cuid())
+  tenantId         String
+  ownerUserId      String
+  name             String
+  spec             Json
+  sharedWithTenant Boolean  @default(false)
+  isHome           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner  User   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, ownerUserId], map: "Dashboard_tenant_owner_idx")
 }

@@ -191,6 +191,8 @@ function WidgetCard({ widget, source, tenantId }: { widget: WidgetSpec; source: 
   const [state, setState] = useState<WidgetState>({ loading: true, result: null, error: '' })
   const [showSource, setShowSource] = useState(false)
 
+  // Refetch only when what's fetched changes — not on title/width/type edits.
+  const fetchKey = widget.metricId + '|' + JSON.stringify(widget.params ?? {})
   useEffect(() => {
     let alive = true
     setState({ loading: true, result: null, error: '' })
@@ -198,7 +200,8 @@ function WidgetCard({ widget, source, tenantId }: { widget: WidgetSpec; source: 
       .then(result => { if (alive) setState({ loading: false, result, error: '' }) })
       .catch(e => { if (alive) setState({ loading: false, result: null, error: e?.message ?? 'Failed' }) })
     return () => { alive = false }
-  }, [widget, source, tenantId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchKey, source, tenantId])
 
   const span = 'span ' + widget.width
   return (
