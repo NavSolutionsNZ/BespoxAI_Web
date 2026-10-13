@@ -334,7 +334,7 @@ model AiUsageLog {
   id            String   @id @default(cuid())
   tenantId      String
   requirementId String?
-  feature       String   // dev_assistant | spec_gen | dev_plan | feasibility | cfo_query
+  feature       String   // dev_assistant | spec_gen | dev_plan | feasibility | cfo_query | cfo_dashboard
   model         String
   inputTokens   Int      @default(0)
   outputTokens  Int      @default(0)

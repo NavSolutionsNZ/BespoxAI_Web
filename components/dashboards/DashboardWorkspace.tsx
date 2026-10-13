@@ -156,6 +156,44 @@ function SpecEditor({ spec, onChange }: { spec: DashboardSpec; onChange: (s: Das
   )
 }
 
+interface AiNote { reply: string; unsupported: string | null; rejected: string[]; applied: number }
+
+function AskAiBox({ busy, onAsk }: { busy: boolean; onAsk: (text: string) => void }) {
+  const [text, setText] = useState('')
+  function submit() {
+    const t = text.trim()
+    if (t && !busy) { onAsk(t); setText('') }
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <input
+        style={{ ...input, flex: '1 1 320px' }} value={text} maxLength={500} disabled={busy}
+        placeholder="Ask AI to change this dashboard — e.g. add revenue by month, or show top 5 customers last quarter"
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') submit() }}
+        aria-label="Ask AI to change this dashboard"
+      />
+      <button style={btnPrimary} disabled={busy || !text.trim()} onClick={submit}>{busy ? 'Thinking…' : 'Ask AI'}</button>
+    </div>
+  )
+}
+
+function AiNoteBanner({ note }: { note: AiNote }) {
+  return (
+    <div style={{ background: 'var(--cream)', border: '1px solid var(--fog)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: 'var(--ink)' }}>
+      <div>{note.reply || 'Here are the suggested changes.'}</div>
+      {note.unsupported ? <div style={{ marginTop: 6, color: 'var(--slate)' }}>{'Not available yet: ' + note.unsupported}</div> : null}
+      {note.rejected.length ? <div style={{ marginTop: 6, fontSize: 11, color: '#B4442E' }}>{'Skipped: ' + note.rejected.join('; ')}</div> : null}
+      {note.applied > 0 ? <div style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)' }}>Review below, then Save — or Cancel to discard.</div> : null}
+    </div>
+  )
+}
+
+/** Empty sections fail nothing but confuse the AI's section picking. */
+function tidyForAi(spec: DashboardSpec): DashboardSpec {
+  return tidy(spec)
+}
+
 function pickInitial(list: ListResponse): string {
   const home = list.mine.find(d => d.isHome)
   return home ? home.id : DEFAULT_KEY
@@ -169,6 +207,7 @@ export default function DashboardWorkspace({ source, tenantId }: { source: Dashb
   const [draft, setDraft] = useState<DashboardSpec | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [aiNote, setAiNote] = useState<AiNote | null>(null)
 
   async function reload(selectId?: string) {
     const data: ListResponse = await api('GET', '/api/dashboards', tenantId)
@@ -195,6 +234,8 @@ export default function DashboardWorkspace({ source, tenantId }: { source: Dashb
   const isDefault = !current
   const isMine = !!current && current.isMine
   const hasHome = list.mine.some(d => d.isHome)
+  // Shared dashboards are read-only — copy first, then ask.
+  const canAskAi = isDefault || isMine
 
   function save() {
     if (!draft) return
@@ -208,6 +249,16 @@ export default function DashboardWorkspace({ source, tenantId }: { source: Dashb
         await reload(res.dashboard.id)
       }
       setDraft(null)
+      setAiNote(null)
+    })
+  }
+
+  function askAi(instruction: string) {
+    const base = draft ?? viewing
+    return run(async () => {
+      const res = await api('POST', '/api/dashboards/ai', tenantId, { spec: tidyForAi(base), instruction })
+      setAiNote({ reply: res.reply ?? '', unsupported: res.unsupported ?? null, rejected: res.rejected ?? [], applied: res.ok ? res.applied ?? 0 : 0 })
+      if (res.ok && res.applied > 0) setDraft(res.spec)
     })
   }
 
@@ -234,7 +285,7 @@ export default function DashboardWorkspace({ source, tenantId }: { source: Dashb
         {draft ? (
           <>
             <button style={btnPrimary} disabled={busy} onClick={save}>{isMine ? 'Save changes' : 'Save as my dashboard'}</button>
-            <button style={btn} disabled={busy} onClick={() => { setDraft(null); setError('') }}>Cancel</button>
+            <button style={btn} disabled={busy} onClick={() => { setDraft(null); setError(''); setAiNote(null) }}>Cancel</button>
           </>
         ) : (
           <>
@@ -274,6 +325,8 @@ export default function DashboardWorkspace({ source, tenantId }: { source: Dashb
         </p>
       ) : null}
       {error ? <div style={{ color: '#B4442E', fontSize: 13, marginBottom: 12 }}>{error}</div> : null}
+      {canAskAi ? <AskAiBox busy={busy} onAsk={askAi} /> : null}
+      {aiNote ? <AiNoteBanner note={aiNote} /> : null}
       {draft ? <SpecEditor spec={draft} onChange={setDraft} /> : null}
 
       <DashboardRenderer spec={draft ?? viewing} source={source} tenantId={tenantId} />

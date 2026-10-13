@@ -12,6 +12,7 @@ import { mockSource } from '../lib/dashboards/sources/mock'
 import { createFlowFilterSource as createFF, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
 import { MetricSourceError } from '../lib/dashboards/types'
 import { optKey, BC_SERVICES } from '../lib/dashboards/bc-services'
+import { applyAiReply, buildSystemPrompt, describeLayout } from '../lib/dashboards/ai-edit'
 import { addSection, addWidget, moveWidget, removeSection, removeWidget, renameSection, tidy, updateWidget } from '../lib/dashboards/edit'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -228,6 +229,52 @@ async function main() {
     for (const id of Object.keys(METRICS)) s = addWidget(s, 'all', id)
     const r = validateSpec(s)
     assert.ok(r.ok, JSON.stringify(r))
+  })
+
+  console.log('AI edits')
+  await test('prompt lists every metric and no figures', () => {
+    const p = buildSystemPrompt()
+    for (const id of Object.keys(METRICS)) assert.ok(p.includes(id), id)
+    const layout = describeLayout(DEFAULT_CFO_PACK)
+    assert.ok(layout.includes('id=pl-rev') && !/\$\d/.test(layout))
+  })
+  await test('applies valid ops, including a new section, in a fenced reply', () => {
+    const reply = '```json\n' + JSON.stringify({
+      reply: 'Added quarterly revenue and moved top customers to last quarter.',
+      ops: [
+        { op: 'add_widget', section: 'Quarterly', metricId: 'pl_revenue', title: 'Revenue this quarter', type: 'kpi', width: 6, params: { period: 'this_quarter', compare: 'prior_year' } },
+        { op: 'update_widget', widgetId: 'top-cust', params: { period: 'last_quarter', top: 5 } },
+        { op: 'remove_widget', widgetId: 'cash-acc' },
+      ],
+      unsupported: null,
+    }) + '\n```'
+    const r = applyAiReply(DEFAULT_CFO_PACK, reply)
+    assert.ok(r.ok); assert.equal(r.applied, 3); assert.deepEqual(r.rejected, [])
+    const q = r.spec.sections.find(s => s.title === 'Quarterly')!
+    assert.deepEqual(q.widgets[0].params, { period: 'this_quarter', compare: 'prior_year' })
+    const top = r.spec.sections.flatMap(s => s.widgets).find(w => w.id === 'top-cust')!
+    assert.deepEqual(top.params, { period: 'last_quarter', top: 5 })
+    assert.ok(!r.spec.sections.flatMap(s => s.widgets).some(w => w.id === 'cash-acc'))
+  })
+  await test('drops invented metrics, bad params, bad types and missing widgets', () => {
+    const reply = JSON.stringify({ reply: 'x', unsupported: 'No region breakdown', ops: [
+      { op: 'add_widget', section: 'pl', metricId: 'gross_margin_by_region' },
+      { op: 'add_widget', section: 'pl', metricId: 'pl_revenue', type: 'line' },           // kpi-only metric → type ignored, still added
+      { op: 'update_widget', widgetId: 'cash-total', params: { period: 'ytd' } },          // cash_total takes no period → nothing left to change
+      { op: 'remove_widget', widgetId: 'nope' },
+      { op: 'drop_table' },
+    ] })
+    const r = applyAiReply(DEFAULT_CFO_PACK, reply)
+    assert.ok(r.ok)
+    assert.equal(r.applied, 1)
+    assert.equal(r.rejected.length, 4, r.rejected.join(' | '))
+    assert.equal(r.unsupported, 'No region breakdown')
+    const added = r.spec.sections[0].widgets.slice(-1)[0]
+    assert.equal(added.type, 'kpi')
+  })
+  await test('garbage reply changes nothing', () => {
+    const r = applyAiReply(DEFAULT_CFO_PACK, 'I am not JSON')
+    assert.equal(r.ok, false); assert.equal(r.spec, DEFAULT_CFO_PACK)
   })
 
   console.log('Installer')

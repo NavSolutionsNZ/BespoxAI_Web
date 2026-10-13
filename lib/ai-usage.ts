@@ -18,6 +18,7 @@ export type AiFeature =
   | 'dev_plan'
   | 'feasibility'
   | 'cfo_query'
+  | 'cfo_dashboard'
 
 export interface AiUsageParams {
   tenantId:      string
