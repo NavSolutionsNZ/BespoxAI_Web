@@ -11,7 +11,9 @@ import { fetchMetric, tenantToday } from '../lib/dashboards/executor'
 import { mockSource } from '../lib/dashboards/sources/mock'
 import { createFlowFilterSource as createFF, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
 import { MetricSourceError } from '../lib/dashboards/types'
-import { optKey } from '../lib/dashboards/bc-services'
+import { optKey, BC_SERVICES } from '../lib/dashboards/bc-services'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { TenantConfig } from '../lib/tenants'
 
 // Mirrors lib/tenants buildODataUrl (that module loads Prisma, which tests avoid).
@@ -195,6 +197,25 @@ async function main() {
     const rows = [{ No: 'C1', Name: 'A', Sales_LCY: 10 }, { No: 'C2', Name: 'B', Sales_LCY: 30 }, { No: 'C3', Name: '', Sales_LCY: 20 }, { No: 'C4', Name: 'D', Sales_LCY: 0 }]
     const r = await fetchMetric(createFlowFilterSource(tenant, fakeFetcher(() => ({ body: { value: rows } }))), 'top_customers', { period: 'ytd', top: 2 }, opts)
     assert.deepEqual(r.breakdown!.rows.map(x => x.label), ['B', 'C3'])
+  })
+  console.log('Installer')
+  await test('installer publishes exactly the BC_SERVICES pages', () => {
+    const ps1 = readFileSync(join(__dirname, 'Install-BespoxAI.ps1'), 'utf8')
+    const block = ps1.split('$DashboardServices = @(')[1]?.split(')\n')[0] ?? ''
+    const found = [...block.matchAll(/Name = '([A-Za-z_]+)';\s*PageId = (\d+)/g)].map(m => m[1] + ':' + m[2]).sort()
+    const expected = Object.values(BC_SERVICES).map(s => s.serviceName + ':' + s.pageId).sort()
+    assert.deepEqual(found, expected)
+  })
+  await test('agent version matches in all four places', () => {
+    const ps1 = readFileSync(join(__dirname, 'Install-BespoxAI.ps1'), 'utf8')
+    const v = [
+      ps1.match(/^\$AgentVersion\s*=\s*'([\d.]+)'/m)?.[1],
+      ps1.match(/^\$Version\s*=\s*'([\d.]+)'/m)?.[1],
+      readFileSync(join(__dirname, '../app/api/settings/installer/route.ts'), 'utf8').match(/AGENT_VERSION = '([\d.]+)'/)?.[1],
+      readFileSync(join(__dirname, '../app/api/partner/tenants/[id]/installer/route.ts'), 'utf8').match(/AGENT_VERSION = '([\d.]+)'/)?.[1],
+    ]
+    assert.ok(v[0], 'version not found')
+    assert.deepEqual(v, [v[0], v[0], v[0], v[0]])
   })
   await test('executor rejects invalid params', async () => {
     await assert.rejects(fetchMetric(mockSource, 'cash_total', { period: 'ytd' }, opts))

@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.8'
+$AgentVersion  = '3.9'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -287,7 +287,7 @@ $AgentCode = @'
         account can't be set (previously it warned and carried on).
 #>
 
-$Version    = '3.8'
+$Version    = '3.9'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -1212,6 +1212,69 @@ if ($stExit -ne 0 -or -not $runAs -or $runAs -match '^(NT AUTHORITY\\)?SYSTEM$|^
 Write-OK "Task user set to $runAs"
 
 Write-OK "Scheduled task '$TaskName' created (runs as $taskUser at startup)"
+
+# ── Step 7b: Publish dashboard web services ────────────────────────────────────
+# The CFO dashboards read standard pages via FlowFilters. Publishes each one as a
+# page web service if it isn't already. Non-fatal: on failure the installer
+# carries on and prints the manual steps.
+# MUST match lib/dashboards/bc-services.ts (scripts/test-dashboards.ts checks this).
+
+Write-Step 'Publishing dashboard web services'
+
+$DashboardServices = @(
+    @{ Name = 'BespoxAI_GLAccounts';        PageId = 16;  Page = 'Chart of Accounts' },
+    @{ Name = 'BespoxAI_BankAccounts';      PageId = 371; Page = 'Bank Account List' },
+    @{ Name = 'BespoxAI_CustLedgerEntries'; PageId = 25;  Page = 'Customer Ledger Entries' },
+    @{ Name = 'BespoxAI_VendLedgerEntries'; PageId = 29;  Page = 'Vendor Ledger Entries' },
+    @{ Name = 'BespoxAI_Customers';         PageId = 22;  Page = 'Customer List' }
+)
+
+$wsInstance = if ($NavServerInstance) { $NavServerInstance } else { $BCInstance }
+
+function Show-ManualWebServiceSteps {
+    Write-Host "      Publish these pages manually (Web Services page → New, Object Type = Page, Published = Yes):" -ForegroundColor Yellow
+    foreach ($svc in $DashboardServices) {
+        Write-Host ("        Page {0,-4} {1,-26} Service Name: {2}" -f $svc.PageId, $svc.Page, $svc.Name) -ForegroundColor Yellow
+    }
+}
+
+try {
+    $adminTool = @(
+        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
+        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\Service\NavAdminTool.ps1',
+        'C:\Program Files\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1',
+        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\Service\NavAdminTool.ps1'
+    ) | ForEach-Object { Get-Item -Path $_ -ErrorAction SilentlyContinue } |
+        Sort-Object { $_.Directory.Parent.Name } -Descending | Select-Object -First 1
+
+    if ($adminTool) { . $adminTool.FullName | Out-Null }
+
+    if (-not (Get-Command New-NAVWebService -ErrorAction SilentlyContinue)) {
+        Write-Host '    ⚠ NAV administration cmdlets not found on this server — dashboard web services not published.' -ForegroundColor Yellow
+        Show-ManualWebServiceSteps
+    } else {
+        $existing = @(Get-NAVWebService -ServerInstance $wsInstance -ErrorAction Stop | ForEach-Object { $_.ServiceName })
+        $failed = 0
+        foreach ($svc in $DashboardServices) {
+            if ($existing -contains $svc.Name) {
+                Write-OK "$($svc.Name) already published"
+                continue
+            }
+            try {
+                New-NAVWebService -ServerInstance $wsInstance -ServiceName $svc.Name `
+                    -ObjectType Page -ObjectId $svc.PageId -Published:$true -ErrorAction Stop | Out-Null
+                Write-OK "Published $($svc.Name) (page $($svc.PageId) $($svc.Page))"
+            } catch {
+                $failed++
+                Write-Host "    ⚠ Could not publish $($svc.Name): $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        }
+        if ($failed -gt 0) { Show-ManualWebServiceSteps }
+    }
+} catch {
+    Write-Host "    ⚠ Dashboard web services not published: $($_.Exception.Message)" -ForegroundColor Yellow
+    Show-ManualWebServiceSteps
+}
 
 # ── Step 8: Start services ─────────────────────────────────────────────────────
 
