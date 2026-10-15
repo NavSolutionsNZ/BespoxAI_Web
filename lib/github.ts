@@ -17,6 +17,8 @@
  * API used: GitHub REST v3 (no SDK — keeps the bundle lean)
  */
 
+import { createHash } from 'crypto'
+
 const GITHUB_API  = 'https://api.github.com'
 const DEFAULT_ORG = 'NavSolutionsNZ'
 
@@ -323,4 +325,87 @@ export async function pushObjectsToGitHub(params: PushObjectsParams): Promise<{
   await pushFiles(owner, repo, branch, files, msg, tok)
 
   return { org: owner, repo, branch }
+}
+
+// ── Bulk commit via the Git Data API (full object exports) ───────────────────
+
+/**
+ * C/AL exports are raw OEM bytes. GitHub's tree API takes text, so each file is
+ * sent as its latin1-decoded string and stored as that string's UTF-8 — a
+ * reversible mapping: read back by decoding UTF-8 then encoding latin1.
+ */
+export function gitBlobShaForLatin1(latin1: string): string {
+  const bytes = Buffer.from(latin1, 'utf8')
+  return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex')
+}
+
+export interface PrefixCommitResult {
+  commitSha: string | null     // null = nothing changed, no commit made
+  added:     number
+  updated:   number
+  removed:   number
+}
+
+/**
+ * Make the files under `prefix` on `branch` exactly match `files`: add/update
+ * changed files, delete files no longer present, skip identical ones. One
+ * commit, a handful of API calls (trees are posted in batches), regardless of
+ * file count. Creates the branch from main if it doesn't exist.
+ */
+export async function commitPrefixSnapshot(
+  owner: string,
+  repo: string,
+  branch: string,
+  prefix: string,
+  files: Array<{ path: string; latin1: string }>,
+  message: string,
+  tokenOverride?: string | null,
+): Promise<PrefixCommitResult> {
+  const api = `${GITHUB_API}/repos/${owner}/${repo}`
+  const h = headers({}, tokenOverride)
+  const call = async (method: string, url: string, body?: unknown) => {
+    const res = await fetch(url, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) })
+    const data: any = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(`GitHub ${method} ${url.replace(GITHUB_API, '')} failed: ${res.status} — ${data?.message ?? ''}`)
+    return data
+  }
+
+  await ensureBranch(owner, repo, branch, tokenOverride)
+  const headSha = await getBranchSha(owner, repo, branch, tokenOverride)
+  if (!headSha) throw new Error('Branch ' + branch + ' could not be resolved')
+  const headCommit = await call('GET', `${api}/git/commits/${headSha}`)
+  const baseTreeSha: string = headCommit.tree.sha
+
+  const tree = await call('GET', `${api}/git/trees/${baseTreeSha}?recursive=1`)
+  if (tree.truncated) throw new Error('Repository tree is too large to diff (truncated by GitHub)')
+  const existing = new Map<string, string>()
+  for (const e of tree.tree ?? []) {
+    if (e.type === 'blob' && typeof e.path === 'string' && e.path.startsWith(prefix)) existing.set(e.path, e.sha)
+  }
+
+  const entries: any[] = []
+  let added = 0, updated = 0, removed = 0
+  const wanted = new Set<string>()
+  for (const f of files) {
+    if (!f.path.startsWith(prefix)) throw new Error('File ' + f.path + ' is outside ' + prefix)
+    wanted.add(f.path)
+    const was = existing.get(f.path)
+    if (was && was === gitBlobShaForLatin1(f.latin1)) continue
+    entries.push({ path: f.path, mode: '100644', type: 'blob', content: f.latin1 })
+    if (was) updated++; else added++
+  }
+  for (const p of Array.from(existing.keys())) {
+    if (!wanted.has(p)) { entries.push({ path: p, mode: '100644', type: 'blob', sha: null }); removed++ }
+  }
+  if (!entries.length) return { commitSha: null, added: 0, updated: 0, removed: 0 }
+
+  let treeSha = baseTreeSha
+  const BATCH = 150
+  for (let i = 0; i < entries.length; i += BATCH) {
+    const t = await call('POST', `${api}/git/trees`, { base_tree: treeSha, tree: entries.slice(i, i + BATCH) })
+    treeSha = t.sha
+  }
+  const commit = await call('POST', `${api}/git/commits`, { message, tree: treeSha, parents: [headSha] })
+  await call('PATCH', `${api}/git/refs/heads/${encodeURIComponent(branch)}`, { sha: commit.sha })
+  return { commitSha: commit.sha, added, updated, removed }
 }

@@ -68,6 +68,8 @@ model Tenant {
   partnerAccountId     String?               // null = direct tenant; set = managed by partner
   partnerAccount       PartnerAccount?  @relation(fields: [partnerAccountId], references: [id])
   githubRepoOverride   String?               // e.g. 'acme-consulting/widgets-ltd-nav'
+  customIdRanges       Json?                 // [{from,to}] customer object ID ranges; NULL = 50000–99999 (migrate-6.1)
+  timeZone             String?               // IANA zone for out-of-hours checks; NULL = derived from country (migrate-6.1)
   createdAt            DateTime @default(now())
   updatedAt       DateTime @updatedAt
   users               User[]
@@ -77,6 +79,8 @@ model Tenant {
   objectFiles         TenantObjectFile[]
   aiUsageLogs         AiUsageLog[]
   dashboards          Dashboard[]
+  objectExportJobs    ObjectExportJob[]
+  objectDeltas        TenantObjectDelta[]
 
   @@index([createdAt])
   @@index([partnerAccountId])
@@ -433,6 +437,7 @@ model PartnerAccount {
 
   tenants              Tenant[]
   users                PartnerUser[]
+  licences             PartnerLicence[]
 
   @@index([createdAt])
 }
@@ -537,4 +542,88 @@ model BaseObject {
 
   @@unique([corpusId, objectType, objectId])
   @@index([corpusId, objectName])
+}
+
+// ── Full object export (upgrade readiness P3) — migrate-6.1-object-export.sql ──
+
+/// Developer licence used for BCAgent full exports. partnerAccountId NULL = Nav Solutions Limited.
+/// Uniqueness (one per partner + one NSL row) is enforced by partial indexes in the SQL.
+model PartnerLicence {
+  id               String          @id @default(cuid())
+  partnerAccountId String?
+  partnerAccount   PartnerAccount? @relation(fields: [partnerAccountId], references: [id], onDelete: Cascade)
+  fileName         String
+  sizeBytes        Int
+  sha256           String
+  encrypted        String          // AES-256-GCM (LICENCE_ENCRYPTION_KEY) of base64 licence bytes — never sent to browsers
+  expiresAt        DateTime?
+  uploadedById     String
+  uploadedAt       DateTime        @default(now())
+}
+
+/// One scheduled full export; also the licence-use audit log.
+model ObjectExportJob {
+  id               String              @id @default(cuid())
+  tenantId         String
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedById    String
+  licenceOwnerId   String?             // partnerAccountId whose licence is used; NULL = Nav Solutions
+  notBefore        DateTime
+  outOfHours       Boolean             @default(true)
+  status           String              @default("scheduled") // scheduled | running | uploaded | processing | complete | failed | stale
+  jobTokenHash     String
+  licenceFetchedAt DateTime?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  error            String?
+  finsqlLog        String?
+  restoreVerified  Boolean?
+  chunkCount       Int?
+  corpusId         String?
+  matchConfidence  String?
+  summary          Json?
+  repoOwner        String?
+  repoName         String?
+  exportCommit     String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @default(now()) @updatedAt
+  chunks           ObjectExportChunk[]
+  deltas           TenantObjectDelta[]
+
+  @@index([tenantId, createdAt])
+}
+
+/// gzip chunks of the raw finsql export, deleted once processed.
+model ObjectExportChunk {
+  jobId String
+  seq   Int
+  data  Bytes
+  job   ObjectExportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, seq])
+}
+
+/// Per-object delta vs the base corpus — only objects that differ from the base.
+model TenantObjectDelta {
+  id           String          @id @default(cuid())
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId        String
+  job          ObjectExportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  corpusId     String
+  objectType   String
+  objectId     Int
+  objectName   String
+  origin       String          // standard_modified | custom_new | isv_or_unknown
+  versionList  String?
+  modTags      Json            @default("[]")
+  unattributed Boolean         @default(false)
+  diff         Json?
+  findings     Json            @default("[]")
+  effort       String
+  filePath     String?
+  computedAt   DateTime        @default(now())
+
+  @@index([tenantId, corpusId])
+  @@index([jobId])
 }
