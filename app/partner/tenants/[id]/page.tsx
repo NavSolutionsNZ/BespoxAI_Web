@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams, usePathname } from 'next/navigat
 import { useSession } from 'next-auth/react'
 import { useBranding } from '@/app/branding-provider'
 import { DevPlanPanel } from '@/components/DevPlanPanel'
+import ObjectExportsPanel from '@/components/upgrade/ObjectExportsPanel'
 import { RDP_PROVISIONING_ENABLED } from '@/lib/rdp-flags'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -2526,7 +2527,7 @@ function PartnerTenantPageInner() {
   const [loading, setLoading] = useState(true)
 
   // Tab state lives in the URL (?tab=) so the browser Back button steps through tabs.
-  const TABS = ['overview', 'requirements', 'users', 'settings', 'bcagent'] as const
+  const TABS = ['overview', 'requirements', 'users', 'settings', 'bcagent', 'upgrade'] as const
   type TabKey = typeof TABS[number]
   const tabParam = searchParams.get('tab')
   const tab: TabKey = (TABS as readonly string[]).includes(tabParam ?? '') ? (tabParam as TabKey) : 'overview'
@@ -2605,6 +2606,7 @@ function PartnerTenantPageInner() {
         <TabBtn label="Users"        active={tab === 'users'}        onClick={() => goTab('users')} />
         <TabBtn label="Settings"     active={tab === 'settings'}     onClick={() => goTab('settings')} />
         <TabBtn label="BCAgent"      active={tab === 'bcagent'}      onClick={() => goTab('bcagent')} />
+        <TabBtn label="Upgrade"      active={tab === 'upgrade'}      onClick={() => goTab('upgrade')} />
       </div>
 
       {/* Tab content */}
@@ -2630,6 +2632,12 @@ function PartnerTenantPageInner() {
             </p>
           </div>
         </div>
+      ) : null}
+      {tab === 'upgrade' ? (
+        <Card>
+          <SectionLabel>Full object export</SectionLabel>
+          <ObjectExportsPanel apiUrl={'/api/partner/tenants/' + tenantId + '/object-exports'} canSchedule={tenantIsPartnerAdmin} variant="partner" />
+        </Card>
       ) : null}
       {tab === 'bcagent' ? (
         <BCAgentTab tenant={tenant} onTunnelProvisioned={() => { fetch('/api/partner/tenants/' + tenantId).then(r => r.json()).then(d => { if (d) setTenant(d) }) }} />

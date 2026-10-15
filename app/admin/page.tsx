@@ -7,6 +7,8 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import SuperAdminDashboard from '@/components/SuperAdminDashboard'
 import { DevPlanPanel } from '@/components/DevPlanPanel'
+import ObjectExportsPanel from '@/components/upgrade/ObjectExportsPanel'
+import DeveloperLicencePanel from '@/components/upgrade/DeveloperLicencePanel'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -187,6 +189,7 @@ function AdminPageInner() {
 
   // Installer download form
   const [installerTenantId, setInstallerTenantId] = useState<string | null>(null)
+  const [exportsTenantId, setExportsTenantId]     = useState<string | null>(null)
   const [installerForm, setInstallerForm]         = useState({ bcUsername: '', bcPassword: '', bcPort: '7048', agentPort: '9099', bcAuthMode: 'Windows', serviceAccountUser: '', serviceAccountPassword: '' })
   const [installerLoading, setInstallerLoading]   = useState(false)
   const [installerError, setInstallerError]       = useState('')
@@ -734,6 +737,13 @@ function AdminPageInner() {
                             Installer
                           </button>
                           <button
+                            onClick={() => setExportsTenantId(t.id)}
+                            title="Full object export and upgrade readiness"
+                            style={{ ...ghostBtn, color: 'var(--slate)', marginLeft: 8 }}
+                          >
+                            Exports
+                          </button>
+                          <button
                             onClick={() => provisionRdp(t.id)}
                             disabled={rdpLoading === t.id || !t.tunnelId}
                             title={!t.tunnelId ? 'No tunnel — provision main tunnel first' : 'Provision RDP tunnel ingress + DNS'}
@@ -1052,7 +1062,13 @@ function AdminPageInner() {
 
         {/* ── Business Settings tab ─────────────────────────────────────────── */}
         {tab === 'business' && (
-          <BusinessSettingsTab />
+          <>
+            <BusinessSettingsTab />
+            <div style={{ marginTop: 24, background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 12, padding: '20px 24px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 500, color: 'var(--ink)', margin: '0 0 10px' }}>Developer licence</h3>
+              <DeveloperLicencePanel apiUrl="/api/admin/licence" canEdit={true} variant="admin" ownerLabel="Nav Solutions Limited" />
+            </div>
+          </>
         )}
 
         {tab === 'partners' && (
@@ -1221,6 +1237,34 @@ function AdminPageInner() {
           onClose={() => setInstallerTenantId(null)}
         />
       )}
+
+      {/* Full object export modal */}
+      {exportsTenantId ? (
+        <ExportsModal
+          tenantId={exportsTenantId}
+          tenantName={tenants.find(t => t.id === exportsTenantId)?.name ?? ''}
+          onClose={() => setExportsTenantId(null)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+// ─── Full object export modal ─────────────────────────────────────────────────
+
+function ExportsModal({ tenantId, tenantName, onClose }: { tenantId: string; tenantName: string; onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(4,14,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: 'var(--white)', borderRadius: 16, padding: '28px 32px', width: 680, maxWidth: '92vw', maxHeight: '86vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(4,14,9,0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--ink)', margin: 0 }}>Full object export</h2>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--slate)', marginTop: 4 }}>{tenantName}</p>
+          </div>
+          <button onClick={onClose} style={{ ...ghostBtn, color: 'var(--slate)' }}>Close</button>
+        </div>
+        <ObjectExportsPanel apiUrl={'/api/admin/tenants/' + tenantId + '/object-exports'} canSchedule={true} variant="admin" />
+      </div>
     </div>
   )
 }

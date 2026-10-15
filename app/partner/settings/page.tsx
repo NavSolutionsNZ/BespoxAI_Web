@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { canPartnerUseWhiteLabel } from '@/lib/partner-plans'
 import { useSession } from 'next-auth/react'
 import { usePartnerTheme } from '../partner-theme-provider'
+import DeveloperLicencePanel from '@/components/upgrade/DeveloperLicencePanel'
 
 type PartnerAccount = {
   id: string
@@ -522,6 +523,12 @@ export default function PartnerSettings() {
             <Field label="GitHub token" value={account.githubToken ? '••••••••' : null} hint="Stored encrypted." />
           </div>
         )}
+      </Card>
+
+      {/* ── Developer licence (full object exports) ── */}
+      <Card>
+        <SectionHeader title="Developer licence" description="Used for full object exports of your clients' databases (upgrade readiness)." />
+        <DeveloperLicencePanel apiUrl="/api/partner/licence" canEdit={isAdmin} variant="partner" ownerLabel="your company" />
       </Card>
 
       {/* ── Change Password ── */}
