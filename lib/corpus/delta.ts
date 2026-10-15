@@ -10,7 +10,7 @@
  */
 
 import {
-  partHashes, normaliseObject, sha256, versionListOf, isMsTag,
+  partHashes, normaliseObject, sha256, versionListOf, isMsTag, isSystemObject,
   PART_HASHES_SCHEMA, type PartHashes, type EntryHashes,
 } from './cal-structure'
 import { mapToAl, maxEffort, type Effort, type Finding } from './upgrade-rules'
@@ -201,6 +201,8 @@ export interface DeltaSummary {
   /** Modified standard objects whose only change is the documentation trigger */
   documentationOnly:  number
   findingsByCode:     Record<string, number>
+  /** Platform system objects (ID ≥ 2000000000) present in the export and ignored */
+  systemExcluded:     number
 }
 
 export function computeDeltas(
@@ -208,7 +210,8 @@ export function computeDeltas(
   baseIndex: Map<string, BaseIndexEntry>,
   customRanges: IdRange[] = DEFAULT_CUSTOM_RANGES,
 ): { deltas: ObjectDelta[]; summary: DeltaSummary } {
-  const deltas = tenantObjects.map(t =>
+  const app = tenantObjects.filter(t => !isSystemObject(t.objectId))
+  const deltas = app.map(t =>
     computeObjectDelta(t, baseIndex.get(objectKey(t.objectType, t.objectId)), customRanges))
 
   const summary: DeltaSummary = {
@@ -216,6 +219,7 @@ export function computeDeltas(
     byOrigin: { standard_unmodified: 0, standard_modified: 0, custom_new: 0, isv_or_unknown: 0 },
     byEffort: { none: 0, low: 0, medium: 0, high: 0 },
     unattributed: 0, documentationOnly: 0, findingsByCode: {},
+    systemExcluded: tenantObjects.length - app.length,
   }
   for (const d of deltas) {
     summary.byOrigin[d.origin]++

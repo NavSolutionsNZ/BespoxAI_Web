@@ -121,6 +121,7 @@ function main() {
   for (const [k, v] of Object.entries(summary.byEffort)) console.log('  ' + k.padEnd(22) + v)
   console.log('Modified standard objects with no added version tag: ' + summary.unattributed)
   console.log('Documentation-only changes: ' + summary.documentationOnly)
+  if (summary.systemExcluded) console.log('System objects (ID ≥ 2000000000) ignored: ' + summary.systemExcluded)
   console.log('Findings')
   for (const [k, v] of Object.entries(summary.findingsByCode).sort((x, y) => y[1] - x[1])) console.log('  ' + k.padEnd(28) + v)
 

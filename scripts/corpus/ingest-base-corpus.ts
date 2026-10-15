@@ -19,7 +19,7 @@ import { execFileSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 import {
-  splitCalExport, normaliseObject, partHashes, sha256, versionListOf, dominantVersionTags,
+  splitCalExport, normaliseObject, partHashes, sha256, versionListOf, dominantVersionTags, isSystemObject,
   corpusVersionTag, tagsMatchLocalisation,
 } from '../../lib/corpus/cal-structure'
 import { parseObjectFile } from '../../lib/bc-object-parser'
@@ -86,6 +86,7 @@ async function main() {
 
   const rows: Row[] = []
   const problems: string[] = []
+  let systemSkipped = 0
   for (const line of tree.split('\n')) {
     const m = line.match(/^\d+\s+blob\s+([0-9a-f]+)\t(.+)$/)
     if (!m) continue
@@ -96,6 +97,7 @@ async function main() {
     const blocks = splitCalExport(text)
     if (blocks.length !== 1) { problems.push(filePath + ': expected 1 object, found ' + blocks.length); continue }
     const b = blocks[0]
+    if (isSystemObject(b.objectId)) { systemSkipped++; continue }
     const parsed = parseObjectFile(text, path.basename(filePath))[0]
     if (parsed?.parseError) problems.push(filePath + ': parser flagged an error (indexed with hashes only)')
 
@@ -116,7 +118,7 @@ async function main() {
   const versionTag = corpusVersionTag(tags, localisation) ?? 'unknown'
 
   console.log('Corpus ' + relDir + ' @ ' + commit.slice(0, 10))
-  console.log('  objects:      ' + rows.length)
+  console.log('  objects:      ' + rows.length + (systemSkipped ? '  (' + systemSkipped + ' system objects ≥ 2000000000 skipped)' : ''))
   console.log('  W1 tag:       ' + (tags.w1 ?? '-') + (tags.cuLevel !== null ? '  (highest CU tag: ' + tags.cuLevel + ')' : ''))
   console.log('  local tag:    ' + (tags.local ?? '-') + (tags.others.length ? '  (also ' + tags.others.join(', ') + ')' : ''))
   console.log('  versionTag:   ' + versionTag)

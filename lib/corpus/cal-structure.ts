@@ -49,6 +49,19 @@ const FILE_PREFIX: Record<string, string> = {
   xmlport: 'XML', dataport: 'DAT', query: 'QUE', menusuite: 'MEN',
 }
 
+/**
+ * Platform system objects (ID 2000000000 and up — e.g. codeunits 2000000001
+ * "Version Triggers" … 2000000010 "Extension Triggers", system tables).
+ * Customers can't change them, developer licences often can't export them as
+ * text, and they play no part in a C/AL → AL upgrade, so they're excluded from
+ * corpora, exports and deltas.
+ */
+export const SYSTEM_ID_START = 2000000000
+export const LAST_APPLICATION_ID = SYSTEM_ID_START - 1
+export function isSystemObject(objectId: number): boolean {
+  return objectId >= SYSTEM_ID_START
+}
+
 /** Conventional C/SIDE file name for one object, e.g. Table 18 → TAB18.TXT */
 export function objectFileName(objectType: string, objectId: number): string {
   const prefix = FILE_PREFIX[objectType.toLowerCase()]

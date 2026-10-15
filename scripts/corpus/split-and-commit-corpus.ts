@@ -17,7 +17,7 @@
 import { execFileSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
-import { splitCalExport, objectFileName } from '../../lib/corpus/cal-structure'
+import { splitCalExport, objectFileName, isSystemObject } from '../../lib/corpus/cal-structure'
 import { parseArgs, required } from './args'
 
 function git(repo: string, args: string[]): string {
@@ -45,7 +45,9 @@ function main() {
 
   const seen = new Set<string>()
   const byType: Record<string, number> = {}
+  let systemSkipped = 0
   for (const b of blocks) {
+    if (isSystemObject(b.objectId)) { systemSkipped++; continue }   // platform objects: not part of the corpus
     const name = objectFileName(b.objectType, b.objectId)
     if (seen.has(name)) throw new Error('Duplicate object in export: ' + b.objectType + ' ' + b.objectId)
     seen.add(name)
@@ -53,7 +55,8 @@ function main() {
     byType[b.objectType] = (byType[b.objectType] ?? 0) + 1
   }
 
-  console.log('Split ' + blocks.length + ' objects into ' + relDir)
+  console.log('Split ' + (blocks.length - systemSkipped) + ' objects into ' + relDir +
+    (systemSkipped ? ' (' + systemSkipped + ' system objects ≥ 2000000000 skipped)' : ''))
   for (const [t, n] of Object.entries(byType).sort()) console.log('  ' + t.padEnd(10) + n)
 
   // Keep CRLF/encoding exactly as exported

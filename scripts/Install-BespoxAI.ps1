@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.10'
+$AgentVersion  = '3.11'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -285,9 +285,13 @@ $AgentCode = @'
         for every route, case-sensitive and constant-time.
   v3.8: Installer refuses to leave the agent running as SYSTEM if the run-as
         account can't be set (previously it warned and carried on).
+  v3.11: /bespoxai/objects/full-export — schedules a detached full object export
+        (FullExportWorker.ps1) under the managing partner's developer licence,
+        swapped into this database only and restored afterwards. Restores an
+        interrupted swap at startup.
 #>
 
-$Version    = '3.10'
+$Version    = '3.11'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config not found: $ConfigPath"; exit 1
@@ -368,6 +372,30 @@ function Test-ApiKey {
     $diff = 0
     for ($i = 0; $i -lt $a.Length; $i++) { $diff = $diff -bor ($a[$i] -bxor $b[$i]) }
     return ($diff -eq 0)
+}
+
+# finsql.exe — newest installed C/SIDE (BC14 paths first, then legacy NAV)
+function Find-FinSql {
+    foreach ($fp in @(
+        'C:\Program Files\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+        'C:\Program Files (x86)\Microsoft Dynamics 365 Business Central\*\RoleTailored Client\finsql.exe',
+        'C:\Program Files\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe',
+        'C:\Program Files (x86)\Microsoft Dynamics NAV\*\RoleTailored Client\finsql.exe')) {
+        $ff = Get-Item -Path $fp -ErrorAction SilentlyContinue | Sort-Object { $_.VersionInfo.FileVersion } -Descending | Select-Object -First 1
+        if ($ff) { return $ff.FullName }
+    }
+    return $null
+}
+
+$PsExe          = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+$ExportWorker   = Join-Path $PSScriptRoot 'FullExportWorker.ps1'
+$LicenceBackup  = Join-Path $PSScriptRoot 'LicenceBackup\licence-backup.json'
+
+# v3.11: an export interrupted mid-swap (crash, reboot) leaves a licence backup —
+# put the customer's licence back before serving anything.
+if ((Test-Path $LicenceBackup) -and (Test-Path $ExportWorker)) {
+    Write-Log 'Licence backup found from an interrupted full export — restoring the customer licence'
+    & $PsExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $ExportWorker -Recover | Out-Null
 }
 
 # HTTP listener
@@ -818,6 +846,60 @@ while ($Listener.IsListening) {
             $res.Close(); continue
         }
 
+        # BCAgent-local: Schedule a full object export (v3.11). Validates, runs a
+        # quick pre-flight, then starts FullExportWorker.ps1 detached and returns
+        # 202 — the export itself runs later, outside this request loop.
+        if ($rawUrl -like '/bespoxai/objects/full-export*' -and $req.HttpMethod -eq 'POST') {
+            try {
+                $fx = Read-RequestBody $req | ConvertFrom-Json
+                if ([string]$fx.jobId -notmatch '^[a-z0-9]{10,40}$') { throw 'Invalid jobId.' }
+                if ([string]$fx.portalBase -notmatch '^https://([a-z0-9-]+\.)?bespoxai\.com/?$') { throw 'Invalid portalBase.' }
+                if (-not $fx.jobToken) { throw 'Missing jobToken.' }
+                [void][DateTime]::Parse([string]$fx.notBefore, [System.Globalization.CultureInfo]::InvariantCulture)
+                if (-not $NavDbName) { throw 'navDatabaseName not configured. Set it in the BC Installer tab and regenerate the installer.' }
+                if (-not (Test-Path $ExportWorker)) { throw 'FullExportWorker.ps1 is missing — re-run the latest installer.' }
+                $finsqlPath = Find-FinSql
+                if (-not $finsqlPath) { throw 'finsql.exe not found. Full exports need C/SIDE installed on this server.' }
+
+                # Restore any interrupted swap first, then check SQL access and permission
+                & $PsExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $ExportWorker -Recover | Out-Null
+                $pfOut = & $PsExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $ExportWorker -Preflight -Server $NavDbServer -Database $NavDbName -FinSql $finsqlPath
+                $pf = ($pfOut | Select-Object -Last 1) | ConvertFrom-Json
+                if (-not $pf.ok) { throw "Pre-flight failed: $($pf.error)" }
+
+                $jobsDir = Join-Path $PSScriptRoot 'Jobs'
+                New-Item -ItemType Directory -Path $jobsDir -Force | Out-Null
+                $jobFile = Join-Path $jobsDir ($fx.jobId + '.json')
+                [ordered]@{
+                    jobId = $fx.jobId; notBefore = $fx.notBefore; portalBase = $fx.portalBase; jobToken = $fx.jobToken
+                    navDbServer = $NavDbServer; navDbName = $NavDbName; finsql = $finsqlPath
+                } | ConvertTo-Json | Set-Content -Path $jobFile -Encoding UTF8
+                $jacl = Get-Acl $jobFile
+                $jacl.SetAccessRuleProtection($true, $false)
+                $jacl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new([System.Security.Principal.WindowsIdentity]::GetCurrent().Name, 'FullControl', 'Allow'))
+                $jacl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new('NT AUTHORITY\SYSTEM', 'FullControl', 'Allow'))
+                Set-Acl -Path $jobFile -AclObject $jacl
+
+                Start-Process -FilePath $PsExe -WindowStyle Hidden -ArgumentList @(
+                    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
+                    '-File', "`"$ExportWorker`"", '-JobFile', "`"$jobFile`"") | Out-Null
+                Write-Log "Full export $($fx.jobId) scheduled for $($fx.notBefore) (licence table $($pf.table))"
+
+                $okBytes = [System.Text.Encoding]::UTF8.GetBytes((@{ accepted = $true; version = $Version; licenceTable = $pf.table } | ConvertTo-Json -Compress))
+                $res.StatusCode = 202; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $okBytes.Length
+                $res.OutputStream.Write($okBytes, 0, $okBytes.Length)
+            } catch {
+                Write-Log "Full export ERROR: $_"
+                $em = ($_.ToString() -replace '"', "'") -replace '[\r\n]+', ' '
+                $eb = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$em`"}")
+                $res.StatusCode = 400; $res.ContentType = 'application/json'
+                $res.ContentLength64 = $eb.Length
+                $res.OutputStream.Write($eb, 0, $eb.Length)
+            }
+            $res.Close(); continue
+        }
+
         # BCAgent-local: Sync config from portal (v2.4)
         if ($rawUrl -like '/bespoxai/update-config*' -and $req.HttpMethod -eq 'POST') {
             try {
@@ -1057,6 +1139,364 @@ while ($Listener.IsListening) {
 
 Set-Content -Path $AgentScript -Value $AgentCode -Encoding UTF8 -Force
 Write-OK "$BrandName agent script written to $AgentScript"
+
+# v3.11: full object export worker (started detached by the agent; see its header)
+$WorkerCode = @'
+#Requires -Version 5.1
+<#
+  BespoxAI full object export worker (BCAgent v3.11)
+
+  Modes:
+    -JobFile <path>   Run one export job, started detached by BCAgent:
+                      wait until notBefore -> pre-flight -> fetch the managing
+                      partner's licence -> back up and swap the DATABASE licence
+                      ($ndo$tenantproperty if it holds one, else $ndo$dbproperty;
+                      never master) -> finsql ExportObjects per type -> restore
+                      and verify the customer's licence -> gzip raw bytes ->
+                      upload in chunks -> report.
+    -Preflight        Quick checks for scheduling (finsql, SQL, permission). Prints JSON.
+    -Recover          At agent start: if a licence backup exists and its worker is
+                      gone, restore the customer's licence.
+
+  Never kills connections and never touches master.$ndo$srvproperty.
+#>
+param(
+    [string] $JobFile,
+    [switch] $Preflight,
+    [switch] $Recover,
+    [string] $Server,
+    [string] $Database,
+    [string] $FinSql
+)
+
+$ErrorActionPreference = 'Stop'
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+$AgentDir    = $PSScriptRoot
+$InstallRoot = Split-Path $AgentDir
+$BackupDir   = Join-Path $AgentDir 'LicenceBackup'
+$BackupFile  = Join-Path $BackupDir 'licence-backup.json'
+$LogFile     = Join-Path $InstallRoot 'Logs\full-export.log'
+$ChunkBytes  = 4000000          # below the portal's 4 MB chunk limit (and Vercel's 4.5 MB body limit)
+$FinsqlTimeoutMin = 90          # per object type
+
+function Write-Log {
+    param($msg)
+    $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  [$PID] $msg"
+    Add-Content -Path $LogFile -Value $line -ErrorAction SilentlyContinue
+}
+
+# Restrict a file to the current account (the BC user) and SYSTEM
+function Protect-File {
+    param($path)
+    $acl = Get-Acl $path
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($r in @($acl.Access)) { [void]$acl.RemoveAccessRule($r) }
+    $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    foreach ($id in @($me, 'NT AUTHORITY\SYSTEM')) {
+        $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($id, 'FullControl', 'Allow'))
+    }
+    Set-Acl -Path $path -AclObject $acl
+}
+
+# ── SQL (System.Data.SqlClient, integrated security as the BC user) ─────────
+
+function New-SqlConnection {
+    param($srv, $db)
+    $cs = "Server=$srv;Database=$db;Integrated Security=SSPI;Application Name=BespoxAI full export;Connect Timeout=30"
+    $cn = New-Object System.Data.SqlClient.SqlConnection($cs)
+    $cn.Open()
+    return $cn
+}
+
+function Invoke-Scalar {
+    param($cn, [string]$sql)
+    $cmd = $cn.CreateCommand(); $cmd.CommandText = $sql; $cmd.CommandTimeout = 60
+    return $cmd.ExecuteScalar()
+}
+
+# The table that holds the database-level licence: the tenant property if it
+# carries one, otherwise the database property.
+function Get-LicenceSlot {
+    param($cn)
+    foreach ($t in @('$ndo$tenantproperty', '$ndo$dbproperty')) {
+        $n = [int](Invoke-Scalar $cn ("SELECT CASE WHEN OBJECT_ID(N'[dbo].[" + $t + "]') IS NULL THEN -1 ELSE (SELECT COUNT(*) FROM [dbo].[" + $t + "] WHERE [license] IS NOT NULL) END"))
+        if ($n -gt 0) { return @{ table = $t; hasLicence = $true } }
+    }
+    return @{ table = '$ndo$dbproperty'; hasLicence = $false }
+}
+
+function Read-Licence {
+    param($cn, [string]$table)
+    $v = Invoke-Scalar $cn ("SELECT TOP 1 [license] FROM [dbo].[" + $table + "] WHERE [license] IS NOT NULL")
+    if ($null -eq $v -or $v -is [System.DBNull]) { return $null }
+    return ,([byte[]]$v)
+}
+
+function Write-Licence {
+    param($cn, [string]$table, [byte[]]$bytes)
+    $cmd = $cn.CreateCommand()
+    $cmd.CommandText = "UPDATE [dbo].[" + $table + "] SET [license] = @lic"
+    $cmd.CommandTimeout = 60
+    $p = $cmd.Parameters.Add('@lic', [System.Data.SqlDbType]::Image)
+    if ($null -eq $bytes) { $p.Value = [System.DBNull]::Value } else { $p.Value = $bytes }
+    $rows = $cmd.ExecuteNonQuery()
+    if ($rows -lt 1) { throw "Licence table $table has no row to update." }
+}
+
+function Test-ExportPreflight {
+    param($srv, $db, $finsqlPath)
+    if (-not $finsqlPath -or -not (Test-Path $finsqlPath)) { throw 'finsql.exe was not found on this server.' }
+    if (Test-Path $BackupFile) { throw 'A previous export did not finish restoring the customer licence. Restart the BespoxAI agent to recover it, then retry.' }
+    $cn = New-SqlConnection $srv $db
+    try {
+        $slot = Get-LicenceSlot $cn
+        $rows = [int](Invoke-Scalar $cn ("SELECT CASE WHEN OBJECT_ID(N'[dbo].[" + $slot.table + "]') IS NULL THEN -1 ELSE (SELECT COUNT(*) FROM [dbo].[" + $slot.table + "]) END"))
+        if ($rows -lt 1) { throw "Licence table $($slot.table) is missing or empty in database $db." }
+        $canUpdate = [int](Invoke-Scalar $cn ("SELECT HAS_PERMS_BY_NAME(N'[dbo].[" + $slot.table + "]', 'OBJECT', 'UPDATE')"))
+        if ($canUpdate -ne 1) {
+            $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            throw "$me cannot update $($slot.table) in $db — grant it db_owner (or UPDATE on that table) for exports."
+        }
+        return $slot
+    } finally { $cn.Close() }
+}
+
+# ── licence backup / restore ────────────────────────────────────────────────
+
+function Save-LicenceBackup {
+    param($jobId, $srv, $db, [string]$table, [byte[]]$orig)
+    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+    $licB64 = $null
+    if ($null -ne $orig) { $licB64 = [Convert]::ToBase64String($orig) }
+    $obj = [ordered]@{
+        jobId = $jobId; pid = $PID; server = $srv; database = $db; table = $table
+        hadLicence = ($null -ne $orig); licence = $licB64; createdAt = (Get-Date -Format 'o')
+    }
+    $obj | ConvertTo-Json | Set-Content -Path $BackupFile -Encoding UTF8
+    Protect-File $BackupFile
+}
+
+# Restore the customer's licence from the backup file; returns $true when the
+# read-back matches. The backup is removed only after a verified restore.
+function Restore-FromBackup {
+    $b = Get-Content $BackupFile -Raw | ConvertFrom-Json
+    $orig = $null
+    if ($b.hadLicence) { $orig = [Convert]::FromBase64String($b.licence) }
+    $cn = New-SqlConnection $b.server $b.database
+    try {
+        Write-Licence $cn $b.table $orig
+        $now = Read-Licence $cn $b.table
+        if ($null -eq $orig) { $ok = ($null -eq $now) }
+        else { $ok = ($null -ne $now) -and ([Convert]::ToBase64String($now) -eq $b.licence) }
+    } finally { $cn.Close() }
+    if ($ok) { Remove-Item $BackupFile -Force }
+    return $ok
+}
+
+# ── portal calls (per-job token; never the agent API key) ──────────────────
+
+function Invoke-Portal {
+    param([string]$method, [string]$url, [string]$token, [byte[]]$body, [string]$contentType)
+    $wr = [System.Net.HttpWebRequest]::Create($url)
+    $wr.Method = $method
+    $wr.Timeout = 120000
+    $wr.ReadWriteTimeout = 300000
+    $wr.Headers.Add('x-bespoxai-job-token', $token)
+    if ($null -ne $body) {
+        $wr.ContentType = $contentType
+        $wr.ContentLength = $body.Length
+        $s = $wr.GetRequestStream(); $s.Write($body, 0, $body.Length); $s.Close()
+    }
+    try { $resp = $wr.GetResponse() }
+    catch [System.Net.WebException] {
+        $er = $_.Exception.Response
+        if ($er) {
+            $sr = New-Object System.IO.StreamReader($er.GetResponseStream())
+            $msg = $sr.ReadToEnd(); $code = [int]$er.StatusCode; $er.Close()
+            throw "Portal returned ${code} for $method ${url}: $msg"
+        }
+        throw
+    }
+    $ms = New-Object System.IO.MemoryStream
+    $rs = $resp.GetResponseStream(); $rs.CopyTo($ms); $rs.Close()
+    $sha = $resp.Headers['X-Licence-Sha256']
+    $resp.Close()
+    return @{ bytes = $ms.ToArray(); sha256 = $sha }
+}
+
+function Get-Sha256Hex {
+    param([byte[]]$bytes)
+    $h = [System.Security.Cryptography.SHA256]::Create()
+    try { return (-join ($h.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })) } finally { $h.Dispose() }
+}
+
+# finsql output is OEM text. Drop a UTF-8 BOM; convert UTF-16 to the OEM code
+# page so every part matches the base corpus encoding.
+function Get-ExportBytes {
+    param([string]$path)
+    $b = [System.IO.File]::ReadAllBytes($path)
+    if ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF) {
+        $out = New-Object byte[] ($b.Length - 3); [Array]::Copy($b, 3, $out, 0, $out.Length); return ,$out
+    }
+    if ($b.Length -ge 2 -and $b[0] -eq 0xFF -and $b[1] -eq 0xFE) {
+        $text = [System.Text.Encoding]::Unicode.GetString($b, 2, $b.Length - 2)
+        $oem = [System.Text.Encoding]::GetEncoding([System.Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage)
+        return ,($oem.GetBytes($text))
+    }
+    return ,$b
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+if ($Preflight) {
+    try {
+        $slot = Test-ExportPreflight $Server $Database $FinSql
+        Write-Output (@{ ok = $true; table = $slot.table; hasLicence = $slot.hasLicence } | ConvertTo-Json -Compress)
+    } catch {
+        Write-Output (@{ ok = $false; error = "$($_.Exception.Message)" } | ConvertTo-Json -Compress)
+    }
+    return
+}
+
+if ($Recover) {
+    if (-not (Test-Path $BackupFile)) { return }
+    $b = Get-Content $BackupFile -Raw | ConvertFrom-Json
+    $alive = $false
+    if ($b.pid) {
+        $p = Get-Process -Id ([int]$b.pid) -ErrorAction SilentlyContinue
+        $alive = ($null -ne $p) -and ($p.ProcessName -like 'powershell*')
+    }
+    if ($alive) { Write-Log "Recover: export worker $($b.pid) is still running; leaving the licence to it"; return }
+    Write-Log "Recover: licence backup from job $($b.jobId) found with no running worker — restoring the customer licence"
+    try {
+        $ok = Restore-FromBackup
+        Write-Log "Recover: restore verified = $ok"
+    } catch { Write-Log "Recover: restore FAILED: $($_.Exception.Message)" }
+    return
+}
+
+if (-not $JobFile -or -not (Test-Path $JobFile)) { Write-Log "Worker started without a job file"; return }
+
+$job = Get-Content $JobFile -Raw | ConvertFrom-Json
+Remove-Item $JobFile -Force -ErrorAction SilentlyContinue      # the job token doesn't stay on disk
+$base  = $job.portalBase.TrimEnd('/') + '/api/agent/object-exports/' + $job.jobId
+$token = [string]$job.jobToken
+$work  = Join-Path $InstallRoot ('Work\' + $job.jobId)
+
+$swapped = $false
+$restoreVerified = $null
+$finsqlLog = ''
+$failure = $null
+$parts = New-Object System.Collections.ArrayList
+
+Write-Log "Job $($job.jobId): accepted, starts at $($job.notBefore)"
+try {
+    # 1. Wait for the scheduled start
+    $nb = [DateTime]::Parse($job.notBefore, [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal)
+    $wait = ($nb - [DateTime]::UtcNow).TotalSeconds
+    if ($wait -gt 0) { Start-Sleep -Seconds ([int][Math]::Ceiling($wait)) }
+
+    # 2. Pre-flight before anything is changed
+    $slot = Test-ExportPreflight $job.navDbServer $job.navDbName $job.finsql
+
+    # 3. Partner licence (one fetch per job)
+    $lic = Invoke-Portal 'GET' ($base + '/licence') $token $null $null
+    if ($lic.sha256 -and ((Get-Sha256Hex $lic.bytes) -ne $lic.sha256)) { throw 'The licence download was corrupted (checksum mismatch).' }
+
+    try {
+        # 4. Swap: back up the customer's database licence, then apply the partner's
+        $cn = New-SqlConnection $job.navDbServer $job.navDbName
+        try {
+            $orig = Read-Licence $cn $slot.table
+            Save-LicenceBackup $job.jobId $job.navDbServer $job.navDbName $slot.table $orig
+            Write-Licence $cn $slot.table $lic.bytes
+            $swapped = $true
+        } finally { $cn.Close() }
+        $lic = $null
+        Write-Log "Job $($job.jobId): partner licence applied to $($slot.table) (original backed up)"
+
+        # 5. Export every object type, raw bytes
+        New-Item -ItemType Directory -Path $work -Force | Out-Null
+        foreach ($t in @('Table', 'Page', 'Codeunit', 'Report', 'XMLport', 'Query', 'MenuSuite', 'Form', 'Dataport')) {
+            $out = Join-Path $work "$t.txt"
+            $log = Join-Path $work "$t.log"
+            # Application objects only: system objects (ID >= 2000000000) can't be
+            # exported under most developer licences and aren't part of an upgrade
+            $fargs = "command=ExportObjects,servername=$($job.navDbServer),database=$($job.navDbName),ntauthentication=yes,filter=Type=$t;ID=1..1999999999,file=$out,logfile=$log"
+            $proc = Start-Process -FilePath $job.finsql -ArgumentList $fargs -PassThru -WindowStyle Hidden
+            if (-not $proc.WaitForExit($FinsqlTimeoutMin * 60 * 1000)) {
+                try { $proc.Kill() } catch {}
+                throw "finsql timed out exporting $t objects after $FinsqlTimeoutMin minutes."
+            }
+            $logText = ''
+            if (Test-Path $log) { $logText = (Get-Content $log -Raw) }
+            if ($logText) { $finsqlLog += "[$t] $($logText.Trim())`r`n" }
+            if ((Test-Path $out) -and ((Get-Item $out).Length -gt 0)) {
+                [void]$parts.Add($out)
+                Write-Log "Job $($job.jobId): $t exported ($((Get-Item $out).Length) bytes)"
+            } elseif ($logText -match 'licen[cs]e|permission') {
+                throw "finsql refused the $t export: $($logText.Trim())"
+            }
+        }
+        if ($parts.Count -eq 0) { throw "finsql exported no objects. $finsqlLog" }
+    } finally {
+        # 6. Always put the customer's licence back, and check it
+        if ($swapped) {
+            try { $restoreVerified = Restore-FromBackup } catch { $restoreVerified = $false; Write-Log "Job $($job.jobId): RESTORE FAILED: $($_.Exception.Message)" }
+            Write-Log "Job $($job.jobId): customer licence restored, verified = $restoreVerified"
+        }
+    }
+
+    # 7. gzip the raw export (one CRLF between types so OBJECT stays at line start)
+    $gzPath = Join-Path $work 'export.gz'
+    $fs = [System.IO.File]::Create($gzPath)
+    $gz = New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionMode]::Compress)
+    $crlf = [byte[]](13, 10)
+    foreach ($pth in $parts) {
+        $bytes = Get-ExportBytes $pth
+        $gz.Write($bytes, 0, $bytes.Length)
+        $gz.Write($crlf, 0, 2)
+    }
+    $gz.Close(); $fs.Close()
+
+    # 8. Upload in chunks
+    $all = [System.IO.File]::ReadAllBytes($gzPath)
+    $seq = 0
+    for ($off = 0; $off -lt $all.Length; $off += $ChunkBytes) {
+        $len = [Math]::Min($ChunkBytes, $all.Length - $off)
+        $buf = New-Object byte[] $len
+        [Array]::Copy($all, $off, $buf, 0, $len)
+        $tries = 0
+        while ($true) {
+            try { Invoke-Portal 'PUT' ($base + '/chunks?seq=' + $seq) $token $buf 'application/octet-stream' | Out-Null; break }
+            catch { $tries++; if ($tries -ge 3) { throw }; Start-Sleep -Seconds (5 * $tries) }
+        }
+        $seq++
+    }
+    Write-Log "Job $($job.jobId): uploaded $($all.Length) bytes in $seq chunk(s)"
+
+    $payload = @{ ok = $true; chunkCount = $seq; restoreVerified = $restoreVerified; finsqlLog = $finsqlLog }
+} catch {
+    $failure = "$($_.Exception.Message)"
+    Write-Log "Job $($job.jobId): FAILED: $failure"
+    $payload = @{ ok = $false; error = $failure; restoreVerified = $restoreVerified; finsqlLog = $finsqlLog }
+} finally {
+    if (Test-Path $work) { Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# 9. Report the outcome
+try {
+    $json = $payload | ConvertTo-Json -Depth 4 -Compress
+    Invoke-Portal 'POST' ($base + '/complete') $token ([System.Text.Encoding]::UTF8.GetBytes($json)) 'application/json' | Out-Null
+    Write-Log "Job $($job.jobId): reported to portal (ok = $($payload.ok))"
+} catch {
+    Write-Log "Job $($job.jobId): could not report to the portal: $($_.Exception.Message)"
+}
+'@
+
+Set-Content -Path "$AgentDir\FullExportWorker.ps1" -Value $WorkerCode -Encoding UTF8 -Force
+Write-OK "Full export worker written to $AgentDir\FullExportWorker.ps1"
 
 # ── Step 5: Write agent.config.json ───────────────────────────────────────────
 

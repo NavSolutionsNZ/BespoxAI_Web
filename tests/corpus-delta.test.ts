@@ -425,3 +425,12 @@ test('selectCorpus: corpora still ingesting are ignored', () => {
   const m = selectCorpus(NZ_EXPORT, [{ ...CORPORA[0], status: 'ingesting' }])
   assert.equal(m.corpus, null)
 })
+
+test('system objects (ID ≥ 2000000000) are excluded from the delta', () => {
+  const sys = CODEUNIT.replace('Codeunit 80 Sales-Post', 'Codeunit 2000000001 Version Triggers')
+  const { deltas, summary } = computeDeltas([tenantObj(sys), tenantObj(CODEUNIT)], new Map([[objectKey('Codeunit', 80), baseEntry(CODEUNIT)]]))
+  assert.equal(summary.systemExcluded, 1)
+  assert.equal(summary.total, 1)
+  assert.deepEqual(deltas.map(d => d.objectId), [80])
+  assert.equal(summary.byOrigin.isv_or_unknown, 0, 'not misreported as an ISV object')
+})
