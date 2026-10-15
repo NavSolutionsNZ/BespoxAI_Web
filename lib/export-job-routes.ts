@@ -15,7 +15,9 @@ import {
 } from '@/lib/corpus/export-jobs'
 
 const db = prisma as any
-const PORTAL = process.env.NEXTAUTH_URL ?? 'https://bespoxai.com'
+// Where BCAgent sends its callbacks. The agent only accepts *.bespoxai.com, so this
+// is pinned rather than taken from NEXTAUTH_URL (API routes don't depend on the host).
+const AGENT_CALLBACK_BASE = process.env.AGENT_CALLBACK_BASE ?? 'https://bespoxai.com'
 const MAX_AHEAD_MS = 14 * 24 * 60 * 60 * 1000
 
 const JOB_FIELDS = {
@@ -125,7 +127,7 @@ export async function scheduleExport(args: {
     const res = await fetch(agentBase + '/bespoxai/objects/full-export', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'X-BespoxAI-Key': tenant.apiKey },
-      body:    JSON.stringify({ jobId: job.id, notBefore: notBefore.toISOString(), portalBase: PORTAL, jobToken: token }),
+      body:    JSON.stringify({ jobId: job.id, notBefore: notBefore.toISOString(), portalBase: AGENT_CALLBACK_BASE, jobToken: token }),
       signal:  AbortSignal.timeout(30_000),
     })
     if (res.status === 404) failure = 'This BCAgent version does not support full exports — download and re-run the latest installer.'
