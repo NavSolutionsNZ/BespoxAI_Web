@@ -167,7 +167,7 @@ async function aging(c: Ctx, key: 'custLedgerEntries' | 'vendLedgerEntries', tod
 const IMPLEMENTED = new Set([
   'pl_revenue', 'pl_gross_margin', 'pl_net_profit', 'pl_summary',
   'cash_total', 'cash_by_account', 'cash_trend',
-  'ar_overdue', 'ar_aging', 'ap_overdue', 'ap_aging',
+  'ar_overdue', 'ar_aging', 'ap_overdue', 'ap_outstanding', 'ap_aging',
   'sales_trend', 'top_customers',
 ])
 
@@ -266,11 +266,16 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
         case 'ar_aging':
         case 'ar_overdue':
         case 'ap_aging':
-        case 'ap_overdue': {
+        case 'ap_overdue':
+        case 'ap_outstanding': {
           const isAr = metricId.startsWith('ar')
           // Vendor remaining amounts are credits (negative) — flip so owed reads positive.
           const b = await aging(c, isAr ? 'custLedgerEntries' : 'vendLedgerEntries', today, isAr ? 1 : -1)
           const method = (isAr ? 'Customer' : 'Vendor') + ' Ledger Entries filtered Open = Yes, Remaining Amt. (LCY) bucketed by days past Due Date (as at ' + ymd(today) + ').'
+          if (metricId === 'ap_outstanding') {
+            const all = AGING_BUCKETS.reduce((s, k) => s + b[k], 0)
+            return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: all }, provenance: prov(method) }
+          }
           if (metricId.endsWith('overdue')) {
             const overdue = AGING_BUCKETS.filter(x => x !== 'Not due').reduce((s, k) => s + b[k], 0)
             return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: overdue }, provenance: prov(method) }

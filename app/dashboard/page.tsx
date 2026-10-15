@@ -1396,63 +1396,49 @@ interface OverviewCard {
   query: string  // the natural-language query to run on click
 }
 
+// Snapshot tiles read the dashboard metric engine — exact figures, no AI call.
+// Clicking a tile asks the assistant the matching question.
+const SNAPSHOT_TILES: { label: string; metricId: string; params?: Record<string, string>; question: string }[] = [
+  { label: 'Overdue debtors',      metricId: 'ar_overdue',     question: 'Show me overdue debtors' },
+  { label: 'Cash & bank',          metricId: 'cash_total',     question: 'What are our bank account balances?' },
+  { label: 'Outstanding payables', metricId: 'ap_outstanding', question: 'Which suppliers do we owe money to?' },
+  { label: 'Month revenue',        metricId: 'pl_revenue',     params: { period: 'this_month', compare: 'none' }, question: 'What is our revenue this month?' },
+]
+
+function formatTileCurrency(n: number): string {
+  const s = '$' + Math.round(Math.abs(n)).toLocaleString('en-NZ')
+  return n < 0 ? '−' + s : s
+}
+
+async function loadSnapshotTile(tile: typeof SNAPSHOT_TILES[number]): Promise<OverviewCard> {
+  try {
+    const r = await fetch('/api/dashboards/metric', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metricId: tile.metricId, params: tile.params }),
+    })
+    const d = await r.json().catch(() => ({}))
+    const v = d?.result?.scalar?.value
+    if (r.ok && typeof v === 'number') return { label: tile.label, value: formatTileCurrency(v), query: tile.question }
+    return { label: tile.label, value: '—', sub: d?.message || 'unavailable', query: tile.question }
+  } catch {
+    return { label: tile.label, value: '—', sub: 'unavailable', query: tile.question }
+  }
+}
+
 function OverviewCards({ tenantName, onQuery }: { tenantName: string; onQuery: (q: string) => void }) {
   const [cards, setCards]     = useState<OverviewCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
 
   useEffect(() => {
-    async function fetchOverview() {
-      setLoading(true)
-      try {
-        // Run four lightweight BC queries in parallel via the existing /api/query endpoint
-        const queries = [
-          { label: 'Overdue debtors',     question: 'Total overdue debtor balance today as a single dollar figure' },
-          { label: 'Cash & bank',         question: 'Total cash and bank balance right now as a single dollar figure' },
-          { label: 'Outstanding payables',question: 'Total outstanding payables balance today as a single dollar figure' },
-          { label: 'Month revenue',       question: 'Total revenue billed this month as a single dollar figure' },
-        ]
-
-        const results = await Promise.allSettled(
-          queries.map(q =>
-            fetch('/api/query', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ question: q.question, history: [] }),
-            }).then(r => r.json())
-          )
-        )
-
-        const built: OverviewCard[] = queries.map((q, i) => {
-          const result = results[i]
-          if (result.status === 'rejected') {
-            return { label: q.label, value: '—', sub: 'unavailable', query: q.question }
-          }
-          const data = result.value
-          // Extract KPI value from response
-          const kpi = data?.data?.kpis?.[0]
-          if (kpi) {
-            return { label: q.label, value: kpi.value, sub: kpi.subtext, query: q.question }
-          }
-          // Fallback — extract first number-like thing from answer text
-          // Must contain a digit — a bare comma ("Unfortunately, …") isn't a figure
-          const match = (data?.answer ?? '').match(/-?\$\s?\d[\d,]*(\.\d+)?|\d[\d,]*(\.\d+)?\s*(million|thousand|k|m)?\b/i)
-          return {
-            label: q.label,
-            value: match ? match[0] : '—',
-            sub:   match ? undefined : 'no data',
-            query: q.question,
-          }
-        })
-
-        setCards(built)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchOverview()
+    let alive = true
+    setLoading(true)
+    Promise.all(SNAPSHOT_TILES.map(loadSnapshotTile))
+      .then(built => { if (alive) setCards(built) })
+      .catch((e: any) => { if (alive) setError(e?.message ?? 'failed') })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
   }, [tenantName])
 
   if (error) return null  // silent fail — don't break the page

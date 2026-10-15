@@ -260,6 +260,10 @@ async function main() {
       body: { value: entries.map(e => ({ ...e, Remaining_Amt_LCY: -e.Remaining_Amt_LCY })) },
     }))), 'ap_overdue', undefined, opts)
     assert.equal(ap.scalar!.value, 700)
+    const apAll = await fetchMetric(createFlowFilterSource(tenant, fakeFetcher(() => ({
+      body: { value: entries.map(e => ({ ...e, Remaining_Amt_LCY: -e.Remaining_Amt_LCY })) },
+    }))), 'ap_outstanding', undefined, opts)
+    assert.equal(apAll.scalar!.value, 1700)   // due and not yet due
   })
   await test('top customers sum ledger Sales (LCY) by posting date, ranked, top honoured', async () => {
     const rows = [

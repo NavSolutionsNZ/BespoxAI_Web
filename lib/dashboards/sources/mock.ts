@@ -90,8 +90,12 @@ export const mockSource: MetricSource = {
       case 'ar_aging':
       case 'ar_overdue':
       case 'ap_aging':
-      case 'ap_overdue': {
+      case 'ap_overdue':
+      case 'ap_outstanding': {
         const base = metricId.startsWith('ar') ? [412_000, 168_500, 61_200, 22_800, 14_300] : [298_000, 96_400, 18_700, 4_100, 0]
+        if (metricId === 'ap_outstanding') {
+          return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: base.reduce((s, v) => s + v, 0) }, provenance }
+        }
         if (metricId.endsWith('overdue')) {
           return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: base.slice(1).reduce((s, v) => s + v, 0) }, provenance }
         }

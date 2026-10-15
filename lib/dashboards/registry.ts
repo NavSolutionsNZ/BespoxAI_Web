@@ -63,6 +63,11 @@ export const METRICS: Record<string, MetricDefinition> = {
     description: 'Remaining amount on open vendor ledger entries past their due date.',
     acceptsPeriod: false, acceptsCompare: false, defaultParams: {},
   },
+  ap_outstanding: {
+    id: 'ap_outstanding', label: 'Outstanding payables', kind: 'scalar', unit: 'currency',
+    description: 'Remaining amount on all open vendor ledger entries, due or not.',
+    acceptsPeriod: false, acceptsCompare: false, defaultParams: {},
+  },
   ap_aging: {
     id: 'ap_aging', label: 'Creditor aging', kind: 'breakdown', unit: 'currency',
     description: 'Open vendor ledger entries bucketed by days past due date.',

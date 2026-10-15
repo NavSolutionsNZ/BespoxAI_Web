@@ -15,7 +15,7 @@
 export const BC_ENTITIES = {
   // --- Customers & Sales ---
   Customer: {
-    description: 'Customers / debtors / clients. To find overdue/outstanding debtors use $filter=Balance_LCY gt 0 — there is NO Due_Date, no Overdue field. Balance_LCY is the outstanding amount.',
+    description: 'Customers / debtors / clients. Balance_LCY is the outstanding amount ($filter=Balance_LCY gt 0 for customers who owe money). There is NO Due_Date here — for overdue or aged debt use CustLedgerEntry if it is listed.',
     keyField: 'No',
     usefulFields: [
       'No', 'Name', 'Balance_LCY', 'Sales_LCY', 'Credit_Limit_LCY',
@@ -77,9 +77,20 @@ export const BC_ENTITIES = {
     ],
   },
 
+  CustLedgerEntry: {
+    description: 'Customer ledger entries — every posted invoice, credit memo and payment per customer. For overdue / aged debtors: $filter=Open eq true, then compare Due_Date with today; Remaining_Amt_LCY is what is still owed. Sales_LCY by Posting_Date gives sales per customer for a period. Posting_Date and Due_Date can be filtered with ge/le.',
+    keyField: 'Entry_No',
+    usefulFields: [
+      'Entry_No', 'Posting_Date', 'Document_Type', 'Document_No', 'External_Document_No',
+      'Customer_No', 'Customer_Name', 'Description', 'Currency_Code',
+      'Amount_LCY', 'Original_Amt_LCY', 'Remaining_Amt_LCY', 'Sales_LCY',
+      'Due_Date', 'Open', 'Salesperson_Code', 'Global_Dimension_1_Code', 'Global_Dimension_2_Code',
+    ],
+  },
+
   // --- Vendors & Purchasing ---
   Vendor: {
-    description: 'Vendors / suppliers / creditors. To find vendors with outstanding AP use $filter=Balance_LCY gt 0. No Due_Date field on Vendor.',
+    description: 'Vendors / suppliers / creditors. Balance_LCY is what we owe ($filter=Balance_LCY gt 0). No Due_Date field on Vendor — for overdue or aged payables use VendorLedgerEntry if it is listed.',
     keyField: 'No',
     usefulFields: [
       'No', 'Name', 'Balance_LCY', 'Purchases_LCY',
@@ -87,6 +98,16 @@ export const BC_ENTITIES = {
       'Address', 'City', 'Post_Code', 'Country_Region_Code',
       'Payment_Terms_Code', 'Payment_Method_Code', 'Purchaser_Code',
       'Blocked', 'Last_Date_Modified', 'VAT_Registration_No', 'No_of_Documents',
+    ],
+  },
+  VendorLedgerEntry: {
+    description: 'Vendor ledger entries — every posted purchase invoice, credit memo and payment per vendor. For outstanding / overdue payables: $filter=Open eq true, compare Due_Date with today; Remaining_Amt_LCY is negative for amounts we owe (flip the sign when reporting). Posting_Date and Due_Date can be filtered with ge/le.',
+    keyField: 'Entry_No',
+    usefulFields: [
+      'Entry_No', 'Posting_Date', 'Document_Type', 'Document_No', 'External_Document_No',
+      'Vendor_No', 'Vendor_Name', 'Description', 'Currency_Code',
+      'Amount_LCY', 'Original_Amt_LCY', 'Remaining_Amt_LCY', 'Purchase_LCY',
+      'Due_Date', 'Open', 'Purchaser_Code', 'Global_Dimension_1_Code', 'Global_Dimension_2_Code',
     ],
   },
   PurchaseOrder: {
@@ -154,6 +175,21 @@ export const BC_ENTITIES = {
     ],
   },
 
+  BankAccount: {
+    description: 'Bank accounts — names, numbers and currency only. Has NO balance on BC14: for cash balances use BankAccountLedgerEntry.',
+    keyField: 'No',
+    usefulFields: ['No', 'Name', 'Bank_Account_No', 'Currency_Code', 'Bank_Acc_Posting_Group', 'Contact', 'Phone_No'],
+  },
+  BankAccountLedgerEntry: {
+    description: 'Bank account ledger entries — every posted deposit and payment per bank account. Cash balance = sum of Amount_LCY (all entries, or Posting_Date le a date for the balance at that date), grouped by Bank_Account_No. Posting_Date can be filtered with ge/le.',
+    keyField: 'Entry_No',
+    usefulFields: [
+      'Entry_No', 'Bank_Account_No', 'Posting_Date', 'Document_Type', 'Document_No',
+      'Description', 'Currency_Code', 'Amount', 'Amount_LCY', 'Debit_Amount_LCY', 'Credit_Amount_LCY',
+      'Open', 'Remaining_Amount',
+    ],
+  },
+
   // --- Item Ledger ---
   ItemLedgerEntry: {
     description: 'Item ledger entries — physical inventory movements (vehicle/parts purchases and sales). Entry_Type is Purchase or Sale. Amount is cost value. Use for stock movement, vehicle sales history, inventory cost by item.',
@@ -215,6 +251,18 @@ export const CFO_SERVICES: CfoServiceDef[] = [
   { logical: 'ItemLedgerEntry',    serviceName: 'BespoxAI_ItemLedgerEntry',    pageId: 38,  pageName: 'Item Ledger Entries' },
 ]
 
+/**
+ * Other OData names a logical entity may be published under, best first: the
+ * dashboard services the installer publishes (lib/dashboards/bc-services.ts),
+ * then BC's standard web services. The logical name itself is always tried last.
+ */
+export const ENTITY_ALIASES: Partial<Record<BCEntityName, string[]>> = {
+  CustLedgerEntry:        ['BespoxAI_CustLedgerEntries', 'CustLedgerEntries', 'Cust_LedgerEntries', 'CustomerLedgerEntries'],
+  VendorLedgerEntry:      ['BespoxAI_VendLedgerEntries', 'VendorLedgerEntries', 'Vendor_LedgerEntries', 'VendLedgerEntries'],
+  BankAccount:            ['BespoxAI_BankAccounts', 'BankAccounts', 'Bank_Accounts'],
+  BankAccountLedgerEntry: ['BespoxAI_BankLedgerEntries', 'BankAccountLedgerEntries', 'Bank_Account_Ledger_Entries'],
+}
+
 /** Line entities and the header they belong to. */
 export const LINE_PARENTS: Partial<Record<BCEntityName, BCEntityName>> = {
   SalesOrderSalesLines:      'SalesOrder',
@@ -262,7 +310,8 @@ export function parseMetadata(xml: string): ODataMetadata {
 
 /**
  * Maps each logical entity to the OData entity set this tenant actually has.
- * Headers: the BespoxAI_ service if published, else the standard name.
+ * Headers: the BespoxAI_ service if published, then any ENTITY_ALIASES, else
+ * the standard name.
  * Lines: <resolved header><suffix> if present, else the one other entity set
  * whose name starts with the resolved header (the subpage control name varies
  * by page, e.g. Posted Sales Invoice's lines are not called "SalesLines").
@@ -275,8 +324,9 @@ export function resolveEntities(available: string[]): Partial<Record<BCEntityNam
   for (const logical of logicals) {
     if (LINE_PARENTS[logical]) continue
     const svc = CFO_SERVICES.find(s => s.logical === logical)
-    if (svc && have.has(svc.serviceName)) out[logical] = svc.serviceName
-    else if (have.has(logical)) out[logical] = logical
+    const candidates = [...(svc ? [svc.serviceName] : []), ...(ENTITY_ALIASES[logical] ?? []), logical]
+    const hit = candidates.find(n => have.has(n))
+    if (hit) out[logical] = hit
   }
 
   const taken = new Set(Object.values(out))

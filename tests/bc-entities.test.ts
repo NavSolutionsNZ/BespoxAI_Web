@@ -134,3 +134,17 @@ test('installer publishes exactly CFO_SERVICES', () => {
   assert.ok(found.length > 0, 'CfoServices block not found in the installer')
   assert.deepEqual(found, expected)
 })
+
+test('ledger and bank entities resolve to the dashboard services, then BC standard names', () => {
+  const r = resolveEntities(['BespoxAI_CustLedgerEntries', 'Cust_LedgerEntries', 'VendorLedgerEntries', 'BespoxAI_BankLedgerEntries', 'BankAccountLedgerEntries'])
+  assert.equal(r.CustLedgerEntry, 'BespoxAI_CustLedgerEntries')        // ours before the standard one
+  assert.equal(r.VendorLedgerEntry, 'VendorLedgerEntries')              // only the standard one
+  assert.equal(r.BankAccountLedgerEntry, 'BespoxAI_BankLedgerEntries')
+  assert.equal(r.BankAccount, undefined)
+})
+
+test('ledger fields are narrowed to what the page exposes', () => {
+  const meta = { entitySets: ['BespoxAI_CustLedgerEntries'], fields: { BespoxAI_CustLedgerEntries: ['Entry_No', 'Customer_No', 'Customer_Name', 'Due_Date', 'Remaining_Amt_LCY', 'Open', 'Date_Filter'] } }
+  const cle = buildCatalogue(meta, null).find(c => c.logical === 'CustLedgerEntry')!
+  assert.deepEqual(cle.fields, ['Entry_No', 'Customer_No', 'Customer_Name', 'Remaining_Amt_LCY', 'Due_Date', 'Open'])
+})
