@@ -111,20 +111,36 @@ export function sha256(s: string): string {
 
 // ── Part hashes ──────────────────────────────────────────────────────────────
 
+/** Bump when the PartHashes shape changes — stale index rows must be re-ingested. */
+export const PART_HASHES_SCHEMA = 2
+
+/** One field / control / action: its definition and its trigger code, hashed apart. */
+export interface EntryHashes {
+  def:      string                    // entry with trigger bodies removed
+  triggers: Record<string, string>    // OnValidate, OnLookup, OnAction …
+}
+
 export interface PartHashes {
-  /** Object-level PROPERTIES, one hash per property (triggers included, e.g. OnRun) */
+  schema:        number
+  /** Object-level PROPERTIES that are not triggers or the action list */
   properties:    Record<string, string>
-  /** FIELDS by field number (field triggers included in the entry) */
-  fields:        Record<string, string>
-  /** CONTROLS by control id (pages/forms/request pages) */
-  controls:      Record<string, string>
+  /** Object-level triggers (OnInsert, OnRun, OnOpenPage …) */
+  triggers:      Record<string, string>
+  /** FIELDS by field number */
+  fields:        Record<string, EntryHashes>
+  /** KEYS, keyed by the key's field list */
+  keys:          Record<string, string>
+  /** CONTROLS by control id (pages, forms, request pages) */
+  controls:      Record<string, EntryHashes>
+  /** Page ActionList entries by action id */
+  actions:       Record<string, EntryHashes>
   /** CODE: global VAR block */
   globals:       string | null
   /** CODE: one hash per procedure, keyed by name */
   procedures:    Record<string, string>
   /** CODE: the documentation trigger at the end of the object */
   documentation: string | null
-  /** Any other section (KEYS, FIELDGROUPS, DATASET, ELEMENTS, LABELS, RDLDATA …) as a whole */
+  /** Any other section (FIELDGROUPS, DATASET, ELEMENTS, LABELS, RDLDATA …) as a whole */
   sections:      Record<string, string>
 }
 
@@ -134,22 +150,95 @@ function splitEntries(body: string, indent: number): string[] {
   return body.split(re).filter(s => s.trim().startsWith('{'))
 }
 
-function entriesById(body: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const entry of splitEntries(body, 4)) {
+/**
+ * Separate trigger bodies from an entry. A C/AL trigger is "OnXxx=" followed by
+ * an optional VAR block and BEGIN; it ends at the "END;" that sits in the same
+ * column as its BEGIN (inner END;s are always indented further).
+ */
+export function splitTriggers(entry: string): { def: string; triggers: Record<string, string> } {
+  const lines = entry.split('\n')
+  const keep: string[] = []
+  const triggers: Record<string, string> = {}
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    const t = line.match(/\b(On[A-Za-z]+)=(?=\s*(BEGIN|VAR)\b|\s*$)/)
+    if (!t || t.index === undefined) { keep.push(line); i++; continue }
+
+    // locate BEGIN (same line or a following line) and its column
+    let bLine = -1, bCol = -1
+    for (let j = i; j < lines.length; j++) {
+      const from = j === i ? t.index + t[0].length : 0
+      const k = lines[j].slice(from).search(/\bBEGIN\b/)
+      if (k >= 0) { bLine = j; bCol = from + k; break }
+    }
+    if (bLine < 0) { keep.push(line); i++; continue }
+
+    const endRe = new RegExp('^ {' + bCol + '}END;')
+    let eLine = -1
+    for (let j = bLine + (lines[bLine].slice(bCol).match(/^BEGIN\s+END;/) ? 0 : 1); j < lines.length; j++) {
+      if (j === bLine) { eLine = j; break }               // "BEGIN END;" on one line
+      if (endRe.test(lines[j])) { eLine = j; break }
+    }
+    if (eLine < 0) { keep.push(line); i++; continue }
+
+    const body = [line.slice(t.index)].concat(lines.slice(i + 1, eLine + 1)).join('\n')
+    let key = t[1]
+    while (triggers[key] !== undefined) key += '~'
+    triggers[key] = sha256(body.trim())
+
+    // keep the text before the trigger and anything after its END; on the last line
+    keep.push(line.slice(0, t.index) + '<' + t[1] + '>' + lines[eLine].replace(/^.*?END;/, ''))
+    i = eLine + 1
+  }
+  return { def: keep.join('\n'), triggers }
+}
+
+function entryHashes(entry: string): EntryHashes {
+  // keep leading indentation: trigger END; is matched by column
+  const { def, triggers } = splitTriggers(entry.replace(/\s+$/, ''))
+  return { def: sha256(def.trim()), triggers }
+}
+
+function entriesById(body: string, indent = 4): Record<string, EntryHashes> {
+  const out: Record<string, EntryHashes> = {}
+  for (const entry of splitEntries(body, indent)) {
     const id = entry.match(/^\s*\{\s*(\d+)/)
-    if (id) out[id[1]] = sha256(entry.trim())
+    if (id) out[id[1]] = entryHashes(entry)
   }
   return out
 }
 
-function propertiesByName(body: string): Record<string, string> {
+function keysByFields(body: string): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const chunk of body.split(/(?=^    \S)/m)) {
-    const name = chunk.match(/^    ([A-Za-z][\w ]*?)\s*=/)
-    if (name) out[name[1]] = sha256(chunk.trim())
+  for (const entry of splitEntries(body, 4)) {
+    const f = entry.match(/^\s*\{[^;]*;([^;}]+)/)
+    if (f) out[f[1].trim()] = sha256(entry.trim())
   }
   return out
+}
+
+function propertiesByName(body: string): Pick<PartHashes, 'properties' | 'triggers' | 'actions'> {
+  const properties: Record<string, string> = {}
+  const triggers: Record<string, string> = {}
+  let actions: Record<string, EntryHashes> = {}
+  // a new property starts with a letter at 4 spaces; "    {" / "    }" lines belong to ActionList
+  for (const chunk of body.split(/(?=^    [A-Za-z])/m)) {
+    const name = chunk.match(/^    ([A-Za-z][\w ]*?)\s*=/)
+    if (!name) continue
+    if (/^On[A-Z]/.test(name[1])) triggers[name[1]] = sha256(chunk.trim())
+    else if (name[1] === 'ActionList') {
+      // action entries sit deeper than 4 spaces; split on any "{ <id>" line start
+      const inner = chunk.split(/(?=^\s+\{\s*\d+\s*;)/m).filter(s => /^\s+\{\s*\d+\s*;/.test(s))
+      actions = {}
+      for (const e of inner) {
+        const id = e.match(/\{\s*(\d+)/)
+        if (id) actions[id[1]] = entryHashes(e.replace(/\n\s*\}\s*$/, ''))
+      }
+    }
+    else properties[name[1]] = sha256(chunk.trim())
+  }
+  return { properties, triggers, actions }
 }
 
 const PROC_START = /(?=^    (?:\[[^\n]*\]\n    )*(?:LOCAL )?PROCEDURE )/m
@@ -193,15 +282,17 @@ function splitCode(body: string): Pick<PartHashes, 'globals' | 'procedures' | 'd
 export function partHashes(text: string): PartHashes {
   const sections = calSections(normaliseText(text))
   const out: PartHashes = {
-    properties: {}, fields: {}, controls: {},
+    schema: PART_HASHES_SCHEMA,
+    properties: {}, triggers: {}, fields: {}, keys: {}, controls: {}, actions: {},
     globals: null, procedures: {}, documentation: null, sections: {},
   }
   for (const [name, body] of Array.from(sections.entries())) {
     switch (name) {
       case 'OBJECT-PROPERTIES': break
-      case 'PROPERTIES': out.properties = propertiesByName(body); break
-      case 'FIELDS':     out.fields     = entriesById(body); break
-      case 'CONTROLS':   out.controls   = entriesById(body); break
+      case 'PROPERTIES': Object.assign(out, propertiesByName(body)); break
+      case 'FIELDS':     out.fields   = entriesById(body); break
+      case 'KEYS':       out.keys     = keysByFields(body); break
+      case 'CONTROLS':   out.controls = entriesById(body); break
       case 'CODE':       Object.assign(out, splitCode(body)); break
       default:           out.sections[name] = sha256(body)
     }

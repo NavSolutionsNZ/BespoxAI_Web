@@ -9,7 +9,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   splitCalExport, objectFileName, calSections, normaliseObject,
-  partHashes, sha256, versionListOf, dominantVersionTags,
+  partHashes, splitTriggers, sha256, versionListOf, dominantVersionTags,
 } from '../lib/corpus/cal-structure'
 
 const TABLE = [
@@ -137,8 +137,8 @@ test('partHashes isolates a changed field', () => {
   const base = partHashes(TABLE)
   const mod = partHashes(TABLE.replace('Text50 ', 'Text100'))
   assert.deepEqual(Object.keys(base.fields), ['1', '2'])
-  assert.equal(mod.fields['1'], base.fields['1'])
-  assert.notEqual(mod.fields['2'], base.fields['2'])
+  assert.deepEqual(mod.fields['1'], base.fields['1'])
+  assert.notEqual(mod.fields['2'].def, base.fields['2'].def)
   assert.deepEqual(mod.procedures, base.procedures)
 })
 
@@ -166,24 +166,92 @@ test('partHashes splits procedures, globals and documentation separately', () =>
   assert.deepEqual(doc.procedures, base.procedures)
 })
 
-test('partHashes keys object triggers under properties', () => {
+test('partHashes separates object triggers from properties', () => {
   const base = partHashes(TABLE)
-  assert.deepEqual(Object.keys(base.properties), ['Permissions', 'OnInsert', 'CaptionML'])
+  assert.deepEqual(Object.keys(base.properties), ['Permissions', 'CaptionML'])
+  assert.deepEqual(Object.keys(base.triggers), ['OnInsert'])
   const mod = partHashes(TABLE.replace('NoSeriesMgt.InitSeries;', 'NoSeriesMgt.InitSeries; MyHook;'))
-  assert.notEqual(mod.properties['OnInsert'], base.properties['OnInsert'])
-  assert.equal(mod.properties['Permissions'], base.properties['Permissions'])
+  assert.notEqual(mod.triggers['OnInsert'], base.triggers['OnInsert'])
+  assert.deepEqual(mod.properties, base.properties)
 })
 
-test('KEYS and other sections are hashed whole', () => {
+test('field trigger code is hashed apart from the field definition', () => {
   const base = partHashes(TABLE)
-  assert.ok(base.sections['KEYS'])
+  assert.deepEqual(Object.keys(base.fields['1'].triggers), ['OnValidate'])
+  const code = partHashes(TABLE.replace('TestNoSeries;', 'TestNoSeries; CheckCustom;'))
+  assert.equal(code.fields['1'].def, base.fields['1'].def)
+  assert.notEqual(code.fields['1'].triggers['OnValidate'], base.fields['1'].triggers['OnValidate'])
+  const def = partHashes(TABLE.replace('No.                 ;Code20 ', 'No.                 ;Code30 '))
+  assert.notEqual(def.fields['1'].def, base.fields['1'].def)
+  assert.deepEqual(def.fields['1'].triggers, base.fields['1'].triggers)
+})
+
+test('splitTriggers handles VAR blocks, nested END; and properties after the trigger', () => {
+  const entry = [
+    '{ 5   ;   ;Amount              ;Decimal       ;OnValidate=VAR',
+    '                                                                X@1000 : Integer;',
+    '                                                              BEGIN',
+    '                                                                IF X = 0 THEN BEGIN',
+    '                                                                  X := 1;',
+    '                                                                END;',
+    '                                                              END;',
+    '',
+    '                                                   CaptionML=ENU=Amount }',
+  ].join('\n')
+  const r = splitTriggers(entry)
+  assert.deepEqual(Object.keys(r.triggers), ['OnValidate'])
+  assert.ok(r.def.includes('CaptionML=ENU=Amount'))
+  assert.ok(!r.def.includes('X := 1'))
+})
+
+test('KEYS are keyed by their field list', () => {
+  const base = partHashes(TABLE)
+  assert.deepEqual(Object.keys(base.keys), ['No.'])
   const mod = partHashes(TABLE.replace('Clustered=Yes', 'Clustered=No'))
-  assert.notEqual(mod.sections['KEYS'], base.sections['KEYS'])
+  assert.notEqual(mod.keys['No.'], base.keys['No.'])
+  const added = partHashes(TABLE.replace(
+    '    {    ;No.                                     ;Clustered=Yes }',
+    '    {    ;No.                                     ;Clustered=Yes }\r\n    {    ;Name                                     }'))
+  assert.deepEqual(Object.keys(added.keys), ['No.', 'Name'])
+  assert.equal(added.keys['No.'], base.keys['No.'])
+})
+
+test('page action list entries are hashed by id', () => {
+  const page = [
+    'OBJECT Page 21 Customer Card', '{', '  PROPERTIES', '  {',
+    '    SourceTable=Table18;',
+    '    ActionList=ACTIONS',
+    '    {',
+    '      { 1900000003;0 ;ActionContainer;',
+    '                      ActionContainerType=RelatedInformation }',
+    '      { 10      ;1   ;Action    ;',
+    '                      CaptionML=ENU=Ledger;',
+    '                      OnAction=BEGIN',
+    '                                 ShowLedger;',
+    '                               END;',
+    '                                }',
+    '    }',
+    '    }', '', '  }', '  CONTROLS', '  {',
+    '    { 1   ;0   ;Container ;',
+    '                ContainerType=ContentArea }',
+    '    { 2   ;1   ;Field     ;',
+    '                SourceExpr="No." }',
+    '  }', '}', '',
+  ].join('\n')
+  const base = partHashes(page)
+  assert.deepEqual(Object.keys(base.actions).sort(), ['10', '1900000003'])
+  assert.deepEqual(Object.keys(base.actions['10'].triggers), ['OnAction'])
+  assert.deepEqual(Object.keys(base.controls), ['1', '2'])
+  assert.deepEqual(Object.keys(base.properties), ['SourceTable'])
+  const mod = partHashes(page.replace('ShowLedger;', 'ShowLedger; Extra;'))
+  assert.equal(mod.actions['10'].def, base.actions['10'].def)
+  assert.notEqual(mod.actions['10'].triggers['OnAction'], base.actions['10'].triggers['OnAction'])
 })
 
 test('a codeunit with only a trigger and empty documentation parses', () => {
   const p = partHashes(CODEUNIT)
-  assert.deepEqual(Object.keys(p.properties), ['OnRun'])
+  assert.deepEqual(Object.keys(p.triggers), ['OnRun'])
+  assert.equal(p.schema, 2)
   assert.deepEqual(p.procedures, {})
   assert.ok(p.documentation)
 })
