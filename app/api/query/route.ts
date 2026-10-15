@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
 import { parseAnswerPayload } from '@/lib/answer-format'
+import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, type AggResult } from '@/lib/query-aggregate'
 import { getTenantMetadata } from '@/lib/bc-metadata'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
@@ -29,6 +30,7 @@ interface QueryPlan {
   secondParams?: string
   joinKey?: string        // key field on primary entity (e.g. 'No')
   joinForeignKey?: string // matching field on second entity (e.g. 'Document_No')
+  aggregate?: unknown     // totals to compute in code — see lib/query-aggregate.ts (sanitised)
 }
 
 export type DisplayHint = 'narrative' | 'kpi' | 'table' | 'bar_chart' | 'line_chart'
@@ -154,7 +156,9 @@ export async function POST(req: NextRequest) {
   let badQueryQuestions: string[] = []
   try {
     const badLogs = await prisma.queryLog.findMany({
-      where: { tenantId: tenant.tenantId, entity: '__BAD_QUERY__' },
+      // Recent ones only: what failed weeks ago (e.g. before a service was
+      // published, or while the agent was broken) shouldn't block questions forever.
+      where: { tenantId: tenant.tenantId, entity: '__BAD_QUERY__', createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } },
       select: { question: true },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -306,6 +310,13 @@ Given a user's natural language question, output ONLY a JSON object with:
   - secondParams (optional): OData params for the second entity
   - joinKey (optional): key field on the primary entity (e.g. "No")
   - joinForeignKey (optional): matching field on secondEntity (e.g. "Document_No")
+  - aggregate (optional, but REQUIRED whenever the answer needs a total, count, average, min/max, or per-group/per-period sums):
+      { "groupBy": field or null, "period": "month"|"quarter"|"year" or null (when groupBy is a date field),
+        "labelField": display-name field for the group or null (e.g. "Customer_Name" when grouping by "Customer_No"),
+        "measures": [{ "field": "Remaining_Amt_LCY", "op": "sum"|"count"|"avg"|"min"|"max", "label": "Overdue ($)", "negate": false }],
+        "sort": "desc"|"asc"|"key", "top": number or null }
+    The server computes these exactly over ALL fetched records (after any join and date filter); the answerer never adds numbers up.
+    Every field used in aggregate must also be in $select. Use "negate": true for vendor ledger amounts owed (they are negative).
 
 Use secondEntity when you need fields from two entities that must be joined.
 Example — invoice totals by month needs dates from SalesInvoice AND amounts from SalesInvoiceSalesLines:
@@ -318,6 +329,16 @@ Example — invoice totals by month needs dates from SalesInvoice AND amounts fr
   "joinForeignKey": "Document_No",
   "reasoning": "Invoice dates from header, amounts from lines, joined on No=Document_No"
 }
+
+Example — overdue debtors by customer (exact total + ranking):
+{
+  "entity": "CustLedgerEntry",
+  "params": "$filter=Open eq true and Due_Date lt <today>&$select=Entry_No,Customer_No,Customer_Name,Due_Date,Remaining_Amt_LCY",
+  "aggregate": { "groupBy": "Customer_No", "labelField": "Customer_Name", "measures": [{ "field": "Remaining_Amt_LCY", "op": "sum", "label": "Overdue ($)" }], "sort": "desc", "top": 15 },
+  "reasoning": "Open customer entries past due, summed per customer in code"
+}
+Example — bank balances: entity BankAccountLedgerEntry, $select=Entry_No,Bank_Account_No,Amount_LCY, aggregate groupBy "Bank_Account_No", measure sum of Amount_LCY.
+Example — revenue by month: the SalesInvoice + SalesInvoiceSalesLines join, aggregate groupBy "Posting_Date", period "month", measure sum of "Amount".
 
 Available entities:
 ${catalogueSummary(catalogue)}
@@ -388,14 +409,22 @@ For time-series / "by month" / "over last N months" / trend questions:
     ALWAYS_FETCH_ALL.has(plan.entity) ||
     TIME_PERIOD_KEYWORDS.test(question)
 
-  if (forceLargeTop) {
-    const setTop = (params: string, n: number) =>
-      /\$top=\d+/i.test(params)
-        ? params.replace(/\$top=\d+/i, `$top=${n}`)
-        : `$top=${n}&${params}`
+  const setTop = (params: string, n: number) =>
+    /\$top=\d+/i.test(params)
+      ? params.replace(/\$top=\d+/i, '$top=' + n)
+      : '$top=' + n + '&' + params
 
+  if (forceLargeTop) {
     plan.params       = setTop(plan.params ?? '', 1000)
     if (plan.secondParams) plan.secondParams = setTop(plan.secondParams, 2000)
+  }
+
+  // Totals are computed in code over every record, so fetch them all (up to a cap).
+  const aggSpec = sanitizeAggSpec(plan.aggregate)
+  const AGG_TOP = 5000
+  if (aggSpec) {
+    plan.params = setTop(plan.params ?? '', AGG_TOP)
+    if (plan.secondParams) plan.secondParams = setTop(plan.secondParams, AGG_TOP * 2)
   }
 
   // The planner may only use entities in this tenant's catalogue: published in
@@ -411,6 +440,7 @@ For time-series / "by month" / "over last N months" / trend questions:
 
   let bcData: any
   let rawRecords: any[]
+  let fetchedCount = 0
 
   try {
     const bcRes = await fetch(odataUrl, {
@@ -420,6 +450,17 @@ For time-series / "by month" / "over last N months" / trend questions:
       },
       signal: AbortSignal.timeout(30_000),
     })
+
+    // Only a 400 means BC couldn't handle the query itself. Anything else (agent
+    // down, 401, 404, 503) is a connection problem: say so, and don't record the
+    // question as a bad query — that list steers the router away from it.
+    if (!bcRes.ok && bcRes.status !== 400) {
+      const detail = (await bcRes.text().catch(() => '')).slice(0, 300)
+      return NextResponse.json({
+        error: 'Business Central didn\'t answer (HTTP ' + bcRes.status + '). Check that the BespoxAI Agent is running and try again.',
+        detail, step: 'fetch',
+      }, { status: UPSTREAM_FAILED })
+    }
 
     if (!bcRes.ok) {
       const errText = await bcRes.text()
@@ -489,6 +530,7 @@ Return JSON:
 
     bcData = await bcRes.json()
     rawRecords = bcData.value ?? (Array.isArray(bcData) ? bcData : [bcData])
+    fetchedCount = rawRecords.length
   } catch (err: any) {
     return NextResponse.json(
       { error: `BCAgent unreachable: ${err.message}`, odataUrl, plan },
@@ -553,11 +595,21 @@ Return JSON:
     })
   }
 
+  // ── Step 2c: Exact totals in code (when the planner asked for them) ──────
+  let agg: AggResult | null = null
+  let aggIncomplete = false
+  if (aggSpec) {
+    agg = aggregateRecords(rawRecords, aggSpec)
+    aggIncomplete = fetchedCount >= AGG_TOP
+  }
+
   // ── Step 3: Answer — Claude produces natural language + structured data ──
 
-  // Truncate huge payloads before sending to Claude (keep first 80 records)
-  const recordsForClaude = rawRecords.slice(0, 80)
-  const truncated = rawRecords.length > 80
+  // Truncate huge payloads before sending to Claude. With exact totals the
+  // records are only context, so fewer are needed.
+  const recordLimit = agg ? 30 : 80
+  const recordsForClaude = rawRecords.slice(0, recordLimit)
+  const truncated = rawRecords.length > recordLimit
 
   let payload: AnswerPayload
   try {
@@ -585,7 +637,8 @@ Write as a trusted financial advisor briefing a CFO. Rules:
 - Flag anomalies, overdue items, or concentration risk where relevant
 - 2–4 sentences for simple answers; up to 8 for complex ones
 - No bullet points — flowing, professional prose
-${truncated ? `- Data was truncated to 80 of ${rawRecords.length} records` : ''}
+${truncated ? (agg ? '- Only ' + recordLimit + ' of ' + rawRecords.length + ' records are shown as examples; the EXACT FIGURES block covers all of them' : '- Data was truncated to ' + recordLimit + ' of ' + rawRecords.length + ' records') : ''}
+${agg ? '- An EXACT FIGURES block is provided: every number in your answer must come from it. Never compute totals, averages or counts yourself.' : ''}
 
 ─── displayHint ──────────────────────────────────────────────────────────────
 Choose exactly one:
@@ -606,7 +659,8 @@ Identifiers are text, not numbers: document, invoice, entry, account and item nu
         ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
         {
           role: 'user',
-          content: `Question: ${question}\n\nBC data (${recordsForClaude.length} records from ${plan.entity}):\n${JSON.stringify(recordsForClaude, null, 2)}`,
+          content: 'Question: ' + question + '\n\n' + (agg ? describeAggregate(agg, aggIncomplete) + '\n\n' : '') +
+            'BC data (' + recordsForClaude.length + ' of ' + rawRecords.length + ' records from ' + plan.entity + '):\n' + JSON.stringify(recordsForClaude, null, 2),
         },
       ],
       { jsonMode: true },
@@ -615,6 +669,11 @@ Identifiers are text, not numbers: document, invoice, entry, account and item nu
     _answerResUsage = answerRes.usage
     // Tolerates fenced/wrapped JSON; prose-only replies become a narrative answer
     payload = parseAnswerPayload(answerRes.content) as AnswerPayload
+    // Charts, tables and KPIs show the computed figures, not the model's copy of them.
+    if (agg) {
+      const exact = aggregateDisplayData(agg, payload.displayHint)
+      if (exact) payload.data = exact
+    }
   } catch (err: any) {
     return NextResponse.json(
       { error: `Answer generation failed: ${err.message}`, step: 'answerer' },
@@ -664,6 +723,8 @@ Identifiers are text, not numbers: document, invoice, entry, account and item nu
       reasoning:   plan.reasoning,
       recordCount: rawRecords.length,
       odataUrl,
+      aggregated:  agg ? true : undefined,
+      incomplete:  aggIncomplete || undefined,
     },
   })
 }
