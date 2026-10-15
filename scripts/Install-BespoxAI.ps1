@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.14'
+$AgentVersion  = '3.15'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -171,6 +171,24 @@ Write-Host ''
 # ── Step 1: Prerequisites ──────────────────────────────────────────────────────
 
 Write-Step 'Checking prerequisites'
+
+# v3.15: the server instance names from Settings must exist on this server.
+# Checked first, so a typo stops the install before anything is changed (the
+# running agent included). BC Instance is the OData path and NAV Server
+# Instance drives web-service publishing and object compile/deploy; each is
+# the name of a MicrosoftDynamicsNavServer$<name> service here.
+$navInstancesHere = @(Get-Service -Name 'MicrosoftDynamicsNavServer$*' -ErrorAction SilentlyContinue |
+    ForEach-Object { $_.Name.Substring('MicrosoftDynamicsNavServer$'.Length) })
+$instanceChecks = @(@{ Label = 'BC Instance Name'; Value = $BCInstance })
+if ($NavServerInstance) { $instanceChecks += @{ Label = 'Server Instance'; Value = $NavServerInstance } }
+foreach ($ic in $instanceChecks) {
+    if ($navInstancesHere -notcontains $ic.Value) {
+        $hereText = if ($navInstancesHere.Count) { $navInstancesHere -join ', ' } else { 'none found' }
+        Write-Fail ("$($ic.Label) '$($ic.Value)' is not a Business Central server instance on this server. " +
+            "Instances here: $hereText. Correct it in Settings, download the installer again and re-run it. Nothing was changed.")
+    }
+}
+Write-OK "Server instance $(($instanceChecks | ForEach-Object { $_.Value } | Select-Object -Unique) -join ', ') found"
 
 # Stop any existing BespoxAI agent before checking port
 $existingTask = Get-ScheduledTask -TaskName "$BrandName-BCAgent" -ErrorAction SilentlyContinue
@@ -336,9 +354,13 @@ $AgentCode = @'
         /BC140/ODataV4/..., so every proxied OData call went to
         /BC140/BC140/ODataV4 and got HTTP.sys's 503. Paths that already name an
         instance now go to bcBaseUrl's scheme://host:port only.
+  v3.15: The installer stops before changing anything if the BC Instance Name
+        or Server Instance from Settings isn't a server instance on this machine,
+        and lists the ones that are (a typo used to surface only as a non-fatal
+        web-service publishing failure, then as failed compiles).
 #>
 
-$Version    = '3.14'
+$Version    = '3.15'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
