@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 import {
   splitCalExport, objectFileName, calSections, normaliseObject,
   partHashes, splitTriggers, sha256, versionListOf, dominantVersionTags,
+  parseMsTag, corpusVersionTag, tagsMatchLocalisation,
 } from '../lib/corpus/cal-structure'
 
 const TABLE = [
@@ -259,7 +260,27 @@ test('a codeunit with only a trigger and empty documentation parses', () => {
 test('versionListOf and dominantVersionTags', () => {
   assert.equal(versionListOf(TABLE), 'NAVW114.00,NAVNZ14.00')
   assert.deepEqual(
-    dominantVersionTags(['NAVW114.00,NAVNZ14.00', 'NAVW114.00.29537', 'NAVW113.00', null, 'CUST1.00']),
-    { w1: 'NAVW114.00', local: 'NAVNZ14.00' },
+    dominantVersionTags(['NAVW114.00,NAVNZ14.00', 'NAVW114.05', 'NAVW113.00', null, 'CUST1.00']),
+    { w1: 'NAVW114', local: 'NAVNZ14', others: [], cuLevel: 5 },
   )
+})
+
+test('dominantVersionTags handles regional families (real BC14 NZ shape)', () => {
+  const lists = [
+    'NAVW114.23,NAVAPAC14.23', 'NAVW114.27,NAVAPAC14.27', 'NAVW114.00', 'NAVW113.00,NAVAPAC13.00',
+    'NAVW114.00,NAVNZ14.00', 'NAVW16.00,NAVAP4.00', 'NAVW114.27,NAVAPAC14.27', '',
+  ]
+  assert.deepEqual(dominantVersionTags(lists), { w1: 'NAVW114', local: 'NAVAPAC14', others: ['NAVNZ14'], cuLevel: 27 })
+  assert.equal(corpusVersionTag(dominantVersionTags(lists), 'NZ'), 'NAVAPAC14')
+  assert.equal(corpusVersionTag(dominantVersionTags(lists), 'W1'), 'NAVW114')
+  assert.equal(tagsMatchLocalisation(dominantVersionTags(lists), 'NZ'), true)
+  assert.equal(tagsMatchLocalisation(dominantVersionTags(lists), 'AU'), false)
+})
+
+test('parseMsTag reads W1, regional and country families', () => {
+  assert.deepEqual(parseMsTag('NAVW114.27'), { family: 'W1', major: 14, minor: 27 })
+  assert.deepEqual(parseMsTag('NAVAPAC14.23'), { family: 'APAC', major: 14, minor: 23 })
+  assert.deepEqual(parseMsTag('NAVW16.00'), { family: 'W1', major: 6, minor: 0 })
+  assert.deepEqual(parseMsTag('NAVNZ14'), { family: 'NZ', major: 14, minor: null })
+  assert.equal(parseMsTag('CUST1.00'), null)
 })

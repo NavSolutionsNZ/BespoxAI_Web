@@ -366,6 +366,7 @@ test('stale base index (old part-hash schema) is rejected with a clear error', (
 test('addedVersionTags ignores Microsoft tags and is case-insensitive', () => {
   assert.deepEqual(addedVersionTags('NAVW114.00,NAVNZ14.00,cust1.00,AP2267', 'NAVW114.00,NAVNZ14.00,CUST1.00'), ['AP2267'])
   assert.deepEqual(addedVersionTags('NAVW114.00.29537,NAVNZ14.00', 'NAVW114.00,NAVNZ14.00'), [])
+  assert.deepEqual(addedVersionTags('NAVW114.27,NAVAPAC14.27,CUST2', 'NAVW114.23,NAVAPAC14.23'), ['CUST2'])
 })
 
 test('every rule has a target, an effort and a note', () => {
@@ -379,38 +380,48 @@ test('every rule has a target, an effort and a note', () => {
 // ── corpus selection ────────────────────────────────────────────────────────
 
 const CORPORA = [
-  { id: 'nz1', version: 'BC14', build: '14.0.29537.0', localisation: 'NZ', versionTag: 'NAVNZ14.00', status: 'ready' },
-  { id: 'w1',  version: 'BC14', build: '14.0.29537.0', localisation: 'W1', versionTag: 'NAVW114.00', status: 'ready' },
+  { id: 'nz1', version: 'BC14', build: '14.0.47540', localisation: 'NZ', versionTag: 'NAVAPAC14', status: 'ready' },
+  { id: 'w1',  version: 'BC14', build: '14.0.47540', localisation: 'W1', versionTag: 'NAVW114', status: 'ready' },
 ]
+const NZ_EXPORT = ['NAVW114.27,NAVAPAC14.27', 'NAVW114.00', 'NAVW114.00,NAVNZ14.00', 'NAVW114.23,NAVAPAC14.23,CUST1']
 
-test('selectCorpus: exact localisation match is high confidence', () => {
-  const m = selectCorpus(['NAVW114.00,NAVNZ14.00', 'NAVW114.00,NAVNZ14.00,CUST1'], CORPORA)
+test('selectCorpus: NZ export (APAC + NZ tags) matches the NZ corpus with high confidence', () => {
+  const m = selectCorpus(NZ_EXPORT, CORPORA)
   assert.equal(m.corpus?.id, 'nz1')
   assert.equal(m.confidence, 'high')
   assert.equal(m.detected.localisation, 'NZ')
+  assert.equal(m.detected.cuLevel, 27)
+})
+
+test('selectCorpus: AU and NZ share APAC — the export\'s country tag decides', () => {
+  const both = CORPORA.concat([{ id: 'au1', version: 'BC14', build: '14.0.47540', localisation: 'AU', versionTag: 'NAVAPAC14', status: 'ready' }])
+  assert.equal(selectCorpus(NZ_EXPORT, both).corpus?.id, 'nz1')
+  assert.equal(selectCorpus(NZ_EXPORT, both).confidence, 'high')
+  const noCountry = selectCorpus(['NAVW114.27,NAVAPAC14.27'], both)
+  assert.equal(noCountry.confidence, 'medium')
 })
 
 test('selectCorpus: multiple builds → newest, medium', () => {
-  const m = selectCorpus(['NAVW114.00,NAVNZ14.00'], CORPORA.concat([
-    { id: 'nz2', version: 'BC14', build: '14.0.40000.0', localisation: 'NZ', versionTag: 'NAVNZ14.00', status: 'ready' },
+  const m = selectCorpus(NZ_EXPORT, CORPORA.concat([
+    { id: 'nz2', version: 'BC14', build: '14.0.50000', localisation: 'NZ', versionTag: 'NAVAPAC14', status: 'ready' },
   ]))
   assert.equal(m.corpus?.id, 'nz2')
   assert.equal(m.confidence, 'medium')
 })
 
 test('selectCorpus: unknown localisation falls back to W1 with low confidence', () => {
-  const m = selectCorpus(['NAVW114.00,NAVAU14.00'], CORPORA)
+  const m = selectCorpus(['NAVW114.00,NAVGB14.00'], CORPORA)
   assert.equal(m.corpus?.id, 'w1')
   assert.equal(m.confidence, 'low')
 })
 
 test('selectCorpus: nothing loaded for the version → none', () => {
-  const m = selectCorpus(['NAVW111.00,NAVNZ11.00'], CORPORA)
+  const m = selectCorpus(['NAVW111.00,NAVAPAC11.00'], CORPORA)
   assert.equal(m.corpus, null)
   assert.equal(m.confidence, 'none')
 })
 
 test('selectCorpus: corpora still ingesting are ignored', () => {
-  const m = selectCorpus(['NAVW114.00,NAVNZ14.00'], [{ ...CORPORA[0], status: 'ingesting' }])
+  const m = selectCorpus(NZ_EXPORT, [{ ...CORPORA[0], status: 'ingesting' }])
   assert.equal(m.corpus, null)
 })

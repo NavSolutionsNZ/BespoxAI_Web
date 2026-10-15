@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS "BaseCorpus" (
   "version"       TEXT         NOT NULL,                 -- BC14, NAV2018 …
   "build"         TEXT         NOT NULL,                 -- e.g. 14.0.29537.0
   "localisation"  TEXT         NOT NULL,                 -- W1, NZ …
-  "versionTag"    TEXT         NOT NULL,                 -- dominant tag, e.g. NAVNZ14.00
+  "versionTag"    TEXT         NOT NULL,                 -- corpus key: dominant local family + major, e.g. NAVAPAC14 (W1 corpora: NAVW114)
   "repoPath"      TEXT         NOT NULL,                 -- folder in corpus repo
   "repoCommit"    TEXT         NOT NULL,                 -- commit SHA ingested
   "sourceNote"    TEXT         NOT NULL,

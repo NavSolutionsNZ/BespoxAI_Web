@@ -20,6 +20,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import {
   splitCalExport, normaliseObject, partHashes, sha256, versionListOf, dominantVersionTags,
+  corpusVersionTag, tagsMatchLocalisation,
 } from '../../lib/corpus/cal-structure'
 import { parseObjectFile } from '../../lib/bc-object-parser'
 import { parseArgs, required } from './args'
@@ -88,15 +89,16 @@ async function main() {
   }
 
   const tags = dominantVersionTags(rows.map(r => r.versionList))
-  const versionTag = (localisation === 'W1' ? tags.w1 : tags.local) ?? tags.w1 ?? 'unknown'
+  const versionTag = corpusVersionTag(tags, localisation) ?? 'unknown'
 
   console.log('Corpus ' + relDir + ' @ ' + commit.slice(0, 10))
   console.log('  objects:      ' + rows.length)
-  console.log('  W1 tag:       ' + (tags.w1 ?? '-'))
-  console.log('  local tag:    ' + (tags.local ?? '-'))
+  console.log('  W1 tag:       ' + (tags.w1 ?? '-') + (tags.cuLevel !== null ? '  (highest CU tag: ' + tags.cuLevel + ')' : ''))
+  console.log('  local tag:    ' + (tags.local ?? '-') + (tags.others.length ? '  (also ' + tags.others.join(', ') + ')' : ''))
   console.log('  versionTag:   ' + versionTag)
-  if (localisation !== 'W1' && !(tags.local ?? '').toUpperCase().startsWith('NAV' + localisation)) {
-    console.warn('  WARNING: --localisation ' + localisation + ' but dominant local tag is ' + (tags.local ?? 'none'))
+  if (!tagsMatchLocalisation(tags, localisation)) {
+    console.warn('  WARNING: --localisation ' + localisation + ' does not appear in the export\'s tags (' +
+      [tags.local].concat(tags.others).filter(Boolean).join(', ') + ')')
   }
   if (problems.length) {
     console.warn('  ' + problems.length + ' problem(s):')

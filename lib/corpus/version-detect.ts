@@ -3,16 +3,22 @@
  *
  * Pick the base corpus that matches a customer export, from the version lists
  * of its objects (design §5.3). Pure — callers pass the candidate corpora.
+ *
+ * Tags are compared at major-version level (NAVW114, NAVAPAC14): the minor part
+ * of a tag is the cumulative update and varies from object to object.
+ * A localisation can sit inside a regional family — BC14 NZ objects carry
+ * NAVAPAC14 with a handful of NAVNZ14 — so the corpus label (NZ) is matched
+ * against the secondary families as well.
  */
 
-import { dominantVersionTags } from './cal-structure'
+import { dominantVersionTags, parseMsTag, type VersionTags } from './cal-structure'
 
 export interface CorpusCandidate {
   id:           string
   version:      string
   build:        string
-  localisation: string
-  versionTag:   string        // e.g. NAVNZ14.00 or NAVW114.00
+  localisation: string        // label, e.g. NZ
+  versionTag:   string        // key, e.g. NAVAPAC14 or NAVW114
   status?:      string
 }
 
@@ -21,14 +27,19 @@ export type MatchConfidence = 'high' | 'medium' | 'low' | 'none'
 export interface CorpusMatch {
   corpus:     CorpusCandidate | null
   confidence: MatchConfidence
-  detected:   { w1: string | null; local: string | null; localisation: string | null }
+  detected:   VersionTags & { localisation: string | null }
   reason:     string
 }
 
-/** "NAVNZ14.00" → "NZ" */
-export function localisationOfTag(tag: string | null): string | null {
-  const m = (tag ?? '').match(/^NAV([A-Z][A-Z0-9])\d/i)
-  return m ? m[1].toUpperCase() : null
+/**
+ * The most specific localisation the tags reveal: a country family among the
+ * secondary tags (NZ under APAC) wins over the regional one.
+ */
+export function detectedLocalisation(tags: VersionTags): string | null {
+  const country = tags.others.map(t => parseMsTag(t)?.family).find(f => !!f && f.length === 2)
+  if (country) return country
+  if (tags.local) return parseMsTag(tags.local)?.family ?? null
+  return tags.w1 ? 'W1' : null
 }
 
 function compareBuild(a: string, b: string): number {
@@ -41,29 +52,42 @@ function compareBuild(a: string, b: string): number {
   return 0
 }
 
+const newest = (list: CorpusCandidate[]) => list.slice().sort((a, b) => compareBuild(b.build, a.build))[0]
+
 /**
  * Rules:
- *  - high:   a corpus with the detected local tag (e.g. NAVNZ14.00); the newest build is chosen
- *            when there is exactly one build for that tag.
- *  - medium: as high, but several builds exist for that tag — newest build chosen, build noise possible.
- *  - low:    no corpus for the localisation; fell back to the W1 corpus of the same version.
- *  - none:   nothing suitable — do not compare (classifications would be wrong).
+ *  - high:   one corpus with the export's tag (and localisation, when several share the tag)
+ *  - medium: several builds of that corpus — newest chosen, CU differences may show as modifications;
+ *            or several localisations share the tag and none matches the export
+ *  - low:    no corpus for the localisation family; fell back to W1 of the same version
+ *  - none:   nothing suitable — do not compare
  */
 export function selectCorpus(versionLists: Array<string | null>, corpora: CorpusCandidate[]): CorpusMatch {
   const tags = dominantVersionTags(versionLists)
-  const localisation = tags.local ? localisationOfTag(tags.local) : (tags.w1 ? 'W1' : null)
-  const detected = { w1: tags.w1, local: tags.local, localisation }
+  const localisation = detectedLocalisation(tags)
+  const detected = { ...tags, localisation }
   const ready = corpora.filter(c => !c.status || c.status === 'ready')
-  const newest = (list: CorpusCandidate[]) => list.slice().sort((a, b) => compareBuild(b.build, a.build))[0]
 
   const wanted = tags.local ?? tags.w1
   if (!wanted) return { corpus: null, confidence: 'none', detected, reason: 'No Microsoft version tags found in the export.' }
 
-  const exact = ready.filter(c => c.versionTag.toUpperCase() === wanted.toUpperCase())
-  if (exact.length === 1) {
-    return { corpus: exact[0], confidence: 'high', detected, reason: 'Exact match on ' + wanted + '.' }
-  }
-  if (exact.length > 1) {
+  let exact = ready.filter(c => c.versionTag.toUpperCase() === wanted.toUpperCase())
+  if (exact.length) {
+    const labels = Array.from(new Set(exact.map(c => c.localisation.toUpperCase())))
+    if (labels.length > 1) {
+      const sameLoc = exact.filter(c => c.localisation.toUpperCase() === localisation)
+      if (sameLoc.length) exact = sameLoc
+      else {
+        const c = newest(exact)
+        return {
+          corpus: c, confidence: 'medium', detected,
+          reason: 'Several localisations share ' + wanted + ' and none is ' + (localisation ?? '?') + '; using ' + c.localisation + ' ' + c.build + '.',
+        }
+      }
+    }
+    if (exact.length === 1) {
+      return { corpus: exact[0], confidence: 'high', detected, reason: 'Matched ' + wanted + ' (' + exact[0].localisation + ' ' + exact[0].build + ').' }
+    }
     const c = newest(exact)
     return {
       corpus: c, confidence: 'medium', detected,
@@ -77,7 +101,7 @@ export function selectCorpus(versionLists: Array<string | null>, corpora: Corpus
       const c = newest(w1)
       return {
         corpus: c, confidence: 'low', detected,
-        reason: 'No ' + localisation + ' corpus for ' + tags.local + '; compared against W1 (' + c.build + '). Localisation objects will show as modified.',
+        reason: 'No corpus for ' + tags.local + '; compared against W1 (' + c.build + '). Localisation objects will show as modified.',
       }
     }
   }

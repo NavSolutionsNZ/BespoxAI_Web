@@ -508,7 +508,7 @@ model BaseCorpus {
   version      String                          // BC14, NAV2018 …
   build        String
   localisation String                          // W1, NZ …
-  versionTag   String                          // e.g. NAVNZ14.00
+  versionTag   String                          // e.g. NAVAPAC14 (W1 corpora: NAVW114)
   repoPath     String
   repoCommit   String
   sourceNote   String

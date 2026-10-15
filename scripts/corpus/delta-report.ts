@@ -21,7 +21,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import {
-  splitCalExport, partHashes, normaliseObject, sha256, versionListOf, dominantVersionTags,
+  splitCalExport, partHashes, normaliseObject, sha256, versionListOf, dominantVersionTags, corpusVersionTag,
 } from '../../lib/corpus/cal-structure'
 import {
   computeDeltas, objectKey, DEFAULT_CUSTOM_RANGES, type BaseIndexEntry, type IdRange,
@@ -38,7 +38,7 @@ function parseRanges(s: string | undefined): IdRange[] {
   })
 }
 
-/** Corpus folders on disk: <repo>/<version>/<loc>/<build>/ */
+/** Corpus folders on disk: <repo>/<version>/<loc>/<build>/, keyed by the tag found in their objects */
 function listCorpusFolders(repo: string): CorpusCandidate[] {
   const out: CorpusCandidate[] = []
   const dirs = (p: string) => fs.readdirSync(p, { withFileTypes: true })
@@ -46,27 +46,20 @@ function listCorpusFolders(repo: string): CorpusCandidate[] {
   for (const version of dirs(repo)) {
     for (const loc of dirs(path.join(repo, version))) {
       for (const build of dirs(path.join(repo, version, loc))) {
-        const tagNum = (version.match(/(\d+)/)?.[1] ?? '')
-        out.push({
-          id: [version, loc, build].join('/'), version, build, localisation: loc,
-          // folders don't carry the tag, so derive the expected one from the version name
-          versionTag: 'NAV' + loc.toUpperCase() + tagNumFor(version, tagNum),
+        const folder = path.join(repo, version, loc, build)
+        const lists = fs.readdirSync(folder).filter(f => /\.txt$/i.test(f)).map(f => {
+          const fd = fs.openSync(path.join(folder, f), 'r')
+          const buf = Buffer.alloc(1024)
+          const n = fs.readSync(fd, buf, 0, 1024, 0)
+          fs.closeSync(fd)
+          return versionListOf(buf.toString('latin1', 0, n))
         })
+        const tag = corpusVersionTag(dominantVersionTags(lists), loc)
+        if (tag) out.push({ id: [version, loc, build].join('/'), version, build, localisation: loc, versionTag: tag })
       }
     }
   }
   return out
-}
-
-function tagNumFor(version: string, digits: string): string {
-  const navMap: Record<string, string> = {
-    NAV2009: '6.00', NAV2013: '7.00', NAV2013R2: '7.10', NAV2015: '8.00',
-    NAV2016: '9.00', NAV2017: '10.00', NAV2018: '11.00',
-  }
-  const key = version.toUpperCase().replace(/\s+/g, '')
-  if (navMap[key]) return navMap[key]
-  if (/^BC\d+/.test(key)) return digits + '.00'
-  return digits
 }
 
 function loadBase(folder: string): Map<string, BaseIndexEntry> {
@@ -110,7 +103,8 @@ function main() {
     baseRel = match.corpus.id
   } else {
     const tags = dominantVersionTags(tenant.map(t => versionListOf(t.text)))
-    console.log('Export tags: W1 ' + (tags.w1 ?? '-') + ', local ' + (tags.local ?? '-'))
+    console.log('Export tags: W1 ' + (tags.w1 ?? '-') + ', local ' + (tags.local ?? '-') +
+      (tags.others.length ? ' (+' + tags.others.join(', ') + ')' : '') + ', CU ' + (tags.cuLevel ?? '-'))
   }
 
   const baseFolder = path.join(repo, ...baseRel.split('/'))

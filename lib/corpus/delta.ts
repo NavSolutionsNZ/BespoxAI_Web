@@ -10,7 +10,7 @@
  */
 
 import {
-  partHashes, normaliseObject, sha256, versionListOf,
+  partHashes, normaliseObject, sha256, versionListOf, isMsTag,
   PART_HASHES_SCHEMA, type PartHashes, type EntryHashes,
 } from './cal-structure'
 import { mapToAl, maxEffort, type Effort, type Finding } from './upgrade-rules'
@@ -91,7 +91,7 @@ function tokens(versionList: string | null): string[] {
 /** Version-list tokens present in the tenant but not the base. Microsoft NAVxx tags never count. */
 export function addedVersionTags(tenant: string | null, base: string | null): string[] {
   const have = new Set(tokens(base).map(t => t.toUpperCase()))
-  return tokens(tenant).filter(t => !have.has(t.toUpperCase()) && !/^NAV[A-Z][A-Z0-9]\d/i.test(t))
+  return tokens(tenant).filter(t => !have.has(t.toUpperCase()) && !isMsTag(t))
 }
 
 function diffKeys(base: Record<string, string>, tenant: Record<string, string>): KeyDiff {

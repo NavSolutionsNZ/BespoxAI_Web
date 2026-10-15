@@ -307,25 +307,79 @@ export function versionListOf(text: string): string | null {
   return m ? m[1].trim() : null
 }
 
+/** A parsed Microsoft version-list tag: NAVAPAC14.23 → { family: 'APAC', major: 14, minor: 23 } */
+export interface MsTag { family: string; major: number; minor: number | null }
+
 /**
- * Dominant Microsoft version tag across a set of version lists,
- * e.g. ["NAVW114.00,NAVNZ14.00", …] → { w1: "NAVW114.00", local: "NAVNZ14.00" }.
- * Tags are compared on their major.minor (NAVW114.00.29537 → NAVW114.00).
+ * Microsoft version-list tags are NAV + localisation family + version, e.g.
+ * NAVW114.27 (W1, BC14 CU27), NAVAPAC14.23 (Asia-Pacific), NAVNZ14.00, NAVW16.00 (NAV 2009).
+ * W1 is matched first because its "1" would otherwise be read as part of the version.
  */
-export function dominantVersionTags(versionLists: Array<string | null>): { w1: string | null; local: string | null } {
-  const w1 = new Map<string, number>()
-  const local = new Map<string, number>()
+export function parseMsTag(token: string): MsTag | null {
+  const m = token.trim().match(/^NAV(W1|[A-Z]+?)(\d+)(?:\.(\d+))?/i)
+  if (!m) return null
+  return { family: m[1].toUpperCase(), major: parseInt(m[2], 10), minor: m[3] !== undefined ? parseInt(m[3], 10) : null }
+}
+
+export function isMsTag(token: string): boolean { return parseMsTag(token) !== null }
+
+export interface VersionTags {
+  /** Dominant W1 tag at major-version level, e.g. NAVW114 */
+  w1:      string | null
+  /** Dominant non-W1 family at the same major, e.g. NAVAPAC14 */
+  local:   string | null
+  /** Other non-W1 families present at that major, most frequent first, e.g. [NAVNZ14] */
+  others:  string[]
+  /** Highest W1 minor at that major — the cumulative-update level (14.27 → 27) */
+  cuLevel: number | null
+}
+
+/**
+ * Dominant Microsoft tags across a set of version lists. Tags are compared at
+ * major-version level because the minor part is the CU, which varies per object.
+ */
+export function dominantVersionTags(versionLists: Array<string | null>): VersionTags {
+  const w1Major = new Map<number, number>()
+  const localByMajor = new Map<number, Map<string, number>>()
+  const cuByMajor = new Map<number, number>()
+
   for (const vl of versionLists) {
     if (!vl) continue
     for (const raw of vl.split(',')) {
-      const t = raw.trim().match(/^NAV([A-Z][A-Z0-9])(\d+\.\d+)/i)
+      const t = parseMsTag(raw)
       if (!t) continue
-      const tag = 'NAV' + t[1].toUpperCase() + t[2]
-      const bucket = t[1].toUpperCase() === 'W1' ? w1 : local
-      bucket.set(tag, (bucket.get(tag) ?? 0) + 1)
+      if (t.family === 'W1') {
+        w1Major.set(t.major, (w1Major.get(t.major) ?? 0) + 1)
+        if (t.minor !== null) cuByMajor.set(t.major, Math.max(cuByMajor.get(t.major) ?? 0, t.minor))
+      } else {
+        const m = localByMajor.get(t.major) ?? new Map<string, number>()
+        m.set(t.family, (m.get(t.family) ?? 0) + 1)
+        localByMajor.set(t.major, m)
+      }
     }
   }
-  const top = (m: Map<string, number>) =>
-    Array.from(m.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-  return { w1: top(w1), local: top(local) }
+
+  const ranked = <K>(m: Map<K, number>) => Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(e => e[0])
+  const major = ranked(w1Major)[0] ?? ranked(new Map(Array.from(localByMajor.entries()).map(([k, v]) => [k, Array.from(v.values()).reduce((x, y) => x + y, 0)])))[0]
+  if (major === undefined) return { w1: null, local: null, others: [], cuLevel: null }
+
+  const families = ranked(localByMajor.get(major) ?? new Map<string, number>())
+  return {
+    w1:      w1Major.has(major) ? 'NAVW1' + major : null,
+    local:   families[0] ? 'NAV' + families[0] + major : null,
+    others:  families.slice(1).map(f => 'NAV' + f + major),
+    cuLevel: cuByMajor.get(major) ?? null,
+  }
+}
+
+/** The tag a corpus is keyed on: W1 corpora by the W1 tag, others by the dominant local family. */
+export function corpusVersionTag(tags: VersionTags, localisation: string): string | null {
+  return localisation.toUpperCase() === 'W1' ? tags.w1 : (tags.local ?? tags.w1)
+}
+
+/** True when the export's tags are consistent with a localisation label (e.g. NZ under APAC). */
+export function tagsMatchLocalisation(tags: VersionTags, localisation: string): boolean {
+  const loc = localisation.toUpperCase()
+  if (loc === 'W1') return !tags.local
+  return [tags.local].concat(tags.others).some(t => !!t && parseMsTag(t)?.family === loc)
 }
