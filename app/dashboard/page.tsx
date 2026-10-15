@@ -40,7 +40,9 @@ function buildDataHTML(hint: string | undefined, data: StructuredData | null | u
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface HealthStatus {
-  status:     'checking' | 'ok' | 'error'
+  // 'unavailable' = the portal couldn't run the check (session/database/server error) —
+  // not the same as the agent being offline.
+  status:     'checking' | 'ok' | 'error' | 'unavailable'
   latencyMs:  number | null
   checkedAt:  Date | null
   error?:     string
@@ -106,7 +108,19 @@ function useHealthStatus(): HealthStatus {
     async function check() {
       try {
         const res  = await fetch('/api/health')
-        const data = await res.json()
+        const data = await res.json().catch(() => null)
+        // Only a response that actually pinged the agent carries checkedAt.
+        // Anything else (401 when the session can't be read, 404, 500) means
+        // the portal couldn't check — don't report the agent as offline.
+        if (!res.ok || !data || !data.checkedAt) {
+          setHealth({
+            status:    data && data.status === 'no_tenant' ? 'error' : 'unavailable',
+            latencyMs: null,
+            checkedAt: new Date(),
+            error:     data && data.error ? String(data.error) : 'HTTP ' + res.status,
+          })
+          return
+        }
         setHealth({
           status:    data.ok ? 'ok' : 'error',
           latencyMs: data.latencyMs ?? null,
@@ -114,7 +128,7 @@ function useHealthStatus(): HealthStatus {
           error:     data.error,
         })
       } catch {
-        setHealth(prev => ({ ...prev, status: 'error', checkedAt: new Date() }))
+        setHealth(prev => ({ ...prev, status: 'unavailable', checkedAt: new Date() }))
       }
     }
 
@@ -342,7 +356,16 @@ function DashboardInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q, history: recentHistory }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
+      if (!data) {
+        // The server answered, but not with JSON (crash before the route's own
+        // error handling, e.g. the session or database check failed).
+        setHistory(prev => prev.map(item => item.id !== id ? item : {
+          ...item, loading: false,
+          error: 'The server had a problem (HTTP ' + res.status + '). Please try again in a moment.',
+        }))
+        return
+      }
       if (res.status === 402) {
         setTierBlocked({ reason: data.reason, trialEndsAt: data.trialEndsAt })
         setHistory(prev => prev.filter(item => item.id !== id))
@@ -453,7 +476,7 @@ function DashboardInner() {
               letterSpacing: '0.12em', textTransform: 'uppercase',
               color: health.status === 'ok' ? 'var(--jade)' : health.status === 'error' ? '#E24B4A' : 'rgba(214,217,212,0.4)',
             }}>
-              {tenantName} · {health.status === 'ok' ? 'Live' : health.status === 'error' ? 'Offline' : '···'}
+              {tenantName} · {health.status === 'ok' ? 'Live' : health.status === 'error' ? 'Offline' : health.status === 'unavailable' ? 'Status unknown' : '···'}
             </span>
           </div>
         </div>
@@ -731,7 +754,7 @@ function DashboardInner() {
                 textTransform: 'uppercase',
                 color: health.status === 'ok' ? 'var(--forest)' : health.status === 'error' ? '#A32D2D' : 'var(--slate)',
               }}>
-                {health.status === 'ok' ? erpLabel + ' connected' : health.status === 'error' ? 'Agent offline' : 'Checking…'}
+                {health.status === 'ok' ? erpLabel + ' connected' : health.status === 'error' ? 'Agent offline' : health.status === 'unavailable' ? 'Status unavailable' : 'Checking…'}
               </span>}
             </div>
             {/* Last checked + latency */}
@@ -814,7 +837,7 @@ function DashboardInner() {
                   {isConnected && <OverviewCards tenantName={tenantName} onQuery={(q) => { setQuestion(q); setTimeout(() => textareaRef.current?.focus(), 50) }} />}
 
                   {/* Not connected — setup prompt */}
-                  {!isConnected && health.status !== 'checking' && !managedByPartner && (
+                  {!isConnected && health.status !== 'checking' && health.status !== 'unavailable' && !managedByPartner && (
                     <div style={{ background: 'rgba(200,149,42,0.06)', border: '1px solid rgba(200,149,42,0.2)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9A6A00', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' not connected'}</p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
@@ -840,7 +863,7 @@ function DashboardInner() {
                   )}
 
                   {/* Partner-managed — not connected state */}
-                  {!isConnected && health.status !== 'checking' && managedByPartner ? (
+                  {!isConnected && health.status !== 'checking' && health.status !== 'unavailable' && managedByPartner ? (
                     <div style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#58A6FF', marginBottom: 10 }}>{'🔌 ' + erpLabel + ' not yet connected'}</p>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.5, marginBottom: 6 }}>
