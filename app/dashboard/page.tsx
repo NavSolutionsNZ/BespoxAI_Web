@@ -1427,9 +1427,9 @@ interface OverviewCard {
 // Snapshot tiles read the dashboard metric engine — exact figures, no AI call.
 // Clicking a tile asks the assistant the matching question.
 const SNAPSHOT_TILES: { label: string; metricId: string; params?: Record<string, string>; question: string }[] = [
-  { label: 'Overdue debtors',      metricId: 'ar_overdue',     question: 'Show me overdue debtors' },
+  { label: 'Overdue debtors',      metricId: 'ar_overdue',     question: 'Show overdue debtors by customer' },
   { label: 'Cash & bank',          metricId: 'cash_total',     question: 'What are our bank account balances?' },
-  { label: 'Outstanding payables', metricId: 'ap_outstanding', question: 'Which suppliers do we owe money to?' },
+  { label: 'Outstanding payables', metricId: 'ap_outstanding', question: 'Show outstanding payables by vendor' },
   { label: 'Month revenue',        metricId: 'pl_revenue',     params: { period: 'this_month', compare: 'none' }, question: 'What is our revenue this month?' },
 ]
 

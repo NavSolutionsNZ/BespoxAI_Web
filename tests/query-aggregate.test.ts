@@ -139,3 +139,71 @@ test('groups that share a name get their No. added', async () => {
   disambiguateLabels(a)
   assert.deepEqual(a.groups.map(g => g.label), ['World Wide Bank (WWB-OPERATING)', 'New Bank of Auckland', 'World Wide Bank (WWB-EUR)'])
 })
+
+// ─── Defaults when the planner gives no aggregate (16 Oct 2026) ─────────────
+import { defaultLedgerAggregate, listSummarySpec, missingNameLookups, fillRecordNames, recordsTable, aggregateRecords as aggAll } from '../lib/query-aggregate'
+
+const overdueParams = '$filter=Open eq true and Due_Date lt 2026-10-16&$select=Entry_No,Customer_No,Customer_Name,Due_Date,Remaining_Amt_LCY'
+
+test('overdue debtors with no aggregate → exact per-customer totals', () => {
+  const spec = defaultLedgerAggregate('CustLedgerEntry', overdueParams, 'Show me overdue debtors')
+  assert.ok(spec)
+  assert.equal(spec!.groupBy, 'Customer_No')
+  assert.equal(spec!.measures[0].field, 'Remaining_Amt_LCY')
+  assert.equal(spec!.measures[0].label, 'Overdue ($)')
+  // All entries counted — not the six the model picked.
+  const recs = [
+    { Customer_No: '01454545', Remaining_Amt_LCY: 765476.74 },
+    { Customer_No: '30000', Remaining_Amt_LCY: 262348.34 },
+    { Customer_No: '30000', Remaining_Amt_LCY: 116599.26 },
+    { Customer_No: '10000', Remaining_Amt_LCY: 100 },
+  ]
+  const a = aggAll(recs, spec!)
+  assert.equal(a.totals[0], 1144524.34)
+  assert.deepEqual(a.groups.map(g => g.key), ['01454545', '30000', '10000'])
+  assert.equal(a.groups[1].values[1], 2)   // entry count per customer
+})
+
+test('vendor totals are negated; bank uses Amount_LCY', () => {
+  const v = defaultLedgerAggregate('VendorLedgerEntry', '$filter=Open eq true&$select=Vendor_No,Remaining_Amt_LCY', 'outstanding payables')
+  assert.equal(v!.measures[0].negate, true)
+  assert.equal(v!.measures[0].label, 'Outstanding ($)')
+  const b = defaultLedgerAggregate('BankAccountLedgerEntry', '$select=Entry_No,Bank_Account_No,Amount_LCY', 'bank balances')
+  assert.equal(b!.measures[0].field, 'Amount_LCY')
+  assert.equal(b!.measures[0].negate, false)
+})
+
+test('drill-down: entries asked for, or one customer named → no default', () => {
+  assert.equal(defaultLedgerAggregate('CustLedgerEntry', overdueParams, 'Show the overdue entries for customer 30000'), null)
+  assert.equal(defaultLedgerAggregate('CustLedgerEntry', overdueParams, 'List the invoices that are overdue'), null)
+  assert.equal(defaultLedgerAggregate('CustLedgerEntry', "$filter=Customer_No eq '30000' and Open eq true", 'what does 30000 owe'), null)
+  assert.equal(defaultLedgerAggregate('Customer', '$select=No,Name,Balance_LCY', 'overdue debtors'), null)
+})
+
+test('plain list: exact count and money sums, identifiers not summed', () => {
+  const spec = listSummarySpec(['No', 'Posting_Date', 'Customer_No', 'Amount_LCY', 'Remaining_Amt_LCY'])
+  assert.deepEqual(spec.measures.map(m => m.field ?? m.op), ['count', 'Amount_LCY', 'Remaining_Amt_LCY'])
+})
+
+test('blank ledger names are found and filled from the master record', () => {
+  const recs: any[] = [
+    { Customer_No: '30000', Customer_Name: '', Amount: 1 },
+    { Customer_No: '30000', Customer_Name: '', Amount: 2 },
+    { Customer_No: '20000', Customer_Name: 'Already named', Amount: 3 },
+  ]
+  const looks = missingNameLookups(recs)
+  assert.equal(looks.length, 1)
+  assert.deepEqual(looks[0].keys, ['30000'])
+  fillRecordNames(recs, 'Customer_No', 'Customer_Name', new Map([['30000', 'John Haddock Insurance Co.'], ['20000', 'Wrong']]))
+  assert.equal(recs[0].Customer_Name, 'John Haddock Insurance Co.')
+  assert.equal(recs[2].Customer_Name, 'Already named')
+})
+
+test('records table uses real rows and puts the name beside the No.', () => {
+  const recs = [
+    { '@odata.etag': 'x', Entry_No: 1, Customer_No: '30000', Customer_Name: 'Haddock', Due_Date: '2023-01-31', Remaining_Amt_LCY: 262348.34, Open: true },
+  ]
+  const t = recordsTable(recs, ['Entry_No', 'Customer_No', 'Due_Date', 'Remaining_Amt_LCY', 'Open'])!
+  assert.deepEqual(t.columns, ['Customer No.', 'Customer Name', 'Due Date', 'Remaining Amt LCY', 'Open'])
+  assert.deepEqual(t.rows[0], ['30000', 'Haddock', '2023-01-31', 262348.34, 'Yes'])
+})

@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
 import { parseAnswerPayload } from '@/lib/answer-format'
-import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, NAME_SOURCES, unnamedGroupKeys, applyGroupNames, noFilter, disambiguateLabels, type AggResult } from '@/lib/query-aggregate'
+import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, NAME_SOURCES, unnamedGroupKeys, applyGroupNames, noFilter, disambiguateLabels, defaultLedgerAggregate, listSummarySpec, missingNameLookups, fillRecordNames, recordsTable, type AggResult } from '@/lib/query-aggregate'
 import { getTenantMetadata } from '@/lib/bc-metadata'
 import { checkPlanFields, ensureSelected, withNameFields } from '@/lib/odata-fields'
 import { prisma } from '@/lib/db'
@@ -424,12 +424,21 @@ For time-series / "by month" / "over last N months" / trend questions:
   // Totals are computed in code over every record, so fetch them all (up to a cap).
   let aggSpec = sanitizeAggSpec(plan.aggregate)
   const AGG_TOP = 5000
+  const primaryEntitySetForAgg = catalogue.find(c => c.logical === plan.entity)?.entitySet
+  const primaryFields: string[] = (primaryEntitySetForAgg && tenantMeta?.fields[primaryEntitySetForAgg]?.length)
+    ? tenantMeta.fields[primaryEntitySetForAgg]
+    : catalogue.find(c => c.logical === plan.entity)?.fields ?? []
+  // Ledger questions without an aggregate ("show me overdue debtors") default to
+  // exact per-customer/vendor/bank totals — unless the user asked for the
+  // entries themselves or named one customer/vendor (the drill-down).
+  let autoAggregate = false
+  if (!aggSpec && !plan.secondEntity) {
+    aggSpec = defaultLedgerAggregate(plan.entity, plan.params ?? '', resolvedQuestion, primaryFields)
+    autoAggregate = !!aggSpec
+  }
   if (aggSpec) {
     // Grouping by Customer_No etc.: fetch and show the name, not just the number.
-    const primaryEntitySet = catalogue.find(c => c.logical === plan.entity)?.entitySet
-    const fields = (primaryEntitySet && tenantMeta?.fields[primaryEntitySet]?.length)
-      ? tenantMeta.fields[primaryEntitySet]
-      : catalogue.find(c => c.logical === plan.entity)?.fields ?? []
+    const fields = primaryFields
     const named = withGroupNames(plan.params ?? '', aggSpec, fields)
     aggSpec = named.spec
     // The fields being totalled or grouped must be fetched.
@@ -459,7 +468,7 @@ For time-series / "by month" / "over last N months" / trend questions:
   // Shape of the plan only (no values) — for diagnosing planner behaviour.
   console.log('[query] plan', JSON.stringify({
     entity: plan.entity, second: plan.secondEntity ?? null,
-    aggregate: aggSpec ? { groupBy: aggSpec.groupBy, period: aggSpec.period, labelField: aggSpec.labelField, measures: aggSpec.measures.map(m => m.op + ':' + (m.field ?? '')) } : null,
+    aggregate: aggSpec ? { groupBy: aggSpec.groupBy, period: aggSpec.period, labelField: aggSpec.labelField, measures: aggSpec.measures.map(m => m.op + ':' + (m.field ?? '')), auto: autoAggregate || undefined } : null,
     select: (/\$select=([^&]*)/i.exec(plan.params ?? '')?.[1] ?? '*'),
     droppedFields: primaryCheck.dropped,
   }))
@@ -658,6 +667,34 @@ Return JSON:
     if (agg) disambiguateLabels(agg)
   }
 
+  // ── Step 2d: Plain lists — names from master records, exact count/sums ───
+  // Without an aggregate the answerer still sees only some records, so it must
+  // not add them up; and ledger names are blank on older entries.
+  let listAgg: AggResult | null = null
+  let listIncomplete = false
+  const listFields = (() => {
+    const m = /(^|&)\$select=([^&]*)/i.exec(plan.params ?? '')
+    return m ? decodeURIComponent(m[2]).split(',').map(f => f.trim()).filter(Boolean)
+      : rawRecords[0] ? Object.keys(rawRecords[0]).filter(f => !f.startsWith('@') && f !== 'ETag') : []
+  })()
+  if (!agg && rawRecords.length) {
+    for (const look of missingNameLookups(rawRecords)) {
+      const masterSet = catalogue.find(c => c.logical === look.logical)?.entitySet
+      if (!masterSet) continue
+      try {
+        const url = buildODataUrl(tenant, masterSet, '$top=' + look.keys.length + '&$select=No,' + look.masterNameField + '&$filter=' + encodeURIComponent(noFilter(look.keys)))
+        const r = await fetch(url, { headers: { 'X-BespoxAI-Key': tenant.apiKey, Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) })
+        if (r.ok) {
+          const rows: any[] = (await r.json())?.value ?? []
+          fillRecordNames(rawRecords, look.noField, look.nameField, new Map(rows.map(x => [String(x.No ?? ''), String(x[look.masterNameField] ?? '')])))
+        }
+      } catch { /* names are a nicety — keep the numbers */ }
+    }
+    listAgg = aggregateRecords(rawRecords, listSummarySpec(listFields))
+    const requestedTop = Number(/(^|&)\$top=(\d+)/i.exec(plan.params ?? '')?.[2] ?? 0)
+    listIncomplete = requestedTop > 0 && fetchedCount >= requestedTop
+  }
+
   // ── Step 3: Answer — Claude produces natural language + structured data ──
 
   // Truncate huge payloads before sending to Claude. With exact totals the
@@ -692,8 +729,10 @@ Write as a trusted financial advisor briefing a CFO. Rules:
 - Flag anomalies, overdue items, or concentration risk where relevant
 - 2–4 sentences for simple answers; up to 8 for complex ones
 - No bullet points — flowing, professional prose
-${truncated ? (agg ? '- Only ' + recordLimit + ' of ' + rawRecords.length + ' records are shown as examples; the EXACT FIGURES block covers all of them' : '- Data was truncated to ' + recordLimit + ' of ' + rawRecords.length + ' records') : ''}
-${agg ? '- An EXACT FIGURES block is provided: every number in your answer must come from it. Never compute totals, averages or counts yourself.' : ''}
+${truncated ? '- Only ' + recordLimit + ' of ' + rawRecords.length + ' records are shown as examples; the EXACT FIGURES block covers all of them' : ''}
+${agg || listAgg ? '- An EXACT FIGURES block is provided: every number in your answer must come from it. Never compute totals, averages or counts yourself, and never total a subset of the records.' : ''}
+${autoAggregate ? '- The figures are per ' + (aggSpec?.groupBy === 'Vendor_No' ? 'vendor' : aggSpec?.groupBy === 'Bank_Account_No' ? 'bank account' : 'customer') + '. Mention that the user can ask for the individual entries of any one of them.' : ''}
+${listAgg && listIncomplete ? '- The fetch returned its maximum number of records, so there may be more than shown — say so.' : ''}
 
 ─── displayHint ──────────────────────────────────────────────────────────────
 Choose exactly one:
@@ -714,7 +753,7 @@ Identifiers are text, not numbers: document, invoice, entry, account and item nu
         ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
         {
           role: 'user',
-          content: 'Question: ' + question + '\n\n' + (agg ? describeAggregate(agg, aggIncomplete) + '\n\n' : '') +
+          content: 'Question: ' + question + '\n\n' + (agg ? describeAggregate(agg, aggIncomplete) + '\n\n' : listAgg ? describeAggregate(listAgg, listIncomplete) + '\n\n' : '') +
             'BC data (' + recordsForClaude.length + ' of ' + rawRecords.length + ' records from ' + plan.entity + '):\n' + JSON.stringify(recordsForClaude, null, 2),
         },
       ],
@@ -728,6 +767,14 @@ Identifiers are text, not numbers: document, invoice, entry, account and item nu
     if (agg) {
       const exact = aggregateDisplayData(agg, payload.displayHint)
       if (exact) payload.data = exact
+    } else if (listAgg) {
+      // Plain lists: the table is the real records (with names), KPIs are the exact sums.
+      if (payload.displayHint === 'table') {
+        const t = recordsTable(rawRecords, listFields)
+        if (t) payload.data = t
+      } else if (payload.displayHint === 'kpi') {
+        payload.data = aggregateDisplayData(listAgg, 'kpi')
+      }
     }
   } catch (err: any) {
     return NextResponse.json(
@@ -779,6 +826,7 @@ Identifiers are text, not numbers: document, invoice, entry, account and item nu
       recordCount: rawRecords.length,
       odataUrl,
       aggregated:  agg ? true : undefined,
+      autoAggregated: autoAggregate || undefined,
       incomplete:  aggIncomplete || undefined,
     },
   })

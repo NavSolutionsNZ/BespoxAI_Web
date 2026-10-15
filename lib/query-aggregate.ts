@@ -277,3 +277,127 @@ export function disambiguateLabels(a: AggResult): AggResult {
   }
   return a
 }
+
+// ─── Defaults when the planner gives no aggregate (16 Oct 2026) ─────────────
+//
+// "Show me overdue debtors" sometimes came back with no aggregate spec, so the
+// answerer summed six entries itself ($1,180,567 vs the true $3,204,401) and
+// showed bare customer numbers. Ledger questions now default to per-party
+// totals computed here; plain lists still get exact counts/sums in code.
+
+/** Ledger entities that default to per-party totals, and how. */
+export const LEDGER_DEFAULTS: Record<string, { groupBy: string; amountFields: string[]; negate: boolean; party: string }> = {
+  CustLedgerEntry:        { groupBy: 'Customer_No',     amountFields: ['Remaining_Amt_LCY', 'Amount_LCY', 'Sales_LCY'], negate: false, party: 'customer' },
+  VendorLedgerEntry:      { groupBy: 'Vendor_No',       amountFields: ['Remaining_Amt_LCY', 'Amount_LCY', 'Purchase_LCY'], negate: true, party: 'vendor' },
+  BankAccountLedgerEntry: { groupBy: 'Bank_Account_No', amountFields: ['Amount_LCY'], negate: false, party: 'bank account' },
+}
+
+/** The user asked for the individual entries, not totals. */
+const WANTS_ENTRIES = /\b(entries|entry|transactions?|invoices?|documents?|line items?|lines|details?|each|individual|itemi[sz]ed|breakdown of|list every|list all)\b/i
+
+function selectFields(params: string): string[] {
+  const m = /(^|&)\$select=([^&]*)/i.exec(params)
+  return m ? decodeURIComponent(m[2]).split(',').map(f => f.trim()).filter(Boolean) : []
+}
+
+function filterText(params: string): string {
+  const m = /(^|&)\$filter=([^&]*)/i.exec(params)
+  if (!m) return ''
+  try { return decodeURIComponent(m[2].replace(/\+/g, ' ')) } catch { return m[2] }
+}
+
+/**
+ * A per-party total for a ledger query the planner didn't aggregate — unless
+ * the question asks for the entries themselves or the filter already narrows
+ * to one customer/vendor/bank account (that's the drill-down).
+ */
+export function defaultLedgerAggregate(entity: string, params: string, question: string, entityFields: string[] = []): AggSpec | null {
+  const d = LEDGER_DEFAULTS[entity]
+  if (!d) return null
+  if (WANTS_ENTRIES.test(question)) return null
+  const filter = filterText(params)
+  if (new RegExp('\\b' + d.groupBy + '\\s+eq\\b', 'i').test(filter)) return null
+
+  const selected = selectFields(params)
+  const has = (f: string) => selected.includes(f) || (!selected.length && entityFields.includes(f))
+  // Open-entry questions total what's still owed; otherwise the posted amount.
+  const isOpen = /\bOpen\s+eq\s+true\b/i.test(filter)
+  const preferred = isOpen ? d.amountFields : d.amountFields.filter(f => f !== 'Remaining_Amt_LCY').concat('Remaining_Amt_LCY')
+  const field = preferred.find(has) ?? preferred.find(f => entityFields.includes(f)) ?? preferred[0]
+
+  const overdue = /\bDue_Date\s+lt\b/i.test(filter)
+  const label = overdue ? 'Overdue ($)' : isOpen ? 'Outstanding ($)' : 'Amount ($)'
+  return {
+    groupBy: d.groupBy,
+    period: null,
+    labelField: null,
+    measures: [
+      { field, op: 'sum', label, negate: d.negate && field !== 'Purchase_LCY' },
+      { op: 'count', label: 'Entries' },
+    ],
+    sort: 'desc',
+    top: 25,
+  }
+}
+
+/** Money columns in a plain list → exact count + sums (no grouping). */
+export function listSummarySpec(fields: string[]): AggSpec {
+  const money = fields.filter(f => isMoneyMeasure({ field: f, op: 'sum', label: f }) && !/_No$|^No$|Code$/.test(f)).slice(0, 3)
+  return {
+    groupBy: null, period: null, labelField: null,
+    measures: [{ op: 'count', label: 'Records' }, ...money.map(f => ({ field: f, op: 'sum' as AggOp, label: 'Total ' + labelise(f) }))],
+    sort: 'desc', top: null,
+  }
+}
+
+/** No. fields on plain-list records whose Name is blank, with the master to look them up on. */
+export function missingNameLookups(records: any[]): { noField: string; nameField: string; logical: string; masterNameField: string; keys: string[] }[] {
+  const out: { noField: string; nameField: string; logical: string; masterNameField: string; keys: string[] }[] = []
+  if (!records.length) return out
+  for (const [noField, src] of Object.entries(NAME_SOURCES)) {
+    if (!records.some(r => r && r[noField] != null && String(r[noField]) !== '')) continue
+    const nameField = noField === 'Item_No' ? 'Item_Description' : nameFieldFor(noField)!
+    const keys = Array.from(new Set(records
+      .filter(r => r && r[noField] && !String(r[nameField] ?? '').trim())
+      .map(r => String(r[noField]))))
+    if (keys.length) out.push({ noField, nameField, logical: src.logical, masterNameField: src.nameField, keys: keys.slice(0, 50) })
+  }
+  return out
+}
+
+/** Fills blank name fields from a No. → name map. Mutates and returns the records. */
+export function fillRecordNames(records: any[], noField: string, nameField: string, names: Map<string, string>): any[] {
+  for (const r of records) {
+    if (!r || !r[noField] || String(r[nameField] ?? '').trim()) continue
+    const n = names.get(String(r[noField]))?.trim()
+    if (n) r[nameField] = n
+  }
+  return records
+}
+
+/**
+ * A table built from the real records (not the model's copy): the selected
+ * fields in order, a name column beside each No. that has one, and no
+ * OData metadata. Capped at maxRows.
+ */
+export function recordsTable(records: any[], fields: string[], maxRows = 200): { columns: string[]; rows: (string | number | null)[][] } | null {
+  let cols = fields.filter(f => !f.startsWith('@') && f !== 'ETag' && f !== 'Entry_No')
+  if (!cols.length && records[0]) cols = Object.keys(records[0]).filter(f => !f.startsWith('@') && f !== 'ETag')
+  // Show the name next to its No. even if the planner only selected the No.
+  for (const [noField] of Object.entries(NAME_SOURCES)) {
+    const nf = noField === 'Item_No' ? 'Item_Description' : nameFieldFor(noField)!
+    const i = cols.indexOf(noField)
+    if (i >= 0 && !cols.includes(nf) && records.some(r => String(r?.[nf] ?? '').trim())) cols.splice(i + 1, 0, nf)
+  }
+  if (!cols.length) return null
+  return {
+    columns: cols.map(labelise),
+    rows: records.slice(0, maxRows).map(r => cols.map(c => {
+      const v = r?.[c]
+      if (v === null || v === undefined || v === '') return null
+      if (typeof v === 'number') return v
+      if (typeof v === 'boolean') return v ? 'Yes' : 'No'
+      return String(v)
+    })),
+  }
+}
