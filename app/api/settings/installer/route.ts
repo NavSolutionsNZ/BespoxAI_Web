@@ -7,10 +7,11 @@ import { join } from 'path'
 import JSZip from 'jszip'
 import { getOrCreateRdpPassword, logRdpAccess } from '@/lib/rdp'
 import { psq, batText } from '@/lib/installer-escape'
+import { addUninstaller, uninstallerCopyLines } from '@/lib/installer-uninstall'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.12'
+const AGENT_VERSION = '3.13'
 
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant
@@ -188,6 +189,7 @@ powershell -NoProfile -Command "$b=(Get-Content '!_tmp!')-join'';$s=[System.Text
 powershell -NoProfile -ExecutionPolicy Bypass -File "!_ps1!"
 set "_exit=%errorlevel%"
 powershell -NoProfile -Command "Remove-Item '!_ps1!' -ErrorAction SilentlyContinue"
+${uninstallerCopyLines(agentBrandName)}
 echo.
 pause
 exit /b %_exit%
@@ -195,6 +197,7 @@ exit /b %_exit%
 
   const zip = new JSZip()
   zip.file(`Install-BespoxAI-v${AGENT_VERSION}-${tenantSlug}.bat`, bat)
+  addUninstaller(zip, { brandName: agentBrandName, agentPort: tenant.agentPort || 9099 })
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 
   // The installer carries the support-account password in plaintext, so record who downloaded it.

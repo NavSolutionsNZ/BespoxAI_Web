@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
-import { BC_ENTITIES } from '@/lib/bc-entities'
+import { BC_ENTITIES, resolveEntities, type BCEntityName } from '@/lib/bc-entities'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/admin/discover/[tenantId]
 // Fetches $metadata from the tenant's BCAgent and returns:
-//   - available:     entities in our catalogue AND published in this BC
+//   - available:     entities in our catalogue AND published in this BC, under
+//                    the BespoxAI_ service name (agent 3.13+) or the standard one
 //   - missing:       entities in our catalogue but NOT published in this BC
 //   - uncatalogued:  entities published in BC but NOT in our catalogue
 export async function GET(_req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
@@ -43,25 +44,25 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ tenantId
     fetchError = e.message
   }
 
-  const catalogueNames = Object.keys(BC_ENTITIES)
-  const bcSet = new Set(bcEntityNames)
-  const catSet = new Set(catalogueNames)
+  const catalogueNames = Object.keys(BC_ENTITIES) as BCEntityName[]
+  const resolved = resolveEntities(bcEntityNames)
+  const usedSets = new Set(Object.values(resolved))
 
   // Current entity config for this tenant
   const config: Record<string, boolean> = (tenant.entityConfig as any) ?? {}
 
   const available = catalogueNames
-    .filter(n => bcSet.has(n))
+    .filter(n => resolved[n])
     .map(n => ({
-      name:        n,
+      name:        resolved[n] as string,
       description: (BC_ENTITIES as any)[n].description,
-      enabled:     config[n] !== false, // default true
+      enabled:     config[resolved[n] as string] !== false && config[n] !== false, // default true
       inBC:        true,
       inCatalogue: true,
     }))
 
   const missing = catalogueNames
-    .filter(n => !bcSet.has(n))
+    .filter(n => !resolved[n])
     .map(n => ({
       name:        n,
       description: (BC_ENTITIES as any)[n].description,
@@ -71,7 +72,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ tenantId
     }))
 
   const uncatalogued = bcEntityNames
-    .filter(n => !catSet.has(n))
+    .filter(n => !usedSets.has(n))
     .map(n => ({
       name:        n,
       description: 'Not yet in BespoxAI catalogue',

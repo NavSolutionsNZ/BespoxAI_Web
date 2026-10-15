@@ -6,6 +6,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import JSZip from 'jszip'
 import { psq, batText } from '@/lib/installer-escape'
+import { addUninstaller, uninstallerCopyLines } from '@/lib/installer-uninstall'
 
 export const dynamic = 'force-dynamic'
 
@@ -132,6 +133,7 @@ set "_exit=%errorlevel%"
 
 :: Cleanup
 powershell -NoProfile -Command "Remove-Item '!_ps1!' -ErrorAction SilentlyContinue"
+${uninstallerCopyLines('BespoxAI')}
 
 echo.
 if %_exit% equ 0 (
@@ -151,6 +153,7 @@ exit /b %_exit%
   // Wrap the .bat in a .zip so Chrome doesn't flag it as dangerous
   const zip = new JSZip()
   zip.file(`Install-BespoxAI-${tenantSlug}.bat`, bat)
+  addUninstaller(zip, { brandName: 'BespoxAI', agentPort: parseInt(String(agentPort), 10) || 9099 })
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 
   return new NextResponse(zipBuffer as unknown as BodyInit, {

@@ -1,7 +1,15 @@
 /**
- * BC 14 OData entity catalogue.
- * Used to build the system prompt for the query-planner Claude call.
- * Entity names must match the exact OData endpoint names in BC.
+ * BC 14 OData entity catalogue for the CFO Assistant.
+ *
+ * The keys below are LOGICAL entity names: the planner prompt uses them and the
+ * AI answers with them. The OData entity actually queried is resolved per
+ * tenant from its $metadata (resolveEntities): the BespoxAI_ web service the
+ * installer publishes (agent 3.13+) is preferred, the standard name is the
+ * fallback, so older installs that published the standard names keep working.
+ *
+ * Fields are hints: buildCatalogue() narrows them to the properties the
+ * tenant's $metadata actually exposes, so a field that only exists on one
+ * customer's pages is never offered to the planner elsewhere.
  */
 
 export const BC_ENTITIES = {
@@ -185,4 +193,149 @@ export function getEntitiesSummary(enabledEntities?: Record<string, boolean>): s
 /** Returns selected fields for a given entity (for $select hint) */
 export function getEntityFields(entity: BCEntityName): string[] {
   return [...BC_ENTITIES[entity].usefulFields] as string[]
+}
+
+// ─── Web services the installer publishes for the CFO Assistant ─────────────
+// MUST match $CfoServices in scripts/Install-BespoxAI.ps1 (tests check this).
+// Line entities (e.g. SalesOrderSalesLines) come with their header page: OData
+// names them <service name><subpage control name>.
+
+export interface CfoServiceDef { logical: BCEntityName; serviceName: string; pageId: number; pageName: string }
+
+export const CFO_SERVICES: CfoServiceDef[] = [
+  { logical: 'Customer',           serviceName: 'BespoxAI_Customer',           pageId: 21,  pageName: 'Customer Card' },
+  { logical: 'Vendor',             serviceName: 'BespoxAI_Vendor',             pageId: 26,  pageName: 'Vendor Card' },
+  { logical: 'Item',               serviceName: 'BespoxAI_Item',               pageId: 30,  pageName: 'Item Card' },
+  { logical: 'SalesOrder',         serviceName: 'BespoxAI_SalesOrder',         pageId: 42,  pageName: 'Sales Order' },
+  { logical: 'PurchaseOrder',      serviceName: 'BespoxAI_PurchaseOrder',      pageId: 50,  pageName: 'Purchase Order' },
+  { logical: 'SalesInvoice',       serviceName: 'BespoxAI_SalesInvoice',       pageId: 132, pageName: 'Posted Sales Invoice' },
+  { logical: 'SalesCrMemo',        serviceName: 'BespoxAI_SalesCrMemo',        pageId: 134, pageName: 'Posted Sales Credit Memo' },
+  { logical: 'PurchaseInvoice',    serviceName: 'BespoxAI_PurchaseInvoice',    pageId: 138, pageName: 'Posted Purchase Invoice' },
+  { logical: 'GeneralLedgerEntry', serviceName: 'BespoxAI_GeneralLedgerEntry', pageId: 20,  pageName: 'General Ledger Entries' },
+  { logical: 'ItemLedgerEntry',    serviceName: 'BespoxAI_ItemLedgerEntry',    pageId: 38,  pageName: 'Item Ledger Entries' },
+]
+
+/** Line entities and the header they belong to. */
+export const LINE_PARENTS: Partial<Record<BCEntityName, BCEntityName>> = {
+  SalesOrderSalesLines:      'SalesOrder',
+  SalesInvoiceSalesLines:    'SalesInvoice',
+  SalesCrMemoSalesLines:     'SalesCrMemo',
+  PurchaseOrderPurchLines:   'PurchaseOrder',
+  PurchaseInvoicePurchLines: 'PurchaseInvoice',
+}
+
+// ─── $metadata ───────────────────────────────────────────────────────────────
+
+export interface ODataMetadata {
+  entitySets: string[]
+  /** Property names per entity set (empty array when the type wasn't found). */
+  fields: Record<string, string[]>
+}
+
+/** Parses BC's OData v4 $metadata (CSDL XML): entity sets and their properties. */
+export function parseMetadata(xml: string): ODataMetadata {
+  const typeProps: Record<string, string[]> = {}
+  const typeRe = /<EntityType\b[^>]*\bName="([^"]+)"[^>]*>([\s\S]*?)<\/EntityType>/g
+  let t: RegExpExecArray | null
+  while ((t = typeRe.exec(xml)) !== null) {
+    const props: string[] = []
+    const propRe = /<Property\b[^>]*\bName="([^"]+)"/g
+    let p: RegExpExecArray | null
+    while ((p = propRe.exec(t[2])) !== null) props.push(p[1])
+    typeProps[t[1]] = props
+  }
+  const entitySets: string[] = []
+  const fields: Record<string, string[]> = {}
+  const setRe = /<EntitySet\b([^>]*)>/g
+  let m: RegExpExecArray | null
+  while ((m = setRe.exec(xml)) !== null) {
+    const name = /\bName="([^"]+)"/.exec(m[1])?.[1]
+    if (!name || fields[name]) continue
+    const type = (/\bEntityType="([^"]+)"/.exec(m[1])?.[1] ?? '').split('.').pop() ?? ''
+    entitySets.push(name)
+    fields[name] = typeProps[type] ?? []
+  }
+  return { entitySets, fields }
+}
+
+// ─── Resolution ──────────────────────────────────────────────────────────────
+
+/**
+ * Maps each logical entity to the OData entity set this tenant actually has.
+ * Headers: the BespoxAI_ service if published, else the standard name.
+ * Lines: <resolved header><suffix> if present, else the one other entity set
+ * whose name starts with the resolved header (the subpage control name varies
+ * by page, e.g. Posted Sales Invoice's lines are not called "SalesLines").
+ */
+export function resolveEntities(available: string[]): Partial<Record<BCEntityName, string>> {
+  const have = new Set(available)
+  const out: Partial<Record<BCEntityName, string>> = {}
+  const logicals = Object.keys(BC_ENTITIES) as BCEntityName[]
+
+  for (const logical of logicals) {
+    if (LINE_PARENTS[logical]) continue
+    const svc = CFO_SERVICES.find(s => s.logical === logical)
+    if (svc && have.has(svc.serviceName)) out[logical] = svc.serviceName
+    else if (have.has(logical)) out[logical] = logical
+  }
+
+  const taken = new Set(Object.values(out))
+  for (const logical of logicals) {
+    const parent = LINE_PARENTS[logical]
+    if (!parent) continue
+    const header = out[parent]
+    if (!header) continue
+    const suffix = logical.slice(parent.length)          // e.g. 'SalesLines'
+    if (have.has(header + suffix)) { out[logical] = header + suffix; taken.add(header + suffix); continue }
+    const candidates = available.filter(n => n !== header && n.startsWith(header) && !taken.has(n))
+    if (candidates.length === 1) { out[logical] = candidates[0]; taken.add(candidates[0]) }
+  }
+  return out
+}
+
+export interface CatalogueEntry {
+  logical: BCEntityName
+  /** OData entity set to query. */
+  entitySet: string
+  description: string
+  fields: string[]
+}
+
+/**
+ * The entities the planner may use for this tenant, with the fields that exist.
+ * Without metadata (agent unreachable) it falls back to the static catalogue
+ * under the standard names, which is how the CFO Assistant behaved before.
+ * Entities an admin switched off (entityConfig[name] === false, by OData or
+ * logical name) are left out.
+ */
+export function buildCatalogue(meta: ODataMetadata | null, entityConfig?: Record<string, boolean> | null): CatalogueEntry[] {
+  const disabled = (n: string) => !!entityConfig && entityConfig[n] === false
+  const logicals = Object.keys(BC_ENTITIES) as BCEntityName[]
+
+  if (!meta) {
+    return logicals
+      .filter(l => !disabled(l))
+      .map(l => ({ logical: l, entitySet: l, description: BC_ENTITIES[l].description, fields: [...BC_ENTITIES[l].usefulFields] }))
+  }
+
+  const resolved = resolveEntities(meta.entitySets)
+  const out: CatalogueEntry[] = []
+  for (const logical of logicals) {
+    const entitySet = resolved[logical]
+    if (!entitySet || disabled(entitySet) || disabled(logical)) continue
+    const actual = meta.fields[entitySet] ?? []
+    const hints = BC_ENTITIES[logical].usefulFields as readonly string[]
+    let fields = actual.length ? hints.filter(f => actual.includes(f)) : [...hints]
+    // Hints that don't match this page at all: offer the page's own fields instead.
+    if (actual.length && fields.length < 2) fields = actual.slice(0, 30)
+    out.push({ logical, entitySet, description: BC_ENTITIES[logical].description, fields })
+  }
+  return out
+}
+
+/** The "Available entities" block of the planner prompt. */
+export function catalogueSummary(entries: CatalogueEntry[]): string {
+  return entries
+    .map(e => `  - ${e.logical}: ${e.description}\n    Fields: ${e.fields.join(', ')}`)
+    .join('\n')
 }

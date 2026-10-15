@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
+import { clearTenantMetadata } from '@/lib/bc-metadata'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,7 @@ export async function POST() {
 
   // Persist to DB
   await (prisma as any).tenant.update({ where: { id: tenantId }, data: { entityConfig } })
+  clearTenantMetadata(tenantId)   // the CFO Assistant picks up newly published services straight away
 
   return NextResponse.json({
     ok: true, entityConfig,

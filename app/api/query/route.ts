@@ -3,7 +3,8 @@ import OpenAI from 'openai'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
-import { getEntitiesSummary } from '@/lib/bc-entities'
+import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
+import { getTenantMetadata } from '@/lib/bc-metadata'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
 import { getAiConfig } from '@/lib/ai-config'
@@ -274,6 +275,17 @@ needsData=false for: accounting concepts, BC how-to questions, ratio definitions
 
   // ── Step 1: Plan — which BC entity & OData params? ──────────────────────
 
+  // Only entities this tenant actually publishes (BespoxAI_ services from the
+  // installer, or the standard names), with the fields its pages expose. The
+  // planner works with logical names; they're mapped to OData names below.
+  const catalogue = buildCatalogue(await getTenantMetadata(tenant), tenant.entityConfig)
+  if (catalogue.length === 0) {
+    return NextResponse.json({
+      error: 'No Business Central data is published for BespoxAI yet. Re-run the latest BespoxAI installer, which publishes the web services it needs, or ask your administrator to enable them under Settings → Data Entities.',
+      step: 'planner',
+    }, { status: 400 })
+  }
+
   let plan: QueryPlan
   try {
     const planRes = await callAI([
@@ -306,7 +318,7 @@ Example — invoice totals by month needs dates from SalesInvoice AND amounts fr
 }
 
 Available entities:
-${getEntitiesSummary(tenant.entityConfig ?? undefined)}
+${catalogueSummary(catalogue)}
 
 OData rules:
 - Always include $top. Rules:
@@ -384,15 +396,16 @@ For time-series / "by month" / "over last N months" / trend questions:
     if (plan.secondParams) plan.secondParams = setTop(plan.secondParams, 2000)
   }
 
-  // The tenant admin can switch entities off (Settings → Data Entities); the
-  // planner's choice must respect that, whatever the question asked for.
-  const entityCfg = (tenant as any).entityConfig as Record<string, boolean> | null | undefined
-  const entityAllowed = (e?: string) => !!e && /^[A-Za-z0-9_]+$/.test(e) && !(entityCfg && entityCfg[e] === false)
-  if (!entityAllowed(plan.entity) || (plan.secondEntity && !entityAllowed(plan.secondEntity))) {
+  // The planner may only use entities in this tenant's catalogue: published in
+  // BC and not switched off by the tenant admin (Settings → Data Entities).
+  const entitySetFor = (e?: string) => catalogue.find(c => c.logical === e)?.entitySet
+  const primarySet = entitySetFor(plan.entity)
+  const secondSet  = plan.secondEntity ? entitySetFor(plan.secondEntity) : undefined
+  if (!primarySet || (plan.secondEntity && !secondSet)) {
     return NextResponse.json({ error: 'That data is not available for this company.', step: 'planner' }, { status: 400 })
   }
 
-  const odataUrl = buildODataUrl(tenant, plan.entity, plan.params)
+  const odataUrl = buildODataUrl(tenant, primarySet, plan.params)
 
   let bcData: any
   let rawRecords: any[]
@@ -484,7 +497,7 @@ Return JSON:
   // ── Step 2b: Fetch + join second entity (optional) ───────────────────────
 
   if (plan.secondEntity && plan.joinKey && plan.joinForeignKey) {
-    const secondUrl = buildODataUrl(tenant, plan.secondEntity, plan.secondParams)
+    const secondUrl = buildODataUrl(tenant, secondSet!, plan.secondParams)
     try {
       const secondRes = await fetch(secondUrl, {
         headers: { 'X-BespoxAI-Key': tenant.apiKey, Accept: 'application/json' },

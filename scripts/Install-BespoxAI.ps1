@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.12'
+$AgentVersion  = '3.13'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -327,9 +327,13 @@ $AgentCode = @'
         to agent.config.json -- and fails if the agent doesn't answer. The agent
         logs FATAL and exits when it can't read its config, instead of starting
         with an empty one.
+  v3.13: The installer also publishes the CFO Assistant's pages as BespoxAI_
+        web services (a standard BC14 install publishes almost none of them).
+        The uninstaller removes every BespoxAI_ web service and the batch-logon
+        right it granted, and restores the licence if an export was interrupted.
 #>
 
-$Version    = '3.12'
+$Version    = '3.13'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
@@ -1727,9 +1731,21 @@ function Get-BatchLogonHolders {
 }
 $sidEntry = "*$($taskSid.Value)"
 $holders  = Get-BatchLogonHolders
+# Remember whether the right was granted by us, so the uninstaller removes it
+# only then. A reinstall finds it already present from the previous install --
+# that earlier record is carried forward.
+$StateFile = "$AgentDir\install-state.json"
+$batchGrantedByUs = $false
+if (Test-Path $StateFile) {
+    try {
+        $prev = Get-Content $StateFile -Raw | ConvertFrom-Json
+        if ($prev.runAsSid -eq $taskSid.Value -and $prev.batchLogonGrantedByInstaller) { $batchGrantedByUs = $true }
+    } catch {}
+}
 if ($holders -contains $sidEntry) {
     Write-OK "$taskUser already has 'Log on as a batch job'"
 } else {
+    $batchGrantedByUs = $true
     $newHolders = @($holders) + $sidEntry
     $cfgInf = Join-Path $env:TEMP "bespoxai-batch-$PID.inf"
     $cfgDb  = Join-Path $env:TEMP "bespoxai-batch-$PID.sdb"
@@ -1761,14 +1777,31 @@ Write-OK "Port $AgentPort reserved for $taskUser"
 # 3. agent.config.json access was granted when it was written (Step 5).
 Write-OK "$taskUser can read and update agent.config.json"
 
-# ── Step 7b: Publish dashboard web services ────────────────────────────────────
-# The CFO dashboards read standard pages via FlowFilters (and Accounting
-# Periods for each company's fiscal years). Publishes each one as a
-# page web service if it isn't already. Non-fatal: on failure the installer
-# carries on and prints the manual steps.
-# MUST match lib/dashboards/bc-services.ts (scripts/test-dashboards.ts checks this).
+# What this install changed outside C:\<Brand>, for the uninstaller.
+[ordered]@{
+    runAs                        = $taskUser
+    runAsSid                     = $taskSid.Value
+    batchLogonGrantedByInstaller = $batchGrantedByUs
+    agentPort                    = $AgentPort
+    version                      = $AgentVersion
+    updatedAt                    = (Get-Date -Format 'o')
+} | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8 -Force
 
-Write-Step 'Publishing dashboard web services'
+# ── Step 7b: Publish BespoxAI web services ────────────────────────────────────
+# Standard pages published as page web services under BespoxAI_ names, so the
+# customer's own web services are never touched:
+#  - the CFO dashboards read pages via FlowFilters (and Accounting Periods for
+#    each company's fiscal years);
+#  - the CFO Assistant queries customers, vendors, items, orders, posted
+#    documents and ledger entries -- a standard BC14 install publishes almost
+#    none of these.
+# Each is published only if it isn't already. Non-fatal: on failure the
+# installer carries on and prints the manual steps. The uninstaller removes
+# every BespoxAI_ web service.
+# MUST match lib/dashboards/bc-services.ts and CFO_SERVICES in lib/bc-entities.ts
+# (scripts/test-dashboards.ts and tests/bc-entities.test.ts check this).
+
+Write-Step 'Publishing BespoxAI web services'
 
 $DashboardServices = @(
     @{ Name = 'BespoxAI_GLAccounts';        PageId = 16;  Page = 'Chart of Accounts' },
@@ -1779,11 +1812,26 @@ $DashboardServices = @(
     @{ Name = 'BespoxAI_AccountingPeriods'; PageId = 100; Page = 'Accounting Periods' }
 )
 
+$CfoServices = @(
+    @{ Name = 'BespoxAI_Customer';           PageId = 21;  Page = 'Customer Card' },
+    @{ Name = 'BespoxAI_Vendor';             PageId = 26;  Page = 'Vendor Card' },
+    @{ Name = 'BespoxAI_Item';               PageId = 30;  Page = 'Item Card' },
+    @{ Name = 'BespoxAI_SalesOrder';         PageId = 42;  Page = 'Sales Order' },
+    @{ Name = 'BespoxAI_PurchaseOrder';      PageId = 50;  Page = 'Purchase Order' },
+    @{ Name = 'BespoxAI_SalesInvoice';       PageId = 132; Page = 'Posted Sales Invoice' },
+    @{ Name = 'BespoxAI_SalesCrMemo';        PageId = 134; Page = 'Posted Sales Credit Memo' },
+    @{ Name = 'BespoxAI_PurchaseInvoice';    PageId = 138; Page = 'Posted Purchase Invoice' },
+    @{ Name = 'BespoxAI_GeneralLedgerEntry'; PageId = 20;  Page = 'General Ledger Entries' },
+    @{ Name = 'BespoxAI_ItemLedgerEntry';    PageId = 38;  Page = 'Item Ledger Entries' }
+)
+
+$BespoxServices = @($DashboardServices) + @($CfoServices)
+
 $wsInstance = if ($NavServerInstance) { $NavServerInstance } else { $BCInstance }
 
 function Show-ManualWebServiceSteps {
     Write-Host "      Publish these pages manually (Web Services page → New, Object Type = Page, Published = Yes):" -ForegroundColor Yellow
-    foreach ($svc in $DashboardServices) {
+    foreach ($svc in $BespoxServices) {
         Write-Host ("        Page {0,-4} {1,-26} Service Name: {2}" -f $svc.PageId, $svc.Page, $svc.Name) -ForegroundColor Yellow
     }
 }
@@ -1800,12 +1848,12 @@ try {
     if ($adminTool) { . $adminTool.FullName | Out-Null }
 
     if (-not (Get-Command New-NAVWebService -ErrorAction SilentlyContinue)) {
-        Write-Host '    ⚠ NAV administration cmdlets not found on this server — dashboard web services not published.' -ForegroundColor Yellow
+        Write-Host '    ⚠ NAV administration cmdlets not found on this server — BespoxAI web services not published.' -ForegroundColor Yellow
         Show-ManualWebServiceSteps
     } else {
         $existing = @(Get-NAVWebService -ServerInstance $wsInstance -ErrorAction Stop | ForEach-Object { $_.ServiceName })
         $failed = 0
-        foreach ($svc in $DashboardServices) {
+        foreach ($svc in $BespoxServices) {
             if ($existing -contains $svc.Name) {
                 Write-OK "$($svc.Name) already published"
                 continue
@@ -1822,7 +1870,7 @@ try {
         if ($failed -gt 0) { Show-ManualWebServiceSteps }
     }
 } catch {
-    Write-Host "    ⚠ Dashboard web services not published: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "    ⚠ BespoxAI web services not published: $($_.Exception.Message)" -ForegroundColor Yellow
     Show-ManualWebServiceSteps
 }
 
@@ -1980,7 +2028,7 @@ Write-Host "    Start-ScheduledTask -TaskName '$TaskName'"
 Write-Host "    Stop-ScheduledTask  -TaskName '$TaskName'"
 Write-Host ''
 Write-Host '  Uninstall:' -ForegroundColor White
-Write-Host "    & '$CloudflaredExe' service uninstall"
-Write-Host "    Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
-Write-Host "    Remove-Item '$InstallRoot' -Recurse -Force"
+Write-Host "    Run Uninstall-BespoxAI.bat as Administrator -- it's in the installer zip and, after"
+Write-Host "    this install, in $InstallRoot. It removes the agent, the tunnel service, the"
+Write-Host "    BespoxAI_ web services in Business Central and the rights granted above."
 Write-Host ''
