@@ -110,6 +110,10 @@ async function main() {
   // Loaded only for a real run, so --dry-run works without a database or generated client
   const { PrismaClient } = await import('@prisma/client')
   const prisma = new PrismaClient()
+  if (!(prisma as any).baseCorpus) {
+    throw new Error('The local Prisma client predates the BaseCorpus model — run "npx prisma generate" and try again.')
+  }
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set.')
   try {
     const data = {
       product, versionTag, repoPath: relDir, repoCommit: commit, sourceNote,
