@@ -41,6 +41,30 @@ interface Row {
   blobSha: string
 }
 
+/**
+ * Load KEY=VALUE pairs from the app's .env (the scripts run outside Next.js,
+ * so nothing else loads it). Existing environment variables win.
+ */
+function loadDotEnv(): string | null {
+  const root = path.resolve(__dirname, '..', '..')
+  for (const dir of Array.from(new Set([process.cwd(), root]))) {
+    const file = path.join(dir, '.env')
+    if (!fs.existsSync(file)) {
+      if (fs.existsSync(file + '.txt')) {
+        throw new Error('Found ' + file + '.txt — Windows saved it with a .txt extension. Rename it to .env')
+      }
+      continue
+    }
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
+      if (!m || process.env[m[1]] !== undefined) continue
+      process.env[m[1]] = m[2].replace(/^(['"])([\s\S]*)\1$/, '$2')
+    }
+    return file
+  }
+  return null
+}
+
 async function main() {
   const a = parseArgs(process.argv.slice(2))
   const repo         = required(a, 'repo')
@@ -107,6 +131,8 @@ async function main() {
   }
   if (dryRun) { console.log('Dry run — database not touched.'); return }
 
+  const envFile = loadDotEnv()
+  console.log('  env file:     ' + (envFile ?? 'none found (using shell environment)'))
   // Loaded only for a real run, so --dry-run works without a database or generated client
   const { PrismaClient } = await import('@prisma/client')
   const prisma = new PrismaClient()
@@ -114,7 +140,8 @@ async function main() {
     throw new Error('The local Prisma client predates the BaseCorpus model — run "npx prisma generate" and try again.')
   }
   if (!process.env.PRISMA_DATABASE_URL) {
-    throw new Error('PRISMA_DATABASE_URL is not set — copy it and POSTGRES_URL from Vercel → Settings → Environment Variables into .env')
+    throw new Error('PRISMA_DATABASE_URL is not set — put it and POSTGRES_URL (from Vercel → Settings → Environment Variables) in ' +
+      path.join(path.resolve(__dirname, '..', '..'), '.env'))
   }
   try {
     const data = {
