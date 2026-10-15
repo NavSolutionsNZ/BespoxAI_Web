@@ -11,7 +11,7 @@ import { addUninstaller, uninstallerCopyLines } from '@/lib/installer-uninstall'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.13'
+const AGENT_VERSION = '3.14'
 
 
 // GET /api/partner/tenants/[id]/installer — returns current agent version

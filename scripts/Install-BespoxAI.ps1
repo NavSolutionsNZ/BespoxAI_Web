@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.13'
+$AgentVersion  = '3.14'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -331,9 +331,14 @@ $AgentCode = @'
         web services (a standard BC14 install publishes almost none of them).
         The uninstaller removes every BespoxAI_ web service and the batch-logon
         right it granted, and restores the licence if an export was interrupted.
+  v3.14: OData forwarding no longer doubles the server instance. bcBaseUrl
+        includes the instance (http://localhost:7048/BC140) and the portal sends
+        /BC140/ODataV4/..., so every proxied OData call went to
+        /BC140/BC140/ODataV4 and got HTTP.sys's 503. Paths that already name an
+        instance now go to bcBaseUrl's scheme://host:port only.
 #>
 
-$Version    = '3.13'
+$Version    = '3.14'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
@@ -382,6 +387,21 @@ $TestBcCompany       = $Config.testBcCompany
 $TestBcPort          = if ($Config.testBcPort) { $Config.testBcPort } else { 0 }
 $TestNavMgmtPort     = if ($Config.testNavManagementPort) { $Config.testNavManagementPort } else { 7045 }
 
+
+# v3.14: where a proxied request goes. The portal sends /{instance}/ODataV4/...
+# (or /{instance}/OData/..., /{instance}/api/...), already naming the instance,
+# while bcBaseUrl is usually http://localhost:7048/{instance}. Such paths go to
+# bcBaseUrl's scheme://host:port; anything else (e.g. /ODataV4/...) is appended
+# to bcBaseUrl as before. Works whether or not bcBaseUrl carries the instance.
+function Get-BcTargetUrl {
+    param([string] $Base, [string] $RawUrl)
+    $base = $Base.TrimEnd('/')
+    if ($RawUrl -match '^/[^/?]+/(ODataV4|OData|api)(/|\?|$)') {
+        $u = [Uri] $base
+        return $u.GetLeftPart([UriPartial]::Authority) + $RawUrl
+    }
+    return $base + $RawUrl
+}
 
 # Read full request body — Stream.Read() may return fewer bytes than requested
 # on large payloads, so we loop until all bytes are consumed.
@@ -1112,7 +1132,7 @@ while ($Listener.IsListening) {
         }
 
         # Build target URL
-        $targetUrl = $BCBase.TrimEnd('/') + $rawUrl
+        $targetUrl = Get-BcTargetUrl $BCBase $rawUrl
         Write-Log "→ $($req.HttpMethod) $targetUrl"
 
         # Forward via HttpWebRequest (WinHTTP-backed, reliable NTLM on Windows Server --
