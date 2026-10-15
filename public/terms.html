@@ -113,7 +113,7 @@ footer a:hover{color:var(--cream)}
   <h2>7. Your environment and data access</h2>
   <ul>
     <li>Connectivity to your environment is established through an outbound-only encrypted tunnel. We do not require inbound firewall rules or open ports.</li>
-    <li>Access is authenticated with <strong>read-only credentials that you provision and control</strong>. You may scope, audit, or revoke that access at any time. You are responsible for provisioning credentials in accordance with our connector documentation.</li>
+    <li>Access is authenticated with <strong>credentials that you provision and control</strong>. The CFO Assistant only reads data; development deployments and object exports, where you use them, require write access as described in our connector documentation. You may scope, audit, or revoke that access at any time. You are responsible for provisioning credentials in accordance with our connector documentation.</li>
     <li>We index object metadata (such as table, codeunit, and report definitions) to ground the platform in your environment. When you ask a question requiring live figures, a scoped read-only query is executed and the result is returned to answer your question. <strong>Query results are not stored by BespoxAI.</strong></li>
     <li>Your environment data is isolated per tenant and is <strong>not used to train AI models</strong> — ours or any third party's.</li>
     <li>You warrant that you are authorised to connect the environment you connect, and that doing so does not breach any agreement you have with a third party.</li>
