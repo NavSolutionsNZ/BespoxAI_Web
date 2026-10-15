@@ -775,6 +775,11 @@ function DashboardInner() {
             {/* Chat area */}
             {!tierBlocked && <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
 
+              {/* Snapshot strip — keeps the four figures in view once a conversation starts */}
+              {isConnected && history.length > 0 ? (
+                <OverviewCards compact tenantName={tenantName} onQuery={(q) => { setQuestion(q); setTimeout(() => textareaRef.current?.focus(), 50) }} />
+              ) : null}
+
               {/* Greeting / overview state */}
               {history.length === 0 && (
                 <div style={{ maxWidth: 740, margin: '0 auto' }}>
@@ -1426,10 +1431,74 @@ async function loadSnapshotTile(tile: typeof SNAPSHOT_TILES[number]): Promise<Ov
   }
 }
 
-function OverviewCards({ tenantName, onQuery }: { tenantName: string; onQuery: (q: string) => void }) {
+// Strip collapse is a per-viewer convenience — browser storage may be unavailable, so never rely on it.
+const STRIP_KEY = 'bx.snapshotStrip.collapsed'
+function readStripCollapsed(): boolean {
+  try { return typeof window !== 'undefined' && window.localStorage.getItem(STRIP_KEY) === '1' } catch { return false }
+}
+function writeStripCollapsed(v: boolean) {
+  try { window.localStorage.setItem(STRIP_KEY, v ? '1' : '0') } catch { /* ignore */ }
+}
+
+function SnapshotStrip({ tenantName, cards, loading, collapsed, onToggle, onQuery }: {
+  tenantName: string
+  cards: OverviewCard[]
+  loading: boolean
+  collapsed: boolean
+  onToggle: () => void
+  onQuery: (q: string) => void
+}) {
+  const label = { fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--slate)' }
+  return (
+    <div style={{
+      // Sticks to the top of the chat scroll area; background matches the chat panel (#ffffff)
+      // so messages scroll cleanly underneath.
+      position: 'sticky', top: 0, zIndex: 5, maxWidth: 680, margin: '-28px auto 20px',
+      padding: '10px 0 8px', background: '#ffffff', borderBottom: '1px solid var(--fog)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={label}>{'Live snapshot · ' + tenantName}</span>
+        <button
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...label, color: 'var(--forest)' }}
+        >
+          {collapsed ? 'Show figures ▾' : 'Hide ▴'}
+        </button>
+      </div>
+      {!collapsed ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} style={{ flex: '1 1 150px', height: 44, background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, animation: 'pulse 1.5s infinite' }} />
+              ))
+            : cards.map(card => (
+                <button
+                  key={card.label}
+                  onClick={() => onQuery(card.query)}
+                  title={card.sub ? card.sub : 'Ask about ' + card.label.toLowerCase()}
+                  style={{
+                    flex: '1 1 150px', textAlign: 'left', cursor: 'pointer',
+                    background: 'var(--white)', border: '1px solid var(--fog)', borderRadius: 8, padding: '6px 10px',
+                  }}
+                >
+                  <div style={label}>{card.label}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: card.value === '—' ? 'var(--fog)' : 'var(--ink)', lineHeight: 1.2 }}>
+                    {card.value}
+                  </div>
+                </button>
+              ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function OverviewCards({ tenantName, onQuery, compact }: { tenantName: string; onQuery: (q: string) => void; compact?: boolean }) {
   const [cards, setCards]     = useState<OverviewCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
+  const [collapsed, setCollapsed] = useState(readStripCollapsed)
 
   useEffect(() => {
     let alive = true
@@ -1442,6 +1511,16 @@ function OverviewCards({ tenantName, onQuery }: { tenantName: string; onQuery: (
   }, [tenantName])
 
   if (error) return null  // silent fail — don't break the page
+
+  if (compact) {
+    return (
+      <SnapshotStrip
+        tenantName={tenantName} cards={cards} loading={loading} collapsed={collapsed}
+        onToggle={() => { const next = !collapsed; setCollapsed(next); writeStripCollapsed(next) }}
+        onQuery={onQuery}
+      />
+    )
+  }
 
   return (
     <div style={{ marginBottom: 28 }}>
