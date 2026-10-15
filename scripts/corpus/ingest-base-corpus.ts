@@ -135,13 +135,25 @@ async function main() {
   console.log('  env file:     ' + (envFile ?? 'none found (using shell environment)'))
   // Loaded only for a real run, so --dry-run works without a database or generated client
   const { PrismaClient } = await import('@prisma/client')
-  const prisma = new PrismaClient()
+
+  // Bulk insert: prefer the direct Postgres URL (POSTGRES_URL, the schema's directUrl)
+  // over the pooled/proxy one. Only the scheme is ever printed, never the value.
+  const dbUrl = process.env.POSTGRES_URL || process.env.PRISMA_DATABASE_URL || ''
+  const varName = process.env.POSTGRES_URL ? 'POSTGRES_URL' : 'PRISMA_DATABASE_URL'
+  if (!dbUrl) {
+    throw new Error('Neither POSTGRES_URL nor PRISMA_DATABASE_URL is set — copy them from Vercel → Settings → Environment Variables into ' +
+      path.join(path.resolve(__dirname, '..', '..'), '.env'))
+  }
+  const scheme = (dbUrl.match(/^([a-z+]+):\/\//i)?.[1] ?? '(none)')
+  console.log('  database:     ' + varName + ' (' + scheme + '://…)')
+  if (!/^postgres(ql)?$/i.test(scheme)) {
+    throw new Error(varName + ' starts with "' + dbUrl.slice(0, 12).replace(/[^a-z+:/]/gi, '?') +
+      '…" — it must start with postgres:// or postgresql://. Re-copy the value from Vercel with the eye icon (the masked dots are not the value).')
+  }
+
+  const prisma = new PrismaClient({ datasources: { db: { url: dbUrl } } })
   if (!(prisma as any).baseCorpus) {
     throw new Error('The local Prisma client predates the BaseCorpus model — run "npx prisma generate" and try again.')
-  }
-  if (!process.env.PRISMA_DATABASE_URL) {
-    throw new Error('PRISMA_DATABASE_URL is not set — put it and POSTGRES_URL (from Vercel → Settings → Environment Variables) in ' +
-      path.join(path.resolve(__dirname, '..', '..'), '.env'))
   }
   try {
     const data = {
