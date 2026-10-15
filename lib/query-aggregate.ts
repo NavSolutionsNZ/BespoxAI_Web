@@ -111,6 +111,7 @@ export function aggregateRecords(records: any[], spec: AggSpec): AggResult {
 
   const totalAcc = spec.measures.map(blank)
   const groups = new Map<string, { label: string; acc: Acc[] }>()
+  const labelField = spec.labelField ?? inferLabelField(records, spec)
 
   for (const rec of records) {
     spec.measures.forEach((m, i) => add(totalAcc[i], m, rec))
@@ -122,7 +123,7 @@ export function aggregateRecords(records: any[], spec: AggSpec): AggResult {
       key = pk.key; label = pk.label
     } else {
       key = String(rec?.[spec.groupBy] ?? '')
-      const name = spec.labelField ? String(rec?.[spec.labelField] ?? '').trim() : ''
+      const name = labelField ? String(rec?.[labelField] ?? '').trim() : ''
       label = name || key || '(blank)'
     }
     let g = groups.get(key)
@@ -139,13 +140,40 @@ export function aggregateRecords(records: any[], spec: AggSpec): AggResult {
   if (spec.top) list = list.slice(0, spec.top)
 
   return {
-    groupLabel: spec.groupBy ? (spec.period ? spec.period[0].toUpperCase() + spec.period.slice(1) : (spec.labelField ? labelise(spec.labelField) : labelise(spec.groupBy))) : null,
+    groupLabel: spec.groupBy ? (spec.period ? spec.period[0].toUpperCase() + spec.period.slice(1) : (labelField ? labelise(labelField) : labelise(spec.groupBy))) : null,
     measures: spec.measures,
     totals: spec.measures.map((m, i) => finish(m.op, totalAcc[i])),
     groups: list,
     recordCount: records.length,
     groupCount,
   }
+}
+
+/** Customer_No → Customer_Name, Vendor_No → Vendor_Name (also Sell_to_…/Buy_from_…). */
+export function nameFieldFor(groupBy: string): string | null {
+  return /_No$/.test(groupBy) ? groupBy.replace(/_No$/, '_Name') : null
+}
+
+/** A grouping by a No. field shows the matching Name field when the records carry it. */
+function inferLabelField(records: any[], spec: AggSpec): string | null {
+  if (!spec.groupBy || spec.period) return null
+  const nf = nameFieldFor(spec.groupBy)
+  return nf && records.some(r => typeof r?.[nf] === 'string' && r[nf].trim() !== '') ? nf : null
+}
+
+/**
+ * Before fetching: when grouping by a No. field whose Name field the entity has,
+ * make sure the Name is in $select and used as the label.
+ */
+export function withGroupNames(params: string, spec: AggSpec, entityFields: string[]): { params: string; spec: AggSpec } {
+  if (!spec.groupBy || spec.period) return { params, spec }
+  const nf = spec.labelField ?? nameFieldFor(spec.groupBy)
+  if (!nf || !entityFields.includes(nf)) return { params, spec }
+  const sel = /(^|&)\$select=([^&]*)/i.exec(params)
+  const out = sel && !sel[2].split(',').map(f => f.trim()).includes(nf)
+    ? params.replace(sel[0], sel[1] + '$select=' + sel[2] + ',' + nf)
+    : params
+  return { params: out, spec: { ...spec, labelField: nf } }
 }
 
 function labelise(field: string): string {

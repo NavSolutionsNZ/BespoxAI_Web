@@ -88,3 +88,21 @@ test('money vs plain numbers', () => {
   assert.equal(formatMeasure({ field: 'Amount_LCY', op: 'sum', label: '' }, -4861525.5), '-$4,861,525.50')
   assert.equal(formatMeasure({ op: 'count', label: '' }, 1234), '1,234')
 })
+
+test('grouping by a No. field shows the Name field when records carry it', async () => {
+  const { withGroupNames } = await import('../lib/query-aggregate')
+  // Inferred from the records, even without labelField
+  const a = aggregateRecords(cle, sanitizeAggSpec({ groupBy: 'Customer_No', measures: [{ field: 'Remaining_Amt_LCY', op: 'sum', label: 'Overdue' }] })!)
+  assert.equal(a.groups[0].label, 'John Haddock Insurance Co.')
+  assert.equal(a.groupLabel, 'Customer Name')
+  // Before fetching: the Name is added to $select when the entity has it
+  const spec = sanitizeAggSpec({ groupBy: 'Customer_No', measures: [{ field: 'Remaining_Amt_LCY', op: 'sum', label: 'Overdue' }] })!
+  const w = withGroupNames('$top=50&$select=Customer_No,Remaining_Amt_LCY&$filter=Open eq true', spec, ['Customer_No', 'Customer_Name', 'Remaining_Amt_LCY'])
+  assert.equal(w.params, '$top=50&$select=Customer_No,Remaining_Amt_LCY,Customer_Name&$filter=Open eq true')
+  assert.equal(w.spec.labelField, 'Customer_Name')
+  // Entity without a Name field (bank ledger): unchanged
+  const b = sanitizeAggSpec({ groupBy: 'Bank_Account_No', measures: [{ field: 'Amount_LCY', op: 'sum', label: 'Balance' }] })!
+  const wb = withGroupNames('$select=Bank_Account_No,Amount_LCY', b, ['Bank_Account_No', 'Amount_LCY'])
+  assert.equal(wb.params, '$select=Bank_Account_No,Amount_LCY')
+  assert.equal(wb.spec.labelField, null)
+})

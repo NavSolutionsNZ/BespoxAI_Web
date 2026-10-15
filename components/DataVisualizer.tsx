@@ -7,7 +7,7 @@ import {
   LineChart, Line,
 } from 'recharts'
 import type { DisplayHint, StructuredData } from '@/app/api/query/route'
-import { isIdentifierHeader } from '@/lib/answer-format'
+import { isIdentifierHeader, formatIsoDate } from '@/lib/answer-format'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +48,20 @@ function fmt(value: string | number | null): string {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
   if (Math.abs(n) >= 1_000)     return n.toLocaleString('en-NZ', { maximumFractionDigits: 2 })
   return n.toLocaleString('en-NZ', { maximumFractionDigits: 2 })
+}
+
+// Tables show amounts in full (−4,370,542.68); only chart axes and tooltips abbreviate.
+function fmtFull(value: string | number | null): string {
+  if (value == null) return '—'
+  const n = Number(value)
+  if (isNaN(n)) return String(value)
+  return n.toLocaleString('en-NZ', { maximumFractionDigits: 2 })
+}
+
+// BC sends dates as ISO ("2023-01-26"); show "26 Jan 2023".
+function fmtCell(value: string | number | null): string | number {
+  if (value == null) return '—'
+  return typeof value === 'string' ? (formatIsoDate(value) ?? value) : value
 }
 
 function isNumericCol(rows: (string | number | null)[][], colIdx: number): boolean {
@@ -166,7 +180,7 @@ function SortableTable({ data }: { data: StructuredData }) {
                   fontSize: numericCols[ci] ? 11 : 12,
                   whiteSpace: numericCols[ci] ? 'nowrap' : undefined,
                 }}>
-                  {numericCols[ci] ? fmt(cell) : (cell ?? '—')}
+                  {numericCols[ci] ? fmtFull(cell) : fmtCell(cell)}
                 </td>
               ))}
             </tr>

@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
 import { parseAnswerPayload } from '@/lib/answer-format'
-import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, type AggResult } from '@/lib/query-aggregate'
+import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, type AggResult } from '@/lib/query-aggregate'
 import { getTenantMetadata } from '@/lib/bc-metadata'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
@@ -420,9 +420,14 @@ For time-series / "by month" / "over last N months" / trend questions:
   }
 
   // Totals are computed in code over every record, so fetch them all (up to a cap).
-  const aggSpec = sanitizeAggSpec(plan.aggregate)
+  let aggSpec = sanitizeAggSpec(plan.aggregate)
   const AGG_TOP = 5000
   if (aggSpec) {
+    // Grouping by Customer_No etc.: fetch and show the name, not just the number.
+    const fields = catalogue.find(c => c.logical === plan.entity)?.fields ?? []
+    const named = withGroupNames(plan.params ?? '', aggSpec, fields)
+    plan.params = named.params
+    aggSpec = named.spec
     plan.params = setTop(plan.params ?? '', AGG_TOP)
     if (plan.secondParams) plan.secondParams = setTop(plan.secondParams, AGG_TOP * 2)
   }

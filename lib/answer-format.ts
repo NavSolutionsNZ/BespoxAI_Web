@@ -50,3 +50,14 @@ export function isIdentifierHeader(header: unknown): boolean {
   if (/\b(no\.?|number)\s+of\b/i.test(h)) return false
   return /(^|[^a-z])(no\.?|nos|number|num|code|id)([^a-z]|$)/i.test(h)
 }
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "2023-01-26" or "2023-01-26T00:00:00Z" → "26 Jan 2023"; anything else → null. */
+export function formatIsoDate(value: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(T00:00:00(\.0+)?Z?)?$/.exec(value)
+  if (!m) return null
+  const month = Number(m[2]), day = Number(m[3])
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  return day + ' ' + MONTHS_SHORT[month - 1] + ' ' + m[1]
+}

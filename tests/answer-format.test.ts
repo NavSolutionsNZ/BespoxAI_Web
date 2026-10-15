@@ -54,3 +54,12 @@ test('quantities and amounts are not identifiers', () => {
   for (const h of ['Amount ($)', 'Balance ($)', 'Quantity', 'No. of invoices', 'Number of orders', 'Posting Date', 'Notes', 'Nominal', 'Customer'])
     assert.ok(!isIdentifierHeader(h), h)
 })
+
+test('ISO dates in table cells read as "26 Jan 2023"', async () => {
+  const { formatIsoDate } = await import('../lib/answer-format')
+  assert.equal(formatIsoDate('2023-01-26'), '26 Jan 2023')
+  assert.equal(formatIsoDate('2023-01-05T00:00:00Z'), '5 Jan 2023')
+  assert.equal(formatIsoDate('2023-13-01'), null)
+  assert.equal(formatIsoDate('103027'), null)
+  assert.equal(formatIsoDate('2023-01-26T14:30:00Z'), null)   // a real time — leave as is
+})
