@@ -63,6 +63,17 @@ Domains: `bespoxai.com` (main portal), `partners.bespoxai.com` (partner portal â
 - When mirroring a `create` across pipelines, check for **required FKs with no
   DB default** â€” e.g. `Requirement.assignedDeveloperId`. Missing one produces an
   empty-body 500.
+- Runtime queries go through the pooled connection (`PRISMA_POOLED_URL`, read in
+  `lib/db.ts`). Don't remove it: the direct connection allows ~5 app connections
+  and a dashboard load exhausts them.
+
+### API responses
+- **Never answer 502 or 504.** bespoxai.com is behind Cloudflare, which replaces
+  any origin 502/504 with its own HTML page, so the JSON error never reaches the
+  UI. Use `UPSTREAM_FAILED` (424) from `lib/http-status.ts`;
+  `tests/http-status.test.ts` enforces this.
+- Numbers shown to users come from code, not the AI: chat totals from
+  `lib/query-aggregate.ts`, dashboard figures from the metric engine.
 
 ### AI providers
 - **Never import `@anthropic-ai/sdk`** (or instantiate `new OpenAI()` at module

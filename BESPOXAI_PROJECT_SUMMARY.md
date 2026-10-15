@@ -5,7 +5,7 @@
 **Repository:** NavSolutionsNZ/BespoxAI_Web (GitHub) — renamed from BespokeAI_Web
 **Hosting:** Vercel (auto-deploys on push to main)
 **Created:** April 2026
-**Last Updated:** August 17, 2026 (Session 28 — BC Auth Mode mirrored to admin/partner)
+**Last Updated:** October 16, 2026 (Session 29 — BC14ProdSim end to end: BCAgent 3.12–3.16, live CFO dashboards, accurate CFO Assistant)
 
 ---
 
@@ -28,24 +28,107 @@
 ## GitHub Access
 
 - **Repo:** `NavSolutionsNZ/BespoxAI_Web` (renamed from BespokeAI_Web — old URL still redirects)
-- **Branch:** `main`
-- **Claude uses sparse checkout** — never clones the full repo. Include `"prisma"` and context files in set.
-- **api.github.com is blocked** — but `github.com` git operations work
-- **Push:** `git push origin master:main`
-- **Remote URL:** `https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git`
-
-### Sparse Checkout Setup (every session)
-```bash
-cd /home/claude
-git init repo && cd repo
-git remote add origin https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git
-git sparse-checkout init
-git sparse-checkout set --no-cone "app" "components" "lib" "scripts" "prisma" "BESPOXAI_PROJECT_SUMMARY.md" "BESPOXAI_COMPONENT_ROADMAP.md" "BESPOXAI_FILES_INVENTORY.md"
-git pull origin main
-git config user.email "claude@anthropic.com" && git config user.name "Claude"
-```
+- **Branch:** `main`. Rich's working copy is a normal clone at `C:\Dev\BespoxAI_Web`; push with plain `git push` (see `CLAUDE.md`). The old sparse-checkout / `git push origin master:main` workflow no longer applies.
+- **Claude sessions in the cloud sandbox** can clone/fetch but not push: Claude commits locally (committer `Claude <noreply@anthropic.com>`), writes `git format-patch` output to Rich's Downloads, Rich runs `git am` + `git push`. Check `git log` after `git am`.
 
 ---
+
+## Session 29 Key Changes (October 15–16, 2026) — BC14ProdSim end to end: BCAgent 3.12–3.16, live CFO dashboards, accurate CFO Assistant
+
+**Documentation gap (Aug 17 → Oct 15) — summarised, not reconstructed.** Work that landed between Session 28 and this one, by commit title. Detail lives in `git log` and the Claude Project docs (`claude/BESPOXAI_CFO_DASHBOARDS_DESIGN.md`, `claude/BESPOXAI_UPGRADE_READINESS_RAG_DESIGN.md`, `claude/BESPOXAI_AGENT_RUN_ACCOUNT_FIX.md`):
+- **Security hardening (Sep 21–27):**
+  - Next 15.5 / React 19 upgrade;
+  - apiKey and rdpPassword no longer returned to partners or customers;
+  - RDP password encrypted at rest, and RDP gated on customer consent behind Cloudflare Access + MFA (agent 3.6);
+  - agent answers only this machine, with one constant-time key check (3.7);
+  - rate limits, session timeouts, security headers + report-only CSP;
+  - cross-tenant fixes (7a–7d);
+  - `requireSuperadmin()` in 30 routes;
+  - installer 3.8: never leave the agent running as SYSTEM.
+- **Marketing (Sep 28):** scan, mobile and accessibility fixes; the homepage leads with the CFO Assistant.
+- **Configurable CFO dashboards (Oct 13):**
+  - metric registry + FlowFilter source + default CFO pack;
+  - per-user dashboards with sharing;
+  - AI-proposed edits;
+  - installer 3.9/3.10 publish the dashboard web services.
+- **Upgrade readiness / full export (Oct 15):**
+  - retrieval layer, base C/AL corpus and delta engine (P0–P2);
+  - partner developer licences + full object export jobs (P3);
+  - BCAgent 3.11 full-export worker.
+
+**Test environment:** Hyper-V lab. `BC14ProdSim` (BC140, CRONUS New Zealand Ltd., data up to Jan 2023) behind domain `bespoxaitest.local`, used with the Demo Account 1 tenant (`demoaccount1`). Config, time-sync and NAT fixes are in `claude/BESPOXAI_TEST_ENVIRONMENT_SETUP.md`. Credentials are kept separately; never copy them into docs.
+
+### BCAgent 3.12 → 3.16
+- **3.12 (`1b41675`): non-admin run account.**
+  - The agent runs as a customer-provided Windows account. We recommend the customer's BC service account; the installer never creates an account or uses a default password.
+  - The installer grants "Log on as a batch job", an HTTP.sys urlacl for `http://+:<port>/` and Modify on `agent.config.json`.
+  - `install-state.json` records what was granted, for the uninstaller.
+  - The installer fails if the agent doesn't answer `/health`, and decodes Task Scheduler result codes.
+  - Website copy (FAQ/Terms): service-account recommendation, licence-swap disclosure, Terms no longer say "read-only".
+- **3.13 (`9b8a9d3`): CFO web services + full uninstall.**
+  - Step 7b publishes 10 CFO pages as `BespoxAI_*` page web services (`CFO_SERVICES` in `lib/bc-entities.ts` must match `$CfoServices`; a test checks it), alongside the dashboard pages.
+  - The CFO Assistant resolves logical entity names to what each tenant publishes, from `$metadata` (`lib/bc-metadata.ts`, cached 6 h).
+  - `Uninstall-BespoxAI.ps1`:
+    - restores the licence if an export died mid-swap;
+    - removes all `BespoxAI_*` web services;
+    - removes the batch right only if the installer granted it;
+    - never deletes the customer's account.
+  - The uninstaller ships in every installer zip with brand and port preset (`lib/installer-uninstall.ts`) and is copied to `C:\<Brand>\`. Tested on BC14ProdSim.
+- **3.14 (`624971d`): OData forwarding bug (long-standing).**
+  - `bcBaseUrl` includes the instance and the portal sends `/{instance}/ODataV4/...`, so the agent forwarded to `/BC140/BC140/ODataV4` and got HTTP.sys's 503.
+  - **No proxied OData call (CFO Assistant, dashboards, Discover) could have worked on an installer-configured agent before 3.14.** Test Connection stayed green because it builds its own URL.
+  - The fix (`Get-BcTargetUrl`) sends instance-qualified paths to `bcBaseUrl`'s scheme://host:port.
+- **3.15 (`56bb7d3`):** the installer stops before changing anything if BC Instance Name or Server Instance isn't a `MicrosoftDynamicsNavServer$*` service on the machine. BC14ProdSim's tenant had Server Instance `BC14` instead of `BC140`.
+- **3.16 (`8283d50`):** also publishes Bank Account Ledger Entries (page 372) as `BespoxAI_BankLedgerEntries`.
+
+### Live CFO dashboards: engine fixed for BC14 and verified (`8283d50`, `e3af2f2`, `4394ec2`)
+- **Date filters:** `Date_Filter` is `Edm.String` on BC14. Use `Date_Filter eq 'YYYY-MM-DD..YYYY-MM-DD'` (ISO only; `dd/mm/yy` silently returns 0). The engine falls back to ge/le once per tenant.
+- **Bank pages:** Bank Account List (371) has **no balance fields**, and 372 has **no `Bank_Account_Name`**. Cash comes from summing 372's `Amount_LCY`, with names from 371.
+- **Customer List (22) ignores `Date_Filter` for `Sales_LCY`.** Top customers sums ledger `Sales_LCY` by `Posting_Date`.
+- **Paging:** the engine used to stop silently at 5,000 rows. It now continues with `$skip` on full pages, and nextLink is re-pointed at the tenant's tunnel (`Company(...)` paths only).
+- **Verified:** all seven `BC_SERVICES` pages have `verified: true`, so `/api/dashboards/metric` serves tenant users. Every widget of the default pack loaded live on BC14ProdSim.
+
+### Snapshot tiles + CFO Assistant chat (`f222893` → `4e69b0a`)
+- **Snapshot tiles** (`OverviewCards`) read the metric engine (`ar_overdue`, `cash_total`, new `ap_outstanding`, `pl_revenue`) instead of 4 AI questions per load. On BC14ProdSim: $3,204,401 / −$4,861,526 / $1,549,936 / $0.
+- **New catalogue entities** (resolved through `ENTITY_ALIASES`): `CustLedgerEntry`, `VendorLedgerEntry`, `BankAccount`, `BankAccountLedgerEntry`.
+- **Exact totals** (`lib/query-aggregate.ts`):
+  - The planner returns an `aggregate` spec; the server computes it over every fetched record (up to 5,000).
+  - The answerer gets an EXACT FIGURES block, and chart/table/KPI data is rebuilt from it.
+  - Chat said $2,782,442.01 for overdue debtors while the exact figure was $3,204,400.99; it now matches the tile.
+- **Bad-query memory:**
+  - Only a 400 on a query whose fields all exist is recorded; other failures return 424 with "Business Central didn't answer".
+  - Only the last 14 days are used.
+  - Old tile questions recorded in August, while the agent was broken, had been blocking bank questions.
+- **Field check before BC** (`lib/odata-fields.ts`):
+  - The planner's fields are checked against `$metadata`. Unknown select/orderby fields are dropped; an unknown filter field gets "ask again" and is not recorded as bad.
+  - A selected `X_No` brings `X_Name` with it.
+- **Names:**
+  - BC14 ledger `Customer_Name`/`Vendor_Name` are **blank on entries posted before those fields existed** (all CRONUS data; likely many upgraded customers).
+  - Grouped labels fall back to the master record (`NAME_SOURCES`); dashboard top customers uses the Customer List.
+  - Same-name groups get their No. appended.
+- **Display:**
+  - identifier columns get no thousands separators (`isIdentifierHeader`);
+  - tables show full amounts;
+  - ISO dates show as "26 Jan 2023";
+  - prose-only AI replies show as narrative instead of an error (`parseAnswerPayload`).
+- **Logging:** the route logs `[query] plan …` (shape only, no values).
+
+### Platform
+- **Cloudflare replaces origin 502/504 responses with its own HTML page** (non-Enterprise), so JSON errors never reached the UI. That caused "unexpected response (HTTP 502)" and "Failed to load".
+  - All 35 sites now use `UPSTREAM_FAILED` (424) from `lib/http-status.ts`; `tests/http-status.test.ts` enforces it.
+  - The metric route hides raw unexpected errors from users.
+- **Database pooling:** `PRISMA_DATABASE_URL` is a direct, integration-managed Prisma Postgres connection (Free plan: 10 direct connections, 5 reserved). A 13-widget dashboard hit "too many connections".
+  - `lib/db.ts` uses **`PRISMA_POOLED_URL`** when set: host `pooled.db.prisma.io`, with `&pgbouncer=true`. It has been live in Vercel since 15 Oct.
+  - Create it via Prisma console → Connection strings → **Create connection string**. A "Quick connect" string wasn't a saved credential and took the site down briefly.
+  - Rollback: delete the variable and redeploy.
+- **Trial allowance:** 50,000 → **300,000** tokens/month (`lib/tier.ts`). One chat question costs about 6–10k tokens.
+
+### Open items
+- ~~Tiles disappear after the first question~~ — **done** in the dashboard chat (`149236f`): once a conversation starts the tiles show as a slim, hideable sticky strip (`OverviewCards` `compact` mode, `SnapshotStrip`). Handoff between the two chats: `claude/BESPOXAI_CFO_DASHBOARD_HANDOFF.md`.
+- **Verified on BC14 NZ only.** NAV 2013–2018 and BC15+ field names and Date_Filter behaviour are unconfirmed; the engine's ge/le fallback and the field check cover some of it.
+- **Chat totals cap:** they are exact up to 5,000 fetched rows and flagged beyond that.
+- **Prisma console tidy-up:** delete any unused connection strings.
+- **Earlier open items:** legal review of the Terms wording; NSL developer licence upload + v3.11 full-export test.
 
 ---
 
@@ -637,6 +720,8 @@ RDP setting and firewall rule can be left — do not disable RDP as it locks out
 - **Provider:** PostgreSQL via Vercel Postgres
 - **ORM:** Prisma — no migrations, uses `db push` or raw SQL
 - **Never run** `prisma migrate`
+- **Runtime connection:** `lib/db.ts` uses `PRISMA_POOLED_URL` (pooled host `pooled.db.prisma.io`, `&pgbouncer=true`) when set, else `PRISMA_DATABASE_URL` (direct, integration-managed, can't be edited). Free plan allows 10 direct connections (5 reserved) — don't remove the pooled variable.
+- **API error statuses:** never 502/504 (Cloudflare replaces them with its own page) — use `UPSTREAM_FAILED` (424) from `lib/http-status.ts`.
 - **No local clone needed** — Vercel runs `prisma generate` on deploy from schema.prisma in GitHub
 
 ### Known Test IDs
@@ -692,37 +777,53 @@ const [val, setVal] = useState('')
 
 ---
 
-## BCAgent v3.2 — Architecture
+## BCAgent — Architecture (v3.16)
 
 ```
-Portal (Vercel) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
-  → cloudflared (Windows service, --protocol http2, runs as SYSTEM)
-  → localhost:9099 (BCAgent scheduled task, runs as BC user account)
-  → localhost:8048/{bcInstance} (BC/NAV OData, NTLM via UseDefaultCredentials)
+Portal (Vercel, behind Cloudflare) → https://{subdomain}-agent.bespoxai.com (Cloudflare tunnel)
+  → cloudflared (Windows service)
+  → localhost:9099 (BCAgent scheduled task — runs as a customer-provided Windows account,
+                    BC service account recommended; NEVER SYSTEM)
+  → http://localhost:{bcPort}/{bcInstance}/ODataV4/... (BC/NAV OData; NTLM via UseDefaultCredentials,
+                    or Basic in NavUserPassword mode)
 
-RDP: https://{subdomain}-rdp.bespoxai.com (separate CF tunnel ingress)
-  → localhost:3389 (Windows RDP)
-  → BespoxAI-Support account (local admin, RDP enabled by installer Step 8)
+RDP: {subdomain}-rdp.bespoxai.com — Cloudflare Access + MFA, only with customer consent (agent 3.6+)
+  → localhost:3389 → BespoxAI-Support account (installer Step 9)
 ```
+
+- The portal sends `/{bcInstance}/ODataV4/...` and `bcBaseUrl` in agent.config.json also carries the instance; the agent's `Get-BcTargetUrl` (3.14+) avoids doubling it. **Agents below 3.14 can't serve proxied OData.**
+- The run account needs "Log on as a batch job", urlacl `http://+:{port}/`, Modify on agent.config.json (installer 3.12+ grants these; `install-state.json` records them) and must be a BC user.
+- Installer step 7b publishes the dashboard pages + CFO pages as `BespoxAI_*` web services; `Uninstall-BespoxAI.bat` (shipped in every installer zip) removes them.
+- Agent version lives in four places — `$AgentVersion` + `$Version` in the PS1, `AGENT_VERSION` in the settings and partner installer routes; `scripts/test-dashboards.ts` checks they match.
 
 ### RDP Connection (Rich's local machine)
 1. Download cloudflared: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
 2. Run: `cloudflared access rdp --hostname {subdomain}-rdp.bespoxai.com --url localhost:3390`
 3. RDP to `localhost:3390` — username `.\BespoxAI-Support`, password from Admin panel
 
-### Known NAV v14 OData Limitations
-- `$orderby=Posting_Date desc` NOT supported on GeneralLedgerEntry, SalesInvoice
-- `$filter` on Posting_Date NOT supported on posted documents
-- `$apply`, `groupby`, `aggregate()` NOT supported
+### Known BC14 OData behaviour (verified on BC14ProdSim, Session 29 unless noted)
+- `$apply`/groupby/aggregate(), lambda operators and date functions in `$filter` are NOT supported — totals are computed in code (`lib/query-aggregate.ts`, dashboard engine).
+- (Older note, GWM Dev) `$orderby=Posting_Date desc` and `$filter` on Posting_Date not supported on some posted-document pages (GeneralLedgerEntry, SalesInvoice).
+- Ledger entry pages (customer/vendor/bank) DO accept `ge`/`le` on `Posting_Date`/`Due_Date` (Edm.Date).
+- `Date_Filter` (FlowFilter) is `Edm.String`: `Date_Filter eq 'YYYY-MM-DD..YYYY-MM-DD'`, ISO dates only.
+- Bank Account List (371) has no balance fields; Bank Account Ledger Entries (372) has no `Bank_Account_Name`.
+- Customer List (22) ignores `Date_Filter` for `Sales_LCY`.
+- Ledger `Customer_Name`/`Vendor_Name` are blank on entries posted before those fields existed.
+- A page's subparts are published as extra entity sets `<service><subpage>` (e.g. `BespoxAI_SalesInvoiceSalesInvLines`).
 
 ---
 
-## CFO Assistant Query Pipeline
+## CFO Assistant Query Pipeline (`app/api/query/route.ts`)
 
-1. **Router** (jsonMode:true) — classify needsData
-2. **Planner** (jsonMode:true) — pick entity + OData params
-3. **OData fetch** — via tunnel → BCAgent → BC
-4. **Answerer** — formats response, addresses user by preferredName ?? firstName
+1. **Router** (jsonMode) — needsData? Steered only by bad queries from the last 14 days (only genuine OData 400s are recorded).
+2. **Catalogue** — `buildCatalogue($metadata, entityConfig)`: only entities the tenant publishes, fields intersected with the page's real properties (`lib/bc-entities.ts`, `lib/bc-metadata.ts`).
+3. **Planner** (jsonMode) — logical entity + OData params, optional join, optional `aggregate` spec.
+4. **Field check** — `lib/odata-fields.ts`: unknown select/orderby fields dropped, unknown filter fields refused (no bad-query record), `X_Name` added for selected `X_No`.
+5. **OData fetch** — via tunnel → BCAgent → BC; non-400 failures return 424.
+6. **Exact totals** — `lib/query-aggregate.ts` over all fetched records (≤5,000); names from master records where ledgers lack them.
+7. **Answerer** (jsonMode) — prose from the EXACT FIGURES block, addresses user by preferredName ?? firstName; display data rebuilt from computed figures; `parseAnswerPayload` tolerates prose-only replies.
+
+Snapshot tiles don't use this pipeline — they call `/api/dashboards/metric`.
 
 ---
 
@@ -766,7 +867,8 @@ original BespoxAI styling.
 
 | Plan | Price | AI Tokens/month |
 |------|-------|-----------------|
-| Free / Trial | Free | 50,000 |
+| Free | Free | 0 |
+| Trial | Free | 300,000 (raised from 50,000 in Session 29) |
 | Starter | $59/mo | 50,000 |
 | Assistant | $299/mo | 300,000 |
 | Manager | $499/mo | 750,000 |

@@ -1,12 +1,29 @@
 # BespoxAI Web Portal — Component Roadmap
 
-**Last Updated:** August 9, 2026 (Session 27)
+**Last Updated:** October 16, 2026 (Session 29). Sessions 28 (Aug 17) and the Sep–Oct security / dashboards / upgrade-readiness work aren't itemised here — see `BESPOXAI_PROJECT_SUMMARY.md` Session 29 "Documentation gap" and `git log`.
 
 ---
 
 ## Current State — What's Live
 
 ### ✅ Production & Working
+
+**Session 29 — BC14ProdSim end to end: BCAgent 3.12–3.16, live CFO dashboards, accurate CFO Assistant** (all live on main, Vercel READY; Rich verified on BC14ProdSim)
+- [x] **BCAgent 3.12** — non-admin, customer-provided run account (service account recommended): batch-logon right, urlacl and config ACL granted; `install-state.json`; install fails if the agent doesn't answer. Website copy updated. (`1b41675`)
+- [x] **BCAgent 3.13** — publishes CFO pages as `BespoxAI_*` web services; `$metadata`-driven entity catalogue; full uninstaller (removes web services + granted rights, restores licence, never deletes the customer account) shipped in every installer zip. Uninstaller tested. (`9b8a9d3`)
+- [x] **BCAgent 3.14** — fixed the long-standing doubled-instance OData forwarding (`/BC140/BC140/ODataV4` → 503); before this no proxied OData call worked on installer-configured agents. (`624971d`)
+- [x] **Installer 3.15** — stops early on an instance name that isn't on the server. (`56bb7d3`)
+- [x] **Installer 3.16 + dashboard engine for BC14** — ISO `Date_Filter` string ranges (ge/le fallback), cash from bank ledger (372), top customers from customer ledger, `$skip` paging + tunnel-safe nextLink. (`8283d50`)
+- [x] **API errors behind Cloudflare** — no route answers 502/504 any more (`UPSTREAM_FAILED` 424, enforced by test); cash names from 371. (`e3af2f2`)
+- [x] **Pooled database connection** — `PRISMA_POOLED_URL` support (`491ae6c`); variable live in Vercel.
+- [x] **Live dashboards verified** — all seven `BC_SERVICES` pages `verified: true`; metric API open to tenant users. (`4394ec2`)
+- [x] **Snapshot tiles on the metric engine** (+ new `ap_outstanding`) and **chat catalogue widened** with customer/vendor/bank ledgers and bank accounts. (`f222893`)
+- [x] **CFO Assistant accuracy** — exact totals computed in code; bad-query memory only for real 400s, 14-day window; planner field check before BC; master-record names when ledger names are blank; identifier/amount/date display fixes. (`4a7a465`, `cf98379`, `693f96d`, `8b9c3cd`, `ca92b80`)
+- [x] **Trial allowance** 50,000 → 300,000 tokens/month. (`4e69b0a`)
+- [x] **Snapshot tiles stay in view after the first question** — slim, hideable sticky strip (dashboard chat, `149236f`).
+- [ ] **Verify on other versions** — field names / Date_Filter behaviour confirmed on BC14 NZ only; NAV 2013–2018 and BC15+ untested.
+- [ ] **NSL developer licence upload + BCAgent 3.11 full-export test** (carried over).
+- [ ] **Legal review of Terms wording** (carried over).
 
 **Session 27 — Marketing site launch** (all live on main)
 - [x] Homepage: perpetual licensing section, interactive demo, founding-customer section, channel-safe copy, NAV-first alignment, partner program CTA

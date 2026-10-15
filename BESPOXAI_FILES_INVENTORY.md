@@ -1,6 +1,6 @@
 # BespoxAI Web Portal — Files & Structure Inventory
 
-**Last Updated: August 17, 2026 (Session 28 — BC Auth Mode mirrored to admin/partner)
+**Last Updated:** October 16, 2026 (Session 29 — BCAgent 3.12–3.16, live CFO dashboards, CFO Assistant accuracy). Files added Sep–Oct for security, dashboards and upgrade readiness are not all itemised here — see `BESPOXAI_PROJECT_SUMMARY.md` Session 29.
 
 ---
 
@@ -48,7 +48,10 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 - Live product at bespoxai.com is a full **Next.js application**
 - **`public/index.html`** is the LIVE homepage
 - AI provider is configurable via admin UI (OpenAI gpt-4o currently active for TestCo1)
-- BCAgent v3.5 — PowerShell HttpListener service, full deployment workflow. **(S28)** Supports Windows/NTLM (default) or Basic/NavUserPassword auth (`Tenant.bcAuthMode`); Basic mode requires a Windows `serviceAccountUser` for the scheduled task identity. `GET /bespoxai/diagnose` checks reachable → authenticated → target company found (agents <3.5 404 — reinstall needed).
+- **(S29) BCAgent v3.16** — runs as a customer-provided account (service account recommended, never SYSTEM; installer grants batch-logon right, urlacl, config ACL); publishes `BespoxAI_*` dashboard + CFO web services (step 7b); fixed doubled-instance OData forwarding (3.14 — older agents can't serve proxied OData); instance-name check (3.15); bank ledger service (3.16). Uninstaller ships in every installer zip.
+- **(S29) API error rule:** never answer 502/504 — Cloudflare replaces them with its own HTML page. Use `UPSTREAM_FAILED` (424) from `lib/http-status.ts`; `tests/http-status.test.ts` enforces it.
+- **(S29) Database:** `lib/db.ts` uses `PRISMA_POOLED_URL` (pooled.db.prisma.io, `&pgbouncer=true`) when set; `PRISMA_DATABASE_URL` is direct and integration-managed.
+- BCAgent (history) — PowerShell HttpListener service, full deployment workflow. **(S28)** Supports Windows/NTLM (default) or Basic/NavUserPassword auth (`Tenant.bcAuthMode`); Basic mode requires a Windows `serviceAccountUser` for the scheduled task identity. `GET /bespoxai/diagnose` checks reachable → authenticated → target company found (agents <3.5 404 — reinstall needed).
 - C/AL export uses **finsql.exe directly** (not Export-NAVApplicationObject — removed in BC14)
 - finsql found via wildcard path search (BC14 paths first, then legacy NAV)
 - finsql writes ANSI/ASCII — read with Get-Content -Raw (not ReadAllBytes+Unicode decode)
@@ -72,7 +75,7 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 - **Org/Repo:** `NavSolutionsNZ/BespoxAI_Web` (renamed from BespokeAI_Web — old URL still redirects)
 - **Branch:** `main`
 - **Sparse checkout (preferred):** fetch only files needed per task
-- **Push command:** `git push origin master:main`
+- **Push:** plain `git push` from Rich's clone at `C:\Dev\BespoxAI_Web` (see `CLAUDE.md`). Claude cloud sessions can't push — they deliver `git format-patch` files; Rich runs `git am` + `git push`.
 - **Remote URL:** `https://{TOKEN}@github.com/NavSolutionsNZ/BespoxAI_Web.git`
 
 ---
@@ -197,13 +200,23 @@ The assignment rule took 3 passes before a full audit caught every surface. It i
 | `github.ts` | Per-customer GitHub repos. |
 | `ai-config.ts` | `getAiConfig()` |
 | `auth.ts` | NextAuth config. JWT includes: tenantId, role, onboardingDone, mustChangePassword, navProduct, persona, firstName, preferredName. |
+| `db.ts` | **(S29)** Prisma client; uses `PRISMA_POOLED_URL` when set (pooled connection), else the schema datasource. |
+| `http-status.ts` | **(S29)** `UPSTREAM_FAILED = 424` — status for "a dependency failed". Never 502/504 (Cloudflare replaces them). |
+| `bc-entities.ts` | CFO Assistant catalogue: logical entities, `CFO_SERVICES` (must match installer `$CfoServices`), `ENTITY_ALIASES` (S29: ledgers + bank → dashboard services), `LINE_PARENTS`, `parseMetadata`, `resolveEntities`, `buildCatalogue`. |
+| `bc-metadata.ts` | Per-tenant `$metadata` via the agent, cached 6 h (5 min after failure); `clearTenantMetadata`. |
+| `query-aggregate.ts` | **(S29)** Exact totals for chat: `sanitizeAggSpec`, `aggregateRecords`, `describeAggregate` (EXACT FIGURES block), `aggregateDisplayData`, `withGroupNames`, `NAME_SOURCES`/`applyGroupNames` (master-record names), `disambiguateLabels`. |
+| `odata-fields.ts` | **(S29)** Planner field check vs `$metadata`: `checkPlanFields` (drop unknown select/orderby, report unknown filter fields), `ensureSelected`, `withNameFields`. |
+| `answer-format.ts` | **(S29)** `parseAnswerPayload` (fenced/wrapped/prose answers), `isIdentifierHeader`, `formatIsoDate`. |
+| `installer-uninstall.ts` | **(S29)** Adds the uninstaller (brand + port preset) to every installer zip; `.bat` lines copy it to `C:\<Brand>\`. |
+| `dashboards/` | Metric engine: `registry.ts` (metrics incl. S29 `ap_outstanding`), `bc-services.ts` (7 pages, all `verified: true` S29; BC14 findings in header), `sources/flowfilter.ts` (live source: ISO Date_Filter + fallback, bank ledger cash, ledger top customers, `$skip` paging, `tunnelNextLink`), `sources/mock.ts`, `executor.ts`, `periods.ts`. |
 
 ### Scripts (`/scripts`)
 
 | File | Purpose |
 |------|---------|
 | `Install-BespoxAI.ps1` | BCAgent v3.5 installer. Step 8: BespoxAI-Support account + RDP enable. $SupportAccountPassword param. Bug fixed v3.2: param inject trailing comma mismatch. agent.config.json version now dynamic. **(S28)** `-BCAuthMode` (Windows\|Basic), `-ServiceAccount`, `-ServiceAccountPassword` params; embedded agent branches OData auth (UseDefaultCredentials vs `Authorization: Basic`); new `/bespoxai/diagnose` endpoint; admin-privilege check in generated `.bat` files switched from `net session` to `IsInRole` (false-negative fix inside containers/lean Server Core). |
-| `Uninstall-BespoxAI.ps1` | Full cleanup. |
+| `Uninstall-BespoxAI.ps1` | Full cleanup. **(S29)** Restores the licence if an export died mid-swap (else stops), removes all `BespoxAI_*` web services and the batch-logon right only if the installer granted it (`install-state.json`); never deletes the run account. Brand/port preset when shipped in the zip. |
+| `test-dashboards.ts` | Dashboard engine tests (`npx tsx scripts/test-dashboards.ts`) + checks installer `$DashboardServices` = `BC_SERVICES` and agent version in all four places. |
 | `Uninstall-BespoxAI.bat` | Right-click Run as Administrator shim. |
 
 ---
@@ -276,15 +289,19 @@ unableToCompleteAt    DateTime?  -- nullable, set when developer marks unable
 |----|------|-----------------|-----------|
 | cmpgqbg8l0001tqej9wpqsx6g | TestCo1 | testco1 | 9099 |
 | cmoqi33pu0000l3b0zusc5hgz | GWM Dev | gwmdev | 8080 |
+| cmsvmzsej0001wi2yxxeq4cbo | Demo Account 1 → BC14ProdSim (S29 test tenant, BC140, CRONUS NZ) | demoaccount1 | 9099 |
 
 ---
 
-## BCAgent v3.5 — Critical Implementation Notes
+## BCAgent v3.16 — Critical Implementation Notes
 
-### Version — FIVE values, all must match, bump every push
-1. `$AgentVersion = '3.5'` in `Install-BespoxAI.ps1`
-2. `$Version = '3.5'` in `Install-BespoxAI.ps1`
-3. `const AGENT_VERSION = '3.5'` in **each** of `app/api/settings/installer/route.ts`, `app/api/admin/installer/[tenantId]/route.ts`, `app/api/partner/tenants/[id]/installer/route.ts`
+### Version — four values, all must match, bump every push (S29: currently 3.16)
+1. `$AgentVersion` in `Install-BespoxAI.ps1`
+2. `$Version` (embedded agent) in `Install-BespoxAI.ps1`
+3. `const AGENT_VERSION` in `app/api/settings/installer/route.ts`
+4. `const AGENT_VERSION` in `app/api/partner/tenants/[id]/installer/route.ts`
+
+(`app/api/admin/installer/[tenantId]/route.ts` has no version constant. `scripts/test-dashboards.ts` fails if the four differ.)
 
 ### RDP Support (Step 8 of installer)
 - Creates `BespoxAI-Support` local account (or updates password if exists)
@@ -334,7 +351,10 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't use `cmoqi33pu0000l3b0zusc5hgz` as the test tenant ID — that's GWM Dev
 - ❌ Don't run `prisma migrate` — use `db push` or raw SQL
 - ❌ Don't use `findUnique` with non-unique/nullable filters (e.g. `{id, active}` or a nullable tenantId/stripeCustomerId) — it throws "needs at least one of id". Use `findFirst`. (Bit us 3× in Session 21: stripe webhook, getTenantById, health.)
-- ❌ Don't use `git push origin main` — use `git push origin master:main`
+- ❌ Don't use the old `git push origin master:main` — the working copy is a normal clone on `main`; plain `git push`
+- ❌ Don't return 502/504 from an API route — Cloudflare swaps in its own HTML page; use `UPSTREAM_FAILED` (424)
+- ❌ Don't let the AI answerer add numbers up — totals come from `lib/query-aggregate.ts` (chat) or the metric engine (dashboards)
+- ❌ Don't delete `PRISMA_POOLED_URL` in Vercel unless rolling back — the direct connection allows only ~5 app connections
 - ❌ Don't use old repo URL (BespokeAI_Web) — use BespoxAI_Web
 - ❌ Don't use `&&` shortcircuit JSX in large functions — use `cond ? <JSX/> : null`
 - ❌ Don't use template literals `${var}` in JSX — use string concatenation
@@ -349,7 +369,7 @@ On successful deploy to test → requirement status set to 'in_uat'
 - ❌ Don't push changes without explicit confirmation from Rich
 - ❌ Don't assume timeout on deploy errors — check Vercel MCP logs first
 - ❌ Don't implement significant architectural changes without discussion first
-- ❌ Don't bump version in only one place — always ALL FIVE: $AgentVersion + $Version in PS1 + AGENT_VERSION in **each** of the three installer routes (settings, admin, partner)
+- ❌ Don't bump version in only one place — always all four: $AgentVersion + $Version in PS1 + AGENT_VERSION in the settings and partner installer routes
 - ❌ Don't address users by full name — use preferredName ?? firstName only
 - ❌ Don't use router.replace for tab navigation — use router.push for history
 - ❌ Don't call `getServerSession` directly in new API routes once `lib/api-auth.ts` is rolled out — use its `requireUser` / `requireSuperadmin` / `requireSuperadminOrDeveloper` / `requireTenant` guards (see Roadmap H1). Until rollout, match the guard style of the nearest existing route.
