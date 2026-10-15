@@ -7,6 +7,7 @@ import {
   LineChart, Line,
 } from 'recharts'
 import type { DisplayHint, StructuredData } from '@/app/api/query/route'
+import { isIdentifierHeader } from '@/lib/answer-format'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -118,7 +119,8 @@ function SortableTable({ data }: { data: StructuredData }) {
     return sortAsc ? cmp : -cmp
   })
 
-  const numericCols = columns.map((_, i) => isNumericCol(rows, i))
+  // Identifier columns (Invoice No, Entry No, codes) show as text: no thousands separators
+  const numericCols = columns.map((col, i) => !isIdentifierHeader(col) && isNumericCol(rows, i))
 
   return (
     <div style={{ marginTop: 18, overflowX: 'auto' }}>

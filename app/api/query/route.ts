@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
+import { parseAnswerPayload } from '@/lib/answer-format'
 import { getTenantMetadata } from '@/lib/bc-metadata'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
@@ -598,7 +599,8 @@ kpi:    { "kpis": [{ "label": "Total AR", "value": "$1,234,567.00", "subtext": "
 table / bar_chart: { "columns": ["Customer", "Balance ($)"], "rows": [["Acme Ltd", 142000.00]] }
 line_chart: { "columns": ["Month", "Amount ($)"], "rows": [["Jan 2024", 54000]] }
 narrative: null
-Numbers in rows must be raw numeric — no $ signs or commas.`,
+Numbers in rows must be raw numeric — no $ signs or commas.
+Identifiers are text, not numbers: document, invoice, entry, account and item numbers and codes stay strings exactly as in the data (e.g. "103027", "2910").`,
         },
         ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
         {
@@ -606,17 +608,12 @@ Numbers in rows must be raw numeric — no $ signs or commas.`,
           content: `Question: ${question}\n\nBC data (${recordsForClaude.length} records from ${plan.entity}):\n${JSON.stringify(recordsForClaude, null, 2)}`,
         },
       ],
+      { jsonMode: true },
     )
 
-    const raw = answerRes.content
     _answerResUsage = answerRes.usage
-    const clean = raw.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
-    payload = JSON.parse(clean)
-
-    // Defensive fallbacks
-    payload.answer      = payload.answer      ?? 'No answer generated.'
-    payload.displayHint = payload.displayHint ?? 'narrative'
-    payload.data        = payload.data        ?? null
+    // Tolerates fenced/wrapped JSON; prose-only replies become a narrative answer
+    payload = parseAnswerPayload(answerRes.content) as AnswerPayload
   } catch (err: any) {
     return NextResponse.json(
       { error: `Answer generation failed: ${err.message}`, step: 'answerer' },

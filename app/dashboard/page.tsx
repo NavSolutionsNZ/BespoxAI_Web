@@ -1435,7 +1435,8 @@ function OverviewCards({ tenantName, onQuery }: { tenantName: string; onQuery: (
             return { label: q.label, value: kpi.value, sub: kpi.subtext, query: q.question }
           }
           // Fallback — extract first number-like thing from answer text
-          const match = (data?.answer ?? '').match(/\$[\d,]+(\.\d+)?|[\d,]+(\.\d+)?\s*(million|thousand|k|m)?/i)
+          // Must contain a digit — a bare comma ("Unfortunately, …") isn't a figure
+          const match = (data?.answer ?? '').match(/-?\$\s?\d[\d,]*(\.\d+)?|\d[\d,]*(\.\d+)?\s*(million|thousand|k|m)?\b/i)
           return {
             label: q.label,
             value: match ? match[0] : '—',
