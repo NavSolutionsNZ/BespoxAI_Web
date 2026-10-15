@@ -167,8 +167,11 @@ function inferLabelField(records: any[], spec: AggSpec): string | null {
  */
 export function withGroupNames(params: string, spec: AggSpec, entityFields: string[]): { params: string; spec: AggSpec } {
   if (!spec.groupBy || spec.period) return { params, spec }
-  const nf = spec.labelField ?? nameFieldFor(spec.groupBy)
-  if (!nf || !entityFields.includes(nf)) return { params, spec }
+  // The planner's own labelField only counts if it's a different field the page
+  // has (it sometimes repeats the group field, e.g. Customer_No).
+  const explicit = spec.labelField && spec.labelField !== spec.groupBy && entityFields.includes(spec.labelField) ? spec.labelField : null
+  const nf = explicit ?? nameFieldFor(spec.groupBy)
+  if (!nf || !entityFields.includes(nf)) return { params, spec: { ...spec, labelField: null } }
   const sel = /(^|&)\$select=([^&]*)/i.exec(params)
   const out = sel && !sel[2].split(',').map(f => f.trim()).includes(nf)
     ? params.replace(sel[0], sel[1] + '$select=' + sel[2] + ',' + nf)

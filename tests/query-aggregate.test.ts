@@ -106,3 +106,13 @@ test('grouping by a No. field shows the Name field when records carry it', async
   assert.equal(wb.params, '$select=Bank_Account_No,Amount_LCY')
   assert.equal(wb.spec.labelField, null)
 })
+
+test('a labelField that repeats the group field falls back to the Name field', async () => {
+  const { withGroupNames } = await import('../lib/query-aggregate')
+  const spec = sanitizeAggSpec({ groupBy: 'Customer_No', labelField: 'Customer_No', measures: [{ field: 'Remaining_Amt_LCY', op: 'sum', label: 'Overdue' }] })!
+  const w = withGroupNames('$select=Customer_No,Remaining_Amt_LCY', spec, ['Customer_No', 'Customer_Name', 'Remaining_Amt_LCY'])
+  assert.equal(w.spec.labelField, 'Customer_Name')
+  assert.match(w.params, /Customer_Name/)
+  const bad = sanitizeAggSpec({ groupBy: 'Bank_Account_No', labelField: 'Bank_Name', measures: [{ field: 'Amount_LCY', op: 'sum', label: 'B' }] })!
+  assert.equal(withGroupNames('$select=Bank_Account_No,Amount_LCY', bad, ['Bank_Account_No', 'Amount_LCY']).spec.labelField, null)
+})

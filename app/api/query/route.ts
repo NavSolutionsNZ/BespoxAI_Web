@@ -7,6 +7,7 @@ import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
 import { parseAnswerPayload } from '@/lib/answer-format'
 import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, type AggResult } from '@/lib/query-aggregate'
 import { getTenantMetadata } from '@/lib/bc-metadata'
+import { checkPlanFields, ensureSelected } from '@/lib/odata-fields'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
 import { getAiConfig } from '@/lib/ai-config'
@@ -284,7 +285,8 @@ needsData=false for: accounting concepts, BC how-to questions, ratio definitions
   // Only entities this tenant actually publishes (BespoxAI_ services from the
   // installer, or the standard names), with the fields its pages expose. The
   // planner works with logical names; they're mapped to OData names below.
-  const catalogue = buildCatalogue(await getTenantMetadata(tenant), tenant.entityConfig)
+  const tenantMeta = await getTenantMetadata(tenant)
+  const catalogue = buildCatalogue(tenantMeta, tenant.entityConfig)
   if (catalogue.length === 0) {
     return NextResponse.json({
       error: 'No Business Central data is published for BespoxAI yet. Re-run the latest BespoxAI installer, which publishes the web services it needs, or ask your administrator to enable them under Settings → Data Entities.',
@@ -424,10 +426,14 @@ For time-series / "by month" / "over last N months" / trend questions:
   const AGG_TOP = 5000
   if (aggSpec) {
     // Grouping by Customer_No etc.: fetch and show the name, not just the number.
-    const fields = catalogue.find(c => c.logical === plan.entity)?.fields ?? []
+    const primaryEntitySet = catalogue.find(c => c.logical === plan.entity)?.entitySet
+    const fields = (primaryEntitySet && tenantMeta?.fields[primaryEntitySet]?.length)
+      ? tenantMeta.fields[primaryEntitySet]
+      : catalogue.find(c => c.logical === plan.entity)?.fields ?? []
     const named = withGroupNames(plan.params ?? '', aggSpec, fields)
-    plan.params = named.params
     aggSpec = named.spec
+    // The fields being totalled or grouped must be fetched.
+    plan.params = ensureSelected(named.params, [aggSpec.groupBy, ...aggSpec.measures.map(m => m.field)], fields)
     plan.params = setTop(plan.params ?? '', AGG_TOP)
     if (plan.secondParams) plan.secondParams = setTop(plan.secondParams, AGG_TOP * 2)
   }
@@ -439,6 +445,27 @@ For time-series / "by month" / "over last N months" / trend questions:
   const secondSet  = plan.secondEntity ? entitySetFor(plan.secondEntity) : undefined
   if (!primarySet || (plan.secondEntity && !secondSet)) {
     return NextResponse.json({ error: 'That data is not available for this company.', step: 'planner' }, { status: 400 })
+  }
+
+  // Check the planner's fields against the page's real ones before asking BC.
+  // Unknown $select/$orderby fields are dropped; an unknown $filter field means
+  // the planner invented it — reply without recording a "bad query", since the
+  // question itself is fine.
+  const actualFor = (set?: string) => (set && tenantMeta?.fields[set]?.length ? tenantMeta.fields[set] : null)
+  const primaryCheck = checkPlanFields(plan.params ?? '', actualFor(primarySet))
+  plan.params = primaryCheck.params
+  const secondCheck = plan.secondParams ? checkPlanFields(plan.secondParams, actualFor(secondSet)) : null
+  if (secondCheck) plan.secondParams = secondCheck.params
+  const unknownFilterFields = [...primaryCheck.unknownInFilter, ...(secondCheck?.unknownInFilter ?? [])]
+  if (unknownFilterFields.length) {
+    return NextResponse.json({
+      answer: 'I tried to filter on ' + (unknownFilterFields.length === 1 ? 'a field' : 'fields') + ' that ' + plan.entity +
+        ' doesn\'t have (' + unknownFilterFields.join(', ') + '), so I didn\'t run the query. Please ask again — naming the customer, vendor or period you mean usually helps.',
+      displayHint: 'narrative' as DisplayHint,
+      data: null,
+      suggestedQueries: [],
+      meta: { entity: plan.entity, reasoning: 'Planner used unknown filter fields: ' + unknownFilterFields.join(', '), recordCount: 0, odataUrl: null },
+    })
   }
 
   const odataUrl = buildODataUrl(tenant, primarySet, plan.params)
