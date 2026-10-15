@@ -3,7 +3,7 @@
  * into BaseCorpus / BaseObject. Source stays in git; only summaries, hashes,
  * file paths and blob SHAs go to Postgres.
  *
- * Usage (from the BespoxAI_Web folder, with DATABASE_URL set):
+ * Usage (from the BespoxAI_Web folder, with PRISMA_DATABASE_URL and POSTGRES_URL in .env):
  *
  *   npx tsx scripts/corpus/ingest-base-corpus.ts \
  *     --repo "C:\Dev\bespoxai-base-corpus" \
@@ -113,7 +113,9 @@ async function main() {
   if (!(prisma as any).baseCorpus) {
     throw new Error('The local Prisma client predates the BaseCorpus model — run "npx prisma generate" and try again.')
   }
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set.')
+  if (!process.env.PRISMA_DATABASE_URL) {
+    throw new Error('PRISMA_DATABASE_URL is not set — copy it and POSTGRES_URL from Vercel → Settings → Environment Variables into .env')
+  }
   try {
     const data = {
       product, versionTag, repoPath: relDir, repoCommit: commit, sourceNote,
