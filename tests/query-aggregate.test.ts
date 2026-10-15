@@ -116,3 +116,15 @@ test('a labelField that repeats the group field falls back to the Name field', a
   const bad = sanitizeAggSpec({ groupBy: 'Bank_Account_No', labelField: 'Bank_Name', measures: [{ field: 'Amount_LCY', op: 'sum', label: 'B' }] })!
   assert.equal(withGroupNames('$select=Bank_Account_No,Amount_LCY', bad, ['Bank_Account_No', 'Amount_LCY']).spec.labelField, null)
 })
+
+test('blank ledger names are filled from the master record', async () => {
+  const { unnamedGroupKeys, applyGroupNames, noFilter, NAME_SOURCES } = await import('../lib/query-aggregate')
+  const recs = [{ Customer_No: '30000', Customer_Name: '', Amt: 5 }, { Customer_No: '01454545', Customer_Name: '', Amt: 3 }, { Customer_No: "O'B", Customer_Name: 'Named', Amt: 1 }]
+  const a = aggregateRecords(recs, sanitizeAggSpec({ groupBy: 'Customer_No', labelField: 'Customer_Name', measures: [{ field: 'Amt', op: 'sum', label: 'Overdue' }] })!)
+  assert.deepEqual(unnamedGroupKeys(a), ['30000', '01454545'])
+  assert.equal(noFilter(["30000", "O'B"]), "No eq '30000' or No eq 'O''B'")
+  applyGroupNames(a, new Map([['30000', 'John Haddock Insurance Co.'], ['01454545', 'New Concepts Furniture']]), 'Customer')
+  assert.deepEqual(a.groups.map(g => g.label), ['John Haddock Insurance Co.', 'New Concepts Furniture', 'Named'])
+  assert.equal(a.groupLabel, 'Customer')
+  assert.equal(NAME_SOURCES.Vendor_No.logical, 'Vendor')
+})

@@ -62,8 +62,9 @@ export const BC_SERVICES = {
     usesDateFilter: false, verified: true,
   },
   customers: {
-    // Not read by any metric now — page 22 ignores Date_Filter for Sales (LCY)
-    // (see above). Still published; kept for customer lookups.
+    // Names only — page 22 ignores Date_Filter for Sales (LCY) (see above), and
+    // ledger Customer_Name is blank on older entries, so top customers takes
+    // names from here.
     serviceName: 'BespoxAI_Customers', pageId: 22, pageName: 'Customer List',
     fields: ['No', 'Name'],
     usesDateFilter: false, verified: true,

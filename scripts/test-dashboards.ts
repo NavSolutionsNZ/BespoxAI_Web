@@ -277,6 +277,13 @@ async function main() {
     const u = decodeURIComponent(f.urls[0])
     assert.ok(u.includes('/BespoxAI_CustLedgerEntries?') && u.includes('Posting_Date ge 2026-01-01 and Posting_Date le 2026-10-13'), u)
   })
+  await test('top customers take names from the Customer List when ledger names are blank', async () => {
+    const cle = [{ Customer_No: '30000', Customer_Name: '', Sales_LCY: 900 }, { Customer_No: '10000', Customer_Name: '', Sales_LCY: 300 }]
+    const customers = [{ No: '30000', Name: 'John Haddock Insurance Co.' }, { No: '10000', Name: 'The Cannon Group PLC' }]
+    const f = fakeFetcher(url => ({ body: { value: url.includes('/BespoxAI_Customers?') ? customers : cle } }))
+    const r = await fetchMetric(createFlowFilterSource(tenant, f), 'top_customers', { period: 'ytd' }, opts)
+    assert.deepEqual(r.breakdown!.rows.map(x => x.label), ['John Haddock Insurance Co.', 'The Cannon Group PLC'])
+  })
   await test('fiscal calendar loads from Accounting Periods; falls back to calendar on 404', async () => {
     const f = fakeFetcher(() => ({ body: { value: [
       { Starting_Date: '2025-04-01', New_Fiscal_Year: true },

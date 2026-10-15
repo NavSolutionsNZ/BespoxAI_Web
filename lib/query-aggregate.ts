@@ -229,3 +229,41 @@ export function aggregateDisplayData(a: AggResult, displayHint: string): any | n
   }
   return null
 }
+
+/**
+ * Where the name for a grouped No. field lives when the records themselves
+ * don't carry it. BC14's Cust./Vendor Ledger Entry have a Customer_Name /
+ * Vendor_Name field, but entries posted before it existed (e.g. all CRONUS
+ * demo data) leave it blank — so look the name up on the master record.
+ */
+export const NAME_SOURCES: Record<string, { logical: string; nameField: string }> = {
+  Customer_No:          { logical: 'Customer', nameField: 'Name' },
+  Sell_to_Customer_No:  { logical: 'Customer', nameField: 'Name' },
+  Bill_to_Customer_No:  { logical: 'Customer', nameField: 'Name' },
+  Vendor_No:            { logical: 'Vendor', nameField: 'Name' },
+  Buy_from_Vendor_No:   { logical: 'Vendor', nameField: 'Name' },
+  Pay_to_Vendor_No:     { logical: 'Vendor', nameField: 'Name' },
+  Item_No:              { logical: 'Item', nameField: 'Description' },
+  Bank_Account_No:      { logical: 'BankAccount', nameField: 'Name' },
+}
+
+/** Keys of the shown groups that still have no name (label is just the key). */
+export function unnamedGroupKeys(a: AggResult): string[] {
+  return a.groups.filter(g => g.key && g.label === g.key).map(g => g.key)
+}
+
+/** Relabels unnamed groups from a No. → name map; returns the same object. */
+export function applyGroupNames(a: AggResult, names: Map<string, string>, groupLabel?: string): AggResult {
+  let changed = false
+  for (const g of a.groups) {
+    const n = names.get(g.key)?.trim()
+    if (g.label === g.key && n) { g.label = n; changed = true }
+  }
+  if (changed && groupLabel) a.groupLabel = groupLabel
+  return a
+}
+
+/** OData filter selecting master records by No.: "No eq 'A' or No eq 'B'". */
+export function noFilter(keys: string[], keyField = 'No'): string {
+  return keys.map(k => keyField + " eq '" + k.replace(/'/g, "''") + "'").join(' or ')
+}

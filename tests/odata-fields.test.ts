@@ -42,3 +42,12 @@ test('ensureSelected adds needed fields the page has, only to an existing $selec
   assert.equal(ensureSelected('$top=5&$select=No', ['Sell_to_Customer_Name', 'Nope'], INV), '$top=5&$select=No,Sell_to_Customer_Name')
   assert.equal(ensureSelected('$top=5', ['Sell_to_Customer_Name'], INV), '$top=5')
 })
+
+test('a selected X_No brings its X_Name along when the page has it', async () => {
+  const { withNameFields } = await import('../lib/odata-fields')
+  const CLE = ['Entry_No', 'Customer_No', 'Customer_Name', 'Remaining_Amt_LCY']
+  assert.equal(withNameFields('$select=Entry_No,Customer_No,Remaining_Amt_LCY', CLE), '$select=Entry_No,Customer_No,Remaining_Amt_LCY,Customer_Name')
+  assert.equal(withNameFields('$select=Sell_to_Customer_No', INV), '$select=Sell_to_Customer_No,Sell_to_Customer_Name')
+  assert.equal(withNameFields('$top=5', CLE), '$top=5')                                  // no $select → all fields anyway
+  assert.equal(withNameFields('$select=Bank_Account_No,Amount_LCY', ['Bank_Account_No', 'Amount_LCY']), '$select=Bank_Account_No,Amount_LCY')
+})

@@ -5,9 +5,9 @@ import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
 import { parseAnswerPayload } from '@/lib/answer-format'
-import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, type AggResult } from '@/lib/query-aggregate'
+import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, NAME_SOURCES, unnamedGroupKeys, applyGroupNames, noFilter, type AggResult } from '@/lib/query-aggregate'
 import { getTenantMetadata } from '@/lib/bc-metadata'
-import { checkPlanFields, ensureSelected } from '@/lib/odata-fields'
+import { checkPlanFields, ensureSelected, withNameFields } from '@/lib/odata-fields'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
 import { getAiConfig } from '@/lib/ai-config'
@@ -453,9 +453,16 @@ For time-series / "by month" / "over last N months" / trend questions:
   // question itself is fine.
   const actualFor = (set?: string) => (set && tenantMeta?.fields[set]?.length ? tenantMeta.fields[set] : null)
   const primaryCheck = checkPlanFields(plan.params ?? '', actualFor(primarySet))
-  plan.params = primaryCheck.params
+  plan.params = withNameFields(primaryCheck.params, actualFor(primarySet))
   const secondCheck = plan.secondParams ? checkPlanFields(plan.secondParams, actualFor(secondSet)) : null
   if (secondCheck) plan.secondParams = secondCheck.params
+  // Shape of the plan only (no values) — for diagnosing planner behaviour.
+  console.log('[query] plan', JSON.stringify({
+    entity: plan.entity, second: plan.secondEntity ?? null,
+    aggregate: aggSpec ? { groupBy: aggSpec.groupBy, period: aggSpec.period, labelField: aggSpec.labelField, measures: aggSpec.measures.map(m => m.op + ':' + (m.field ?? '')) } : null,
+    select: (/\$select=([^&]*)/i.exec(plan.params ?? '')?.[1] ?? '*'),
+    droppedFields: primaryCheck.dropped,
+  }))
   const unknownFilterFields = [...primaryCheck.unknownInFilter, ...(secondCheck?.unknownInFilter ?? [])]
   if (unknownFilterFields.length) {
     return NextResponse.json({
@@ -633,6 +640,21 @@ Return JSON:
   if (aggSpec) {
     agg = aggregateRecords(rawRecords, aggSpec)
     aggIncomplete = fetchedCount >= AGG_TOP
+    // Groups still labelled only by their No. (ledger name fields are blank on
+    // older entries): look the names up on the customer/vendor/item record.
+    const src = aggSpec.groupBy && !aggSpec.period ? NAME_SOURCES[aggSpec.groupBy] : undefined
+    const masterSet = src ? catalogue.find(c => c.logical === src.logical)?.entitySet : undefined
+    const missing = agg ? unnamedGroupKeys(agg).slice(0, 50) : []
+    if (src && masterSet && missing.length) {
+      try {
+        const url = buildODataUrl(tenant, masterSet, '$top=' + missing.length + '&$select=No,' + src.nameField + '&$filter=' + encodeURIComponent(noFilter(missing)))
+        const r = await fetch(url, { headers: { 'X-BespoxAI-Key': tenant.apiKey, Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) })
+        if (r.ok) {
+          const rows: any[] = (await r.json())?.value ?? []
+          applyGroupNames(agg, new Map(rows.map(x => [String(x.No ?? ''), String(x[src.nameField] ?? '')])), src.logical === 'Item' ? 'Item' : src.logical === 'BankAccount' ? 'Bank account' : src.logical)
+        }
+      } catch { /* names are a nicety — keep the numbers */ }
+    }
   }
 
   // ── Step 3: Answer — Claude produces natural language + structured data ──

@@ -86,3 +86,18 @@ export function ensureSelected(params: string, needed: (string | null | undefine
     return add.length ? p.key + '=' + [...have, ...add].join(',') : p.raw
   }).join('&')
 }
+
+/**
+ * For every selected X_No (Customer_No, Vendor_No, Sell_to_Customer_No…) whose
+ * page also has X_Name, select the name too — so tables and charts can show
+ * "John Haddock Insurance Co." rather than "30000", whoever builds them.
+ */
+export function withNameFields(params: string, actualFields: string[] | null | undefined): string {
+  if (!actualFields || !actualFields.length) return params
+  const sel = splitParams(params).find(p => p.key.toLowerCase() === '$select')
+  if (!sel) return params
+  const names = sel.value.split(',').map(f => f.trim())
+    .filter(f => /_No$/.test(f))
+    .map(f => f.replace(/_No$/, '_Name'))
+  return ensureSelected(params, names, actualFields)
+}

@@ -302,11 +302,18 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
             e.value += num(r.Sales_LCY)
             byCust.set(k, e)
           }
-          const ranked = Array.from(byCust.values())
-            .filter(r => r.value !== 0)
-            .sort((a, b) => b.value - a.value)
+          const ranked = Array.from(byCust.entries())
+            .filter(([, r]) => r.value !== 0)
+            .sort((a, b) => b[1].value - a[1].value)
             .slice(0, Math.min(Math.max(params.top ?? 10, 1), 50))
-          return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: ranked }, provenance: prov('Customer Ledger Entries, Sales (LCY) by customer for entries posted in the period, ranked.', period) }
+          // Customer_Name is blank on ledger entries posted before BC14 had the
+          // field (all CRONUS demo data) — take names from the Customer List.
+          if (ranked.some(([k, r]) => r.label === k)) {
+            const names = new Map<string, string>()
+            for (const cu of await readService(c, 'customers', { select: ['No', 'Name'] })) names.set(String(cu.No ?? ''), String(cu.Name ?? ''))
+            for (const [k, r] of ranked) if (r.label === k && names.get(k)) r.label = names.get(k)!
+          }
+          return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: ranked.map(([, r]) => r) }, provenance: prov('Customer Ledger Entries, Sales (LCY) by customer for entries posted in the period, ranked. Names from the Customer List where the ledger has none.', period) }
         }
       }
       throw new MetricSourceError('not_supported', 'Metric ' + metricId + ' is not implemented by the FlowFilter source.')
