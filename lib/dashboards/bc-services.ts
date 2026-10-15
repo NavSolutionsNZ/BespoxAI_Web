@@ -14,6 +14,8 @@
  *     2022 and Jan 2023), so top customers sums Customer Ledger Entries by
  *     Posting Date instead (Sales_LCY and Customer_Name are on page 25).
  * `verified` is set per page once its fields and filters are confirmed live.
+ * All seven verified 15 Oct 2026 on BC14 NZ (BC14ProdSim, installer 3.16):
+ * every widget of the default CFO pack loaded through /admin/dashboards live.
  *
  * When Query objects arrive, they replace these pages behind the same metric
  * IDs (sources/query-object.ts) — nothing above the source layer changes.
@@ -31,40 +33,40 @@ export const BC_SERVICES = {
   glAccounts: {
     serviceName: 'BespoxAI_GLAccounts', pageId: 16, pageName: 'Chart of Accounts',
     fields: ['No', 'Name', 'Income_Balance', 'Account_Type', 'Account_Category', 'Net_Change'],
-    usesDateFilter: true, verified: false,
+    usesDateFilter: true, verified: true,
   },
   bankAccounts: {
     // Names only — page 371 has no balance fields (see above).
     serviceName: 'BespoxAI_BankAccounts', pageId: 371, pageName: 'Bank Account List',
     fields: ['No', 'Name', 'Currency_Code'],
-    usesDateFilter: false, verified: false,
+    usesDateFilter: false, verified: true,
   },
   bankLedgerEntries: {
     serviceName: 'BespoxAI_BankLedgerEntries', pageId: 372, pageName: 'Bank Account Ledger Entries',
     fields: ['Entry_No', 'Bank_Account_No', 'Posting_Date', 'Amount_LCY'],   // no Bank_Account_Name on BC14's page 372
-    usesDateFilter: false, verified: false,
+    usesDateFilter: false, verified: true,
   },
   custLedgerEntries: {
     serviceName: 'BespoxAI_CustLedgerEntries', pageId: 25, pageName: 'Customer Ledger Entries',
     fields: ['Entry_No', 'Customer_No', 'Customer_Name', 'Posting_Date', 'Due_Date', 'Remaining_Amt_LCY', 'Sales_LCY', 'Open'],
-    usesDateFilter: false, verified: false,
+    usesDateFilter: false, verified: true,
   },
   vendLedgerEntries: {
     serviceName: 'BespoxAI_VendLedgerEntries', pageId: 29, pageName: 'Vendor Ledger Entries',
     fields: ['Entry_No', 'Vendor_No', 'Due_Date', 'Remaining_Amt_LCY', 'Open'],
-    usesDateFilter: false, verified: false,
+    usesDateFilter: false, verified: true,
   },
   accountingPeriods: {
     serviceName: 'BespoxAI_AccountingPeriods', pageId: 100, pageName: 'Accounting Periods',
     fields: ['Starting_Date', 'New_Fiscal_Year'],
-    usesDateFilter: false, verified: false,
+    usesDateFilter: false, verified: true,
   },
   customers: {
     // Not read by any metric now — page 22 ignores Date_Filter for Sales (LCY)
     // (see above). Still published; kept for customer lookups.
     serviceName: 'BespoxAI_Customers', pageId: 22, pageName: 'Customer List',
     fields: ['No', 'Name'],
-    usesDateFilter: false, verified: false,
+    usesDateFilter: false, verified: true,
   },
 } satisfies Record<string, BcServiceDef>
 

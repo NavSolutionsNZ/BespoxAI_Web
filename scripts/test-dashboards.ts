@@ -183,6 +183,13 @@ async function main() {
     await assert.rejects(fetchMetric(createFlowFilterSource(tenant, f), 'cash_total', undefined, opts),
       (e: any) => e instanceof MetricSourceError && e.code === 'service_not_published')
   })
+  await test('bank accounts that share a name are told apart by No.', async () => {
+    const entries = [{ Bank_Account_No: 'WWB-OP', Amount_LCY: 10 }, { Bank_Account_No: 'WWB-USD', Amount_LCY: 5 }, { Bank_Account_No: 'NBA', Amount_LCY: 1 }]
+    const accounts = [{ No: 'WWB-OP', Name: 'World Wide Bank' }, { No: 'WWB-USD', Name: 'World Wide Bank' }, { No: 'NBA', Name: 'New Bank of Auckland' }]
+    const f = fakeFetcher(url => ({ body: { value: url.includes('/BespoxAI_BankAccounts?') ? accounts : entries } }))
+    const r = await fetchMetric(createFlowFilterSource(tenant, f), 'cash_by_account', undefined, opts)
+    assert.deepEqual(r.breakdown!.rows.map(x => x.label), ['World Wide Bank (WWB-OP)', 'World Wide Bank (WWB-USD)', 'New Bank of Auckland'])
+  })
   await test('nextLink is re-pointed at the tunnel; other paths are refused', async () => {
     // BC names its own address in nextLink — the portal must go through the tunnel instead.
     const bcNext = "http://localhost:7048/NAV/ODataV4/Company('CRONUS')/BespoxAI_BankLedgerEntries?$skiptoken=2"

@@ -240,7 +240,13 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
           // Names from the Bank Account List — page 372 has no account name on BC14.
           const names = new Map<string, string>()
           for (const a of await readService(c, 'bankAccounts', { select: ['No', 'Name'] })) names.set(String(a.No ?? ''), String(a.Name ?? ''))
-          const list = Array.from(byAcc.entries()).map(([k, value]) => ({ label: names.get(k) || k, value }))
+          // Two accounts can share a name (CRONUS has two "World Wide Bank") — add the No. then.
+          const nameCount = new Map<string, number>()
+          byAcc.forEach((_, k) => { const n = names.get(k) || k; nameCount.set(n, (nameCount.get(n) ?? 0) + 1) })
+          const list = Array.from(byAcc.entries()).map(([k, value]) => {
+            const n = names.get(k) || k
+            return { label: (nameCount.get(n) ?? 0) > 1 && n !== k ? n + ' (' + k + ')' : n, value }
+          })
           list.sort((a, b) => b.value - a.value)
           return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: list }, provenance: prov(method + ' Names from the Bank Account List.', asAt) }
         }
