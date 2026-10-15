@@ -41,7 +41,7 @@ export const BC_SERVICES = {
   },
   bankLedgerEntries: {
     serviceName: 'BespoxAI_BankLedgerEntries', pageId: 372, pageName: 'Bank Account Ledger Entries',
-    fields: ['Entry_No', 'Bank_Account_No', 'Bank_Account_Name', 'Posting_Date', 'Amount_LCY'],
+    fields: ['Entry_No', 'Bank_Account_No', 'Posting_Date', 'Amount_LCY'],   // no Bank_Account_Name on BC14's page 372
     usesDateFilter: false, verified: false,
   },
   custLedgerEntries: {

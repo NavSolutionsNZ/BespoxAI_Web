@@ -13,6 +13,7 @@ import { prisma } from '@/lib/db'
 import { getAiConfig } from '@/lib/ai-config'
 import { logAiUsage } from '@/lib/ai-usage'
 import { buildTenantContext } from '@/lib/tenant-context'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic    = 'force-dynamic'
 export const maxDuration = 60
@@ -229,7 +230,7 @@ GUIDELINES:
     if (!upstream.ok) {
       const err = await upstream.text()
       console.error(`[dev-notes] Anthropic API error ${upstream.status} — model: ${cfg.model} — ${err}`)
-      return NextResponse.json({ error: `Anthropic error: ${upstream.status} — ${err}` }, { status: 502 })
+      return NextResponse.json({ error: `Anthropic error: ${upstream.status} — ${err}` }, { status: UPSTREAM_FAILED })
     }
 
     // Intercept SSE to capture token counts, pass everything through unchanged

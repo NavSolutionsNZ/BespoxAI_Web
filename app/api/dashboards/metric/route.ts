@@ -10,6 +10,7 @@ import { mockSource } from '@/lib/dashboards/sources/mock'
 import { agentFetcher, createFlowFilterSource, loadFiscalCalendar } from '@/lib/dashboards/sources/flowfilter'
 import { effectiveParams } from '@/lib/dashboards/validate'
 import { MetricSourceError } from '@/lib/dashboards/types'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -70,8 +71,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result })
   } catch (e: any) {
     if (e instanceof MetricSourceError) {
-      return NextResponse.json({ error: e.code, message: e.message, detail: isSuperadmin ? e.detail : undefined }, { status: 502 })
+      return NextResponse.json({ error: e.code, message: e.message, detail: isSuperadmin ? e.detail : undefined }, { status: UPSTREAM_FAILED })
     }
-    return NextResponse.json({ error: 'metric_failed', message: e?.message ?? 'Failed' }, { status: 400 })
+    // Unexpected (e.g. a database error): don't show raw internals such as role names to users.
+    console.error('[dashboards/metric]', metricId, e)
+    return NextResponse.json({
+      error: 'metric_failed',
+      message: 'This figure couldn\'t be loaded. Try again in a moment.',
+      detail: isSuperadmin ? e?.message : undefined,
+    }, { status: 500 })
   }
 }

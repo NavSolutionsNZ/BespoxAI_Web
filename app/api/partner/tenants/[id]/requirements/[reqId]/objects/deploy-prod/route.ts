@@ -31,6 +31,7 @@ import {
 } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
 import { notifyCustomerProdDeployed } from '@/lib/notifications'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60
@@ -99,13 +100,13 @@ export async function POST(
       }),
     })
   } catch (e: any) {
-    return NextResponse.json({ error: 'Could not reach BCAgent: ' + (e.message ?? 'network error') }, { status: 502 })
+    return NextResponse.json({ error: 'Could not reach BCAgent: ' + (e.message ?? 'network error') }, { status: UPSTREAM_FAILED })
   }
 
   if (!agentRes.ok) {
     let msg = 'BCAgent returned ' + agentRes.status
     try { const e = await agentRes.json(); msg = e.error ?? msg } catch {}
-    return NextResponse.json({ error: msg }, { status: 502 })
+    return NextResponse.json({ error: msg }, { status: UPSTREAM_FAILED })
   }
 
   const rawText = await agentRes.text()

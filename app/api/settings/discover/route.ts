@@ -3,6 +3,7 @@ import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { clearTenantMetadata } from '@/lib/bc-metadata'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,10 +27,10 @@ export async function POST() {
       headers: { 'X-BespoxAI-Key': tenant.apiKey, Accept: 'application/xml' },
       signal: AbortSignal.timeout(20_000),
     })
-    if (!res.ok) return NextResponse.json({ error: `BC metadata returned ${res.status}` }, { status: 502 })
+    if (!res.ok) return NextResponse.json({ error: `BC metadata returned ${res.status}` }, { status: UPSTREAM_FAILED })
     metadataXml = await res.text()
   } catch (e: any) {
-    return NextResponse.json({ error: `BCAgent unreachable: ${e.message}` }, { status: 502 })
+    return NextResponse.json({ error: `BCAgent unreachable: ${e.message}` }, { status: UPSTREAM_FAILED })
   }
 
   // Parse EntitySet names from OData CSDL XML

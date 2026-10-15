@@ -13,6 +13,7 @@ import {
   ACTIVE_STATUSES, OUT_OF_HOURS_END, OUT_OF_HOURS_START,
   isOutOfHours, isStale, newJobToken, tenantTimeZone,
 } from '@/lib/corpus/export-jobs'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 const db = prisma as any
 // Where BCAgent sends its callbacks. The agent only accepts *.bespoxai.com, so this
@@ -142,7 +143,7 @@ export async function scheduleExport(args: {
 
   if (failure) {
     await db.objectExportJob.update({ where: { id: job.id }, data: { status: 'failed', error: failure, finishedAt: new Date() } })
-    return NextResponse.json({ error: failure }, { status: 502 })
+    return NextResponse.json({ error: failure }, { status: UPSTREAM_FAILED })
   }
   return NextResponse.json({ job }, { status: 201 })
 }

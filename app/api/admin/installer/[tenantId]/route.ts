@@ -7,6 +7,7 @@ import { join } from 'path'
 import JSZip from 'jszip'
 import { psq, batText } from '@/lib/installer-escape'
 import { addUninstaller, uninstallerCopyLines } from '@/lib/installer-uninstall'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ tenantId
   try {
     tunnelToken = await getTunnelToken(tenant.tunnelId)
   } catch (e: any) {
-    return NextResponse.json({ error: `Could not fetch tunnel token: ${e.message}` }, { status: 502 })
+    return NextResponse.json({ error: `Could not fetch tunnel token: ${e.message}` }, { status: UPSTREAM_FAILED })
   }
 
   const scriptPath = join(process.cwd(), 'scripts', 'Install-BespoxAI.ps1')

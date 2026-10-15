@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireTenantAdmin } from '@/lib/api-auth'
 import { prisma } from '@/lib/db'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,7 @@ export async function POST() {
       signal: AbortSignal.timeout(15000),
     })
   } catch (e: any) {
-    return NextResponse.json({ error: 'Could not reach agent: ' + e.message }, { status: 502 })
+    return NextResponse.json({ error: 'Could not reach agent: ' + e.message }, { status: UPSTREAM_FAILED })
   }
 
   const text = await agentRes.text()
@@ -63,7 +64,7 @@ export async function POST() {
   if (!agentRes.ok) {
     return NextResponse.json(
       { error: json.error || ('Agent returned ' + agentRes.status) },
-      { status: 502 }
+      { status: UPSTREAM_FAILED }
     )
   }
 

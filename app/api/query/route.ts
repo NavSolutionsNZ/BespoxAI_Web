@@ -9,6 +9,7 @@ import { getTenantMetadata } from '@/lib/bc-metadata'
 import { prisma } from '@/lib/db'
 import { checkTierAccess, checkTokenLimit } from '@/lib/tier'
 import { getAiConfig } from '@/lib/ai-config'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -491,7 +492,7 @@ Return JSON:
   } catch (err: any) {
     return NextResponse.json(
       { error: `BCAgent unreachable: ${err.message}`, odataUrl, plan },
-      { status: 502 },
+      { status: UPSTREAM_FAILED },
     )
   }
 

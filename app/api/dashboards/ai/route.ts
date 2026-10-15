@@ -6,6 +6,7 @@ import { getDashboardScope } from '@/lib/dashboards/access'
 import { validateSpec } from '@/lib/dashboards/validate'
 import { applyAiReply, buildSystemPrompt, describeLayout } from '@/lib/dashboards/ai-edit'
 import { callAiJson } from '@/lib/dashboards/ai-call'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   try {
     ai = await callAiJson(cfg, apiKey, buildSystemPrompt(), describeLayout(v.spec) + '\n\nRequest: ' + instruction)
   } catch (e: any) {
-    return NextResponse.json({ error: 'ai_failed', message: 'The AI service didn\'t respond. Try again.' }, { status: 502 })
+    return NextResponse.json({ error: 'ai_failed', message: 'The AI service didn\'t respond. Try again.' }, { status: UPSTREAM_FAILED })
   }
 
   void logAiUsage({ tenantId: scope.tenantId, feature: 'cfo_dashboard', model: cfg.model, inputTokens: ai.inputTokens, outputTokens: ai.outputTokens })

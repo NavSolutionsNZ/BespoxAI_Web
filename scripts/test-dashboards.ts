@@ -217,23 +217,29 @@ async function main() {
     await fetchMetric(createFlowFilterSource(t2, f), 'pl_revenue', { compare: 'none' }, opts)
     assert.equal(f.urls.length, 3, 'second metric should use the learnt form straight away')
   })
-  await test('cash comes from bank ledger entries, per account and as a month-end trend', async () => {
+  await test('cash comes from bank ledger entries, per account (names from 371) and as a month-end trend', async () => {
     const entries = [
-      { Bank_Account_No: 'WWB', Bank_Account_Name: 'World Wide Bank', Posting_Date: '2026-08-15', Amount_LCY: 1000 },
-      { Bank_Account_No: 'WWB', Bank_Account_Name: 'World Wide Bank', Posting_Date: '2026-10-02', Amount_LCY: -300 },
-      { Bank_Account_No: 'GIRO', Bank_Account_Name: '', Posting_Date: '2026-09-30', Amount_LCY: 50 },
+      { Bank_Account_No: 'WWB', Posting_Date: '2026-08-15', Amount_LCY: 1000 },
+      { Bank_Account_No: 'WWB', Posting_Date: '2026-10-02', Amount_LCY: -300 },
+      { Bank_Account_No: 'GIRO', Posting_Date: '2026-09-30', Amount_LCY: 50 },
     ]
-    const f = fakeFetcher(() => ({ body: { value: entries } }))
+    const accounts = [{ No: 'WWB', Name: 'World Wide Bank' }, { No: 'GIRO', Name: '' }]
+    const f = fakeFetcher(url => ({ body: { value: url.includes('/BespoxAI_BankAccounts?') ? accounts : entries } }))
     const src = createFlowFilterSource(tenant, f)
-    const byAcc = await fetchMetric(src, 'cash_by_account', undefined, opts)
-    assert.deepEqual(byAcc.breakdown!.rows.map(r => [r.label, r.value]), [['World Wide Bank', 700], ['GIRO', 50]])
+    const total = await fetchMetric(src, 'cash_total', undefined, opts)
+    assert.equal(total.scalar!.value, 750)
     const u = decodeURIComponent(f.urls[0])
     assert.ok(u.includes('/BespoxAI_BankLedgerEntries?') && u.includes('Posting_Date le 2026-10-13'), u)
+    assert.ok(!u.includes('Bank_Account_Name'), 'page 372 has no Bank_Account_Name on BC14')
+    assert.equal(f.urls.length, 1, 'cash total needs no names')
+    const byAcc = await fetchMetric(src, 'cash_by_account', undefined, opts)
+    assert.deepEqual(byAcc.breakdown!.rows.map(r => [r.label, r.value]), [['World Wide Bank', 700], ['GIRO', 50]])
+    const before = f.urls.length
     const trend = await fetchMetric(src, 'cash_trend', undefined, opts)
     const pts = trend.series!.points
     assert.equal(pts.length, 12)
     assert.deepEqual(pts.slice(-3).map(p => p.value), [1000, 1050, 750])   // Aug, Sep, Oct month ends
-    assert.equal(f.urls.length, 2, 'trend is one read, not one per month')
+    assert.equal(f.urls.length - before, 1, 'trend is one read, not one per month')
   })
   await test('AR/AP aging buckets and vendor sign flip', async () => {
     const entries = [

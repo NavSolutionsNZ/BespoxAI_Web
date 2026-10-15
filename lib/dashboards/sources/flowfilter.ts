@@ -224,22 +224,25 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
           const asAt = resolvePeriod('as_at_today', today)
           const rows = await readService(c, 'bankLedgerEntries', {
             filter: 'Posting_Date le ' + asAt.to,
-            select: ['Bank_Account_No', 'Bank_Account_Name', 'Amount_LCY'],
+            select: ['Bank_Account_No', 'Amount_LCY'],
           })
-          const byAcc = new Map<string, { label: string; value: number }>()
+          const byAcc = new Map<string, number>()
           for (const r of rows) {
             const k = String(r.Bank_Account_No ?? '')
-            const e = byAcc.get(k) ?? { label: String(r.Bank_Account_Name || k), value: 0 }
-            e.value += num(r.Amount_LCY)
-            byAcc.set(k, e)
+            byAcc.set(k, (byAcc.get(k) ?? 0) + num(r.Amount_LCY))
           }
-          const list = Array.from(byAcc.values())
           const method = 'Bank Account Ledger Entries, Amount (LCY) summed per bank account, posted up to today.'
           if (metricId === 'cash_total') {
-            return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: list.reduce((s, r) => s + r.value, 0) }, provenance: prov(method, asAt) }
+            let total = 0
+            byAcc.forEach(v => { total += v })
+            return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: total }, provenance: prov(method, asAt) }
           }
+          // Names from the Bank Account List — page 372 has no account name on BC14.
+          const names = new Map<string, string>()
+          for (const a of await readService(c, 'bankAccounts', { select: ['No', 'Name'] })) names.set(String(a.No ?? ''), String(a.Name ?? ''))
+          const list = Array.from(byAcc.entries()).map(([k, value]) => ({ label: names.get(k) || k, value }))
           list.sort((a, b) => b.value - a.value)
-          return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: list }, provenance: prov(method, asAt) }
+          return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: list }, provenance: prov(method + ' Names from the Bank Account List.', asAt) }
         }
         case 'cash_trend': {
           // One read of the bank ledger up to the last month end, then running balances.

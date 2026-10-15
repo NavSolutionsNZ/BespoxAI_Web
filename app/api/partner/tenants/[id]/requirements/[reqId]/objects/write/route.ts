@@ -23,6 +23,7 @@ import {
   partnerCanDeploy,
 } from '@/lib/partner-auth'
 import { prisma } from '@/lib/db'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,13 +102,13 @@ export async function POST(
   } catch (e: any) {
     return NextResponse.json({
       error: 'Could not reach BCAgent at ' + agentBase + '. Is the agent running? (' + (e.message ?? 'network error') + ')',
-    }, { status: 502 })
+    }, { status: UPSTREAM_FAILED })
   }
 
   if (!agentRes.ok) {
     let msg = 'BCAgent returned ' + agentRes.status
     try { const e = await agentRes.json(); msg = e.error ?? msg } catch {}
-    return NextResponse.json({ error: msg }, { status: 502 })
+    return NextResponse.json({ error: msg }, { status: UPSTREAM_FAILED })
   }
 
   // BCAgent may return malformed JSON (unescaped Windows paths) — read text first.

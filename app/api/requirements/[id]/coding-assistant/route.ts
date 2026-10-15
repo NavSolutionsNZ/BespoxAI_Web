@@ -18,6 +18,7 @@ import { getAiConfig }               from '@/lib/ai-config'
 import { logAiUsage }                from '@/lib/ai-usage'
 import { buildTenantContext }        from '@/lib/tenant-context'
 import { listFiles, getFile, resolvePartnerToken } from '@/lib/github'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 120   // C/AL context can be large; give plenty of time
@@ -189,7 +190,7 @@ GUIDELINES:
     if (!upstream.ok) {
       const err = await upstream.text()
       console.error(`[coding-assistant] Anthropic error ${upstream.status} — ${err}`)
-      return NextResponse.json({ error: `Anthropic error: ${upstream.status}` }, { status: 502 })
+      return NextResponse.json({ error: `Anthropic error: ${upstream.status}` }, { status: UPSTREAM_FAILED })
     }
 
     let inputTokens  = 0

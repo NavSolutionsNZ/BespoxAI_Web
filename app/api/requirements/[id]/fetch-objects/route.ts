@@ -28,6 +28,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma }                    from '@/lib/db'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic    = 'force-dynamic'
 export const maxDuration = 300 // Vercel Pro max — finsql on remote SQL needs time
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         const err = await agentRes.json()
         msg = err.error ?? msg
       } catch {}
-      return NextResponse.json({ error: msg }, { status: 502 })
+      return NextResponse.json({ error: msg }, { status: UPSTREAM_FAILED })
     }
 
     // Stream zip straight to browser

@@ -17,6 +17,7 @@ import {
   createRdpAccessPolicy, createRdpAccessApp, getAccessApp, deleteAccessApp, deleteAccessPolicy,
   getOneTimePinIdpId, getAccessAuthDomain,
 } from './cloudflare'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 const PORTAL_BASE = 'https://bespoxai.com'
 const EVAL_KEY_ENV = 'RDP_ACCESS_EVAL_KEY'   // base64 of an RSA private key PEM
@@ -131,7 +132,7 @@ export async function provisionRdpAccess(tenantId: string): Promise<ProvisionRes
         throw e
       }
     } catch (e: any) {
-      throw new RdpError(502, 'Failed to create the Cloudflare Access app: ' + e.message)
+      throw new RdpError(UPSTREAM_FAILED, 'Failed to create the Cloudflare Access app: ' + e.message)
     }
     await (prisma as any).tenant.update({
       where: { id: tenant.id },
@@ -147,7 +148,7 @@ export async function provisionRdpAccess(tenantId: string): Promise<ProvisionRes
     await addRdpIngress(tenant.tunnelId, agentHostnameFor(subdomain), (tenant.agentPort as number) || 9099, rdpHostname)
     steps.push('RDP route added: ' + rdpHostname + ' -> rdp://localhost:3389')
   } catch (e: any) {
-    throw new RdpError(502, 'Failed to add RDP route: ' + e.message)
+    throw new RdpError(UPSTREAM_FAILED, 'Failed to add RDP route: ' + e.message)
   }
   try {
     await createRdpDnsRecord(rdpHostname, tenant.tunnelId)

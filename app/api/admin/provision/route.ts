@@ -5,6 +5,7 @@ import { createTunnel, configureTunnelIngress, createDnsRecord } from '@/lib/clo
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { notifyUserWelcome } from '@/lib/notifications'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: `Cloudflare provisioning failed: ${cfErr.message}`,
       steps,
-    }, { status: 502 })
+    }, { status: UPSTREAM_FAILED })
   }
 
   // Step 4: Generate API key + create tenant

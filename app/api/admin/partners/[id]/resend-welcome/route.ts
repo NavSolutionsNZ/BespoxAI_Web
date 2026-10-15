@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { notifyPartnerWelcome } from '@/lib/notifications'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 // POST /api/admin/partners/[id]/resend-welcome
 // Generates a fresh temp password for the partner's admin user, re-hashes it,
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     })
   } catch (e) {
     console.error('[partner-resend-welcome] email failed:', e)
-    return NextResponse.json({ error: 'Password reset, but welcome email failed to send' }, { status: 502 })
+    return NextResponse.json({ error: 'Password reset, but welcome email failed to send' }, { status: UPSTREAM_FAILED })
   }
 
   return NextResponse.json({ ok: true, email: user.email })

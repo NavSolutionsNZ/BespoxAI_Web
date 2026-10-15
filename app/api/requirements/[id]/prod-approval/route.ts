@@ -14,6 +14,7 @@ import { requireSuperadmin } from '@/lib/api-auth'
 import { prisma }                       from '@/lib/db'
 import { getAiConfig }                  from '@/lib/ai-config'
 import { notifyCustomerProdApproval }   from '@/lib/notifications'
+import { UPSTREAM_FAILED } from '@/lib/http-status'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60
@@ -104,7 +105,7 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
     })
     if (!res.ok) {
       const err = await res.text()
-      return NextResponse.json({ error: 'Anthropic error: ' + res.status + ' — ' + err }, { status: 502 })
+      return NextResponse.json({ error: 'Anthropic error: ' + res.status + ' — ' + err }, { status: UPSTREAM_FAILED })
     }
     const data = await res.json()
     goLiveDoc = data.content?.[0]?.text ?? ''
@@ -121,7 +122,7 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
     })
     if (!res.ok) {
       const err = await res.text()
-      return NextResponse.json({ error: 'OpenAI error: ' + res.status + ' — ' + err }, { status: 502 })
+      return NextResponse.json({ error: 'OpenAI error: ' + res.status + ' — ' + err }, { status: UPSTREAM_FAILED })
     }
     const data = await res.json()
     goLiveDoc = data.choices?.[0]?.message?.content ?? ''
