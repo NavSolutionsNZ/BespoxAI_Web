@@ -1,5 +1,5 @@
 import type { TenantConfig } from '@/lib/tenants'
-import { BC_SERVICES, dateFilterExpr, optKey, type BcServiceKey } from '../bc-services'
+import { BC_SERVICES, dateFilterExpr, isDateFilterTypeError, optKey, type BcServiceKey, type DateFilterStyle } from '../bc-services'
 import { AGING_BUCKETS, agingBucket } from '../registry'
 import { CALENDAR_YEAR, monthBuckets, resolveCompare, resolvePeriod, ymd, type FiscalCalendar } from '../periods'
 import {
@@ -31,19 +31,54 @@ interface Ctx {
   truncated: boolean
 }
 
+/** Which Date_Filter form each tenant's BC accepts, learnt on first rejection. */
+const dateStyleByTenant = new Map<string, DateFilterStyle>()
+
 function displayUrl(url: string): string {
   // Strip the tunnel host — provenance is shown to users and stored.
   return url.replace(/^https:\/\/[^/]+/, '')
 }
 
-async function readService(c: Ctx, key: BcServiceKey, query: { filter?: string; select?: string[] }): Promise<any[]> {
-  const svc = BC_SERVICES[key]
-  const parts: string[] = ['$top=' + PAGE_SIZE]
-  if (query.filter) parts.push('$filter=' + encodeURIComponent(query.filter))
-  parts.push('$select=' + (query.select ?? svc.fields).join(','))
-  let url: string | null = c.buildUrl(c.tenant, svc.serviceName, parts.join('&'))
-  const rows: any[] = []
+/**
+ * BC's @odata.nextLink names BC's own address (http://localhost:7048/...), which
+ * the portal can't reach. Keep only the part after /ODataV4/ (it must be a
+ * Company(...) path) and send it through this tenant's tunnel, so the API key
+ * never goes anywhere else.
+ */
+export function tunnelNextLink(tenant: TenantConfig, next: unknown): string | null {
+  if (typeof next !== 'string' || !next) return null
+  const i = next.indexOf('/ODataV4/')
+  if (i < 0) return null
+  const rest = next.slice(i + '/ODataV4/'.length)
+  if (!/^Company\(/.test(rest) || /\.\.|%2e%2e/i.test(rest.split('?')[0])) return null
+  return tenant.agentBaseUrl + '/' + tenant.bcInstance + '/ODataV4/' + rest
+}
 
+interface ReadQuery {
+  filter?: string                          // OData filter, ANDed with the date range
+  dateRange?: { from: string; to: string } // FlowFilter (Date_Filter) range
+  select?: string[]
+}
+
+async function readService(c: Ctx, key: BcServiceKey, query: ReadQuery): Promise<any[]> {
+  const svc = BC_SERVICES[key]
+  const tenantKey = c.tenant.tenantId + '|' + c.tenant.bcCompany
+  let style: DateFilterStyle = dateStyleByTenant.get(tenantKey) ?? 'range'
+  let retriedStyle = false
+
+  const buildFirst = (skip: number) => {
+    const filters: string[] = []
+    if (query.dateRange) filters.push(dateFilterExpr(query.dateRange.from, query.dateRange.to, style))
+    if (query.filter) filters.push(query.filter)
+    const parts: string[] = ['$top=' + PAGE_SIZE]
+    if (skip > 0) parts.push('$skip=' + skip)
+    if (filters.length) parts.push('$filter=' + encodeURIComponent(filters.join(' and ')))
+    parts.push('$select=' + (query.select ?? svc.fields).join(','))
+    return c.buildUrl(c.tenant, svc.serviceName, parts.join('&'))
+  }
+
+  const rows: any[] = []
+  let url: string | null = buildFirst(0)
   while (url) {
     c.calls.push(displayUrl(url))
     let res
@@ -58,6 +93,14 @@ async function readService(c: Ctx, key: BcServiceKey, query: { filter?: string; 
     }
     if (!res.ok) {
       const body = await res.text().catch(() => '')
+      // Date_Filter typed differently on this BC version: switch form once and remember it.
+      if (query.dateRange && !retriedStyle && rows.length === 0 && isDateFilterTypeError(body)) {
+        retriedStyle = true
+        style = style === 'range' ? 'compare' : 'range'
+        dateStyleByTenant.set(tenantKey, style)
+        url = buildFirst(0)
+        continue
+      }
       if (/property|field|could not find/i.test(body)) {
         throw new MetricSourceError('field_not_available',
           'A field required from ' + svc.pageName + ' is not available on this NAV version.', body.slice(0, 300))
@@ -69,10 +112,10 @@ async function readService(c: Ctx, key: BcServiceKey, query: { filter?: string; 
     rows.push(...page)
     c.rowsRead += page.length
     if (rows.length >= ROW_CAP) { c.truncated = true; break }
-    const next: unknown = data?.['@odata.nextLink']
-    url = typeof next === 'string' && next.length > 0 ? next : null
-    // nextLink must stay on the same tunnel host — never follow elsewhere.
-    if (url && !url.startsWith(c.tenant.agentBaseUrl)) url = null
+    // Next page: BC's own nextLink (server page size below $top), re-pointed at
+    // the tunnel; otherwise a full page means there may be more — $skip on.
+    url = tunnelNextLink(c.tenant, data?.['@odata.nextLink'])
+      ?? (page.length >= PAGE_SIZE ? buildFirst(rows.length) : null)
   }
   return rows
 }
@@ -84,7 +127,7 @@ const num = (v: unknown) => (typeof v === 'number' ? v : Number(v) || 0)
 interface PlTotals { revenue: number; cogs: number; expense: number; net: number }
 
 async function plTotals(c: Ctx, p: ResolvedPeriod): Promise<PlTotals> {
-  const rows = await readService(c, 'glAccounts', { filter: dateFilterExpr(p.from, p.to) })
+  const rows = await readService(c, 'glAccounts', { dateRange: { from: p.from, to: p.to } })
   const t: PlTotals = { revenue: 0, cogs: 0, expense: 0, net: 0 }
   let sawCategory = false
   for (const r of rows) {
@@ -109,7 +152,7 @@ async function plTotals(c: Ctx, p: ResolvedPeriod): Promise<PlTotals> {
 // ─── Ledger aging ────────────────────────────────────────────────────────────
 
 async function aging(c: Ctx, key: 'custLedgerEntries' | 'vendLedgerEntries', today: Date, sign: 1 | -1) {
-  const rows = await readService(c, key, { filter: 'Open eq true' })
+  const rows = await readService(c, key, { filter: 'Open eq true', select: ['Entry_No', 'Due_Date', 'Remaining_Amt_LCY'] })
   const buckets: Record<string, number> = {}
   for (const b of AGING_BUCKETS) buckets[b] = 0
   for (const r of rows) {
@@ -177,10 +220,21 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
         }
         case 'cash_total':
         case 'cash_by_account': {
+          // Bank Account List (371) exposes no balance on BC14 — sum the bank ledger instead.
           const asAt = resolvePeriod('as_at_today', today)
-          const rows = await readService(c, 'bankAccounts', { filter: dateFilterExpr(asAt.from, asAt.to) })
-          const list = rows.map(r => ({ label: String(r.Name || r.No), value: num(r.Balance_at_Date_LCY) }))
-          const method = 'Bank Account Balance at Date (LCY) with Date Filter up to today.'
+          const rows = await readService(c, 'bankLedgerEntries', {
+            filter: 'Posting_Date le ' + asAt.to,
+            select: ['Bank_Account_No', 'Bank_Account_Name', 'Amount_LCY'],
+          })
+          const byAcc = new Map<string, { label: string; value: number }>()
+          for (const r of rows) {
+            const k = String(r.Bank_Account_No ?? '')
+            const e = byAcc.get(k) ?? { label: String(r.Bank_Account_Name || k), value: 0 }
+            e.value += num(r.Amount_LCY)
+            byAcc.set(k, e)
+          }
+          const list = Array.from(byAcc.values())
+          const method = 'Bank Account Ledger Entries, Amount (LCY) summed per bank account, posted up to today.'
           if (metricId === 'cash_total') {
             return { metricId, kind: 'scalar', unit: 'currency', scalar: { value: list.reduce((s, r) => s + r.value, 0) }, provenance: prov(method, asAt) }
           }
@@ -188,12 +242,17 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
           return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: list }, provenance: prov(method, asAt) }
         }
         case 'cash_trend': {
-          const points: { label: string; value: number }[] = []
-          for (const m of monthBuckets(12, today)) {
-            const rows = await readService(c, 'bankAccounts', { filter: dateFilterExpr('0001-01-01', m.to), select: ['No', 'Balance_at_Date_LCY'] })
-            points.push({ label: m.label, value: rows.reduce((s, r) => s + num(r.Balance_at_Date_LCY), 0) })
-          }
-          return { metricId, kind: 'series', unit: 'currency', series: { points }, provenance: prov('Bank Account Balance at Date (LCY) at each month end.') }
+          // One read of the bank ledger up to the last month end, then running balances.
+          const months = monthBuckets(12, today)
+          const rows = await readService(c, 'bankLedgerEntries', {
+            filter: 'Posting_Date le ' + months[months.length - 1].to,
+            select: ['Posting_Date', 'Amount_LCY'],
+          })
+          const points = months.map(m => ({
+            label: m.label,
+            value: rows.reduce((s, r) => String(r.Posting_Date ?? '').slice(0, 10) <= m.to ? s + num(r.Amount_LCY) : s, 0),
+          }))
+          return { metricId, kind: 'series', unit: 'currency', series: { points }, provenance: prov('Bank Account Ledger Entries, Amount (LCY) running balance at each month end.') }
         }
         case 'ar_aging':
         case 'ar_overdue':
@@ -217,13 +276,23 @@ export function createFlowFilterSource(tenant: TenantConfig, deps: { fetcher: Js
           return { metricId, kind: 'series', unit: 'currency', series: { points }, provenance: prov('Revenue (Income accounts Net Change) per calendar month.') }
         }
         case 'top_customers': {
-          const rows = await readService(c, 'customers', { filter: dateFilterExpr(period.from, period.to) })
-          const ranked = rows
-            .map(r => ({ label: String(r.Name || r.No), value: num(r.Sales_LCY) }))
+          // Customer List's Sales (LCY) ignores Date_Filter on BC14 — sum the ledger by posting date.
+          const rows = await readService(c, 'custLedgerEntries', {
+            filter: 'Posting_Date ge ' + period.from + ' and Posting_Date le ' + period.to,
+            select: ['Customer_No', 'Customer_Name', 'Sales_LCY'],
+          })
+          const byCust = new Map<string, { label: string; value: number }>()
+          for (const r of rows) {
+            const k = String(r.Customer_No ?? '')
+            const e = byCust.get(k) ?? { label: String(r.Customer_Name || k), value: 0 }
+            e.value += num(r.Sales_LCY)
+            byCust.set(k, e)
+          }
+          const ranked = Array.from(byCust.values())
             .filter(r => r.value !== 0)
             .sort((a, b) => b.value - a.value)
             .slice(0, Math.min(Math.max(params.top ?? 10, 1), 50))
-          return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: ranked }, provenance: prov('Customer Sales (LCY) with Date Filter, ranked.', period) }
+          return { metricId, kind: 'breakdown', unit: 'currency', breakdown: { rows: ranked }, provenance: prov('Customer Ledger Entries, Sales (LCY) by customer for entries posted in the period, ranked.', period) }
         }
       }
       throw new MetricSourceError('not_supported', 'Metric ' + metricId + ' is not implemented by the FlowFilter source.')

@@ -9,7 +9,7 @@ import { validateSpec } from '../lib/dashboards/validate'
 import { resolvePeriod, resolveCompare, monthBuckets } from '../lib/dashboards/periods'
 import { fetchMetric, tenantToday } from '../lib/dashboards/executor'
 import { mockSource } from '../lib/dashboards/sources/mock'
-import { createFlowFilterSource as createFF, loadFiscalCalendar, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
+import { createFlowFilterSource as createFF, loadFiscalCalendar, tunnelNextLink, type JsonFetcher } from '../lib/dashboards/sources/flowfilter'
 import { MetricSourceError } from '../lib/dashboards/types'
 import { optKey, BC_SERVICES } from '../lib/dashboards/bc-services'
 import { applyAiReply, buildSystemPrompt, describeLayout } from '../lib/dashboards/ai-edit'
@@ -163,7 +163,7 @@ async function main() {
     assert.equal(np.scalar!.value, 20_000)
     const u = decodeURIComponent(f.urls[0])
     assert.ok(u.includes('/BespoxAI_GLAccounts?'), u)
-    assert.ok(u.includes('Date_Filter ge 2026-10-01 and Date_Filter le 2026-10-31'), u)
+    assert.ok(u.includes("Date_Filter eq '2026-10-01..2026-10-31'"), u)   // BC14: Date_Filter is a string
     assert.ok(!rev.provenance.calls[0].includes('acme-agent'), 'tunnel host must be stripped from provenance')
   })
   await test('P&L with comparison makes two calls', async () => {
@@ -183,14 +183,57 @@ async function main() {
     await assert.rejects(fetchMetric(createFlowFilterSource(tenant, f), 'cash_total', undefined, opts),
       (e: any) => e instanceof MetricSourceError && e.code === 'service_not_published')
   })
-  await test('follows nextLink on the tunnel host only', async () => {
-    const next = tenant.agentBaseUrl + '/NAV/ODataV4/Company(\'CRONUS\')/BespoxAI_BankAccounts?$skiptoken=2'
+  await test('nextLink is re-pointed at the tunnel; other paths are refused', async () => {
+    // BC names its own address in nextLink — the portal must go through the tunnel instead.
+    const bcNext = "http://localhost:7048/NAV/ODataV4/Company('CRONUS')/BespoxAI_BankLedgerEntries?$skiptoken=2"
     const f = fakeFetcher(url => url.includes('skiptoken')
-      ? { body: { value: [{ Name: 'B', Balance_at_Date_LCY: 50 }], '@odata.nextLink': 'https://evil.example.com/x' } }
-      : { body: { value: [{ Name: 'A', Balance_at_Date_LCY: 100 }], '@odata.nextLink': next } })
+      ? { body: { value: [{ Bank_Account_No: 'B', Amount_LCY: 50 }] } }
+      : { body: { value: [{ Bank_Account_No: 'A', Amount_LCY: 100 }], '@odata.nextLink': bcNext } })
     const r = await fetchMetric(createFlowFilterSource(tenant, f), 'cash_total', undefined, opts)
     assert.equal(r.scalar!.value, 150)
     assert.equal(f.urls.length, 2)
+    assert.ok(f.urls[1].startsWith(tenant.agentBaseUrl + "/NAV/ODataV4/Company('CRONUS')/"), f.urls[1])
+    assert.equal(tunnelNextLink(tenant, 'https://evil.example.com/NAV/ODataV4/../../bespoxai/update-config'), null)
+    assert.equal(tunnelNextLink(tenant, 'https://evil.example.com/x'), null)
+    assert.equal(tunnelNextLink(tenant, "http://localhost:7048/NAV/ODataV4/Company('X')/../../../bespoxai/diagnose"), null)
+    assert.ok(tunnelNextLink(tenant, 'https://evil.example.com/NAV/ODataV4/Company(\'X\')/Y')!.startsWith(tenant.agentBaseUrl + '/'))
+  })
+  await test('full pages continue with $skip until a short page', async () => {
+    const full = Array.from({ length: 5000 }, () => ({ Bank_Account_No: 'A', Amount_LCY: 1 }))
+    const f = fakeFetcher(url => ({ body: { value: url.includes('$skip=5000') ? [{ Bank_Account_No: 'A', Amount_LCY: 7 }] : full } }))
+    const r = await fetchMetric(createFlowFilterSource(tenant, f), 'cash_total', undefined, opts)
+    assert.equal(r.scalar!.value, 5007)
+    assert.equal(f.urls.length, 2)
+    assert.equal(r.provenance.truncated, false)
+  })
+  await test('Date_Filter falls back to ge/le when BC types it as a date, and remembers', async () => {
+    const t2 = { ...tenant, tenantId: 'dateTyped' }
+    const f = fakeFetcher(url => decodeURIComponent(url).includes("Date_Filter eq '")
+      ? { status: 400, text: '{"error":{"message":"A binary operator with incompatible types was detected. Found operand types \'Edm.Date\' and \'Edm.String\'"}}' }
+      : { body: { value: gl } })
+    const r = await fetchMetric(createFlowFilterSource(t2, f), 'pl_revenue', { compare: 'none' }, opts)
+    assert.equal(r.scalar!.value, 120_000)
+    assert.ok(decodeURIComponent(f.urls[1]).includes('Date_Filter ge 2026-10-01 and Date_Filter le 2026-10-31'))
+    await fetchMetric(createFlowFilterSource(t2, f), 'pl_revenue', { compare: 'none' }, opts)
+    assert.equal(f.urls.length, 3, 'second metric should use the learnt form straight away')
+  })
+  await test('cash comes from bank ledger entries, per account and as a month-end trend', async () => {
+    const entries = [
+      { Bank_Account_No: 'WWB', Bank_Account_Name: 'World Wide Bank', Posting_Date: '2026-08-15', Amount_LCY: 1000 },
+      { Bank_Account_No: 'WWB', Bank_Account_Name: 'World Wide Bank', Posting_Date: '2026-10-02', Amount_LCY: -300 },
+      { Bank_Account_No: 'GIRO', Bank_Account_Name: '', Posting_Date: '2026-09-30', Amount_LCY: 50 },
+    ]
+    const f = fakeFetcher(() => ({ body: { value: entries } }))
+    const src = createFlowFilterSource(tenant, f)
+    const byAcc = await fetchMetric(src, 'cash_by_account', undefined, opts)
+    assert.deepEqual(byAcc.breakdown!.rows.map(r => [r.label, r.value]), [['World Wide Bank', 700], ['GIRO', 50]])
+    const u = decodeURIComponent(f.urls[0])
+    assert.ok(u.includes('/BespoxAI_BankLedgerEntries?') && u.includes('Posting_Date le 2026-10-13'), u)
+    const trend = await fetchMetric(src, 'cash_trend', undefined, opts)
+    const pts = trend.series!.points
+    assert.equal(pts.length, 12)
+    assert.deepEqual(pts.slice(-3).map(p => p.value), [1000, 1050, 750])   // Aug, Sep, Oct month ends
+    assert.equal(f.urls.length, 2, 'trend is one read, not one per month')
   })
   await test('AR/AP aging buckets and vendor sign flip', async () => {
     const entries = [
@@ -205,10 +248,17 @@ async function main() {
     }))), 'ap_overdue', undefined, opts)
     assert.equal(ap.scalar!.value, 700)
   })
-  await test('top customers ranked, zero-sales dropped, top honoured', async () => {
-    const rows = [{ No: 'C1', Name: 'A', Sales_LCY: 10 }, { No: 'C2', Name: 'B', Sales_LCY: 30 }, { No: 'C3', Name: '', Sales_LCY: 20 }, { No: 'C4', Name: 'D', Sales_LCY: 0 }]
-    const r = await fetchMetric(createFlowFilterSource(tenant, fakeFetcher(() => ({ body: { value: rows } }))), 'top_customers', { period: 'ytd', top: 2 }, opts)
+  await test('top customers sum ledger Sales (LCY) by posting date, ranked, top honoured', async () => {
+    const rows = [
+      { Customer_No: 'C1', Customer_Name: 'A', Sales_LCY: 10 }, { Customer_No: 'C2', Customer_Name: 'B', Sales_LCY: 30 },
+      { Customer_No: 'C3', Customer_Name: '', Sales_LCY: 20 }, { Customer_No: 'C1', Customer_Name: 'A', Sales_LCY: 5 },
+      { Customer_No: 'C4', Customer_Name: 'D', Sales_LCY: 0 },
+    ]
+    const f = fakeFetcher(() => ({ body: { value: rows } }))
+    const r = await fetchMetric(createFlowFilterSource(tenant, f), 'top_customers', { period: 'ytd', top: 2 }, opts)
     assert.deepEqual(r.breakdown!.rows.map(x => x.label), ['B', 'C3'])
+    const u = decodeURIComponent(f.urls[0])
+    assert.ok(u.includes('/BespoxAI_CustLedgerEntries?') && u.includes('Posting_Date ge 2026-01-01 and Posting_Date le 2026-10-13'), u)
   })
   await test('fiscal calendar loads from Accounting Periods; falls back to calendar on 404', async () => {
     const f = fakeFetcher(() => ({ body: { value: [
@@ -224,11 +274,11 @@ async function main() {
     assert.deepEqual(missing, { starts: [], source: 'calendar' })
   })
   await test('YTD provenance says where the fiscal year came from', async () => {
-    const f = fakeFetcher(() => ({ body: { value: [{ No: 'C1', Name: 'A', Sales_LCY: 5 }] } }))
+    const f = fakeFetcher(() => ({ body: { value: [{ Customer_No: 'C1', Customer_Name: 'A', Sales_LCY: 5 }] } }))
     const r = await fetchMetric(createFlowFilterSource(tenant, f), 'top_customers', { period: 'ytd' },
       { today, fiscal: { starts: ['2026-04-01'], source: 'nav' } })
     assert.equal(r.provenance.fiscalYear, 'nav')
-    assert.ok(decodeURIComponent(f.urls[0]).includes('Date_Filter ge 2026-04-01'))
+    assert.ok(decodeURIComponent(f.urls[0]).includes('Posting_Date ge 2026-04-01'))
     const m = await fetchMetric(createFlowFilterSource(tenant, f), 'pl_revenue', { period: 'this_month' }, opts).catch(() => null)
     assert.ok(!m || m.provenance.fiscalYear === undefined)
   })

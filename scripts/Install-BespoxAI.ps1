@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.15'
+$AgentVersion  = '3.16'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -358,9 +358,12 @@ $AgentCode = @'
         or Server Instance from Settings isn't a server instance on this machine,
         and lists the ones that are (a typo used to surface only as a non-fatal
         web-service publishing failure, then as failed compiles).
+  v3.16: Also publishes Bank Account Ledger Entries (page 372) as
+        BespoxAI_BankLedgerEntries: on BC14 the Bank Account List exposes no
+        balance, so the dashboards' cash figures sum the bank ledger instead.
 #>
 
-$Version    = '3.15'
+$Version    = '3.16'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
 
 $LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
@@ -1848,6 +1851,7 @@ Write-Step 'Publishing BespoxAI web services'
 $DashboardServices = @(
     @{ Name = 'BespoxAI_GLAccounts';        PageId = 16;  Page = 'Chart of Accounts' },
     @{ Name = 'BespoxAI_BankAccounts';      PageId = 371; Page = 'Bank Account List' },
+    @{ Name = 'BespoxAI_BankLedgerEntries'; PageId = 372; Page = 'Bank Account Ledger Entries' },
     @{ Name = 'BespoxAI_CustLedgerEntries'; PageId = 25;  Page = 'Customer Ledger Entries' },
     @{ Name = 'BespoxAI_VendLedgerEntries'; PageId = 29;  Page = 'Vendor Ledger Entries' },
     @{ Name = 'BespoxAI_Customers';         PageId = 22;  Page = 'Customer List' },

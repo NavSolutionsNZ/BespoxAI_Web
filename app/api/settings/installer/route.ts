@@ -11,7 +11,7 @@ import { addUninstaller, uninstallerCopyLines } from '@/lib/installer-uninstall'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.15'
+const AGENT_VERSION = '3.16'
 
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant

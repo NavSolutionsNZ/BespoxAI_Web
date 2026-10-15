@@ -1,15 +1,19 @@
 /**
- * Standard NAV/BC pages the FlowFilter metric source reads.
+ * Standard NAV/BC pages the FlowFilter metric source reads, published by the
+ * installer (step 7b, $DashboardServices) under these names. A test keeps the
+ * two lists identical.
  *
- * The installer will publish these as page web services under these names
- * (a later slice — kept here so the installer and the source share one list).
- *
- * VERIFY before customer-facing use: the field names and the Date_Filter
- * behaviour below are not yet confirmed against a live NAV. Each entry carries
- * `verified: false` until it has been. The things to check per page:
- *   - every field in `fields` is exposed on the page (OData only exposes page controls)
- *   - `$filter=Date_Filter ...` is accepted and drives the FlowFields
- *     (if Date Filter is not a page control, OData may reject it)
+ * Verification (15 Oct 2026, BC14 NZ on BC14ProdSim) — what OData exposes:
+ *   - Date_Filter is Edm.String on BC14, so `Date_Filter ge <date>` is rejected.
+ *     It takes a NAV filter string in ISO dates: `Date_Filter eq '2023-01-01..2023-01-31'`
+ *     (dd/mm/yy strings silently return 0). dateFilterExpr builds that; the
+ *     source falls back to ge/le if a BC version types the field as a date.
+ *   - Bank Account List (371) exposes no balance fields at all, so cash comes
+ *     from Bank Account Ledger Entries (372): Amount (LCY) summed to a date.
+ *   - Customer List (22) ignores Date_Filter for Sales (LCY) (same figure for
+ *     2022 and Jan 2023), so top customers sums Customer Ledger Entries by
+ *     Posting Date instead (Sales_LCY and Customer_Name are on page 25).
+ * `verified` is set per page once its fields and filters are confirmed live.
  *
  * When Query objects arrive, they replace these pages behind the same metric
  * IDs (sources/query-object.ts) — nothing above the source layer changes.
@@ -30,13 +34,19 @@ export const BC_SERVICES = {
     usesDateFilter: true, verified: false,
   },
   bankAccounts: {
+    // Names only — page 371 has no balance fields (see above).
     serviceName: 'BespoxAI_BankAccounts', pageId: 371, pageName: 'Bank Account List',
-    fields: ['No', 'Name', 'Currency_Code', 'Balance_at_Date_LCY'],
-    usesDateFilter: true, verified: false,
+    fields: ['No', 'Name', 'Currency_Code'],
+    usesDateFilter: false, verified: false,
+  },
+  bankLedgerEntries: {
+    serviceName: 'BespoxAI_BankLedgerEntries', pageId: 372, pageName: 'Bank Account Ledger Entries',
+    fields: ['Entry_No', 'Bank_Account_No', 'Bank_Account_Name', 'Posting_Date', 'Amount_LCY'],
+    usesDateFilter: false, verified: false,
   },
   custLedgerEntries: {
     serviceName: 'BespoxAI_CustLedgerEntries', pageId: 25, pageName: 'Customer Ledger Entries',
-    fields: ['Entry_No', 'Customer_No', 'Due_Date', 'Remaining_Amt_LCY', 'Open'],
+    fields: ['Entry_No', 'Customer_No', 'Customer_Name', 'Posting_Date', 'Due_Date', 'Remaining_Amt_LCY', 'Sales_LCY', 'Open'],
     usesDateFilter: false, verified: false,
   },
   vendLedgerEntries: {
@@ -50,17 +60,33 @@ export const BC_SERVICES = {
     usesDateFilter: false, verified: false,
   },
   customers: {
+    // Not read by any metric now — page 22 ignores Date_Filter for Sales (LCY)
+    // (see above). Still published; kept for customer lookups.
     serviceName: 'BespoxAI_Customers', pageId: 22, pageName: 'Customer List',
-    fields: ['No', 'Name', 'Sales_LCY'],
-    usesDateFilter: true, verified: false,
+    fields: ['No', 'Name'],
+    usesDateFilter: false, verified: false,
   },
 } satisfies Record<string, BcServiceDef>
 
 export type BcServiceKey = keyof typeof BC_SERVICES
 
-/** OData V4 FlowFilter range. Centralised so one fix covers every metric. */
-export function dateFilterExpr(from: string, to: string): string {
-  return 'Date_Filter ge ' + from + ' and Date_Filter le ' + to
+export type DateFilterStyle = 'range' | 'compare'
+
+/**
+ * OData FlowFilter for a date range. Centralised so one fix covers every metric.
+ * 'range' (default): BC14 types Date_Filter as Edm.String and takes a NAV filter
+ * string with ISO dates. 'compare': for a BC that types it Edm.Date — the
+ * source switches to it when BC rejects the string form.
+ */
+export function dateFilterExpr(from: string, to: string, style: DateFilterStyle = 'range'): string {
+  return style === 'range'
+    ? "Date_Filter eq '" + from + '..' + to + "'"
+    : 'Date_Filter ge ' + from + ' and Date_Filter le ' + to
+}
+
+/** BC's error when the filter's value type doesn't match Date_Filter's type. */
+export function isDateFilterTypeError(body: string): boolean {
+  return /incompatible types|Edm\.(String|Date)/i.test(body) && /Date_Filter|operator/i.test(body)
 }
 
 /**
