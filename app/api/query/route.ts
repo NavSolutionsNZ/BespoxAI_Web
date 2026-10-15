@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { getTenantById, buildODataUrl } from '@/lib/tenants'
 import { buildCatalogue, catalogueSummary } from '@/lib/bc-entities'
 import { parseAnswerPayload } from '@/lib/answer-format'
-import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, NAME_SOURCES, unnamedGroupKeys, applyGroupNames, noFilter, type AggResult } from '@/lib/query-aggregate'
+import { sanitizeAggSpec, aggregateRecords, describeAggregate, aggregateDisplayData, withGroupNames, NAME_SOURCES, unnamedGroupKeys, applyGroupNames, noFilter, disambiguateLabels, type AggResult } from '@/lib/query-aggregate'
 import { getTenantMetadata } from '@/lib/bc-metadata'
 import { checkPlanFields, ensureSelected, withNameFields } from '@/lib/odata-fields'
 import { prisma } from '@/lib/db'
@@ -655,6 +655,7 @@ Return JSON:
         }
       } catch { /* names are a nicety — keep the numbers */ }
     }
+    if (agg) disambiguateLabels(agg)
   }
 
   // ── Step 3: Answer — Claude produces natural language + structured data ──

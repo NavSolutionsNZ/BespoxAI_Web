@@ -267,3 +267,13 @@ export function applyGroupNames(a: AggResult, names: Map<string, string>, groupL
 export function noFilter(keys: string[], keyField = 'No'): string {
   return keys.map(k => keyField + " eq '" + k.replace(/'/g, "''") + "'").join(' or ')
 }
+
+/** Groups that share a name ("World Wide Bank" ×3) get their No. added: "World Wide Bank (WWB-EUR)". */
+export function disambiguateLabels(a: AggResult): AggResult {
+  const count = new Map<string, number>()
+  for (const g of a.groups) count.set(g.label, (count.get(g.label) ?? 0) + 1)
+  for (const g of a.groups) {
+    if ((count.get(g.label) ?? 0) > 1 && g.label !== g.key) g.label = g.label + ' (' + g.key + ')'
+  }
+  return a
+}

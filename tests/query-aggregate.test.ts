@@ -128,3 +128,14 @@ test('blank ledger names are filled from the master record', async () => {
   assert.equal(a.groupLabel, 'Customer')
   assert.equal(NAME_SOURCES.Vendor_No.logical, 'Vendor')
 })
+
+test('groups that share a name get their No. added', async () => {
+  const { disambiguateLabels } = await import('../lib/query-aggregate')
+  const recs = [
+    { Bank_Account_No: 'WWB-OPERATING', Name: 'World Wide Bank', Amt: -10 }, { Bank_Account_No: 'WWB-EUR', Name: 'World Wide Bank', Amt: 5 },
+    { Bank_Account_No: 'NBA', Name: 'New Bank of Auckland', Amt: 2 },
+  ]
+  const a = aggregateRecords(recs, sanitizeAggSpec({ groupBy: 'Bank_Account_No', labelField: 'Name', measures: [{ field: 'Amt', op: 'sum', label: 'Balance' }], sort: 'asc' })!)
+  disambiguateLabels(a)
+  assert.deepEqual(a.groups.map(g => g.label), ['World Wide Bank (WWB-OPERATING)', 'New Bank of Auckland', 'World Wide Bank (WWB-EUR)'])
+})

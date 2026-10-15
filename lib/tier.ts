@@ -8,7 +8,7 @@ export type TierStatus =
 
 export const TOKEN_LIMITS: Record<string, number> = {
   free:      0,
-  trial:     50_000,
+  trial:     300_000,   // same as Assistant — the plan a trial evaluates (was 50,000 ≈ 5–8 chat questions)
   starter:   50_000,
   assistant: 300_000,
   manager:   750_000,
