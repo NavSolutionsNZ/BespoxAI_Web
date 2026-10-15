@@ -10,7 +10,7 @@ import { psq, batText } from '@/lib/installer-escape'
 
 export const dynamic = 'force-dynamic'
 
-const AGENT_VERSION = '3.11'
+const AGENT_VERSION = '3.12'
 
 
 // POST /api/settings/installer — generate pre-configured BCAgent installer for this tenant

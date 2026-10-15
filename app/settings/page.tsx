@@ -1112,8 +1112,8 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div>
           {lbl(erpLabel + ' Username')}
-          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder={authMode === 'Basic' ? 'e.g. administrator' : 'DOMAIN\\username'} autoComplete="off" name="bc-username" title={authMode === 'Basic' ? 'A BC/NAV application user (NavUserPassword credential type) — no domain, not a Windows account.' : 'Windows account (DOMAIN\\username) with OData read access to this company — usually a dedicated service account, not a personal login.'} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{authMode === 'Basic' ? ('BC application user with OData access — not a Windows account.') : ('Windows / ' + erpLabel + ' service account with OData access.')}</p>
+          <input ref={refs.bcUsername} style={inp} defaultValue={initial.bcUsername} placeholder={authMode === 'Basic' ? 'e.g. administrator' : 'DOMAIN\\username'} autoComplete="off" name="bc-username" title={authMode === 'Basic' ? 'A BC/NAV application user (NavUserPassword credential type) — no domain, not a Windows account.' : ('The Windows account the agent runs as (DOMAIN\\username). We recommend the account your ' + erpLabel + ' Server service runs as — find it in Services → your ' + erpLabel + ' Server service → Log On tab. It must be a ' + erpLabel + ' user with access to this company. Avoid a personal login: the agent stops when its password changes.')} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
+          <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{authMode === 'Basic' ? ('BC application user with OData access — not a Windows account.') : ('Recommended: your ' + erpLabel + ' service account (Services → ' + erpLabel + ' Server → Log On). Or, to limit what the agent can reach, a dedicated account set up as a user in ' + erpLabel + '.')}</p>
         </div>
         <div>
           {lbl(erpLabel + ' Password')}
@@ -1126,7 +1126,7 @@ function ProdEnvForm({ initial, onSave, onSaved, erpLabel = 'BC' }: {
           <div>
             {lbl('Service Account')}
             <input ref={refs.serviceAccountUser} style={inp} defaultValue={initial.serviceAccountUser} placeholder="DOMAIN\username or .\localuser" autoComplete="off" name="service-account" title={'The Windows account that runs the ' + erpLabel + ' Agent scheduled task. Required in Basic mode since the ' + erpLabel + ' Username above is a BC user, not a Windows identity.'} onFocus={e => (e.target.style.borderColor = 'var(--forest)')} onBlur={e => (e.target.style.borderColor = 'var(--fog)')} />
-            <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows account that runs the agent service (separate from the BC login above).</p>
+            <p style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>Windows account the agent runs as (separate from the BC login above). Your BC service account is the usual choice.</p>
           </div>
           <div>
             {lbl('Service Account Password')}

@@ -110,7 +110,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$AgentVersion  = '3.11'
+$AgentVersion  = '3.12'
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -230,6 +230,39 @@ if ($BCAuthMode -eq 'Basic' -and (-not $ServiceAccount -or -not $ServiceAccountP
 }
 Write-OK "BC auth mode: $BCAuthMode"
 
+# The Windows account the agent runs as. In Windows auth mode BCUsername IS the
+# Windows account (it does double duty for NTLM auth to BC). In Basic auth mode
+# BCUsername is a BC application user, not a Windows account, so the separate
+# ServiceAccount runs the task instead.
+$taskUser = if ($BCAuthMode -eq 'Basic') { $ServiceAccount } else { $BCUsername }
+$taskPass = if ($BCAuthMode -eq 'Basic') { $ServiceAccountPassword } else { $BCPassword }
+# Resolve it now, before anything is installed. The SID is what the batch-logon
+# right, the port reservation and the config file permission are granted to.
+$taskAccountName = if ($taskUser -like '.\*') { "$env:COMPUTERNAME\$($taskUser.Substring(2))" } else { $taskUser }
+try {
+    $taskSid = ([System.Security.Principal.NTAccount]$taskAccountName).Translate([System.Security.Principal.SecurityIdentifier])
+} catch {
+    Write-Fail "The account the agent should run as ('$taskUser') could not be found. Use DOMAIN\user, or .\user for a local account."
+}
+Write-OK "Agent will run as $taskUser"
+
+# Recommend the account the Business Central service itself runs as: it is usually
+# already a BC user with access to the database, and its password doesn't expire.
+# Only a note -- some customers deliberately use a separate, more limited account.
+$nstInstance = if ($NavServerInstance) { $NavServerInstance } else { $BCInstance }
+if ($nstInstance) {
+    $nstService = Get-CimInstance Win32_Service -Filter "Name='MicrosoftDynamicsNavServer`$$nstInstance'" -ErrorAction SilentlyContinue
+    if ($nstService -and $nstService.StartName) {
+        $nstSid = $null
+        try { $nstSid = ([System.Security.Principal.NTAccount]$nstService.StartName).Translate([System.Security.Principal.SecurityIdentifier]) } catch {}
+        if ($nstSid -and $nstSid.Value -ne $taskSid.Value) {
+            Write-Host "    Note: the Business Central service ($nstInstance) runs as $($nstService.StartName)." -ForegroundColor Yellow
+            Write-Host "      That account is usually the simplest choice for the agent. Continuing with $taskUser," -ForegroundColor Yellow
+            Write-Host "      which must be a Business Central user with access to the companies you want to query." -ForegroundColor Yellow
+        }
+    }
+}
+
 # BC OData reachable?
 if (-not (Test-Port -Port $BCPort)) {
     Write-Host "    ⚠ Cannot reach localhost:$BCPort — BC OData may not be running." -ForegroundColor Yellow
@@ -289,15 +322,41 @@ $AgentCode = @'
         (FullExportWorker.ps1) under the managing partner's developer licence,
         swapped into this database only and restored afterwards. Restores an
         interrupted swap at startup.
+  v3.12: The installer grants the run-as account what an ordinary (non-admin)
+        account needs -- 'Log on as a batch job', the port reservation and access
+        to agent.config.json -- and fails if the agent doesn't answer. The agent
+        logs FATAL and exits when it can't read its config, instead of starting
+        with an empty one.
 #>
 
-$Version    = '3.11'
+$Version    = '3.12'
 $ConfigPath = Join-Path $PSScriptRoot 'agent.config.json'
-if (-not (Test-Path $ConfigPath)) {
-    Write-Error "Config not found: $ConfigPath"; exit 1
+
+$LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
+function Write-Log {
+    param($msg)
+    $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg"
+    Add-Content -Path $LogFile -Value $line -ErrorAction SilentlyContinue
+    Write-Host $line
 }
 
-$Config     = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+if (-not (Test-Path $ConfigPath)) {
+    Write-Log "FATAL: Config not found: $ConfigPath"; exit 1
+}
+
+# Fail loudly if the config can't be read. Without -ErrorAction Stop an access
+# denied error is non-terminating, the agent starts with an empty config, and
+# every request fails the API key check with no clue why.
+try {
+    $Config = Get-Content $ConfigPath -Raw -ErrorAction Stop | ConvertFrom-Json
+} catch {
+    Write-Log "FATAL: Cannot read $ConfigPath as $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name): $($_.Exception.Message)"
+    exit 1
+}
+if (-not $Config -or -not $Config.apiKey) {
+    Write-Log "FATAL: $ConfigPath has no apiKey -- re-run the installer"
+    exit 1
+}
 $ListenPort    = if ($Config.listenPort) { $Config.listenPort } else { 9099 }
 $ApiKey        = $Config.apiKey
 $BCBase        = $Config.bcBaseUrl   # e.g. http://localhost:7048
@@ -319,13 +378,6 @@ $TestBcCompany       = $Config.testBcCompany
 $TestBcPort          = if ($Config.testBcPort) { $Config.testBcPort } else { 0 }
 $TestNavMgmtPort     = if ($Config.testNavManagementPort) { $Config.testNavManagementPort } else { 7045 }
 
-$LogFile    = Join-Path (Split-Path $PSScriptRoot) 'Logs\agent.log'
-function Write-Log {
-    param($msg)
-    $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg"
-    Add-Content -Path $LogFile -Value $line -ErrorAction SilentlyContinue
-    Write-Host $line
-}
 
 # Read full request body — Stream.Read() may return fewer bytes than requested
 # on large payloads, so we loop until all bytes are consumed.
@@ -1021,7 +1073,7 @@ while ($Listener.IsListening) {
                 $authOk = ($status -eq 200)
                 $authDetail =
                     if ($authOk) { "Succeeded as $whoAmI" }
-                    elseif ($status -eq 401) { "401 Unauthorized as $whoAmI. " + $(if ($AuthMode -eq 'Windows') { "Either this Windows account lacks OData access, or BC is configured for NavUserPassword/Basic auth rather than Windows auth (check ServicesUseNTLMAuthentication) -- switch this agent's BC Auth Mode to Basic if so." } else { "Check the BC username/password are correct and that BC's ClientServicesCredentialType is actually NavUserPassword." }) }
+                    elseif ($status -eq 401) { "401 Unauthorized as $whoAmI. " + $(if ($AuthMode -eq 'Windows') { "Either this Windows account isn't set up as a Business Central user with access (Users page, or New-NAVServerUser), or BC is configured for NavUserPassword/Basic auth rather than Windows auth (check ServicesUseNTLMAuthentication) -- switch this agent's BC Auth Mode to Basic if so." } else { "Check the BC username/password are correct and that BC's ClientServicesCredentialType is actually NavUserPassword." }) }
                     else { "Unexpected status $status" }
                 $checks.Add(@{ step = 'auth'; label = "Authenticated as $whoAmI"; ok = $authOk; detail = $authDetail }) | Out-Null
             }
@@ -1530,16 +1582,23 @@ $Config = [ordered]@{
 
 $Config | ConvertTo-Json | Set-Content -Path $AgentConfig -Encoding UTF8 -Force
 
-# Lock config file to Administrators + SYSTEM only
+# Lock the config file (it holds the API key and BC credentials) to Administrators,
+# SYSTEM and the account the agent runs as. The agent account needs Modify, not
+# just Read: /bespoxai/update-config ("Sync Config to Agent") rewrites this file.
+# Without its own entry the agent can't read the file and starts with an empty
+# config, so every request fails the API key check.
 $acl = Get-Acl $AgentConfig
 $acl.SetAccessRuleProtection($true, $false)
+foreach ($r in @($acl.Access)) { [void]$acl.RemoveAccessRule($r) }
 $adminRule  = [System.Security.AccessControl.FileSystemAccessRule]::new('Administrators','FullControl','Allow')
 $systemRule = [System.Security.AccessControl.FileSystemAccessRule]::new('SYSTEM','FullControl','Allow')
+$agentRule  = [System.Security.AccessControl.FileSystemAccessRule]::new($taskSid,'Modify','Allow')
 $acl.AddAccessRule($adminRule)
 $acl.AddAccessRule($systemRule)
+$acl.AddAccessRule($agentRule)
 Set-Acl -Path $AgentConfig -AclObject $acl
 
-Write-OK "agent.config.json written (permissions locked to Administrators + SYSTEM)"
+Write-OK "agent.config.json written (readable only by Administrators, SYSTEM and $taskUser)"
 
 # ── Step 6: Install cloudflared tunnel service ─────────────────────────────────
 
@@ -1625,14 +1684,10 @@ Register-ScheduledTask `
     -Principal $Principal `
     -Force | Out-Null
 
-# Step 2: Switch to the task's Windows run-as account via schtasks.exe
-# Register-ScheduledTask -User/-Password fails to resolve domain accounts in some
-# elevated contexts. schtasks.exe handles domain SID resolution reliably.
-# In Windows auth mode, BCUsername IS the Windows account (does double duty for
-# NTLM auth too). In Basic auth mode, BCUsername is a BC application user, not
-# a Windows account, so a separate ServiceAccount is required instead.
-$taskUser = if ($BCAuthMode -eq 'Basic') { $ServiceAccount } else { $BCUsername }
-$taskPass = if ($BCAuthMode -eq 'Basic') { $ServiceAccountPassword } else { $BCPassword }
+# Step 2: Switch to the task's Windows run-as account ($taskUser, resolved in
+# Step 1) via schtasks.exe. Register-ScheduledTask -User/-Password fails to
+# resolve domain accounts in some elevated contexts; schtasks.exe handles domain
+# SID resolution reliably.
 # The agent must never be left running as SYSTEM: it answers requests from the
 # tunnel, and as SYSTEM it would have full control of this server (and in
 # Windows mode would authenticate to BC as the computer account). If the
@@ -1652,6 +1707,59 @@ if ($stExit -ne 0 -or -not $runAs -or $runAs -match '^(NT AUTHORITY\\)?SYSTEM$|^
 Write-OK "Task user set to $runAs"
 
 Write-OK "Scheduled task '$TaskName' created (runs as $taskUser at startup)"
+
+# ── Step 7a: Rights the run-as account needs ───────────────────────────────────
+# Administrators (and SYSTEM) have these implicitly, so they only matter for an
+# ordinary account -- which is what the agent should normally run as. Nothing
+# here makes the account an administrator.
+
+Write-Step "Granting $taskUser the rights the agent needs"
+
+# 1. "Log on as a batch job" -- without it Task Scheduler refuses to start the
+#    task (0x80070569) and the agent never runs. Existing holders are kept.
+function Get-BatchLogonHolders {
+    $inf = Join-Path $env:TEMP "bespoxai-rights-$PID.inf"
+    & secedit.exe /export /cfg $inf /areas USER_RIGHTS /quiet | Out-Null
+    $line = Get-Content $inf -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*SeBatchLogonRight\s*=' }
+    Remove-Item $inf -Force -ErrorAction SilentlyContinue
+    if (-not $line) { return @() }
+    return @((($line -split '=', 2)[1] -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+}
+$sidEntry = "*$($taskSid.Value)"
+$holders  = Get-BatchLogonHolders
+if ($holders -contains $sidEntry) {
+    Write-OK "$taskUser already has 'Log on as a batch job'"
+} else {
+    $newHolders = @($holders) + $sidEntry
+    $cfgInf = Join-Path $env:TEMP "bespoxai-batch-$PID.inf"
+    $cfgDb  = Join-Path $env:TEMP "bespoxai-batch-$PID.sdb"
+    @('[Unicode]', 'Unicode=yes', '[Version]', 'signature="$CHICAGO$"', 'Revision=1',
+      '[Privilege Rights]', ('SeBatchLogonRight = ' + ($newHolders -join ','))) |
+        Set-Content -Path $cfgInf -Encoding Unicode
+    & secedit.exe /configure /db $cfgDb /cfg $cfgInf /areas USER_RIGHTS /quiet | Out-Null
+    Remove-Item $cfgInf, $cfgDb -Force -ErrorAction SilentlyContinue
+    if ((Get-BatchLogonHolders) -notcontains $sidEntry) {
+        Write-Fail "Could not grant '$taskUser' the 'Log on as a batch job' right. Add it in Local Security Policy (or the domain Group Policy that sets it) and run the installer again."
+    }
+    Write-OK "Granted $taskUser 'Log on as a batch job'"
+    Write-Host "      If a domain Group Policy sets 'Log on as a batch job', add $taskUser there too," -ForegroundColor Yellow
+    Write-Host "      or the next policy refresh will remove it and the agent will stop starting." -ForegroundColor Yellow
+}
+
+# 2. Reserve the agent's port for the account. The agent listens on all
+#    addresses (http://+:port/), which Windows only allows an ordinary account
+#    to do with a reservation -- otherwise the listener fails with Access denied.
+$agentUrl = "http://+:$AgentPort/"
+$ErrorActionPreference = 'Continue'
+& netsh.exe http delete urlacl url=$agentUrl 2>&1 | Out-Null
+$aclOut  = & netsh.exe http add urlacl url=$agentUrl "sddl=D:(A;;GX;;;$($taskSid.Value))" 2>&1
+$aclExit = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($aclExit -ne 0) { Write-Fail "Could not reserve port $AgentPort for ${taskUser}: $aclOut" }
+Write-OK "Port $AgentPort reserved for $taskUser"
+
+# 3. agent.config.json access was granted when it was written (Step 5).
+Write-OK "$taskUser can read and update agent.config.json"
 
 # ── Step 7b: Publish dashboard web services ────────────────────────────────────
 # The CFO dashboards read standard pages via FlowFilters (and Accounting
@@ -1731,36 +1839,9 @@ Write-OK 'cloudflared tunnel running'
 
 # Start BCAgent
 Start-ScheduledTask -TaskName $TaskName
-Start-Sleep -Seconds 4
-Write-OK "$BrandName agent started"
+Write-OK "$BrandName agent start requested (verified in the final step)"
 
-# ── Step 9: Health check ───────────────────────────────────────────────────────
-
-Write-Step "Verifying $BrandName agent health"
-
-$maxAttempts = 6
-$healthy     = $false
-
-for ($i = 1; $i -le $maxAttempts; $i++) {
-    try {
-        $resp = Invoke-WebRequest -Uri "http://localhost:$AgentPort/health" `
-            -Headers @{ 'X-BespoxAI-Key' = $ApiKey } `
-            -UseBasicParsing -TimeoutSec 5
-        if ($resp.StatusCode -eq 200) { $healthy = $true; break }
-    } catch {}
-    Write-Host "    Waiting for $BrandName agent... (attempt $i/$maxAttempts)"
-    Start-Sleep -Seconds 3
-}
-
-if ($healthy) {
-    Write-OK "$BrandName agent health check passed — http://localhost:$AgentPort/health"
-} else {
-    Write-Host ''
-    Write-Host "    ⚠ $BrandName agent did not respond in time. It may still be starting." -ForegroundColor Yellow
-    Write-Host "      Check the log at: $LogDir\agent.log" -ForegroundColor Yellow
-}
-
-# ── Step 8: Configure RDP support account ──────────────────────────────────────
+# ── Step 9: Configure RDP support account ──────────────────────────────────────
 
 Write-Step "Configuring $BrandName remote support account"
 
@@ -1812,6 +1893,67 @@ if ($SupportAccountPassword -ne '') {
     } else {
         Write-OK 'Remote support not authorised -- no support account created'
     }
+}
+
+# ── Step 10: Verify the agent is answering ─────────────────────────────────────
+# Last, so the support-account step above always runs. Fatal on failure: the
+# installer must never report success when the agent isn't serving. A 200 from
+# /health with the key also proves the agent could read its config -- an agent
+# that can't read it has no key and answers 401.
+
+Write-Step "Verifying $BrandName agent health"
+
+$maxAttempts = 10
+$healthy     = $false
+$lastStatus  = $null
+
+for ($i = 1; $i -le $maxAttempts; $i++) {
+    Start-Sleep -Seconds 3
+    try {
+        $resp = Invoke-WebRequest -Uri "http://localhost:$AgentPort/health" `
+            -Headers @{ 'X-BespoxAI-Key' = $ApiKey } `
+            -UseBasicParsing -TimeoutSec 5
+        $lastStatus = [int]$resp.StatusCode
+        if ($lastStatus -eq 200) { $healthy = $true; break }
+    } catch {
+        $ex = $_.Exception
+        if ($ex -is [System.Net.WebException] -and $ex.Response) { $lastStatus = [int]$ex.Response.StatusCode }
+    }
+    Write-Host "    Waiting for $BrandName agent... (attempt $i/$maxAttempts)"
+}
+
+if ($healthy) {
+    Write-OK "$BrandName agent health check passed — http://localhost:$AgentPort/health"
+} else {
+    Write-Host ''
+    Write-Host "    $BrandName agent is not answering on port $AgentPort." -ForegroundColor Red
+
+    $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    $info = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($task -and $info) {
+        $code = '0x{0:X}' -f $info.LastTaskResult
+        $why  = switch ($code) {
+            '0x41303'    { 'the task has never run -- Windows refused to start it' }
+            '0x80070569' { "$taskUser is not allowed to log on as a batch job" }
+            '0x8007052E' { "the password stored for $taskUser is wrong" }
+            '0x41301'    { 'the task is running but the agent is not answering' }
+            '0x1'        { 'the agent started and then stopped -- see agent.log below' }
+            '0x80070001' { 'the agent started and then stopped -- see agent.log below' }
+            default      { '' }
+        }
+        Write-Host "    Task: $($task.State), runs as $($task.Principal.UserId), last result $code $why" -ForegroundColor Red
+    }
+    if ($lastStatus -eq 401) {
+        Write-Host "    The agent answered 401: it could not read its configuration (check $taskUser can read $AgentConfig)." -ForegroundColor Red
+    } elseif (-not (Test-Port -Port $AgentPort)) {
+        Write-Host "    Nothing is listening on port $AgentPort." -ForegroundColor Red
+    }
+    $agentLog = Join-Path $LogDir 'agent.log'
+    if (Test-Path $agentLog) {
+        Write-Host "    Last lines of ${agentLog}:" -ForegroundColor Red
+        Get-Content $agentLog -Tail 10 | ForEach-Object { Write-Host "      $_" }
+    }
+    Write-Fail "$BrandName agent did not start. Fix the problem above and run the installer again."
 }
 
 # ── Done ───────────────────────────────────────────────────────────────────────

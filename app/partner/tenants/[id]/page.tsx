@@ -570,7 +570,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
               {lbl(authMode === 'Basic' ? 'BC Username *' : 'BC Service Account Username *')}
               <input ref={refs.bcUsername} style={inp} type="text" defaultValue={tenant.bcUsername || ''}
                 placeholder={authMode === 'Basic' ? 'e.g. administrator' : 'e.g. DOMAIN\\BCServiceUser'} autoComplete="off" />
-              {hint(authMode === 'Basic' ? 'BC application user with OData access — not a Windows account.' : 'Windows account used to authenticate with BC OData.')}
+              {hint(authMode === 'Basic' ? 'BC application user with OData access — not a Windows account.' : ('The Windows account the agent runs as. Recommended: the account the ' + erpLabel + ' Server service runs as (Services → ' + erpLabel + ' Server → Log On). It must be a user in ' + erpLabel + '.'))}
               {fieldErr && fieldErr.field === 'bcUsername' ? <FieldError msg={fieldErr.msg} /> : null}
             </div>
             <div>
@@ -585,7 +585,7 @@ function BCAgentTab({ tenant, onTunnelProvisioned }: { tenant: Tenant; onTunnelP
                 {lbl('Service Account (runs the agent)')}
                 <input ref={refs.serviceAccountUser} style={inp} type="text" defaultValue={tenant.serviceAccountUser || ''}
                   placeholder="DOMAIN\username or .\localuser" autoComplete="off" />
-                {hint('Windows account that runs the agent service — required in Basic mode since the BC Username above is a BC user, not a Windows identity.')}
+                {hint('Windows account the agent runs as — required in Basic mode since the BC Username above is a BC user, not a Windows identity. The BC service account is the usual choice.')}
               </div>
               <div>
                 {lbl('Service Account Password')}
