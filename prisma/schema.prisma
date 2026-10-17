@@ -476,6 +476,21 @@ model PartnerSignupRequest {
 // Fixed-window rate-limit counters (lib/rate-limit.ts). One row per key, e.g.
 // 'login:email:alice@x.com'; updated with a single atomic upsert. Rows older
 // than a day are swept occasionally.
+// Marketing-site intake form submissions (/api/leads). Created SQL-first.
+model Lead {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  company    String?
+  navVersion String?
+  challenge  String?
+  message    String?
+  source     String   @default("homepage")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model RateLimit {
   key         String   @id
   count       Int

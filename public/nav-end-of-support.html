@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dynamics NAV End of Support: 2027 &amp; 2028 Dates — BespoxAI</title>
+<meta name="description" content="NAV 2017 support ends 11 January 2027 and NAV 2018 on 11 January 2028. What end of support actually means, and how to stay on NAV safely or upgrade on your own timeline."/>
+<link rel="canonical" href="https://bespoxai.com/nav-end-of-support"/>
+<meta property="og:type" content="article"/>
+<meta property="og:site_name" content="BespoxAI"/>
+<meta property="og:title" content="Dynamics NAV end of support — what it actually means"/>
+<meta property="og:description" content="NAV 2017 support ends 11 January 2027, NAV 2018 on 11 January 2028. Your system keeps running. Here are your real options."/>
+<meta property="og:url" content="https://bespoxai.com/nav-end-of-support"/>
+<meta property="og:image" content="https://bespoxai.com/og-image.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Dynamics NAV end of support — what it actually means"/>
+<meta name="twitter:description" content="NAV 2017 support ends 11 January 2027, NAV 2018 on 11 January 2028. Your system keeps running. Here are your real options."/>
+<meta name="twitter:image" content="https://bespoxai.com/og-image.png"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--ink:#040E09;--forest:#0A5C46;--emerald:#0F6E56;--jade:#1A9272;--gold:#C8952A;--amber:#E8A838;--cream:#F4EFE4;--parchment:#EDE8DC;--slate:#3B5249;--fog:#D6D9D4;--white:#FAFAF8;--rust:#B5532F}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink)}
+nav{position:fixed;top:0;left:0;right:0;z-index:300;padding:1.1rem 3rem;display:flex;justify-content:space-between;align-items:center;background:rgba(4,14,9,.88);backdrop-filter:blur(20px);border-bottom:1px solid rgba(244,239,228,.05)}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none}
+.nl-text{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--cream);font-weight:500;letter-spacing:-.01em}
+.nl-ai{font-family:'DM Mono',monospace;font-size:14px;color:var(--amber);letter-spacing:.04em}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:13px;color:rgba(244,239,228,.7);text-decoration:none;transition:color .2s}
+.nav-links a:hover,.nav-links a.on{color:var(--cream)}
+.btn-np{font-size:12px;color:var(--cream);padding:.55rem 1.4rem;border:1px solid rgba(244,239,228,.1);border-radius:6px;background:var(--forest);font-family:'DM Sans',sans-serif;transition:all .2s;text-decoration:none;display:inline-block}
+.btn-np:hover{background:var(--emerald)}
+.btn-lg{font-size:14px;font-weight:500;padding:.9rem 2rem;border-radius:8px;text-decoration:none;display:inline-block;transition:all .2s}
+.btn-forest{background:var(--forest);color:var(--cream);border:1px solid rgba(244,239,228,.1)}
+.btn-forest:hover{background:var(--emerald)}
+.btn-outline{color:var(--cream);border:1px solid rgba(244,239,228,.25)}
+.btn-outline:hover{border-color:var(--cream)}
+.hero{padding:10rem 3rem 5rem;background:var(--ink);color:var(--cream)}
+.hero-in{max-width:960px;margin:0 auto}
+.sec-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--jade);margin-bottom:1rem;display:flex;align-items:center;gap:12px}
+.sec-label::before{content:'';display:block;width:28px;height:1px;background:var(--jade)}
+h1{font-family:'Cormorant Garamond',serif;font-size:58px;font-weight:300;line-height:1.05;margin-bottom:1.5rem}
+h1 em{font-style:italic;color:var(--jade)}
+.hero p{font-size:16px;color:rgba(244,239,228,.75);line-height:1.8;max-width:640px;margin-bottom:2rem}
+.hero-acts{display:flex;gap:1rem;flex-wrap:wrap}
+[hidden]{display:none!important}
+.countdown{margin-top:2.5rem;display:inline-flex;align-items:baseline;gap:.75rem;padding:.9rem 1.25rem;border:1px solid rgba(244,239,228,.12);border-radius:10px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;color:rgba(244,239,228,.7)}
+.countdown strong{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;color:var(--amber);letter-spacing:0}
+main{max-width:960px;margin:0 auto;padding:4.5rem 3rem 3rem}
+h2{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:300;line-height:1.1;margin:4rem 0 1.25rem;color:var(--ink)}
+h2 em{font-style:italic;color:var(--jade)}
+main>h2:first-child{margin-top:0}
+h3{font-size:16px;font-weight:500;margin-bottom:.6rem;color:var(--ink)}
+p{font-size:15px;color:var(--slate);line-height:1.85;margin-bottom:1.1rem;max-width:700px}
+p strong{color:var(--ink);font-weight:500}
+a.inl{color:var(--forest);font-weight:500}
+.tbl-wrap{overflow-x:auto;margin:1.5rem 0 .75rem;border:1px solid var(--fog);border-radius:12px;background:var(--white)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:.9rem 1.1rem;border-bottom:1px solid var(--fog);vertical-align:top;line-height:1.6}
+th{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate);font-weight:400;background:var(--parchment)}
+tr:last-child td{border-bottom:none}
+td.date{font-family:'DM Mono',monospace;white-space:nowrap;color:var(--ink)}
+.tag{display:inline-block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:.2rem .5rem;border-radius:4px;margin-left:.4rem;vertical-align:middle}
+.tag.soon{background:rgba(232,168,56,.18);color:#8A5A0E}
+.tag.past{background:rgba(181,83,47,.12);color:var(--rust)}
+.src{font-size:12px;color:var(--slate);opacity:.85}
+.src a{color:var(--forest)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0}
+.card{background:var(--white);border:1px solid var(--fog);border-radius:14px;padding:1.75rem}
+.card.dark{background:var(--ink);border-color:var(--ink)}
+.card.dark h3{color:var(--cream)}
+.card.dark li{color:rgba(244,239,228,.75)}
+.card-k{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);margin-bottom:.75rem}
+.card ul{list-style:none;margin-top:.5rem}
+.card li{font-size:14px;color:var(--slate);line-height:1.7;padding:.3rem 0 .3rem 1.4rem;position:relative}
+.card li::before{content:'';position:absolute;left:0;top:.95rem;width:8px;height:1px;background:var(--jade)}
+.card.stops li::before{background:var(--rust)}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin:1.5rem 0}
+.step{border-top:2px solid var(--jade);padding-top:1rem}
+.step-n{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;color:var(--jade);line-height:1}
+.step h3{margin:.5rem 0 .4rem}
+.step p{font-size:13px;line-height:1.7;margin:0}
+.cmp td:first-child{font-weight:500;color:var(--ink);width:24%}
+.cmp td.win{color:var(--forest)}
+.pull{font-family:'Cormorant Garamond',serif;font-size:26px;font-style:italic;color:var(--forest);margin:2rem 0;padding-left:1.25rem;border-left:2px solid var(--amber);max-width:640px;line-height:1.4}
+details{border-bottom:1px solid var(--fog);padding:1.1rem 0}
+details:first-of-type{border-top:1px solid var(--fog)}
+summary{cursor:pointer;font-size:16px;font-weight:500;color:var(--ink);list-style:none;display:flex;justify-content:space-between;gap:1rem}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';font-family:'DM Mono',monospace;color:var(--jade);font-size:18px;line-height:1}
+details[open] summary::after{content:'\2212'}
+details .ans{padding-top:.75rem}
+details .ans p{font-size:14px;margin-bottom:.6rem}
+.talk{background:var(--ink);color:var(--cream);padding:5rem 3rem}
+.talk-in{max-width:960px;margin:0 auto;display:grid;grid-template-columns:.9fr 1.1fr;gap:3rem;align-items:start}
+.talk h2{color:var(--cream);margin-top:0}
+.talk h2 em{color:rgba(244,239,228,.8)}
+.talk p{color:rgba(244,239,228,.7)}
+.talk .alt{font-size:14px;margin-top:1.5rem}
+.talk .alt a{color:var(--jade)}
+footer{background:var(--ink);color:rgba(244,239,228,.65);padding:2rem 3rem;text-align:center;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;border-top:1px solid rgba(244,239,228,.06)}
+footer a{color:rgba(244,239,228,.75);text-decoration:none;margin:0 .5rem;padding:.6rem .2rem;display:inline-block}
+footer a:hover{color:var(--cream)}
+@media(max-width:860px){.steps{grid-template-columns:1fr 1fr}.talk-in{grid-template-columns:1fr;gap:2rem}}
+@media(max-width:760px){nav{padding:1rem 1.25rem}.nav-links{display:none}.hero{padding:8rem 1.25rem 3.5rem}h1{font-size:40px}main{padding:3rem 1.25rem 2rem}h2{font-size:31px}.two,.steps{grid-template-columns:1fr}.talk{padding:3.5rem 1.25rem}th,td{padding:.75rem .8rem}}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "FAQPage",
+ "mainEntity": [
+  {"@type": "Question", "name": "When does support for Dynamics NAV 2017 end?", "acceptedAnswer": {"@type": "Answer", "text": "Microsoft's extended support for Dynamics NAV 2017 ends on 11 January 2027. NAV 2018 follows on 11 January 2028. NAV 2016 and earlier versions are already past end of support."}},
+  {"@type": "Question", "name": "Will NAV stop working when support ends?", "acceptedAnswer": {"@type": "Answer", "text": "No. NAV is perpetually licensed software installed on your own servers. It keeps running exactly as it does today. What stops is Microsoft's security updates, hotfixes, regulatory updates and support for that version."}},
+  {"@type": "Question", "name": "Is it still legal and licensed to run NAV after end of support?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. A perpetual licence does not expire when Microsoft's support lifecycle ends. You keep the right to use the version you licensed."}},
+  {"@type": "Question", "name": "Do we have to migrate to Business Central?", "acceptedAnswer": {"@type": "Answer", "text": "No. Migration is one option, not an obligation. Many businesses run older NAV versions safely for years by keeping the surrounding infrastructure patched and limiting exposure. The right choice depends on your version, customisations, infrastructure and plans."}},
+  {"@type": "Question", "name": "What about the Windows Server and SQL Server NAV runs on?", "acceptedAnswer": {"@type": "Answer", "text": "Those have their own lifecycles. Windows Server 2016 reaches end of support on 12 January 2027 and SQL Server 2017 on 12 October 2027. Moving NAV onto a supported server and database is often a bigger security win than the NAV version itself."}},
+  {"@type": "Question", "name": "How can BespoxAI help if we stay on NAV?", "acceptedAnswer": {"@type": "Answer", "text": "BespoxAI adds the CFO Assistant and grounded feasibility checks to the NAV system you already own, with no migration required. If you later decide to upgrade, the index of your customisations gives you a complete map of what your system does."}}
+ ]
+}
+</script>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/" aria-label="BespoxAI home">
+    <svg width="30" height="30" viewBox="0 0 80 80" fill="none"><rect width="72" height="72" x="4" y="4" rx="16" fill="url(#ng1)"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="3" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="3"/><path d="M29 40.5L33 40.5L35.5 34L38 47L40.5 38L43 40.5L52 40.5" stroke="#E8A838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="ng1" x1="4" y1="4" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1A9272"/><stop offset="100%" stop-color="#040E09"/></linearGradient></defs></svg>
+    <span style="display:inline-flex;align-items:baseline;gap:0"><span class="nl-text">Bespox</span><span class="nl-ai">AI</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/#sec-demo">CFO Assistant</a></li>
+    <li><a href="/#sec-pricing">Pricing</a></li>
+    <li><a class="on" href="/nav-end-of-support">NAV End of Support</a></li>
+    <li><a href="/faq">FAQ</a></li>
+    <li><a href="/about">About</a></li>
+  </ul>
+  <a class="btn-np" href="/signup">Get Started &rarr;</a>
+</nav>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="sec-label">Dynamics NAV end of support</div>
+    <h1>Microsoft&rsquo;s support ends.<br><em>Your NAV doesn&rsquo;t.</em></h1>
+    <p>Support for NAV 2017 ends on 11 January 2027, and NAV 2018 a year later. You&rsquo;ll hear that this means you have to migrate. It doesn&rsquo;t. Here&rsquo;s what actually changes, what doesn&rsquo;t, and how to make the call on your own timeline.</p>
+    <div class="hero-acts">
+      <a class="btn-lg btn-forest" href="#talk">Tell us your version</a>
+      <a class="btn-lg btn-outline" href="/signup">Start free</a>
+    </div>
+    <div class="countdown" id="countdown" hidden><strong id="cd-days"></strong><span id="cd-label">days until NAV 2017 support ends</span></div>
+  </div>
+</header>
+
+<main>
+  <h2>The dates that <em>matter</em></h2>
+  <p>NAV doesn&rsquo;t run on its own. The server and database underneath it have deadlines too &mdash; and for many NAV 2015&ndash;2017 sites, Windows Server 2016 is the one that arrives first.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Product</th><th>End of support</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Dynamics NAV 2009 &ndash; 2015</td><td class="date">Already ended</td><td>Out of support for years. Still running in thousands of businesses. <span class="tag past">Past</span></td></tr>
+        <tr><td>Dynamics NAV 2016</td><td class="date">14 Apr 2026</td><td>Ended this year. <span class="tag past">Past</span></td></tr>
+        <tr><td><strong>Dynamics NAV 2017</strong></td><td class="date">11 Jan 2027</td><td>The next big one. <span class="tag soon">Soon</span></td></tr>
+        <tr><td>Windows Server 2016</td><td class="date">12 Jan 2027</td><td>A common host for NAV 2015&ndash;2017 service tiers. <span class="tag soon">Soon</span></td></tr>
+        <tr><td>SQL Server 2017</td><td class="date">12 Oct 2027</td><td>Check which SQL version your NAV database lives on.</td></tr>
+        <tr><td><strong>Dynamics NAV 2018</strong></td><td class="date">11 Jan 2028</td><td>The last NAV release.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="src">Source: Microsoft Lifecycle &mdash; <a href="https://learn.microsoft.com/en-us/lifecycle/end-of-support/end-of-support-2027" rel="noopener">2027</a>, <a href="https://learn.microsoft.com/en-us/lifecycle/end-of-support/end-of-support-2028" rel="noopener">2028</a>, <a href="https://learn.microsoft.com/en-us/lifecycle/products/dynamics-nav-2016" rel="noopener">NAV 2016</a>.</p>
+
+  <h2>What end of support <em>actually</em> means</h2>
+  <div class="two">
+    <div class="card stops">
+      <div class="card-k">What stops</div>
+      <h3>Microsoft&rsquo;s work on that version</h3>
+      <ul>
+        <li>Security updates and hotfixes for NAV itself</li>
+        <li>Tax and regulatory updates from Microsoft</li>
+        <li>Microsoft support cases for that version</li>
+        <li>Often, your partner&rsquo;s appetite for supporting it</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-k">What doesn&rsquo;t</div>
+      <h3>Everything your business runs on</h3>
+      <ul>
+        <li>NAV keeps posting, invoicing and closing the books</li>
+        <li>Your perpetual licence stays valid &mdash; it never expires</li>
+        <li>Your data, customisations and integrations stay put</li>
+        <li>Your right to choose when, or whether, to upgrade</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pull">End of support is a risk to manage, not a deadline to panic about.</div>
+  <p>The real exposure is security: an unpatched application on an unpatched server, reachable from places it shouldn&rsquo;t be. That&rsquo;s fixable without replacing your ERP &mdash; supported Windows and SQL underneath, no direct internet exposure, tight accounts and permissions, and reliable backups.</p>
+
+  <h2>Stay or migrate: an <em>honest</em> comparison</h2>
+  <p>Neither answer is right for everyone. Here&rsquo;s how the two paths compare &mdash; including where migrating genuinely wins.</p>
+  <div class="tbl-wrap">
+    <table class="cmp">
+      <thead><tr><th></th><th>Stay on NAV, add BespoxAI</th><th>Migrate to Business Central now</th></tr></thead>
+      <tbody>
+        <tr><td>Up-front cost</td><td class="win">None for the ERP. BespoxAI starts free.</td><td>Migration project, plus new subscriptions or licences.</td></tr>
+        <tr><td>Disruption</td><td class="win">None. Nothing about how you work changes.</td><td>Re-training, data migration, parallel running, go-live risk.</td></tr>
+        <tr><td>Customisations</td><td class="win">Stay as they are, and get indexed and understood.</td><td>Rebuilt as AL extensions, or dropped.</td></tr>
+        <tr><td>Licence</td><td class="win">Yours, perpetually.</td><td>Usually a per-user subscription.</td></tr>
+        <tr><td>Security updates</td><td>None from Microsoft for NAV &mdash; manage the risk at the server and network.</td><td class="win">Ongoing, from Microsoft.</td></tr>
+        <tr><td>New Microsoft features</td><td>None from Microsoft &mdash; BespoxAI adds the CFO Assistant and AI tooling.</td><td class="win">Copilot and Microsoft&rsquo;s roadmap.</td></tr>
+        <tr><td>Timing</td><td class="win">Yours. Upgrade later, when it suits the business.</td><td>Set by the project and the deadline.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>A way to <em>decide</em></h2>
+  <div class="steps">
+    <div class="step"><div class="step-n">01</div><h3>Secure</h3><p>Supported Windows and SQL, no open doors, tested backups. Do this either way.</p></div>
+    <div class="step"><div class="step-n">02</div><h3>Map</h3><p>Know what&rsquo;s customised, what&rsquo;s integrated, and what your business actually depends on.</p></div>
+    <div class="step"><div class="step-n">03</div><h3>Get value now</h3><p>Answers from your live data in plain English &mdash; on the system you already own.</p></div>
+    <div class="step"><div class="step-n">04</div><h3>Decide</h3><p>Upgrade when the numbers say so, not because a date did. Arrive with a full map of your system.</p></div>
+  </div>
+  <p>BespoxAI helps with steps two to four. The CFO Assistant works on NAV 2009 and later. Feasibility checks are grounded in your own objects, so you can size customisation work before anyone quotes it &mdash; and if you do upgrade, you start with a complete, searchable picture of what your system does.</p>
+
+  <h2>Questions we <em>get asked</em></h2>
+  <details><summary>Will NAV stop working when support ends?</summary><div class="ans"><p>No. NAV is perpetually licensed software installed on your own servers. It keeps running exactly as it does today. What stops is Microsoft&rsquo;s security updates, hotfixes, regulatory updates and support for that version.</p></div></details>
+  <details><summary>Is it still legal and licensed to run NAV after end of support?</summary><div class="ans"><p>Yes. A perpetual licence doesn&rsquo;t expire when Microsoft&rsquo;s support lifecycle ends. You keep the right to use the version you licensed.</p></div></details>
+  <details><summary>Do we have to migrate to Business Central?</summary><div class="ans"><p>No. Migration is one option, not an obligation. Many businesses run older NAV versions safely for years by keeping the surrounding infrastructure patched and limiting exposure. The right choice depends on your version, customisations, infrastructure and plans.</p></div></details>
+  <details><summary>What about the Windows Server and SQL Server NAV runs on?</summary><div class="ans"><p>Those have their own lifecycles. Windows Server 2016 reaches end of support on 12 January 2027 and SQL Server 2017 on 12 October 2027. Moving NAV onto a supported server and database is often a bigger security win than the NAV version itself.</p></div></details>
+  <details><summary>Our partner has stopped supporting our NAV version. What now?</summary><div class="ans"><p>You&rsquo;re not alone, and you don&rsquo;t need your original partner to use BespoxAI. Tell us your version below and we&rsquo;ll be straight with you about what we can help with.</p></div></details>
+  <details><summary>How can BespoxAI help if we stay on NAV?</summary><div class="ans"><p>BespoxAI adds the CFO Assistant and grounded feasibility checks to the NAV system you already own, with no migration required. If you later decide to upgrade, the index of your customisations gives you a complete map of what your system does. More in our <a class="inl" href="/faq">full FAQ</a>.</p></div></details>
+</main>
+
+<section class="talk" id="talk">
+  <div class="talk-in">
+    <div>
+      <div class="sec-label">Talk to a NAV developer</div>
+      <h2>Tell us what<br><em>you&rsquo;re running.</em></h2>
+      <p>Your version and what&rsquo;s worrying you is enough to start. A NAV developer &mdash; not a sales team &mdash; will reply with honest options, whether that&rsquo;s staying put, tightening things up, or planning an upgrade.</p>
+      <p class="alt">Rather see it for yourself? <a href="/signup">Start free</a> &mdash; no credit card.</p>
+    </div>
+    <div data-lead-form data-source="nav-end-of-support" data-theme="dark"></div>
+  </div>
+</section>
+
+<footer>
+  <a href="/">Home</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/nav-end-of-support">NAV End of Support</a><a href="/terms">Terms</a><a href="https://partners.bespoxai.com">Partners</a><a href="/#sec-contact">Contact</a>
+  <div style="margin-top:1rem">&copy; 2026 Nav Solutions Limited &middot; Trading as BespoxAI &middot; Auckland, New Zealand</div>
+</footer>
+<script src="/lead-form.js" defer></script>
+<script>
+(function () {
+  var targets = [
+    { at: Date.UTC(2027, 0, 11, 15), label: 'days until NAV 2017 support ends' },
+    { at: Date.UTC(2028, 0, 11, 15), label: 'days until NAV 2018 support ends' }
+  ];
+  var now = Date.now();
+  for (var i = 0; i < targets.length; i++) {
+    if (targets[i].at > now) {
+      document.getElementById('cd-days').textContent = Math.ceil((targets[i].at - now) / 86400000);
+      document.getElementById('cd-label').textContent = targets[i].label;
+      document.getElementById('countdown').hidden = false;
+      return;
+    }
+  }
+})();
+</script>
+</body>
+</html>

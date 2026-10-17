@@ -289,6 +289,17 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
 .sec-tight .trust-grid{grid-template-columns:repeat(4,1fr);margin-top:2rem}
 @media(max-width:900px){.sec-tight .trust-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.sec-tight .trust-grid{grid-template-columns:1fr}}
+.pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2.5rem}
+.pain-card{background:var(--white);border:1px solid var(--fog);border-radius:14px;padding:1.75rem;display:flex;flex-direction:column;transition:border-color .2s,transform .2s;text-decoration:none;color:inherit}
+.pain-card:hover{border-color:var(--jade);transform:translateY(-2px)}
+.pain-q{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;line-height:1.2;color:var(--ink);margin-bottom:.75rem}
+.pain-a{font-size:14px;color:var(--slate);line-height:1.7;flex:1}
+.pain-link{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--jade);margin-top:1.25rem}
+.contact-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:3.5rem;align-items:start}
+.contact-p{font-size:15px;color:var(--slate);line-height:1.8;max-width:440px;margin-bottom:1rem}
+.contact-p a{color:var(--forest);font-weight:500}
+@media(max-width:900px){.pain-grid{grid-template-columns:1fr 1fr}.contact-grid{grid-template-columns:1fr;gap:2rem}}
+@media(max-width:600px){.pain-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -304,6 +315,7 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
     <li><a href="#sec-build">Development</a></li>
     <li><a href="#sec-pricing">Pricing</a></li>
     <li><a href="#sec-security">Security</a></li>
+    <li><a href="/nav-end-of-support">NAV End of Support</a></li>
     <li><a href="/faq">FAQ</a></li>
     <li><a href="/about">About</a></li>
   </ul>
@@ -362,6 +374,22 @@ a.btn-ns,a.btn-np,a.btn-p{display:inline-block}
   <span class="mq-item"><span class="mq-dot"></span>Bring Your Own Partner</span>
   <span class="mq-item"><span class="mq-dot"></span>Zero Open Ports</span>
 </div></div>
+
+<!-- SOUND FAMILIAR -->
+<div class="sec" style="background:var(--parchment)" id="sec-familiar">
+<div class="sec-in">
+  <div class="sec-label">Sound familiar?</div>
+  <h2 class="sec-h">If NAV still runs the business,<br><em>some of this will ring a bell.</em></h2>
+  <div class="pain-grid">
+    <a class="pain-card" href="#sec-demo"><div class="pain-q">Month-end lives in spreadsheets.</div><p class="pain-a">Exports, pivots and VLOOKUPs every close, because getting the numbers straight out of NAV takes too long.</p><div class="pain-link">CFO Assistant &rarr;</div></a>
+    <a class="pain-card" href="#sec-demo"><div class="pain-q">A simple question means a ticket to IT.</div><p class="pain-a">&ldquo;Who owes us the most over 60 days?&rdquo; shouldn&rsquo;t take a report request and a two-day wait.</p><div class="pain-link">CFO Assistant &rarr;</div></a>
+    <a class="pain-card" href="#sec-demo"><div class="pain-q">Every new report comes with a quote.</div><p class="pain-a">So the reports you actually need never get built, and decisions get made on last month&rsquo;s numbers.</p><div class="pain-link">CFO Assistant &rarr;</div></a>
+    <a class="pain-card" href="#sec-build"><div class="pain-q">Nobody&rsquo;s quite sure what&rsquo;s been customised.</div><p class="pain-a">Years of modifications, the people who wrote them long gone, and no documentation anyone trusts.</p><div class="pain-link">Feasibility checks &rarr;</div></a>
+    <a class="pain-card" href="#sec-build"><div class="pain-q">A small change comes back as a big quote.</div><p class="pain-a">Weeks of paid discovery before you even learn whether the change is possible in your version.</p><div class="pain-link">Feasibility checks &rarr;</div></a>
+    <a class="pain-card" href="/nav-end-of-support"><div class="pain-q">Support is ending, and someone says &ldquo;migrate&rdquo;.</div><p class="pain-a">NAV 2017 support ends in January 2027. That&rsquo;s a risk to manage &mdash; not a reason to rip out a system that works.</p><div class="pain-link">NAV end of support &rarr;</div></a>
+  </div>
+</div>
+</div>
 
 <!-- PRODUCTS -->
 <div class="sec" style="background:var(--cream)" id="sec-products">
@@ -633,6 +661,21 @@ function demoRun(q, key){
 </div>
 </div>
 
+<!-- CONTACT -->
+<div class="sec" style="background:var(--cream)" id="sec-contact">
+<div class="sec-in">
+  <div class="contact-grid">
+    <div>
+      <div class="sec-label">Talk to us</div>
+      <h2 class="sec-h">Tell us what<br><em>you&rsquo;re running.</em></h2>
+      <p class="contact-p">Your NAV or BC version and what you&rsquo;d like help with is enough to start. You&rsquo;ll hear back from a NAV developer, not a sales team.</p>
+      <p class="contact-p">Prefer email? <a href="mailto:Admin@bespoxai.com">Admin@bespoxai.com</a></p>
+    </div>
+    <div data-lead-form data-source="homepage" data-theme="light"></div>
+  </div>
+</div>
+</div>
+
 <!-- CTA -->
 <section class="cta-wrap">
   <div class="cta-bg"></div>
@@ -651,7 +694,7 @@ function demoRun(q, key){
 
 <footer>
   <div class="fl"><svg width="22" height="22" viewBox="0 0 80 80" fill="none" style="opacity:.4"><rect width="72" height="72" x="4" y="4" rx="16" fill="#0A5C46"/><path d="M24 22L24 58L43 58C51 58 57 53 57 46C57 41.5 54.5 38 50 36.5C54 34.5 56 31 56 27C56 20.5 50.5 22 43 22Z" fill="none" stroke="#F4EFE4" stroke-width="4" stroke-linejoin="round"/><path d="M24 40.5L43 40.5" stroke="#F4EFE4" stroke-width="4"/></svg><span class="fl-text">bespox</span><span class="fl-ai">AI</span></div>
-  <div class="fr"><a href="#sec-services">Products</a><a href="#sec-pricing">Pricing</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/terms">Terms</a><a href="https://partners.bespoxai.com">Partners</a><a href="mailto:Admin@bespoxai.com">Contact</a></div>
+  <div class="fr"><a href="#sec-services">Products</a><a href="#sec-pricing">Pricing</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/nav-end-of-support">NAV End of Support</a><a href="/terms">Terms</a><a href="https://partners.bespoxai.com">Partners</a><a href="#sec-contact">Contact</a></div>
   <div class="fc">&copy; 2026 Nav Solutions Limited &middot; Trading as BespoxAI &middot; Auckland, New Zealand</div>
 </footer>
 
@@ -698,5 +741,6 @@ function demoRun(q, key){
   ]
 }
 </script>
+<script src="/lead-form.js" defer></script>
 </body>
 </html>
