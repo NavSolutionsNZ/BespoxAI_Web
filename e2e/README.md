@@ -30,13 +30,25 @@ Sign-in happens once (`auth.setup.ts`) and the session is reused from
 
 ### Lifecycle
 
-- **customer-lifecycle.spec.ts** — customer creates a requirement, auto-feasibility
-  runs, spec generation entry point appears.
-- **partner-lifecycle.spec.ts** — partner_admin creates a requirement on a client
-  tenant and advances the pipeline. `ADVANCE=safe` (default) stops after Issue
-  Quote; `ADVANCE=full` walks the whole chain.
+- **customer-lifecycle.spec.ts** — customer creates a requirement on
+  Customisations, auto-feasibility runs, and the spec entry point
+  ("Generate Full Specification →" or "Scope as development anyway") produces
+  a spec with User Story + Acceptance Criteria.
+- **partner-lifecycle.spec.ts** — partner_admin opens the client tenant's
+  Requirements tab, creates a requirement, gets feasibility + spec, then walks
+  the deliverer pipeline: Submit for Review → Move to Review → Issue Quote /
+  Send Quote. `ADVANCE=safe` (default) stops at Quoted; `ADVANCE=full`
+  continues: Accept Quote (on the client's behalf) → Mark Deposit Paid →
+  Start Development → Mark Work Complete → Mark Balance Paid.
 
-⚠ Not yet verified against the current UI — slice 2 hardens these.
+Each pipeline step is confirmed by the *next* action button appearing — not
+by status text, because the pipeline stepper always shows every label.
+
+An "infeasible" verdict is a valid AI outcome with no spec path; the test
+records a note and stops there rather than failing.
+
+Side effects: each run spends AI tokens (feasibility + spec), and Send Quote
+emails the client user on the test tenant.
 
 ## Setup (once, on your PC)
 
