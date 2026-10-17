@@ -1807,7 +1807,7 @@ function DeployToTestPanel(props: DeployPanelProps) {
                 {deployDebug
                   ? <div style={{ background: '#FAEEDA', borderBottom: '1px solid #EF9F27', padding: '4px 10px' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#633806' }}>
-                        DEBUG \u2014 simulated results only
+                        DEBUG — simulated results only
                       </span>
                     </div>
                   : null}

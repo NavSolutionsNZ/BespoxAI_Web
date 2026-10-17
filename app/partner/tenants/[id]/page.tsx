@@ -1614,13 +1614,13 @@ function RequirementDetail({ req, tenantId, onBack, onUpdated }: {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                 {req.feasibility === 'cfo_assistant' ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-warning)', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\ud83d\udca1 No development needed</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-warning)', background: 'rgba(200,149,42,0.1)', border: '1px solid rgba(200,149,42,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>💡 No development needed</span>
                 ) : null}
                 {req.feasibility === 'development' ? (
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Development required</span>
                 ) : null}
                 {req.feasibility === 'infeasible' ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-danger)', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>\u26a0 Constrained</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-danger)', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 20, padding: '3px 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>⚠ Constrained</span>
                 ) : null}
                 {req.feasibility === 'development' && req.feasibilityCostRange ? (
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--rb-success)', background: 'rgba(10,92,70,0.1)', border: '1px solid rgba(10,92,70,0.3)', borderRadius: 20, padding: '3px 12px' }}>Indicative: {req.feasibilityCostRange}</span>
