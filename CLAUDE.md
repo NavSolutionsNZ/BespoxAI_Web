@@ -54,8 +54,12 @@ Domains: `bespoxai.com` (main portal), `partners.bespoxai.com` (partner portal �
 
 ### Database
 - **Never run `prisma migrate` or `db push`.** Schema changes are SQL-first:
-  Rich runs raw SQL in Vercel → Storage → Postgres → Query, then
+  raw SQL is run in Vercel → Storage → Postgres → Query, then
   `prisma/schema.prisma` is updated manually to match.
+- **Claude runs the SQL itself** (Playwright MCP on Rich's PC, driving the
+  Vercel dashboard) rather than handing Rich scripts to paste. Data changes
+  get a preview `SELECT` first and run inside a transaction; if the preview
+  shows rows outside the expected scope, stop and report instead of running.
 - **`findUnique` only accepts unique, non-null fields.** Using it with a
   non-unique or nullable filter throws "needs at least one of id" at runtime and
   is often swallowed by a catch. Use `findFirst`. This has bitten us at least
