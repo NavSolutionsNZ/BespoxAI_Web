@@ -60,6 +60,15 @@ Domains: `bespoxai.com` (main portal), `partners.bespoxai.com` (partner portal â
   Vercel dashboard) rather than handing Rich scripts to paste. Data changes
   get a preview `SELECT` first and run inside a transaction; if the preview
   shows rows outside the expected scope, stop and report instead of running.
+  - The DB is **Prisma Postgres** (`db.prisma.io`), store
+    `prisma-postgres-byzantium-garden`. Query page:
+    `vercel.com/navsolutionsnzs-projects/bespoke-ai-web/integrations/prisma/icfg_JzA5nOtAwCLajsxWwOL9V8bZ/resources/storage/store_HxUq0wSEL6XsU0cU/query`
+  - The editor has a **Read-only** toggle (on by default). Leave it on for
+    queries; switch it off only for an intended write, then back on.
+  - Fill the editor textbox, run with Ctrl+Enter, read results from the
+    `[role=grid]` element's `innerText` (exact values, not a screenshot).
+  - Direct connections from the cloud workspace don't work (no outbound
+    Postgres port); don't retry that route.
 - **`findUnique` only accepts unique, non-null fields.** Using it with a
   non-unique or nullable filter throws "needs at least one of id" at runtime and
   is often swallowed by a catch. Use `findFirst`. This has bitten us at least
