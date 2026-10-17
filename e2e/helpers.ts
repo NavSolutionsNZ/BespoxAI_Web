@@ -12,6 +12,9 @@ export const URLS = {
   partner: () => process.env.PARTNER_URL || 'https://partners.bespoxai.com',
 }
 
+// Saved Demo1 session, written by auth.setup.ts and loaded by smoke specs.
+export const DEMO1_STATE = 'e2e/.auth/demo1.json'
+
 // A unique, easy-to-spot tag so test data can be found + cleaned up later.
 export function testTag(label: string): string {
   const stamp = new Date().toISOString().slice(5, 16).replace(/[:T]/g, '')

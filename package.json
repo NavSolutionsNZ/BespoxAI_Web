@@ -10,7 +10,10 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "npx tsx scripts/create-tenant.ts",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "e2e:smoke": "dotenv -e .env.e2e -- playwright test --project=smoke-public --project=smoke-demo1",
+    "e2e:lifecycle": "dotenv -e .env.e2e -- playwright test --project=lifecycle",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
@@ -28,11 +31,13 @@
     "stripe": "^22.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.14",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "dotenv-cli": "^11.0.0",
     "prisma": "^5.22.0",
     "tsx": "^4.19.1",
     "typescript": "^5"

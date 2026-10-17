@@ -12,7 +12,7 @@ import { env, URLS, login, testTag, waitForEither } from './helpers'
  *   CUSTOMER_EMAIL      a tenant_admin / user on the test tenant (e.g. Acme client)
  *   CUSTOMER_PASSWORD
  */
-test.describe('Customer requirement lifecycle', () => {
+test.describe('@lifecycle Customer requirement lifecycle', () => {
   const title = testTag('CUST') + ' Restrict negative inventory on sales lines'
 
   test('create → auto-feasibility → spec entry point', async ({ page }) => {

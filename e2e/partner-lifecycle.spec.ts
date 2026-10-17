@@ -20,7 +20,7 @@ import { env, URLS, login, testTag, waitForEither } from './helpers'
  *   PARTNER_TENANT_ID  the client tenant id to test against (e.g. Acme)
  *   ADVANCE            safe | full   (default safe)
  */
-test.describe('Partner deliverer lifecycle', () => {
+test.describe('@lifecycle Partner deliverer lifecycle', () => {
   const advance = (process.env.ADVANCE || 'safe').toLowerCase()
   const title = testTag('PARTNER') + ' Add production-date guard to sales lines'
 

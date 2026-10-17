@@ -1,74 +1,85 @@
-# BespoxAI E2E lifecycle tests (Playwright)
+# BespoxAI E2E tests (Playwright)
 
-Repeatable browser tests that walk the **partner deliverer** and **customer**
-requirement lifecycles against production, so you can re-run after each change
-instead of clicking through by hand.
+Browser tests that run against production (or a preview) through the UI like a
+real user. They never touch the database directly.
 
-## What they check
+## Two tiers
 
-- **customer-lifecycle.spec.ts** — log in as a tenant customer, create a
-  requirement, confirm **auto-feasibility runs** and the **spec-generation
-  entry point** appears (the thing that was missing).
-- **partner-lifecycle.spec.ts** — log in as a `partner_admin`, open a client
-  tenant, create a requirement, confirm auto-feasibility + spec entry point,
-  then advance the deliverer pipeline (Move to Review → Issue Quote → …).
+| Tier | Command | Writes data? | Time | When |
+|---|---|---|---|---|
+| **Smoke** | `npm run e2e:smoke` | No | ~1–2 min | After every deploy |
+| **Lifecycle** | `npm run e2e:lifecycle` | Yes — real `[E2E-TEST …]` requirements | Minutes (AI) | On purpose, before releases |
 
-## ⚠ This touches REAL production data
+### Smoke (`e2e/smoke/`)
 
-Each run creates a real requirement on the test tenant. Every test requirement
-title is prefixed `[E2E-TEST …]` so you can find and remove them. The partner
-test defaults to `ADVANCE=safe` (stops after Issue Quote — no payment or
-irreversible marks). Set `ADVANCE=full` only when you want the whole chain.
+- **public.spec.ts** — `bespoxai.com` home, `/login`, `/signup`, `/demo`, and
+  `partners.bespoxai.com` home, `/signup`, `/login` load and show their headings.
+- **demo1.spec.ts** — signed in as the Demo1 tenant user, the CFO Assistant,
+  Health Scanner, Customisations and Migration Analyser views render.
+  (Cash Flow / Month-End Close are "soon" placeholders and skipped.)
+- **BC round-trip** (opt-in, `E2E_EXPECT_BC=1`) — the agent badge shows
+  connected and one CFO question returns an answer. Needs the bc22 Docker
+  container running; spends AI tokens.
 
-The tests **never** touch the database directly — everything goes through the
-UI like a real user.
+Every smoke test also fails on uncaught page errors, `console.error`, or any
+`/api/*` response ≥ 400 (`e2e/fixtures.ts`). With `E2E_EXPECT_BC` off, 424
+(agent unreachable) is tolerated.
 
-## Setup (run locally — needs a browser, which this environment doesn't have)
+Sign-in happens once (`auth.setup.ts`) and the session is reused from
+`e2e/.auth/demo1.json` (gitignored).
+
+### Lifecycle
+
+- **customer-lifecycle.spec.ts** — customer creates a requirement, auto-feasibility
+  runs, spec generation entry point appears.
+- **partner-lifecycle.spec.ts** — partner_admin creates a requirement on a client
+  tenant and advances the pipeline. `ADVANCE=safe` (default) stops after Issue
+  Quote; `ADVANCE=full` walks the whole chain.
+
+⚠ Not yet verified against the current UI — slice 2 hardens these.
+
+## Setup (once, on your PC)
 
 ```bash
 # from repo root
-npm install -D @playwright/test dotenv-cli
+npm install
 npx playwright install chromium
 
-# credentials
 cp e2e/.env.e2e.example .env.e2e
-#   …fill in PARTNER_PASSWORD, CUSTOMER_PASSWORD (and tenant id if different)
+#   fill in DEMO_EMAIL / DEMO_PASSWORD (smoke)
+#   and PARTNER_* / CUSTOMER_* (lifecycle)
 ```
+
+Test accounts must have finished first-login setup — `login()` throws if the
+account lands on onboarding or a password-change screen. MFA / Microsoft
+sign-in isn't handled; use a credentials account.
 
 ## Run
 
 ```bash
-# both flows, headless
-npx dotenv -e .env.e2e -- npx playwright test
-
-# watch it click (recommended first time)
-npx dotenv -e .env.e2e -- npx playwright test --headed
-
-# just one flow
-npx dotenv -e .env.e2e -- npx playwright test partner-lifecycle
-npx dotenv -e .env.e2e -- npx playwright test customer-lifecycle
-
-# full pipeline advance
-ADVANCE=full npx dotenv -e .env.e2e -- npx playwright test partner-lifecycle
-
-# step-through debugger
-npx dotenv -e .env.e2e -- npx playwright test --debug
+npm run e2e:smoke                       # smoke, headless
+npm run e2e:smoke -- --headed           # watch it click
+npm run e2e:smoke -- -g "partner"       # only tests matching a name
+npm run e2e:lifecycle                   # lifecycle (writes data)
+npm run e2e:report                      # open the last HTML report
 ```
 
-On failure, Playwright saves a screenshot, video, and trace under
-`test-results/` and an HTML report (`npx playwright show-report`). Paste those
-back and I can diagnose against the code + Vercel logs.
+`E2E_EXPECT_BC=1` and `ADVANCE=full` can go in `.env.e2e` or be set in the shell.
 
-## Notes / known fragilities
+On failure Playwright saves a screenshot, video and trace under
+`test-results/`, plus the HTML report. Paste the failure output back and it can
+be diagnosed against the code and Vercel logs.
 
-- **Selectors** are text/role-based (e.g. the button literally reads
-  "Generate Full Specification →"). If a label changes, update the matching
-  `getByRole(... name: /…/)` in the spec.
-- **AI steps are slow** — feasibility and spec generation can take 30–120s;
-  timeouts are set generously (`waitForEither`, 150s).
-- **First-login accounts**: the test account must already have completed its
-  first-login password change, or `login()` will throw. If it lands on
-  onboarding, set the password once by hand first.
-- **MFA / Microsoft sign-in** is not handled — use a credentials account.
-- These specs assume the partner customer and partner test accounts exist and
-  the tenant id in `.env.e2e` is correct (Acme = `cro7hmob054poa056gtgh1540`).
+## Cleaning up lifecycle test data
+
+`scripts/e2e-cleanup.sql` — run the PREVIEW query first in Vercel → Storage →
+Postgres → Query, check the list, then run the CLEANUP block. It removes
+`[E2E-TEST …]` requirements, their addenda and uploaded object files; AI usage
+rows are kept with the requirement link cleared. Any `req/…` GitHub branches
+created for those requirements are not touched.
+
+## Notes
+
+- Selectors are text/role-based. If a heading or button label changes, update
+  the matching `getByRole(... name: /…/)`.
+- Tests run serially (`workers: 1`) against production on purpose.
